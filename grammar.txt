@@ -1,0 +1,148 @@
+# ==========================================
+# DOCUMENTATION
+#
+# NOTES:
+#   - production rules must be all caps followed by '->'
+#   - only line style comments are supported; use the hashtag.
+#   - by convention, use plural iff the state can be repeated 1+ times
+#
+# ACTIONS:
+#   - pass passes node without creating
+#   - merge creates unary/binary depending
+#   - pool pools into a new list
+#   - single rules should always pass
+# ==========================================
+# GRAMMAR
+
+@action build=start
+START -> CONTEXTS
+
+@action pool
+CONTEXTS -> CONTEXT
+@action pool
+CONTEXTS -> CONTEXT CONTEXTS
+
+@action pass
+CONTEXT -> FUNCTION_CONTEXT
+CONTEXT -> CLASS_CONTEXT
+
+@action build=class
+CLASS_CONTEXT -> CLASS_HEADER CLASS_BODY
+
+@action pass
+CLASS_HEADER -> class var
+CLASS_BODY -> { CLASS_ELEMENTS }
+
+@action pool
+CLASS_ELEMENTS -> CLASS_ELEMENT
+CLASS_ELEMENTS -> CLASS_ELEMENT CLASS_ELEMENTS
+
+@action pass
+CLASS_ELEMENT -> CLASS_LINE endl
+CLASS_ELEMENT -> CLASS_CONTEXT
+CLASS_ELEMENT -> CLASS_FUNCTION_CONTEXT
+
+@action build=class_function
+CLASS_FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+@action pass
+CLASS_LINE -> VAR_DECL
+CLASS_LINE -> VAR_DECL op_assign EXPR
+
+
+@action build=function
+FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+@action pool
+FUNCTION_HEADER -> fun var PARAMS_DECL
+FUNCTION_HEADER -> fun var PARAMS_DECL RETURN_DECL
+
+@action build=return_decl
+RETURN_DECL -> -> PARAMS_DECL
+RETURN_DECL -> -> VAR_DECL
+
+@action build=params_decl
+PARAMS_DECL -> ( VAR_DECL_TUPLE )
+PARAMS_DECL -> ( )
+
+@action merge
+VAR_DECL_TUPLE -> VAR_DECL
+@action pool
+VAR_DECL_TUPLE -> VAR_DECL , VAR_DECL_TUPLE
+
+@action build=codeblock
+CODE_BLOCK -> { BLOCKS }
+
+@action merge
+BLOCKS -> BLOCK
+@action pool
+BLOCKS -> BLOCK BLOCKS
+
+@action pass
+BLOCK -> CONTROL
+BLOCK -> LINE
+
+@action pass
+CONTROL -> IF_STATEMENT
+CONTROL -> WHILE_STATEMENT
+
+@action build=if
+IF_STATEMENT -> if ( EXPR ) CODE_BLOCK 
+IF_STATEMENT -> if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
+
+@action build=while
+WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK 
+
+@action build=else
+ELSE_STATEMENT -> else CODE_BLOCK
+ELSE_STATEMENT -> else if CODE_BLOCK ELSE_STATEMENT
+
+@action merge
+VAR_DECL -> var : var
+
+@action pass
+LINE -> ACTION endl
+
+@action pass
+ACTION -> VAR_DECL
+
+@action merge
+ACTION -> VAR_DECL op_assign EXPR
+ACTION -> var op_assign EXPR
+
+@action pass
+ACTION -> EXPR
+ACTION -> return
+
+@action merge
+EXPR -> EXPR op_bin EXPR
+EXPR -> op_unary_pref EXPR
+EXPR -> EXPR op_unary_post
+EXPR -> EXPR . var
+EXPR -> EXPR . FUNCTION_CALL
+
+@action pass
+EXPR -> FUNCTION_CALL
+
+@action build=function_call
+FUNCTION_CALL -> var PARAMS
+
+@action build=tuple
+PARAMS -> ( )
+PARAMS -> ( TUPLE )
+PARAMS -> ( TUPLE , NAMED_PARAMS )
+PARAMS -> ( NAMED_PARAMS )
+
+@action merge
+NAMED_PARAM -> var = EXPR
+
+@action pool
+NAMED_PARAMS -> NAMED_PARAM , NAMED_PARAMS
+
+@action pool
+TUPLE -> EXPR
+@action pool
+TUPLE -> EXPR , TUPLE
+
+@action pass
+EXPR -> var

@@ -1,0 +1,8 @@
+build/*
+ccode.*
+sample.txt
+build.sh
+sandbox.py
+test.txt
+tmp
+__pycache__/*

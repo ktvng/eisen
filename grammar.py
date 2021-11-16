@@ -51,12 +51,16 @@ OpCodes = {
 
 class GrammarRule():
     guid = 0
-    def __init__(self, parent : str, pattern_str : str, reverse_with : str):
+    def __init__(self, parent : str, pattern_str : str, reverse_with):
         self.guid = GrammarRule.guid
         self.parent = parent.strip()
         self.pattern_str = pattern_str
         self.pattern = [s.strip() for s in pattern_str.split(' ') if s != ""]
-        self.reverse_with = reverse_with
+        if isinstance(reverse_with, str):
+            self.reverse_with = [reverse_with]
+        elif isinstance(reverse_with, list):
+            self.reverse_with = reverse_with
+
         self.build_guids = []
 
         GrammarRule.guid += 1
@@ -98,11 +102,17 @@ class Grammar():
             if tok.type == "var":
                 ast_queue.append(astnode.leaf(tok.value))
             elif tok.type == "operator":
-                ast_queue.append(astnode.operator(tok.value, OpCodes[tok.value]))
+                ast_queue.append(astnode.operator(tok.value, match_with=OpCodes[tok.value]))
             elif tok.type == "symbol":
                 ast_queue.append(astnode.symbol(tok.value))
+            elif tok.type == "keyword":
+                ast_queue.append(astnode.keyword(tok.value))
+            elif tok.type == "string":
+                ast_queue.append(astnode.literal("string", tok.value))
+            elif tok.type == "int":
+                ast_queue.append(astnode.literal("int", tok.value))
             else:
-                ast_queue.append(astnode.keyword(tok.type))
+                Raise.code_error("unimplemented token type")
 
         return ast_queue
 
@@ -282,23 +292,23 @@ class CYKAlgo():
             entries = [CYKAlgo.DpTableEntry(rule, x, y, 0,) for rule in producing_rules]
             self.dp_table[x][y] = entries
 
-#
-#       0   1   2   3   4   ... 
-#   0   .
-#   1       A   B   C   x
-#   2           .       A'
-#   3               .   B'
-#   4                   C'
-#   .
-#   .
-#   . 
-#   
-#   A(1,1) produces [1:1]
-#   B(2,1) produces [1:2]
+    #
+    #       0   1   2   3   4   ... 
+    #   0   .
+    #   1       A   B   C   x
+    #   2           .       A'
+    #   3               .   B'
+    #   4                   C'
+    #   .
+    #   .
+    #   . 
+    #   
+    #   A(1,1) produces [1:1]
+    #   B(2,1) produces [1:2]
 
-#   Therefore x at (4,1) must produce [1:4] and therefore B must be matched with 
-#   B'(4,3) which produces [3:4] as [1:2] + [3:4] = [1:4]
-#  
+    #   Therefore x at (4,1) must produce [1:4] and therefore B must be matched with 
+    #   B'(4,3) which produces [3:4] as [1:2] + [3:4] = [1:4]
+    #  
     def _fill_diagonal(self, diagonal_number : int):
         diagonal_points = self._get_diagonal(diagonal_number)
         for point in diagonal_points:
@@ -328,7 +338,6 @@ class CYKAlgo():
     @classmethod
     def is_main_diagonal(cls, x, y):
         return x == y
-
 
 class CFGNormalizer():
     def __init__(self):
@@ -410,7 +419,9 @@ class CFGNormalizer():
 
         for rule_to_sub in substitutions:
             pattern_to_sub = " ".join(rule_to_sub.pattern)
-            temp_rule = GrammarRule(rule.parent, pattern_to_sub, rule_to_sub.reverse_with)
+            steps_to_reverse_both_rules = [*rule_to_sub.reverse_with, *rule.reverse_with]
+            
+            temp_rule = GrammarRule(rule.parent, pattern_to_sub, steps_to_reverse_both_rules)
             
             # TODO: this is terrible, but it works because temp_rules don't really exist
             # but must transfer the properties of the rule we substitute in to create them
@@ -441,7 +452,7 @@ class CFGNormalizer():
         ruleA = working_pattern.pop()
 
         connector = self.rule_for_connector(ruleA, ruleB, name=rule.parent)
-        connector.reverse_with = rule.reverse_with
+        connector.reverse_with.extend(rule.reverse_with)
 
         connector.build_guids.append(rule.guid)
 
@@ -455,12 +466,30 @@ class AstBuilder():
             Raise.error("input is ungramatical")
 
         starting_entry = [x for x in self.dp_table[-1][0] if x.name == "START"][0]
-        asthead = self._recursive_descent(starting_entry)
+        ast_list = self._recursive_descent(starting_entry)
+        if len(ast_list) != 1:
+            Raise.code_error("ast heads not parsed to single state")
+        
+        asthead = ast_list[0]
+        self._postprocess(asthead)
+
         return asthead
 
     @classmethod
+    def _postprocess(cls, node : AstNode):
+        if node.op == ":":
+            node.left.convert_var_to_tag()
+            node.right.convert_var_to_tag()
+            return
+
+        if node.op == "function":
+            node.vals[0].convert_var_to_tag()
+
+        for child in node.vals:
+            AstBuilder._postprocess(child)
+
+    @classmethod
     def reverse_with_pool(cls, components : list) -> list:
-        Raise.notice("pooling")
         pass_up_list = []
         for component in components:
             if isinstance(component, list):
@@ -468,13 +497,12 @@ class AstBuilder():
             elif isinstance(component, AstNode):
                 pass_up_list.append(component)
             else:
-                Raise.code_error("reverse engineering with passing must be either list or AstNode")
+                Raise.code_error("reverse engineering with pooling must be either list or AstNode")
 
         return pass_up_list
 
     @classmethod
     def reverse_with_merge(cls, components : list) -> list:
-        Raise.notice("merging")
         flattened_comps = []
         for comp in components:
             if isinstance(comp, list):
@@ -486,7 +514,7 @@ class AstBuilder():
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
         elif len(flattened_comps) == 3:
-            newnode.binary(flattened_comps[1].val, flattened_comps[0], flattened_comps[2])
+            newnode.binary(flattened_comps[1].op, flattened_comps[0], flattened_comps[2])
         else:
             Raise.code_error("should not merge with more than 3 nodes")
         
@@ -494,7 +522,6 @@ class AstBuilder():
 
     @classmethod
     def reverse_with_build(cls, build_name : str, components : list):
-        Raise.notice("building")
         newnode = AstNode()
         flattened_components = []
         for comp in components:
@@ -507,7 +534,6 @@ class AstBuilder():
 
     @classmethod
     def reverse_with_pass(cls, components : list) -> list:
-        Raise.notice("passing")
         return components
 
     def _recursive_descent(self, entry : CYKAlgo.DpTableEntry) -> list:
@@ -515,25 +541,28 @@ class AstBuilder():
             astnode = self.astnodes[entry.x]
             if astnode.type == "symbol":
                 return []
-            elif astnode.type == "keyword" and astnode.val not in Grammar.expressional_keywords:
+            elif astnode.type == "keyword" and astnode.op not in Grammar.expressional_keywords:
                 return []
             else:
                 return [astnode]
 
         left = self._recursive_descent(entry.get_left_child(self.dp_table))
-        right=self._recursive_descent(entry.get_right_child(self.dp_table)) 
+        right = self._recursive_descent(entry.get_right_child(self.dp_table)) 
 
-        print(entry.rule)
 
         flag = "build="
-        if entry.rule.reverse_with == "pass":
-            return AstBuilder.reverse_with_pool([left, right])
-        elif entry.rule.reverse_with == "merge":
-            return AstBuilder.reverse_with_merge([left, right])
-        elif entry.rule.reverse_with == "pool":
-            return AstBuilder.reverse_with_pool([left, right])
-        elif entry.rule.reverse_with[0 : len(flag)] == flag:
-            return AstBuilder.reverse_with_build(entry.rule.reverse_with[len(flag): ], [left, right])
+        components = [left, right]
+        for reversal_step in entry.rule.reverse_with:
+            if reversal_step == "pass":
+                components = AstBuilder.reverse_with_pool(components)
+            elif reversal_step == "merge":
+                components = AstBuilder.reverse_with_merge(components)
+            elif reversal_step == "pool":
+                components = AstBuilder.reverse_with_pool(components)
+            elif reversal_step[0 : len(flag)] == flag:
+                components = AstBuilder.reverse_with_build(reversal_step[len(flag): ], components)
+
+        return components
 
 
             

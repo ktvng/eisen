@@ -17,7 +17,7 @@
 @action build=start
 START -> CONTEXTS
 
-@action pool
+@action pass
 CONTEXTS -> CONTEXT
 @action pool
 CONTEXTS -> CONTEXT CONTEXTS
@@ -65,7 +65,7 @@ RETURN_DECL -> -> VAR_DECL
 PARAMS_DECL -> ( VAR_DECL_TUPLE )
 PARAMS_DECL -> ( )
 
-@action merge
+@action pass
 VAR_DECL_TUPLE -> VAR_DECL
 @action pool
 VAR_DECL_TUPLE -> VAR_DECL , VAR_DECL_TUPLE
@@ -73,7 +73,7 @@ VAR_DECL_TUPLE -> VAR_DECL , VAR_DECL_TUPLE
 @action build=codeblock
 CODE_BLOCK -> { BLOCKS }
 
-@action merge
+@action pass
 BLOCKS -> BLOCK
 @action pool
 BLOCKS -> BLOCK BLOCKS
@@ -146,3 +146,4 @@ TUPLE -> EXPR , TUPLE
 
 @action pass
 EXPR -> var
+EXPR -> literal

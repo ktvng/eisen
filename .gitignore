@@ -1,7 +1,7 @@
 build/*
 ccode.*
 sample.txt
-build.sh
+run.sh
 sandbox.py
 test.txt
 tmp

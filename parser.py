@@ -1,9 +1,20 @@
 import ast
+from typing import Any
 from error import Raise
 from grammar import Grammar
 
 class Token():
+    types = [
+        "symbol",
+        "string",
+        "var",
+        "operator",
+        "keyword"
+    ]
     def __init__(self, type, value = ""):
+        if type not in Token.types:
+            Raise.code_error("unknown token type")
+            
         self.type = type
         self.value = value
 
@@ -45,6 +56,43 @@ class Parser():
         "private",
         "public"
     ]
+
+    class Passover():
+        description = None
+
+        def __init__(self):
+            self.tokens = [];
+
+        def __str__(self):
+            return f"{self.description}\n"
+
+        def run(self, pretokens : list):
+            if not pretokens:
+                Raise.error("no tokens parsed by", str(self))
+
+            self.tokens = []
+            for tok in pretokens:
+                if isinstance(tok, Token):
+                    self.if_tok(tok)
+                elif isinstance(tok, str):
+                    self.if_str(tok)
+                else:
+                    Raise.code_error("pretoken must be str or Token")
+
+            return self.tokens
+            
+        def if_str(self, tok : str) -> None:
+            pass
+
+        def if_tok(self, tok : Token) -> None:
+            self.tokens.append(tok)
+
+        def __call__(self, *args: Any, **kwds: Any) -> Any:
+            return self.run(*args)
+
+            
+            
+
 
     # returns end of longest matching operator
     @classmethod
@@ -89,11 +137,11 @@ class Parser():
 
     # TODO: this currently also splits out comments; should be refactored; also only supports 
     # comments that take up the whole line
-    # split out newlines
-    @classmethod
-    def _pass1(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
+    class _split_lines(Passover):
+        order = 1
+        description = "split by newlines; also remove comments."
+
+        def if_str(self, tok : str):
             lines = tok.split('\n')
             for line in lines:
                 line = line.strip()
@@ -104,20 +152,18 @@ class Parser():
                 if line[0:2] == "//":
                     continue
 
-                tokens.append(line)
-                tokens.append(Token("symbol", "endl"));
+                self.tokens.append(line)
+                self.tokens.append(Token("symbol", "endl"));
 
-        return tokens
+    class _split_strings(Passover):
+        order = 2
+        description = "split strings into tokens"
 
-   # split out strings
-    @classmethod
-    def _pass2(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
-            if isinstance(tok, Token):
-                tokens.append(tok)
-                continue
+        @classmethod
+        def stringify(cls, chunk : str):
+            return chunk.replace("\\n", "\n")
 
+        def if_str(self, tok : str):
             # line should not start with '"'
             if tok[0] == '"':
                 Raise.error("line cannot start with string")
@@ -127,68 +173,55 @@ class Parser():
             # will have even indices as 'code' and odd indices as strings.
             for i, chunk in enumerate(chunks):
                 if i % 2 == 0:
-                    tokens.append(chunk)
+                    self.tokens.append(chunk)
                 else:
-                    tokens.append(Token("string", chunk))
-        
-        return tokens
-        
-    # split out spaces
-    @classmethod
-    def _pass3(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
-            if isinstance(tok, Token):
-                tokens.append(tok)
-                continue
-            
-            tokens += tok.split(' ')
-        
-        return tokens
+                    self.tokens.append(Token("string", self.stringify(chunk)))
 
-    # split out operators
-    @classmethod
-    def _pass4(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
-            if isinstance(tok, Token):
-                tokens.append(tok)
-                continue
-        
-            tokens += cls._split_out_symbol_set("operator", Parser.operators, tok)
+    class _split_spaces(Passover):
+        order = 3
+        description = "split by spaces"
 
-        return tokens
+        def if_str(self, tok: str) -> None:
+            self.tokens += tok.split(' ')
 
-    # split out symbols 
-    @classmethod
-    def _pass5(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
-            if isinstance(tok, Token):
-                tokens.append(tok)
-                continue
-                
-            tokens += cls._split_out_symbol_set("symbol", Parser.symbols, tok)
+    class _split_operators(Passover):
+        order = 4
+        description = "split operators into tokens"
 
-        return tokens
+        def if_str(self, tok: str) -> None:
+            self.tokens += Parser._split_out_symbol_set("operator", Parser.operators, tok)
 
-    # label keywords
-    @classmethod
-    def _pass6(cls, pretokens : list) -> list:
-        tokens = []
-        for tok in pretokens:
-            if isinstance(tok, Token):
-                tokens.append(tok)
-                continue
+    class _split_symbols(Passover):
+        order = 5
+        description = "split symbols into tokens"
 
+        def if_str(self, tok: str) -> None:
+            self.tokens += Parser._split_out_symbol_set("symbol", Parser.symbols, tok)
+
+    class _split_keywords_and_vars(Passover):
+        order = 6
+        description = "split keywords and variables into tokens"
+
+        def if_str(self, tok: str) -> None:
             tok = tok.strip()
 
             if tok in Parser.keywords:
-                tokens.append(Token(tok))
+                self.tokens.append(Token("keyword", tok))
             else:
-                tokens.append(Token("var", tok))
+                self.tokens.append(Token("var", tok))
 
-        return tokens
+    class _label_ints(Passover):
+        order = 7
+        description = "convert var tokens to int if needed"
+
+        def if_str(self, tok: str) -> None:
+            Raise.error("should not have str tokens at this point")
+
+        def if_tok(self, tok: Token) -> None:
+            if Parser.is_int(tok.value):
+                tok.type = "int"
+
+            self.tokens.append(tok)
 
     @classmethod
     def _isbrace(cls, tok : Token) -> bool:
@@ -199,9 +232,13 @@ class Parser():
     def _islbrace(cls, tok : Token) -> bool:
         return tok.value == "{"
 
-    # remove uneccessary newlines
     @classmethod
-    def _pass7(cls, pretokens : list) -> list:
+    def is_int(cls, txt : str) -> bool:
+        return txt.isnumeric()
+
+
+    @classmethod
+    def _remove_unnecessary_newlines(cls, pretokens : list) -> list:
         if not pretokens:
             Raise.error("tokens are empty")
 
@@ -213,7 +250,7 @@ class Parser():
             if tok.type == "symbol" and tok.value == "endl" and last_token.type == "endl":
                 continue
 
-            if cls._islbrace(tok) and last_token.type == "endl":
+            if cls._islbrace(tok) and last_token.type == "symbol" and last_token.value == "endl":
                 tokens.pop()
             
             tokens.append(tok)
@@ -221,77 +258,24 @@ class Parser():
         
         return tokens
 
+    workflow = [
+        _split_lines,
+        _split_strings,
+        _split_spaces,
+        _split_operators,
+        _split_symbols,
+        _split_keywords_and_vars,
+        _label_ints,
+    ]
+
     @classmethod
     def tokenize(cls, txt : str) -> list:
+        passovers = [e() for e in Parser.workflow]
+
         tokens = [txt]
-        tokens = cls._pass1(tokens)
-        tokens = cls._pass2(tokens)
-        tokens = cls._pass3(tokens)
-        tokens = cls._pass4(tokens)
-        tokens = cls._pass5(tokens)
-        tokens = cls._pass6(tokens)
-        tokens = cls._pass7(tokens)
+        for passover in passovers:
+            tokens = passover(tokens)
+
+        tokens = cls._remove_unnecessary_newlines(tokens)
 
         return tokens
-
-    @classmethod
-    def lex(cls, tokens : list):
-        Grammar.load()
-        ast_queue = Grammar.tokens_to_ast_queue(tokens)
-        backlog_queue = []
-
-        working_queue = cls.try_match(backlog_queue, ast_queue)
-        print(working_queue)
-
-    @classmethod
-    def try_match(cls, backlog_queue : list, ast_queue : list) -> list:
-        working_queue = cls._greedy_match(ast_queue)
-        if not working_queue:
-            backlog_queue.append(ast_queue.pop(0))
-        else:
-            exists_match = cls._filter_for_complete_matches(working_queue, ast_queue)
-            if exists_match:
-                matches = Grammar.matches(working_queue)
-                for match in matches:
-                    print(match.parent + " -> " + " ".join(match.pattern))
-                if len(matches) > 1:
-                    Raise.error("more than 1 match!")
-
-                return working_queue
-
-        return []
-    
-    @classmethod
-    def _filter_for_complete_matches(cls, working_queue : list, ast_queue : list) -> bool:
-        if not working_queue:
-            return False
-
-        if not Grammar.matches(working_queue):
-            return False
-
-        while len(working_queue) > 1 and Grammar.matches(working_queue[:-1]):
-            ast_queue.insert(0, working_queue.pop())
-        
-        return True
-            
-    @classmethod
-    def _greedy_match(cls, ast_queue : list) -> list:
-        if not ast_queue:
-            return []
-
-        partial_queue = []
-        lookahead = ast_queue[0]
-        prefix_matches = Grammar.prefix_matches(partial_queue + [lookahead])
-
-        while prefix_matches:
-            ast_queue.pop(0)
-            partial_queue.append(lookahead)
-
-            if not ast_queue:
-                break
-
-            lookahead = ast_queue[0]
-            prefix_matches = Grammar.prefix_matches(partial_queue + [lookahead])
-
-        return partial_queue
-        

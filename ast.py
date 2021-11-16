@@ -5,67 +5,64 @@ from error import Raise
 class AstNode():
     def __init__(self):
         self.type = "none"
+        self.compile_data = None
+        self.vals = []
+
+    def _common_init(self, type : str, op : str, vals : list, match_with : str) -> None:
+        self.type = type
+        self.op = op
+        self.vals = vals
+        self.match_with = match_with
 
     def binary(self, op : str, left : AstNode, right : AstNode):
-        self.type = "binary"
-        self.op = op
+        self._common_init("binary", op, [left, right], op)
+        
         self.left = left
         self.right = right
-        self.match_with = op
+
         return self
 
     def unary(self, op : str, val : AstNode):
-        self.type = "unary"
-        self.op = op
+        self._common_init("unary", op, [val], op)
+
         self.val = val
-        self.match_with = op
         return self
 
     def leaf(self, val : str):
-        self.type = "leaf"
-        self.match_with = "var"
-        self.val = val
+        self._common_init("leaf", "var", [], "var")
+        self.leaf_val = val
+
+        return self
+
+    def literal(self, op : str, val : str):
+        self._common_init("literal", op, [], match_with="literal")
+        self.literal_val = val
+
         return self
 
     def plural(self, op : str, vals : list):
-        self.type = "plural"
-        self.op = op
-        self.match_with = op
-        self.vals = vals
+        self._common_init("plural", op, vals, op)
+
         return self
 
     def keyword(self, val : str):
-        self.type = "keyword"
-        self.val = val
-        self.match_with = val
+        self._common_init("keyword", val, [], val)
+
         return self
 
     def operator(self, val : str, match_with : str):
-        self.type = "operator"
-        self.val = val
-        self.match_with = match_with
+        self._common_init("operator", val, [], match_with)
+
         return self
 
     def symbol(self, val : str):
-        self.type = "symbol"
-        self.match_with = val
+        self._common_init("symbol", "", [], val)
+
         return self
 
-    def connector(self, name : str, left : AstNode, right : AstNode):
-        self.type = "connector"
-        self.name = name
-        self.match_with = name
-        self.vals = []
-        
-        if left.type == "connector":
-            self.vals += left.vals
-        else:
-            self.vals.append(left)
-        
-        if right.type == "connector":
-            self.vals += right.vals
-        else:
-            self.vals.append(right)
+    def convert_var_to_tag(self):
+        if self.type == "leaf" and self.op == "var":
+            self.op = "tag"
 
     def rsprint(self, indent=0):
         print(indent*" ", end="")
@@ -80,8 +77,12 @@ class AstNode():
             print(self.op)
             for node in self.vals:
                 node.rsprint(indent+1)
-        elif self.type == "leaf" or self.type == "keyword" or self.type == "operator":
-            print(self.val)
+        elif self.type == "leaf":
+            print(self.op, self.leaf_val)
+        elif self.type == "keyword" or self.type == "operator":
+            print(self.op)
+        elif self.type == "literal":
+            print(self.op, self.literal_val)
         else:
             Raise.code_error("unimplemented astnode type")
         

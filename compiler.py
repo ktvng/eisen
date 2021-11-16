@@ -26,6 +26,8 @@ class Compiler():
             Compiler.params_decl,
             Compiler.tag,
             Compiler.return_decl,
+            Compiler.int_,
+            Compiler.binary_op,
         ]
 
         cls.parse_map = {}
@@ -66,7 +68,7 @@ class Compiler():
         @classmethod
         def get_by_name(cls, name : str):
             if name == "int":
-                return Compiler.types.i8
+                return Compiler.types.i32
 
     class functions_scope():
         def __init__(self):
@@ -112,9 +114,9 @@ class Compiler():
             return self.variables.get(name)
 
         def get_type_of_variable_by_name(self, name : str):
-            # TODO: finish
+            # TODO: finish, duplicated, search "int"
             if name == "int":
-                return Compiler.types.i8
+                return Compiler.types.i32
             else:
                 Raise.code_error(f"{name} for unfinished get_type_of_variable_by_name")
             
@@ -185,7 +187,8 @@ class Compiler():
 
         @classmethod
         def compile(cls, node: AstNode, s: Compiler.Scope, args: list):
-            s.builder.ret_void()
+            if(not s.builder.block.is_terminated):
+                s.builder.ret_void()
     
     class function_call(CodeGenerationProcedure):
         matches = ["function_call"]
@@ -231,14 +234,14 @@ class Compiler():
             "+", "-", "/", "*",
             "<", ">", "<=", ">=",
             "==", "!=",
-            "="
+            "=",
         ]
 
         @classmethod
         def compile(cls, node : AstNode, s: Compiler.Scope, args : list):
             op = node.op
 
-            params = (node.left.data, node.right.data)
+            params = (node.left.compile_data, node.right.compile_data)
             if op == "+":
                 node.compile_data = s.builder.add(*params)
             elif op == "-":
@@ -248,6 +251,9 @@ class Compiler():
             elif op == "/":
                 node.compile_data = s.builder.sdiv(*params)
 
+            elif op == "=":
+                node.compile_data = s.builder.store(node.right.compile_data, node.left.compile_data)
+
             elif(op == "<" 
                 or op == ">"
                 or op == ">="
@@ -256,8 +262,6 @@ class Compiler():
                 or op == "!="):
                 node.compile_data = s.builder.icmp_signed(op, *params)
 
-            elif op == "=":
-                node.compile_data = s.builder.store(node.right.data, node.left.data)
             else:
                 Raise.code_error(f"op ({op}) is not implemented")
 
@@ -346,3 +350,10 @@ class Compiler():
         @classmethod
         def compile(cls, node: AstNode, s: Compiler.Scope, args: list):
             pass
+
+    class int_(CodeGenerationProcedure):
+        matches = ["int"]
+
+        @classmethod
+        def compile(cls, node: AstNode, s: Compiler.Scope, args: list):
+            node.compile_data = ir.Constant(Compiler.types.i32, int(node.literal_val))

@@ -123,6 +123,7 @@ EXPR -> EXPR . FUNCTION_CALL
 
 @action pass
 EXPR -> FUNCTION_CALL
+EXPR -> ( EXPR )
 
 @action build=function_call
 FUNCTION_CALL -> var PARAMS

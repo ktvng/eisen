@@ -111,6 +111,8 @@ class Grammar():
                 ast_queue.append(astnode.literal("string", tok.value))
             elif tok.type == "int":
                 ast_queue.append(astnode.literal("int", tok.value))
+            elif tok.type == "bool":
+                ast_queue.append(astnode.literal("bool", tok.value))
             else:
                 Raise.code_error("unimplemented token type")
 

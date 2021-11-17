@@ -54,7 +54,7 @@ class Parser():
         "for",
         "while",
         "private",
-        "public"
+        "public",
     ]
 
     class Passover():
@@ -223,6 +223,20 @@ class Parser():
 
             self.tokens.append(tok)
 
+    class _label_bools(Passover):
+        order = 8
+        description = "convert var tokens to bool if needed"
+
+        def if_str(self, tok: str) -> None:
+            Raise.error("should not have str tokens at this point")
+
+        def if_tok(self, tok: Token) -> None:
+            if tok.value == "true" or tok.value == "false":
+                tok.type = "bool"
+
+            self.tokens.append(tok) 
+
+
     @classmethod
     def _isbrace(cls, tok : Token) -> bool:
         val = tok.value
@@ -266,6 +280,7 @@ class Parser():
         _split_symbols,
         _split_keywords_and_vars,
         _label_ints,
+        _label_bools
     ]
 
     @classmethod

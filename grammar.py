@@ -99,6 +99,7 @@ class Grammar():
         ast_queue = []
         for tok in tokens:
             astnode = AstNode()
+            astnode.line_number = tok.line_number
             if tok.type == "var":
                 ast_queue.append(astnode.leaf(tok.value))
             elif tok.type == "operator":
@@ -117,47 +118,6 @@ class Grammar():
                 Raise.code_error("unimplemented token type")
 
         return ast_queue
-
-    @classmethod
-    def _matches_rule(cls, ast_queue : list, rule : GrammarRule) -> bool:
-        if len(ast_queue) != len(rule.pattern):
-            return False
-
-        for astnode, part in zip(ast_queue, rule.pattern):
-            if astnode.match_with != part:
-                return False
-
-        return True
-
-    @classmethod
-    def _prefix_matches_rule(cls, ast_queue : list, rule : GrammarRule) -> list:
-        if len(ast_queue) > len(rule.pattern):
-            return False
-
-        for i in range(len(ast_queue)):
-            if ast_queue[i].match_with != rule.pattern[i]:
-                return False
-
-        return True
-    
-    @classmethod
-    def matches(cls, ast_queue : list) -> list:
-        matching_rules = []
-        for rule in cls.grammar_implementation.rules:
-            if cls._matches_rule(ast_queue, rule):
-                matching_rules.append(rule)
-
-        return matching_rules
-    
-    @classmethod
-    def prefix_matches(cls, ast_queue : list) -> list:
-        matching_rules = []
-        for rule in cls.grammar_implementation.rules:
-            if cls._prefix_matches_rule(ast_queue, rule):
-                matching_rules.append(rule)
-
-        return matching_rules
-
 class GrammarParser():
     grammar_file = "grammar.txt"
     flag = "@action "
@@ -479,8 +439,18 @@ class AstBuilder():
 
     @classmethod
     def _postprocess(cls, node : AstNode):
-        if node.op == ":":
-            node.left.convert_var_to_tag()
+        if node.op == "let" and node.vals[0].op == ":":
+            # remove the ':' node underneath let
+            node.vals = node.vals[0].vals
+            node.left = node.vals[0]
+            node.right = node.vals[1]
+
+        if node.op == ":" or node.op == "let":
+            if node.left.op == "var_name_tuple":
+                for child in node.left.vals:
+                    child.convert_var_to_tag()
+            else:
+                node.left.convert_var_to_tag()
             node.right.convert_var_to_tag()
             return
 

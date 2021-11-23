@@ -9,14 +9,17 @@ class Token():
         "string",
         "var",
         "operator",
-        "keyword"
+        "keyword",
+        "flag",
     ]
+
     def __init__(self, type, value = ""):
         if type not in Token.types:
-            Raise.code_error("unknown token type")
+            Raise.code_error(f"unknown token type: {type}")
             
         self.type = type
         self.value = value
+        self.line_number = None
 
 # TODO: fix for floats
 class Parser():
@@ -55,6 +58,7 @@ class Parser():
         "while",
         "private",
         "public",
+        "let",
     ]
 
     class Passover():
@@ -146,10 +150,12 @@ class Parser():
             for line in lines:
                 line = line.strip()
                 if len(line) == 0:
+                    self.tokens.append(Token("flag", "codeline"))
                     continue
         
                 # TODO: remove and refactor
                 if line[0:2] == "//":
+                    self.tokens.append(Token("flag", "codeline"))
                     continue
 
                 self.tokens.append(line)
@@ -235,6 +241,27 @@ class Parser():
                 tok.type = "bool"
 
             self.tokens.append(tok) 
+    
+    class _assign_line_numbers(Passover):
+        order = 9
+        description = "assign line numbers to tokens and remove codeline flags"
+        
+        def __init__(self):
+            self.line_number = 1
+
+        def if_str(self, tok: str) -> None:
+            Raise.error("should not have str tokens at this point")
+        
+        def if_tok(self, tok : Token) -> None:
+            if tok.type == "flag" and tok.value == "codeline":
+                self.line_number += 1
+                return
+            
+            tok.line_number = self.line_number
+            self.tokens.append(tok)
+            
+
+            
 
 
     @classmethod
@@ -280,7 +307,8 @@ class Parser():
         _split_symbols,
         _split_keywords_and_vars,
         _label_ints,
-        _label_bools
+        _label_bools,
+        _assign_line_numbers,
     ]
 
     @classmethod

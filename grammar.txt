@@ -66,9 +66,13 @@ PARAMS_DECL -> ( VAR_DECL_TUPLE )
 PARAMS_DECL -> ( )
 
 @action pass
-VAR_DECL_TUPLE -> VAR_DECL
+VAR_DECL_TUPLE_BUILDER -> VAR_DECL , VAR_DECL
 @action pool
-VAR_DECL_TUPLE -> VAR_DECL , VAR_DECL_TUPLE
+VAR_DECL_TUPLE_BUILDER -> VAR_DECL , VAR_DECL_TUPLE_BUILDER
+
+@action build=var_decl_tuple
+VAR_DECL_TUPLE -> VAR_DECL_TUPLE_BUILDER
+VAR_DECL_TUPLE -> ( VAR_DECL_TUPLE_BUILDER )
 
 @action build=codeblock
 CODE_BLOCK -> { BLOCKS }
@@ -98,16 +102,34 @@ ELSE_STATEMENT -> else CODE_BLOCK
 ELSE_STATEMENT -> else if CODE_BLOCK ELSE_STATEMENT
 
 @action merge
+VAR_DECL -> VAR_NAME_TUPLE : var
 VAR_DECL -> var : var
+
+@action build=var_name_tuple
+VAR_NAME_TUPLE -> VAR_NAME_TUPLE_BUILDER
+
+@action pool
+VAR_NAME_TUPLE_BUILDER -> var , var
+VAR_NAME_TUPLE_BUILDER -> var , VAR_NAME_TUPLE_BUILDER
+
+@action build=let
+LET_VAR_DECL -> let VAR_DECL
 
 @action pass
 LINE -> ACTION endl
 
 @action pass
-ACTION -> VAR_DECL
+ACTION -> LET_VAR_DECL
 
 @action merge
+ACTION -> VAR_DECL_TUPLE op_assign TUPLE
+
+ACTION -> VAR_NAME_TUPLE op_assign TUPLE
+
+ACTION -> LET_VAR_DECL op_assign EXPR
+ACTION -> LET_VAR_DECL op_assign TUPLE
 ACTION -> VAR_DECL op_assign EXPR
+ACTION -> VAR_DECL op_assign TUPLE
 ACTION -> var op_assign EXPR
 
 @action pass
@@ -128,10 +150,10 @@ EXPR -> ( EXPR )
 @action build=function_call
 FUNCTION_CALL -> var PARAMS
 
-@action build=tuple
+@action build=params
 PARAMS -> ( )
-PARAMS -> ( TUPLE )
-PARAMS -> ( TUPLE , NAMED_PARAMS )
+PARAMS -> ( TUPLE_BUILDER )
+PARAMS -> ( TUPLE_BUILDER , NAMED_PARAMS )
 PARAMS -> ( NAMED_PARAMS )
 
 @action merge
@@ -140,10 +162,14 @@ NAMED_PARAM -> var = EXPR
 @action pool
 NAMED_PARAMS -> NAMED_PARAM , NAMED_PARAMS
 
+@action build=tuple
+TUPLE -> TUPLE_BUILDER
+TUPLE -> ( TUPLE_BUILDER )
+
 @action pool
-TUPLE -> EXPR
+TUPLE_BUILDER -> EXPR , EXPR
 @action pool
-TUPLE -> EXPR , TUPLE
+TUPLE_BUILDER -> EXPR , TUPLE_BUILDER
 
 @action pass
 EXPR -> var

@@ -1,7 +1,6 @@
 from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
 from parser import Parser
-from compiler import Compiler
-import sandbox
+from compiler2 import Compiler
 
 tokens = []
 with open("test.txt", 'r') as f:
@@ -32,7 +31,7 @@ for entry in algo.dp_table[-1][0]:
 print("====================")
 ab = AstBuilder(algo.asts, algo.dp_table)
 x = ab.run()
-x.rsprint()
+x.print()
 
 print("====================")
 cp = Compiler(x)
@@ -58,7 +57,3 @@ runnable = make_runnable(code)
 
 with open("./build/test.ll", 'w') as f:
     f.write(runnable)
-
-
-
-# sandbox.play()

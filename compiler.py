@@ -6,17 +6,37 @@ from llvmlite import ir
 from error import Raise
 
 class Compiler():
+    verbose = True
+
     def __init__(self, asthead : AstNode):
         self.asthead = asthead
+        self.mod = ir.Module()
+        self.global_scope = Compiler.Scope(self.mod, None)
+
+        self._add_primitive_types(self.global_scope)
+
+        self.defaults = None
+        self._add_defaults()
+        self.parse_map = None
         self._build_parse_map()
-        self._gloabl_vars = Compiler.variables_scope()
+
+    def _add_defaults(self):
         self.defaults = {
-            Seer.Types.Primitives.Int: Compiler.Variable(ir.Constant(ir.IntType(32), 0), Seer.Types.Primitives.Int)
+            Seer.Types.Primitives.Int: Compiler.Variable(
+                ir.Constant(ir.IntType(32), 0), 
+                self.global_scope.get_defined_type(Seer.Types.Primitives.Int)),
+        
+            Seer.Types.Primitives.Float: Compiler.Variable(
+                ir.Constant(ir.FloatType(), 0), 
+                self.global_scope.get_defined_type(Seer.Types.Primitives.Float)),
+
+            Seer.Types.Primitives.Bool: Compiler.Variable(
+                ir.Constant(Compiler.types.bool, 0), 
+                self.global_scope.get_defined_type(Seer.Types.Primitives.Bool)),
         }
 
-    @classmethod
-    def _build_parse_map(cls):
-        cls.parse_classes = [
+    def _build_parse_map(self):
+        self.parse_classes = [
             Compiler.start,
             Compiler.return_,
             Compiler.function,
@@ -35,42 +55,61 @@ class Compiler():
             Compiler.bool_,
         ]
 
-        cls.parse_map = {}
-        for klass in cls.parse_classes:
+        self.parse_map = {}
+        for klass in self.parse_classes:
             for match in klass.matches:
                 cls.parse_map[match] = klass
 
 
     def run(self) -> str:
-        mod = ir.Module()
-        global_scope = Compiler.Scope(mod, None)
-        self._recursive_descent(self.asthead, global_scope)
-        return str(mod)
+        self._recursive_descent(self.asthead, self.global_scope)
+        return str(self.mod)
+
+    def _add_primitive_types(self, global_scope : Compiler.Scope):
+        global_scope.add_type("int", Compiler.PrimitiveType("int"))
+        global_scope.add_type("float", Compiler.PrimitiveType("float"))
+        global_scope.add_type("str", Compiler.PrimitiveType("str"))
+        global_scope.add_type("bool", Compiler.PrimitiveType("bool"))
+        global_scope.add_type("int_literal", Compiler.PrimitiveType("int_literal"))
 
     @classmethod
-    def _recursive_descent(cls, node : AstNode, scope : Compiler.Scope):
-        compile_with_class = cls.parse_map.get(node.op, None)
+    def _verbose_status(cls, msg : str,  head : AstNode, node : AstNode, scope : Compiler.Scope):  
+        str_rep = head.rs_to_string("", 0, node)
+
+        print("================================")
+        print(msg)
+        print(str_rep)
+
+
+    def _recursive_descent(self, node : AstNode, scope : Compiler.Scope):
+        compile_with_class = self.parse_map.get(node.op, None)
         if compile_with_class is None:
             Raise.code_error(f"key error on {node.op} in the parse_map. Make a Compiler.{node.op}_ class and add it to the list")
+
+        if Compiler.verbose:
+            Compiler._verbose_status("Precompiling", self.asthead, node, scope)
 
         new_scope, args = compile_with_class.precompile(node, scope)
 
         # recurse the children
         for child in node.vals:
-            cls._recursive_descent(child, new_scope)
+            self._recursive_descent(child, new_scope)
+
+        if Compiler.verbose:
+            Compiler._verbose_status("Compiling", self.asthead, node, scope)
         
         compile_with_class.compile(node, new_scope, args)
 
     @classmethod
-    def _get_code_variables_from_compiler_variables(cls, compiler_vars : list, s : Compiler.Scope):
-        code_vars = []
-        for var in compiler_vars:
-            if var.type_name == Seer.Types.Primitives.Int:
-                code_vars.append(s.builder.load(var.value))
+    def _get_ir_variables_from_compiler_variables(cls, compiler_objs : list, s : Compiler.Scope):
+        ir_objs = []
+        for var in compiler_objs:
+            if var.type == s.get_defined_type(Seer.Types.Primitives.Int):
+                ir_objs.append(s.builder.load(var.ir_obj))
             else:
-                code_vars.append(var.value)
+                ir_objs.append(var.ir_obj)
 
-        return code_vars
+        return ir_objs
 
     ################################################################################################
     # Internal tooling
@@ -78,7 +117,7 @@ class Compiler():
     class types():
         i32 = ir.IntType(32)
         i8 = ir.IntType(8)
-        bool = ir.IntType(8)
+        bool = ir.IntType(1)
 
         @classmethod
         def get_by_name(cls, name : str):
@@ -97,19 +136,79 @@ class Compiler():
             found = self.variables_map.get(name, None)
             if found is not None:
                 return found
+            
+            return None
+    class Type():
+        def __init__(self):
+            self._value = None
+
+        def value():
+            pass
+
+        def __eq__(a, b):
+            return (isinstance(a, Compiler.Type) 
+                and isinstance(b, Compiler.Type) 
+                and a.value() == b.value())
+
+        def value(self):
+            return self._value()
+    class FunctionType(Type):
+        def __init__(self, param_types : list, return_types : list):
+            self.param_types = param_types
+            self.return_types = return_types
+
+        def value(self):
+            return ("(" 
+                + ", ".join(list(map(lambda x : x.value(), self.param_types))) 
+                + ") -> ("
+                + ", ".join(list(map(lambda x : x.value(), self.return_types)))
+                + ")")
+
+    class PrimitiveType(Type):
+        primitives = [
+            Seer.Types.Primitives.Bool,
+            Seer.Types.Primitives.Float,
+            Seer.Types.Primitives.Int,
+            Seer.Types.Primitives.String,
+            "int_literal",
+            "str_literal",
+        ]
+
+        def __init__(self, type_str : str):
+            if type_str not in self.primitives:
+                Raise.code_error("primitive not recognized")
+            
+            self._value = type_str
+
+
         
 
-    class Variable():
-        modifiers = ["?", "!", ""]
-        def __init__(self, value, type_name, modifier=""):
-            self.value = value
-            self.type_name = type_name
 
-            if modifier not in modifier:
+    class Object():
+        def __init__(self, ir_obj, type : Compiler.Type):
+            self.ir_obj = ir_obj
+            self.type = type   
+
+        def get_ir_obj(self):
+            return self.ir_obj
+
+        def __str__(self):
+            return str(self.ir_obj)
+
+        
+    class Variable(Object):
+        modifiers = ["?", "!", ""]
+
+        def __init__(self, ir_obj, type : Compiler.Type, modifier : str = ""):
+            super().__init__(ir_obj, type)
+            
+            if modifier not in Compiler.Variable.modifiers:
                 Raise.code_error("invalid modifier")
             
             self.modifier = modifier
 
+        def __str__(self):
+            return f"var {str(self.ir_obj)}"
     class Function():
         def __init__(self, value, params, returns):
             self.value = value
@@ -125,9 +224,7 @@ class Compiler():
             self.builder = builder
             self.func = None
             self.parent_scope = parent_scope
-
-        def get_function_by_fqname(self, name : str):
-            pass
+            self.defined_types = {}
 
         def get_variable_by_fqname(self, name : str):
             var = self.variables.get(name)
@@ -139,12 +236,25 @@ class Compiler():
 
             return var
 
+        def add_type(self, name : str, type : Compiler.Type):
+            self.defined_types[name] = type
+
+        def get_defined_type(self, name : str):
+            type = self.defined_types.get(name, None)
+            if type is None and self.parent_scope is not None:
+                type = self.parent_scope.get_defined_type(name)
+
+            if type is None:
+                Raise.error(f"could not find type {name}")
+            
+            return type
+
         def get_type_of_variable_by_name(self, name : str):
             # TODO: finish, duplicated, search Seer.Types.Primitives.Int
             if name == Seer.Types.Primitives.Int:
                 return Compiler.types.i32
             elif name == Seer.Types.Primitives.Bool:
-                return Compiler.types.i8
+                return Compiler.types.bool
             else:
                 Raise.code_error(f"{name} for unfinished get_type_of_variable_by_name")
 
@@ -153,10 +263,9 @@ class Compiler():
             self.variables.add(var_name, variable)
 
             return variable
+
             
         
-
-
 
 
 
@@ -232,9 +341,9 @@ class Compiler():
 
         @classmethod
         def compile(cls, node : AstNode, s : Compiler.Scope, args : list):
-            func = node.vals[0].compile_data.value
+            func = node.vals[0].compile_data.ir_obj
             compiler_param_vars = node.vals[1].compile_data
-            code_param_vars = Compiler._get_code_variables_from_compiler_variables(compiler_param_vars, s)
+            code_param_vars = Compiler._get_ir_variables_from_compiler_variables(compiler_param_vars, s)
             node.compile_data = s.builder.call(func, code_param_vars)
 
     class tuple_(CodeGenerationProcedure):
@@ -273,7 +382,7 @@ class Compiler():
             op = node.op
 
             newvar = None
-            code_params = Compiler._get_code_variables_from_compiler_variables([node.left.compile_data, node.right.compile_data], s)
+            code_params = Compiler._get_ir_variables_from_compiler_variables([node.left.compile_data, node.right.compile_data], s)
             if op == "+":
                 newvar = s.builder.add(*code_params)
             elif op == "-":
@@ -290,13 +399,18 @@ class Compiler():
                 or op == "=="
                 or op == "!="):
                 newvar = s.builder.icmp_signed(op, *code_params)
-                node.compile_data = Compiler.Variable(newvar, Seer.Types.Primitives.Bool)
+                node.compile_data = Compiler.Variable(
+                    newvar, 
+                    s.get_defined_type(Seer.Types.Primitives.Bool))
+
                 return
                 
             else:
                 Raise.code_error(f"op ({op}) is not implemented") 
 
-            node.compile_data = Compiler.Variable(newvar, node.left.compile_data.type_name + "_literal")
+            node.compile_data = Compiler.Variable(
+                newvar, 
+                s.get_defined_type(node.left.compile_data.type_name + "_literal"))
 
     class var(CodeGenerationProcedure):
         matches = ["var"]
@@ -343,7 +457,10 @@ class Compiler():
                     print_type = ir.FunctionType(ir.IntType(32), [], var_arg=True)
                     print_func = ir.Function(mod, print_type, name="printf")
 
-                    cls.print_func = Compiler.Variable(print_func, str(print_func.type))
+                    cls.print_func = Compiler.Function(
+                        print_func,
+
+                        s.get_defined_type(str(print_func.type)))
 
                 @classmethod
                 def get(cls, mod):
@@ -363,7 +480,9 @@ class Compiler():
             c_str = s.builder.alloca(c_str_val.type) #creation of the allocation of the %".2" variable
             s.builder.store(c_str_val, c_str) #store as defined on the next line below %".2"
             
-            node.compile_data = Compiler.Variable(c_str, "string")
+            node.compile_data = Compiler.Variable(
+                c_str,
+                s.get_defined_type("str"))
             
     class params_decl(CodeGenerationProcedure):
         matches = ["params_decl"]
@@ -396,16 +515,20 @@ class Compiler():
         def compile(cls, node: AstNode, s: Compiler.Scope, args: list):
             node.compile_data = Compiler.Variable(
                 ir.Constant(Compiler.types.i32, int(node.literal_val)),
-                "int_literal")
+                s.get_defined_type("int_literal"))
 
     class assigns(CodeGenerationProcedure):
         matches = ["="]
 
         @classmethod
         def compile(cls, node: AstNode, s: Compiler.Scope, args: list):
-            code_int_ptr = node.left.compile_data.value
-            code_int_val = Compiler._get_code_variables_from_compiler_variables([node.right.compile_data], s)[0]
-            node.compile_data = s.builder.store(code_int_val, code_int_ptr)
+            code_int_ptr = node.left.compile_data.ir_obj
+            print("right", node.right.compile_data)
+            print("left", node.left.compile_data)
+            code_int_val = Compiler._get_ir_variables_from_compiler_variables([node.right.compile_data], s)[0]
+            node.compile_data = Compiler.Variable(
+                s.builder.store(code_int_val, code_int_ptr),
+                s.get_defined_type("int"))
 
     class bool_(CodeGenerationProcedure):
         matches = ["bool"]
@@ -421,5 +544,7 @@ class Compiler():
                 Raise.error("bool must be true or false")
 
             node.compile_data = Compiler.Variable(
-                ir.Constant(Compiler.types.i8, value),
-                "bool_literal")
+                ir.Constant(Compiler.types.bool, value),
+                s.get_defined_type("bool"))
+
+     

@@ -7,6 +7,7 @@ class AstNode():
         self.type = "none"
         self.compile_data = None
         self.vals = []
+        self.line_number = None
 
     def _common_init(self, type : str, op : str, vals : list, match_with : str) -> None:
         self.type = type
@@ -64,27 +65,33 @@ class AstNode():
         if self.type == "leaf" and self.op == "var":
             self.op = "tag"
 
-    def rsprint(self, indent=0):
-        print(indent*" ", end="")
+    def print(self, indent=0):
+        print(self.rs_to_string(), end="")
+        
+    def rs_to_string(self, str_rep : str="", indent : int=0, node : AstNode=None):
+        str_rep += indent*" "
+        if node is not None and node == self:
+            str_rep += ">"
+            
         if self.type == "unary":
-            print(self.op, end="")
-            self.val.rsprint(indent+1)
+            str_rep += str(self.op)
+            self.val.rs_to_string(str_rep, indent+1)
         elif self.type == "binary":
-            print(self.op)
-            self.left.rsprint(indent+1)
-            self.right.rsprint(indent+1)
+            str_rep += str(self.op) + "\n"
+            str_rep += self.left.rs_to_string("", indent+1)
+            str_rep += self.right.rs_to_string("", indent+1)
         elif self.type == "plural":
-            print(self.op)
+            str_rep += str(self.op) + "\n"
             for node in self.vals:
-                node.rsprint(indent+1)
+                str_rep += node.rs_to_string("", indent+1)
         elif self.type == "leaf":
-            print(self.op, self.leaf_val)
+            str_rep += f"{self.op} {self.leaf_val}\n"
         elif self.type == "keyword" or self.type == "operator":
-            print(self.op)
+            str_rep += str(self.op) + "\n"
         elif self.type == "literal":
-            print(self.op, self.literal_val)
+            str_rep += f"{self.op} {self.literal_val}\n"
         else:
             Raise.code_error("unimplemented astnode type")
         
-
+        return str_rep
 

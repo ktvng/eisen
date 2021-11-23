@@ -14,3 +14,8 @@ class Raise():
     def code_error(cls, msg):
         print("Code Error:", msg)
         exit(1)
+
+    @classmethod
+    def compiler_error(cls, msg):
+        print("Compile Error:", msg)
+        exit(1)

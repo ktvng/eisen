@@ -2,42 +2,42 @@ from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
 from parser import Parser
 from compiler2 import Compiler
 
-tokens = []
-txt = ""
-with open("test.txt", 'r') as f:
-    txt = f.read()
-    tokens = Parser.tokenize(txt)
+def run(file_name : str):
+    Grammar.load()
+    cfg = Grammar.implementation
+
+    # print("====================")
+    # print(f"CNF starting symbol is: {cfg.start}")
+    # for rule in cfg.rules:
+    #     print(rule.production_symbol + " -> " + " ".join(rule.pattern))
+
+    with open(file_name, 'r') as f:
+        txt = f.read()
+        tokens = Parser.tokenize(txt)
+
+        # print("====================")
+        # for t in tokens:
+        #     print(t.type + " " + t.value, t.line_number)
+
+    algo = CYKAlgo(cfg)
+    algo.parse(tokens)
+
+    # print("====================") 
+    # print("PRODUCING RULES:")
+    # for entry in algo.dp_table[-1][0]:
+    #     print(entry.name)
+
+    ab = AstBuilder(algo.asts, algo.dp_table)
+    asthead = ab.run()
+
+    print("====================") 
+    asthead.print()
+
+    cp = Compiler(asthead, txt)
+    code = cp.run()
 
     print("====================")
-    for t in tokens:
-        print(t.type + " " + t.value, t.line_number)
-
-Grammar.load()
-normer = CFGNormalizer()
-cnf = normer.run(Grammar.grammar_implementation)
-
-# print("====================")
-# print(f"CNF starting symbol is: {cnf.start}")
-# for rule in cnf.rules:
-#     print(rule.parent + " -> " + " ".join(rule.pattern))
-
-print("====================")
-algo = CYKAlgo(cnf)
-algo.parse(tokens)
-
-print("PRODUCING RULES:")
-for entry in algo.dp_table[-1][0]:
-    print(entry.name)
-
-print("====================")
-ab = AstBuilder(algo.asts, algo.dp_table)
-x = ab.run()
-x.print()
-
-print("====================")
-cp = Compiler(x, txt)
-code = cp.run()
-print(code)
+    print(code)
 
 def make_runnable(txt : str):
     lines = txt.split("\n")
@@ -54,6 +54,7 @@ def make_runnable(txt : str):
 
     return readable
 
+code = run("test.txt")
 runnable = make_runnable(code)
 
 with open("./build/test.ll", 'w') as f:

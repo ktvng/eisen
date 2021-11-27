@@ -1,4 +1,4 @@
-import ast
+from __future__ import annotations
 from error import Raise
 from ast import AstNode
 import itertools
@@ -49,103 +49,106 @@ OpCodes = {
     "]": "]", 
 }
 
+####################################################################################################
+##
+## Grammar architecture
+##
+####################################################################################################
 class GrammarRule():
-    guid = 0
-    def __init__(self, parent : str, pattern_str : str, reverse_with):
-        self.guid = GrammarRule.guid
-        self.parent = parent.strip()
+    """
+    Encapsulates the information of a CFG production rule, including a string/list of strings which
+    encodes how the rule should be reversed
+    """
+    def __init__(self, production_symbol : str, pattern_str : str, reverse_with : str | list[str]):
+        """
+        Create a new GrammarRule.
+
+        Args:
+            production_symbol (str): symbol which produces the pattern
+            pattern_str (str): pattern which can be produced from the production_symbol
+            reverse_with (str | list[str]): string(s) which define which methods to use to reverse
+                                            the rule
+        """
+        self.production_symbol = production_symbol.strip()
         self.pattern_str = pattern_str
         self.pattern = [s.strip() for s in pattern_str.split(' ') if s != ""]
+
         if isinstance(reverse_with, str):
             self.reverse_with = [reverse_with]
         elif isinstance(reverse_with, list):
             self.reverse_with = reverse_with
 
-        self.build_guids = []
-
-        GrammarRule.guid += 1
-
     @classmethod
-    def is_production_rule(cls, token : str):
+    def is_production_symbol(cls, token : str):
         return token.isupper() and all(map(lambda x : x.isalnum() or x == '_', token))
 
     def __str__(self):
-        return self.parent + " -> " + self.pattern_str
+        return self.production_symbol + " -> " + self.pattern_str
 
 class CFG():
-    def __init__(self, rules : list):
+    """
+    Encapsulates a list of CFG GrammarRules and a designated starting symbol
+    """
+    def __init__(self, rules : list[GrammarRule]):
         self.rules = rules
         self.start = "START"
 
     def set_start(self, start : str):
         self.start = start
 
+####################################################################################################
+##
+## Grammar construction
+##
+####################################################################################################
 class Grammar():
     expressional_keywords = [
         "this",
         "return",
     ]
 
-    grammar_implementation = None
+    implementation : CFG = None
 
     @classmethod
     def load(cls):
-        parser = GrammarParser()
-        cls.grammar_implementation = parser.load()
+        Grammar.implementation = GrammarParser.load()
+        normer = CFGNormalizer()
+        Grammar.implementation = normer.run(Grammar.implementation)
         return cls
 
-    @classmethod 
-    def tokens_to_ast_queue(cls, tokens : list) -> list:
-        ast_queue = []
-        for tok in tokens:
-            astnode = AstNode()
-            astnode.line_number = tok.line_number
-            if tok.type == "var":
-                ast_queue.append(astnode.leaf(tok.value))
-            elif tok.type == "operator":
-                ast_queue.append(astnode.operator(tok.value, match_with=OpCodes[tok.value]))
-            elif tok.type == "symbol":
-                ast_queue.append(astnode.symbol(tok.value))
-            elif tok.type == "keyword":
-                ast_queue.append(astnode.keyword(tok.value))
-            elif tok.type == "string":
-                ast_queue.append(astnode.literal("string", tok.value))
-            elif tok.type == "int":
-                ast_queue.append(astnode.literal("int", tok.value))
-            elif tok.type == "bool":
-                ast_queue.append(astnode.literal("bool", tok.value))
-            else:
-                Raise.code_error("unimplemented token type")
-
-        return ast_queue
 class GrammarParser():
+    """
+    Stateless class which parses a seer grammar file into a CFG.
+    """
+    reverse_action_prefix_flag = "@action "
     grammar_file = "grammar.txt"
-    flag = "@action "
 
     @classmethod
     def _loadRule(cls, line : str, reverse_with : str) -> GrammarRule:
         parts = line.split('->', 1)
         if len(parts) != 2:
-            Raise.error("invalid grammar line; must contain symbol ->")
+            Raise.error("invalid grammar line; must contain symbol -> once and only once")
         
         pattern, pattern_str = parts
-
         return GrammarRule(pattern, pattern_str, reverse_with)
 
     @classmethod
     def _defines_reverse_method_decl(cls, line : str) -> bool:
-        return cls.flag == line[0 : len(cls.flag)]
+        return cls.reverse_action_prefix_flag == line[0 : len(cls.reverse_action_prefix_flag)]
 
     @classmethod
     def _get_reverse_method(cls, line : str) -> str:
-        return line[len(cls.flag) : ]
+        return line[len(cls.reverse_action_prefix_flag) : ]
 
     @classmethod
     def load(cls) -> CFG:
         cached_reverse_with_method = "pass"
         raw_rules = []
         with open(cls.grammar_file, 'r') as f:
+            # remove empty lines
             raw_rules = [l.strip() for l in f.readlines() if l.strip() != ""]
+
+            # remove comments
             raw_rules = [l for l in raw_rules if l[0] != "#"]
 
         rules = []
@@ -158,6 +161,145 @@ class GrammarParser():
 
         return CFG(rules)
 
+class CFGNormalizer():
+    """
+    Converts a generic CFG grammar into a CNF CFG.
+    """
+
+    def __init__(self):
+        # maps from literals : str to rules : GrammarRule
+        self.rules_for_literals = {}
+        self.n_rules_for_literals = 0
+        self.n_connector_rules = 0
+
+        # maps from ruleA:ruleB 
+        self.connectors = {} 
+        self.rules = []
+
+        self.starting_rule_name = "START"
+
+    def run(self, cfg : CFG) -> CFG:
+        self.original_cfg = cfg
+        for rule in cfg.rules:
+            self._expand_rule(rule)
+
+        new_cfg = CFG(self.rules)
+        new_cfg.set_start(self.starting_rule_name)
+
+        return new_cfg
+
+    @classmethod 
+    def is_connector(cls, name : str) -> bool:
+        return "_CONNECTOR" in name and name[-1] == "_"
+
+    @classmethod
+    def is_cnf_rule(cls, rule : GrammarRule) -> bool:
+        if len(rule.pattern) == 2:
+            return all(map(GrammarRule.is_production_symbol, rule.pattern))
+        elif len(rule.pattern) == 1:
+            return not GrammarRule.is_production_symbol(rule.pattern[0])
+        else:
+            return False
+
+    def _add_new_rule_for_literal(self, literal : str) -> GrammarRule:
+        new_rule = GrammarRule(f"_TOKENS{self.n_rules_for_literals}_", literal, "none")
+        self.n_rules_for_literals += 1
+        self.rules_for_literals[literal] = new_rule
+        self.rules.append(new_rule)
+
+        return new_rule
+
+    def _get_rule_for_literal(self, literal : str) -> GrammarRule:
+        existing_rule = self.rules_for_literals.get(literal, None)
+        if existing_rule is None:
+            return self._add_new_rule_for_literal(literal)
+
+        return existing_rule
+
+    def get_rule_for_connector(self, ruleA : str, ruleB : str, name=None):
+        existing_rule = None
+
+        key = f"{ruleA}:{ruleB}"
+
+        # use [name] in key as well if it exists
+        if name is not None:
+            key = f"{name}:" + key
+
+        existing_rule = self.connectors.get(key, None)
+
+        if existing_rule is None:
+            pattern = f"{ruleA} {ruleB}"
+            if name is None:
+                name = f"_CONNECTOR{self.n_connector_rules}_"
+
+            new_connector = GrammarRule(name, pattern, "pool")
+
+            self.n_connector_rules += 1
+            self.connectors[key] = new_connector
+            self.rules.append(new_connector)
+
+            return new_connector
+
+        return existing_rule
+
+    # in the case that [rule] produces a pattern consiting of a single production_symbol, substitute 
+    # the pattern of that production_symbol in for it and expand the resulting temporary rule
+    def _handle_single_prod_rule_case(self, rule : GrammarRule) -> None:
+        substitute_production_symbol = rule.pattern[0]
+        substitutions = [r for r in self.original_cfg.rules if r.production_symbol == substitute_production_symbol]
+
+        for rule_to_sub in substitutions:
+            pattern_to_sub = rule_to_sub.pattern_str
+            
+            # rule_to_sub.reverse with should be executed before the original rule
+            steps_to_reverse_both_rules = [*rule_to_sub.reverse_with, *rule.reverse_with]
+            
+            temp_rule = GrammarRule(rule.production_symbol, pattern_to_sub, steps_to_reverse_both_rules)
+            self._expand_rule(temp_rule)
+
+    def _expand_rule(self, rule : GrammarRule):
+        if CFGNormalizer.is_cnf_rule(rule):
+            self.rules.append(GrammarRule(rule.production_symbol, " ".join(rule.pattern), rule.reverse_with))
+            return
+        
+        if len(rule.pattern) == 1:
+            self._handle_single_prod_rule_case(rule)
+            return
+
+        # working pattern is a list of CFG production_symbols
+        working_pattern = [part if GrammarRule.is_production_symbol(part) 
+            else self._get_rule_for_literal(part).production_symbol
+            for part in rule.pattern]
+
+        # merges the last two production_symbols into a connector, and proceeds forward 
+        # until the list has only 2 production symbols
+        while len(working_pattern) > 2:
+            # order because popping occurs as stack
+            ruleB = working_pattern.pop()
+            ruleA = working_pattern.pop()
+
+            connector = self.get_rule_for_connector(ruleA, ruleB)
+            working_pattern.append(connector.production_symbol)
+
+        # merge the last two production_symbols in the working_pattern into a named rule
+        ruleB = working_pattern.pop()
+        ruleA = working_pattern.pop()
+
+        # final connector should inherit the name of the original rule as effectively inherits the
+        # production pattern of the rule
+        connector = self.get_rule_for_connector(ruleA, ruleB, name=rule.production_symbol)
+
+        # final connector should inherit the reverse_with method of the original rule as it inherits
+        # the pattern
+        connector.reverse_with.extend(rule.reverse_with)
+
+
+
+####################################################################################################
+##
+## Parsing with Grammar
+##
+####################################################################################################
 class CYKAlgo():
     def __init__(self, cfg : CFG):
         for rule in cfg.rules:
@@ -169,7 +311,7 @@ class CYKAlgo():
     class DpTableEntry():
         def __init__(self, rule : GrammarRule, x, y, diagonal_number, delta=None, lname=None, rname=None):
             self.rule = rule
-            self.name = rule.parent
+            self.name = rule.production_symbol
             self.x = x
             self.y = y
             self.diagonal_number = diagonal_number
@@ -209,9 +351,34 @@ class CYKAlgo():
 
             return matching_entries[0]
 
+    @classmethod
+    def tokens_to_ast_queue(cls, tokens : list) -> list:
+        ast_queue = []
+        for tok in tokens:
+            astnode = AstNode()
+            astnode.line_number = tok.line_number
+            if tok.type == "var":
+                ast_queue.append(astnode.leaf(tok.value))
+            elif tok.type == "operator":
+                ast_queue.append(astnode.operator(tok.value, match_with=OpCodes[tok.value]))
+            elif tok.type == "symbol":
+                ast_queue.append(astnode.symbol(tok.value))
+            elif tok.type == "keyword":
+                ast_queue.append(astnode.keyword(tok.value))
+            elif tok.type == "string":
+                ast_queue.append(astnode.literal("string", tok.value))
+            elif tok.type == "int":
+                ast_queue.append(astnode.literal("int", tok.value))
+            elif tok.type == "bool":
+                ast_queue.append(astnode.literal("bool", tok.value))
+            else:
+                Raise.code_error("unimplemented token type")
+
+        return ast_queue
+
     def parse(self, tokens : list):
         self.n = len(tokens)
-        self.asts = Grammar.tokens_to_ast_queue(tokens)
+        self.asts = CYKAlgo.tokens_to_ast_queue(tokens)
         self.dp_table = [[[] for y in range(self.n)] for x in range(self.n) ] 
         self._do_parse()
 
@@ -300,123 +467,6 @@ class CYKAlgo():
     @classmethod
     def is_main_diagonal(cls, x, y):
         return x == y
-
-class CFGNormalizer():
-    def __init__(self):
-        # maps from literals : str to rules : GrammarRule
-        self.literal_tokens = {}
-        self.n_literal_tokens = 0
-        self.n_connector_rules = 0
-
-        # maps from ruleA:ruleB 
-        self.connectors = {} 
-        self.rules = []
-
-        self.starting_rule_name = "START"
-
-    def run(self, cfg : CFG):
-        self.original_cfg = cfg
-        for rule in cfg.rules:
-            self._expand_rule(rule)
-
-        new_cfg = CFG(self.rules)
-        new_cfg.set_start(self.starting_rule_name)
-
-        return new_cfg
-
-    @classmethod 
-    def is_connector(cls, name : str) -> bool:
-        return "_CONNECTOR" in name and name[-1] == "_"
-
-
-    @classmethod
-    def is_cnf_rule(cls, rule : GrammarRule):
-        if len(rule.pattern) == 2:
-            return all(map(GrammarRule.is_production_rule, rule.pattern))
-        elif len(rule.pattern) == 1:
-            return not GrammarRule.is_production_rule(rule.pattern[0])
-        else:
-            return False
-
-    def rule_for_literal(self, literal : str) -> GrammarRule:
-        existing_rule = self.literal_tokens.get(literal, None)
-        if existing_rule is None:
-            new_rule = GrammarRule(f"_TOKENS{self.n_literal_tokens}_", literal, "none")
-            self.literal_tokens[literal] = new_rule
-            self.n_literal_tokens += 1
-            self.rules.append(new_rule)
-
-            return new_rule
-
-        return existing_rule
-
-    def rule_for_connector(self, ruleA : str, ruleB : str, name=None):
-        # don't look up if it's a named rule
-        existing_rule = None
-        key = None
-        if name is None:
-            key = f"{ruleA}:{ruleB}"
-            existing_rule = self.connectors.get(key, None)
-
-        if existing_rule is None:
-            pattern = f"{ruleA} {ruleB}"
-            if name is None:
-                name = f"_CONNECTOR{self.n_connector_rules}_"
-
-            new_connector = GrammarRule(name, pattern, "pool")
-            self.n_connector_rules += 1
-
-            if key is not None:
-                self.connectors[key] = new_connector
-
-            self.rules.append(new_connector)
-
-            return new_connector
-
-        return existing_rule
-
-    def _handle_single_prod_rule_case(self, rule : GrammarRule):
-        substitute_name = rule.pattern[0]
-        substitutions = [r for r in self.original_cfg.rules if r.parent == substitute_name]
-
-        for rule_to_sub in substitutions:
-            pattern_to_sub = " ".join(rule_to_sub.pattern)
-            steps_to_reverse_both_rules = [*rule_to_sub.reverse_with, *rule.reverse_with]
-            
-            temp_rule = GrammarRule(rule.parent, pattern_to_sub, steps_to_reverse_both_rules)
-            
-            # TODO: this is terrible, but it works because temp_rules don't really exist
-            # but must transfer the properties of the rule we substitute in to create them
-            temp_rule.guid = rule_to_sub.guid
-            self._expand_rule(temp_rule)
-
-    def _expand_rule(self, rule : GrammarRule):
-        if CFGNormalizer.is_cnf_rule(rule):
-            self.rules.append(GrammarRule(rule.parent, " ".join(rule.pattern), rule.reverse_with))
-            return
-        
-        if len(rule.pattern) == 1:
-            self._handle_single_prod_rule_case(rule)
-            return
-
-        working_pattern = [part if GrammarRule.is_production_rule(part) 
-            else self.rule_for_literal(part).parent
-            for part in rule.pattern]
-
-        while len(working_pattern) > 2:
-            ruleB = working_pattern.pop()
-            ruleA = working_pattern.pop()
-
-            connector = self.rule_for_connector(ruleA, ruleB)
-            working_pattern.append(connector.parent)
-
-        ruleB = working_pattern.pop()
-        ruleA = working_pattern.pop()
-
-        connector = self.rule_for_connector(ruleA, ruleB, name=rule.parent)
-        connector.reverse_with.extend(rule.reverse_with)
-
-        connector.build_guids.append(rule.guid)
 
 class AstBuilder():
     def __init__(self, astnodes, dp_table):

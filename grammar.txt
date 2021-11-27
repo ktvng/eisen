@@ -5,6 +5,7 @@
 #   - production rules must be all caps followed by '->'
 #   - only line style comments are supported; use the hashtag.
 #   - by convention, use plural iff the state can be repeated 1+ times
+#   - the starting rule must begin with START.
 #
 # ACTIONS:
 #   - pass passes node without creating

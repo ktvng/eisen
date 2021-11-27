@@ -24,7 +24,7 @@ class Compiler():
         self._init_special_objs()
 
     def run(self):
-        self._recursive_descent(self.asthead, self.global_context)
+        self._recursive_descent(self.asthead, self.global_context, self)
         if(self.encountered_fatal_exception):
             return ""
 
@@ -64,13 +64,11 @@ class Compiler():
             for match in proc.matches:
                 cls._build_map[match] = proc
 
-
     def _init_primitive_types(self):
         self.global_scope.add_type(Seer.Types.Primitives.Int, Compiler.IrTypes.int)
         self.global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
         self.global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
         self.global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.float)
-
 
     def _init_special_objs(self):
         ir_print_function_type =  ir.FunctionType(ir.IntType(32), [], var_arg=True)
@@ -93,27 +91,22 @@ class Compiler():
         
         return found_proc
     
+    def _print_exception(self, exception : Compiler.Exceptions.AbstractException):
+        print(exception.to_str_with_context(self.txt))
+
     @classmethod
-    def _print_exception(self, exception : Compiler.Exception):
-        print(exception)
-
-        # TODO: FINISH THIS EXCEPTION PRINTING
-        lines = self.txt.split('\n')
-        start = 0 if exception.
-        print()
-    
-
-    def _recursive_descent(self, astnode : AstNode, cx : Compiler.Context):
+    def _recursive_descent(self, astnode : AstNode, cx : Compiler.Context, callback : Compiler):
         build_procedure = Compiler.get_build_procedure(astnode.op)
         new_cx, args = build_procedure.precompile(astnode, cx)
         
         for child in build_procedure.nodes_to_recurse_through(astnode):
-            self._recursive_descent(child, new_cx)
+            self._recursive_descent(child, new_cx, callback)
 
         new_obj = build_procedure.compile(astnode, new_cx, args)
-        if isinstance(new_obj, Compiler.Exception):
-            self._print_exception(new_obj)
+        if isinstance(new_obj, Compiler.Exceptions.AbstractException):
+            callback._print_exception(new_obj)
             self.encountered_fatal_exception = True
+            exit(0)
 
         astnode.compile_data = new_obj
      
@@ -170,25 +163,45 @@ class Compiler():
                 or Compiler.Definitions.type_equality(type, Seer.Types.Primitives.Float)
                 or Compiler.Definitions.type_equality(type, Seer.Types.Primitives.Bool))
 
-    class Exception():
-        type = None
-        descrption = None
-
-        def __init__(self, msg : str, codeline : int):
-            self.msg = msg
-            self.codeline = codeline
-
-        def __str__(self):
-            return (f"{self.type}Exception (line: {self.codeline}) {self.descrption}\n"
-                + "    {self.msg}")
 
     class Exceptions():
-        class UseBeforeInitialize(Exception):
+        class AbstractException():
+            type = None
+            description = None
+
+            def __init__(self, msg : str, line_number : int):
+                self.msg = msg
+                self.line_number = line_number
+
+            def __str__(self):
+                return ("================================================================\n"
+                    + f"{self.type}Exception\n    (Line {self.line_number}): {self.description}\n"
+                    + f"    Info: {self.msg}\n\n")
+
+            def to_str_with_context(self, txt : str):
+                str_rep = str(self)
+
+                lines = txt.split('\n')
+                index_of_line_number = self.line_number - 1
+
+                start = index_of_line_number - 2
+                start = 0 if start < 0 else start
+
+                end = index_of_line_number + 3
+                end = len(lines) if end > len(lines) else end
+
+                for i in range(start, end):
+                    c = ">>" if i == index_of_line_number else "  "
+                    line = f"     {c} {i+1} \t| {lines[i]}\n" 
+                    str_rep += line
+                    
+                return str_rep
+        class UseBeforeInitialize(AbstractException):
             type = "UseBeforeInitialize"
             description = "variable cannot be used before it is initialized"
 
-            def __init__(self, msg : str, codeline : int):
-                super().__init__(msg, codeline)
+            def __init__(self, msg : str, line_number : int):
+                super().__init__(msg, line_number)
 
 
 
@@ -389,7 +402,7 @@ class Compiler():
             for compiler_obj in compiler_param_objs:
                 if not compiler_obj.is_initialized:
                     return Compiler.Exceptions.UseBeforeInitialize(
-                        f"variable '{compiler_obj.name} used before it is initialized",
+                        f"variable '{compiler_obj.name}' used here but not initialized",
                         node.line_number)
 
                 ir_param_objs.append(Compiler._deref_ir_obj_if_needed(compiler_obj, cx))
@@ -506,7 +519,7 @@ class Compiler():
         @classmethod
         def _single_assign(cls, left_compiler_obj, right_compiler_obj, cx : Compiler.Context):
             ir_obj_to_assign = Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
-            ir_obj_to_assign.is_initialized=True
+            left_compiler_obj.is_initialized=True
             return Compiler.Object(
                 cx.builder.store(ir_obj_to_assign, left_compiler_obj.get_ir()),
                 left_compiler_obj.type)
@@ -547,8 +560,15 @@ class Compiler():
                 Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
             ]
 
-            if not left_compiler_obj.is_initialized or not right_compiler_obj.is_initialized:
-                Raise.compiler_error("memory used before initialized")
+            if not left_compiler_obj.is_initialized:
+                return Compiler.Exceptions.UseBeforeInitialize(
+                    f"variable '{left_compiler_obj.name}' used here but not initialized",
+                    node.line_number) 
+
+            if not right_compiler_obj.is_initialized:
+                return Compiler.Exceptions.UseBeforeInitialize(
+                    f"variable '{right_compiler_obj.name}' used here but not initialized",
+                    node.line_number)
 
             if op == "+":
                 ir_obj = cx.builder.add(*builder_function_params)
@@ -615,3 +635,4 @@ class Compiler():
         @classmethod
         def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
             return [child.compile_data[0] for child in node.vals]
+            

@@ -3,13 +3,14 @@ from parser import Parser
 from compiler2 import Compiler
 
 tokens = []
+txt = ""
 with open("test.txt", 'r') as f:
     txt = f.read()
     tokens = Parser.tokenize(txt)
 
     print("====================")
     for t in tokens:
-        print(t.type + " " + t.value)
+        print(t.type + " " + t.value, t.line_number)
 
 Grammar.load()
 normer = CFGNormalizer()
@@ -34,7 +35,7 @@ x = ab.run()
 x.print()
 
 print("====================")
-cp = Compiler(x)
+cp = Compiler(x, txt)
 code = cp.run()
 print(code)
 

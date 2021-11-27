@@ -486,6 +486,7 @@ class AstBuilder():
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
         elif len(flattened_comps) == 3:
+            newnode.line_number = flattened_comps[1].line_number
             newnode.binary(flattened_comps[1].op, flattened_comps[0], flattened_comps[2])
         else:
             Raise.code_error("should not merge with more than 3 nodes")
@@ -502,6 +503,9 @@ class AstBuilder():
             else:
                 flattened_components.append(comp)
 
+        line_number = 0 if not flattened_components else flattened_components[0].line_number
+        newnode.line_number = line_number
+        
         return [newnode.plural(build_name, flattened_components)]
 
     @classmethod

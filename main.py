@@ -1,6 +1,6 @@
 from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
 from parser import Parser
-from compiler2 import Compiler
+from compiler import Compiler
 
 def run(file_name : str):
     Grammar.load()

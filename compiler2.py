@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple
 from seer import Seer
 from error import Raise
 from ast import AstNode
@@ -36,6 +37,7 @@ class Compiler():
 
         cls.ir_generation_procedures = [
             Compiler.int_,
+            Compiler.bool_,
             Compiler.string_,
             Compiler.tag_,
             Compiler.var_decl_,
@@ -54,6 +56,8 @@ class Compiler():
             Compiler.var_decl_tuple_,
             Compiler.tuple_,
             Compiler.var_name_tuple_,
+            Compiler.if_statement_,
+            Compiler.while_statement_
         ]
 
         cls._build_map = {}
@@ -68,7 +72,7 @@ class Compiler():
         self.global_scope.add_type(Seer.Types.Primitives.Int, Compiler.IrTypes.int)
         self.global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
         self.global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
-        self.global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.float)
+        self.global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.bool)
 
     def _init_special_objs(self):
         ir_print_function_type =  ir.FunctionType(ir.IntType(32), [], var_arg=True)
@@ -96,13 +100,14 @@ class Compiler():
 
     @classmethod
     def _recursive_descent(self, astnode : AstNode, cx : Compiler.Context, callback : Compiler):
-        build_procedure = Compiler.get_build_procedure(astnode.op)
-        new_cx, args = build_procedure.precompile(astnode, cx)
-        
-        for child in build_procedure.nodes_to_recurse_through(astnode):
-            self._recursive_descent(child, new_cx, callback)
+        build_procedure : Compiler.IRGenerationProcedure = Compiler.get_build_procedure(astnode.op)
+        rdstate = build_procedure.precompile(astnode, cx)
 
-        new_obj = build_procedure.compile(astnode, new_cx, args)
+        for child_path in rdstate.get_paths():
+            child_cx, child_node = child_path
+            self._recursive_descent(child_node, child_cx, callback)
+
+        new_obj = build_procedure.compile(astnode, cx, rdstate.args)
         if isinstance(new_obj, Compiler.Exceptions.AbstractException):
             callback._print_exception(new_obj)
             self.encountered_fatal_exception = True
@@ -287,23 +292,62 @@ class Compiler():
             self.builder = builder
             self.scope = scope
 
+    class RecursiveDescentIntermediateState:
+        def __init__(self):
+            self._child_paths : list[tuple[Compiler.Context, AstNode]] = []
+            self.args = {}
+
+        def add_child(self, cx : Compiler.Context, node : AstNode):
+            self._child_paths.append((cx, node))
+
+        def add_arg(self, name : str, val):
+            self.args[name] = val
+
+        def get_paths(self) -> list[tuple[Compiler.Context, AstNode]]:
+            return self._child_paths
+
+
     class IRGenerationProcedure():
         matches = []
 
         @classmethod
-        def precompile(cls, node : AstNode, cx : Compiler.Context):
-            return cx, {}
+        def precompile(cls, 
+            node : AstNode, 
+            cx : Compiler.Context
+            ) -> Compiler.RecursiveDescentIntermediateState:
+            """
+            Return a list of child nodes and contexts to use when compiling each child node, as 
+            well as a dict of args which will be passed to the compile method.
+
+            Args:
+                node (AstNode): Node to precompile
+                cx (Compiler.Context): Context to precompile node over.
+
+            Returns:
+                [type]: [description]
+            """
+            rdstate = Compiler.RecursiveDescentIntermediateState()
+            for child in node.vals:
+                rdstate.add_child(cx, child)
+
+            return rdstate
 
         @classmethod
         def compile(cls, node : AstNode, cx : Compiler.Context, args : dict) -> list:
             return []
         
-        @classmethod
-        def nodes_to_recurse_through(cls, node : AstNode):
-            return node.vals
 
-    
 
+
+
+
+
+    ################################################################################################
+    ##
+    ## Compiler generation procedures
+    ##
+    ################################################################################################
+ 
     class string_(IRGenerationProcedure):
         matches = ["string"]
 
@@ -330,6 +374,15 @@ class Compiler():
             return [Compiler.Object(
                 ir.Constant(Compiler.IrTypes.int, int(node.literal_val)),
                 "#" + Seer.Types.Primitives.Int)]
+    
+    class bool_(IRGenerationProcedure):
+        matches = ["bool"]
+        
+        @classmethod
+        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+            return [Compiler.Object(
+                ir.Constant(Compiler.IrTypes.bool, True if node.literal_val == "true" else False),
+                "#" + Seer.Types.Primitives.Bool)]
 
     class tag_(IRGenerationProcedure):
         matches = ["tag"]
@@ -420,6 +473,9 @@ class Compiler():
             # params/returns is a tuple of ':' operation nodes. we need to get the leaf_val
             # from the left and right children of each node in params
             params = node.vals[1].vals
+            if params and params[0].op == "var_decl_tuple":
+                params = params[0].vals
+
             param_tuples = [(p.vals[0].leaf_val, p.vals[1].leaf_val) for p in params]
 
             # if no return node is provided
@@ -453,16 +509,18 @@ class Compiler():
             return node.vals[0].leaf_val
 
         @classmethod
-        def _add_parameters_to_new_context(cls, node : AstNode, cx : Compiler.Context):
+        def _add_parameters_to_new_context(cls, node : AstNode, cx : Compiler.Context, func):
             param_tuples, return_tuples = cls._get_function_decl_names_and_types_int_tuple_form(node)
 
-            for name, type in param_tuples:
+            for i, param_tuple in enumerate(param_tuples):
+                name, type = param_tuple
                 ir_obj = cx.builder.alloca(cx.scope.get_ir_type(type), name=name)
                 compiler_obj = Compiler.Object(
                     ir_obj,
                     type,
                     name=name)
                 cx.scope.add_obj(name, compiler_obj)
+                cx.builder.store(func.args[i], ir_obj)
 
             for name, type in return_tuples:
                 cx.builder.alloca(cx.scope.get_ir_type(type), name=name)
@@ -491,19 +549,23 @@ class Compiler():
 
             builder = ir.IRBuilder(func.append_basic_block("entry"))
             new_context = Compiler.Context(cx.module, builder, Compiler.Scope(parent_scope=cx.scope))
-            cls._add_parameters_to_new_context(node, new_context)
+            cls._add_parameters_to_new_context(node, new_context, func)
 
-            return new_context, { "function": compiler_obj }
+            rdstate = Compiler.RecursiveDescentIntermediateState()
+            rdstate.add_arg("function", compiler_obj)
+            rdstate.add_arg("new_cx", new_context)
+            rdstate.add_child(new_context, node.vals[-1])
+
+            return rdstate
         
         @classmethod
         def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
-            if(not cx.builder.block.is_terminated):
-                cx.builder.ret_void()
+            new_cx = args["new_cx"]
+            if(not new_cx.builder.block.is_terminated):
+                new_cx.builder.ret_void()
             return [args["function"]]
 
-        @classmethod
-        def nodes_to_recurse_through(cls, node: AstNode):
-            return [node.vals[-1]]
+
 
     class return_(IRGenerationProcedure):
         matches = ["return"]
@@ -635,4 +697,126 @@ class Compiler():
         @classmethod
         def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
             return [child.compile_data[0] for child in node.vals]
+            
+    class if_statement_(IRGenerationProcedure):
+        matches = ["if_statement"]
+
+        @classmethod
+        def precompile(cls, node: AstNode, cx: Compiler.Context):
+            rdstate = Compiler.RecursiveDescentIntermediateState()
+            new_blocks = [cx.builder.block]
+            new_contexts = [cx]
+
+            # first child is an if-statement clause which lives in the original block
+            rdstate.add_child(cx, node.vals[0])
+
+            for child in node.vals[1:]:
+                new_block = cx.builder.append_basic_block()
+                new_blocks.append(new_block)
+
+                new_cx = Compiler.Context(
+                    cx.module, 
+                    ir.IRBuilder(block=new_block),
+                    Compiler.Scope(parent_scope=cx.scope))
+
+                new_contexts.append(new_cx)
+                rdstate.add_child(new_cx, child)
+            
+            new_blocks.append(cx.builder.append_basic_block())
+
+            rdstate.add_arg("blocks", new_blocks)
+            rdstate.add_arg("contexts", new_contexts)
+
+            return rdstate
+        
+        @classmethod
+        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+            n = len(node.vals)
+            blocks = args["blocks"]
+            contexts = args["contexts"]
+
+            i = 0
+            while i + 1 < n:
+                statement_cx = contexts[i]
+                codeblock_block = blocks[i+1]
+                next_statement_block = blocks[i+2]
+
+                statement_compiler_obj = node.vals[i].compile_data[0]
+
+                statement_cx.builder.cbranch(
+                    statement_compiler_obj.get_ir(),
+                    codeblock_block,
+                    next_statement_block)
+
+                i += 2
+
+            # handle the case of hanging 'else' statement
+            if n % 2 == 1:
+                else_cx = contexts[-1]
+                else_cx.builder.branch(blocks[-1])
+
+            
+            # connect all codeblock_blocks to the final codeblock
+            i = 1
+            while i < n:
+                codeblock_cx = contexts[i]
+
+                # last block is the block added after the if complex
+                codeblock_cx.builder.branch(blocks[-1])
+                i += 2
+
+            cx.builder.position_at_start(blocks[-1])
+
+            return []
+
+    class while_statement_(IRGenerationProcedure):
+        matches = ["while_statement"]
+
+        @classmethod
+        def precompile(cls, node: AstNode, cx: Compiler.Context) -> Compiler.RecursiveDescentIntermediateState:
+            rdstate = Compiler.RecursiveDescentIntermediateState()
+
+            statement_block = cx.builder.append_basic_block()
+            statement_cx = Compiler.Context(
+                cx.module,
+                ir.IRBuilder(block=statement_block),
+                Compiler.Scope(parent_scope=cx.scope))
+
+            body_block = cx.builder.append_basic_block()
+            body_cx = Compiler.Context(
+                cx.module,
+                ir.IRBuilder(block=body_block),
+                Compiler.Scope(parent_scope=cx.scope))
+
+            after_block = cx.builder.append_basic_block()
+
+            rdstate.add_child(statement_cx, node.vals[0])
+            rdstate.add_child(body_cx, node.vals[1])
+
+            rdstate.add_arg("statement_block", statement_block)
+            rdstate.add_arg("statement_cx", statement_cx)
+            rdstate.add_arg("body_block", body_block)
+            rdstate.add_arg("body_cx", body_cx)
+            rdstate.add_arg("after_block", after_block)
+
+            return rdstate
+
+        @classmethod
+        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+            statement_block = args["statement_block"]
+            statement_cx = args["statement_cx"]
+            body_block = args["body_block"]
+            body_cx = args["body_cx"]
+            after_block = args["after_block"]
+
+            statement_compiler_obj = node.vals[0].compile_data[0]
+
+            statement_cx.builder.cbranch(
+                    statement_compiler_obj.get_ir(),
+                    body_block,
+                    after_block)
+
+            body_cx.builder.branch(statement_block)
+            cx.builder.branch(statement_block)
+            cx.builder.position_at_start(after_block)
             

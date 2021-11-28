@@ -15,9 +15,9 @@ def run(file_name : str):
         txt = f.read()
         tokens = Parser.tokenize(txt)
 
-        # print("====================")
-        # for t in tokens:
-        #     print(t.type + " " + t.value, t.line_number)
+        print("====================")
+        for t in tokens:
+            print(t.type + " " + t.value)
 
     algo = CYKAlgo(cfg)
     algo.parse(tokens)

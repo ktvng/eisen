@@ -65,6 +65,7 @@ RETURN_DECL -> -> VAR_DECL
 @action build=params_decl
 PARAMS_DECL -> ( VAR_DECL_TUPLE )
 PARAMS_DECL -> ( )
+PARAMS_DECL -> ( VAR_DECL )
 
 @action pass
 VAR_DECL_TUPLE_BUILDER -> VAR_DECL , VAR_DECL
@@ -91,16 +92,19 @@ BLOCK -> LINE
 CONTROL -> IF_STATEMENT
 CONTROL -> WHILE_STATEMENT
 
-@action build=if
-IF_STATEMENT -> if ( EXPR ) CODE_BLOCK 
-IF_STATEMENT -> if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
+@action build=if_statement
+IF_STATEMENT -> IF_CONTEXT
 
-@action build=while
-WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK 
+@action pool
+IF_CONTEXT -> if ( EXPR ) CODE_BLOCK
+IF_CONTEXT -> if ( EXPR ) CODE_BLOCK ELSE_STATEMENT 
 
-@action build=else
 ELSE_STATEMENT -> else CODE_BLOCK
-ELSE_STATEMENT -> else if CODE_BLOCK ELSE_STATEMENT
+ELSE_STATEMENT -> else if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
+ELSE_STATEMENT -> else if ( EXPR ) CODE_BLOCK
+
+@action build=while_statement
+WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK 
 
 @action merge
 VAR_DECL -> VAR_NAME_TUPLE : var

@@ -38,6 +38,8 @@ def run(file_name : str):
 
     print("====================")
     print(code)
+    
+    return code
 
 def make_runnable(txt : str):
     lines = txt.split("\n")

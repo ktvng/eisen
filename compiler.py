@@ -607,6 +607,7 @@ class Compiler():
             "+", "-", "/", "*",
             "<", ">", "<=", ">=",
             "==", "!=",
+            "+=", "-=", "/=", "*="
         ]
 
         @classmethod
@@ -640,6 +641,26 @@ class Compiler():
                 ir_obj = cx.builder.mul(*builder_function_params)
             elif op == "/":
                 ir_obj = cx.builder.sdiv(*builder_function_params)
+
+            elif op == "+=" or op == "-=" or op == "*=" or op == "/=":
+                ir_obj = None
+                op = op[0]
+                if op == "+":
+                    ir_obj = cx.builder.add(*builder_function_params)
+                elif op == "-":
+                    ir_obj = cx.builder.sub(*builder_function_params)
+                elif op == "*":
+                    ir_obj = cx.builder.mul(*builder_function_params)
+                elif op == "/":
+                    ir_obj = cx.builder.sdiv(*builder_function_params)
+
+                new_compiler_obj = Compiler.Object(
+                    ir_obj,
+                    "#" + left_compiler_obj.type)
+                    
+                return Compiler.assigns_._single_assign(left_compiler_obj, new_compiler_obj, cx)
+
+
 
             elif(op == "<" 
                 or op == ">"

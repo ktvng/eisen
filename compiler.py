@@ -23,14 +23,19 @@ class Compiler():
         module = ir.Module()
         global_context = self._generate_new_global_context(module)
         self._recursive_descent(self.asthead, global_context, callback, options)
-        if(self.encountered_fatal_exception):
-            return ""
+        if(callback.encountered_fatal_exception()):
+            print(Compiler.Exceptions.delineator, end="")
+            msg = (
+                "Error: One or more fatal exception were encountered",
+                "during \ncompilation. \n\nSee above for details\n")
+            print(*msg)
+            exit(1)
 
-        # callback = Compiler.Callback(txt=self.txt)
-        # options = Compiler.Options(should_not_emit_ir=False)
-        # module = ir.Module()
-        # global_context = self._generate_new_global_context(module)
-        # self._recursive_descent(self.asthead, global_context, callback, options)
+        callback = Compiler.Callback(txt=self.txt)
+        options = Compiler.Options(should_not_emit_ir=False)
+        module = ir.Module()
+        global_context = self._generate_new_global_context(module)
+        self._recursive_descent(self.asthead, global_context, callback, options)
 
         return str(module)
 
@@ -130,10 +135,18 @@ class Compiler():
             self._recursive_descent(child_node, child_cx, callback, options)
 
         new_objs = build_procedure.compile(astnode, cx, rdstate.args, options)
-        for obj in new_objs:
-            if isinstance(obj, Compiler.Exceptions.AbstractException):
-                callback._print_exception(obj)
-                callback.notify_of_fatal_exception()
+
+        if any(map(lambda obj: isinstance(obj, Compiler.Exceptions.AbstractException), new_objs)):
+            amended_objs = []
+            for obj in new_objs:
+                if isinstance(obj, Compiler.Exceptions.AbstractException):
+                    callback._print_exception(obj)
+                    callback.notify_of_fatal_exception()
+                    amended_objs.append(obj.get_stub())
+                else:
+                    amended_objs.append(obj)
+            
+            new_objs = amended_objs
 
         astnode.compile_data = new_objs
      
@@ -201,6 +214,7 @@ class Compiler():
     ##
     ################################################################################################
     class Exceptions():
+        delineator = "================================================================\n"
         class AbstractException():
             type = None
             description = None
@@ -211,7 +225,7 @@ class Compiler():
 
             def __str__(self):
                 padding = " "*len(str(self.line_number))
-                return ("================================================================\n"
+                return (Compiler.Exceptions.delineator
                     + f"{self.type}Exception\n    Line {self.line_number}: {self.description}\n"
                     + f"{padding}     INFO: {self.msg}\n\n")
 
@@ -233,6 +247,12 @@ class Compiler():
                     str_rep += line
                     
                 return str_rep
+
+            def set_compiler_stub(self, stub : Compiler.Stub):
+                self._stub = stub
+
+            def get_stub(self) -> Compiler.Stub:
+                return self._stub
         
         class UseBeforeInitialize(AbstractException):
             type = "UseBeforeInitialize"
@@ -418,7 +438,7 @@ class Compiler():
             self._encountered_fatal_exception = False
 
         def notify_of_fatal_exception(self):
-            self.encountered_fatal_exception = True
+            self._encountered_fatal_exception = True
 
         def encountered_fatal_exception(self):
             return self._encountered_fatal_exception
@@ -598,7 +618,9 @@ class Compiler():
 
             # set line_number if exception because 'get_object' method does not have access to it
             if isinstance(compiler_obj, Compiler.Exceptions.AbstractException):
-                compiler_obj.line_number = node.line_number
+                exception = compiler_obj
+                exception.line_number = node.line_number
+                exception.set_compiler_stub(Compiler.Stub("???", name=name))
 
             return [compiler_obj]
 
@@ -846,15 +868,23 @@ class Compiler():
             left_compiler_obj = node.left.compile_data[0]
             right_compiler_obj = node.right.compile_data[0]
 
+            exception_msg = ""
             if not left_compiler_obj.is_initialized:
-                return Compiler.Exceptions.UseBeforeInitialize(
-                    f"variable '{left_compiler_obj.name}' used here but not initialized",
-                    node.line_number) 
+                exception_msg += f"variable '{left_compiler_obj.name}'"
 
             if not right_compiler_obj.is_initialized:
-                return Compiler.Exceptions.UseBeforeInitialize(
-                    f"variable '{right_compiler_obj.name}' used here but not initialized",
+                if exception_msg:
+                    exception_msg += " and "
+                
+                exception_msg += f"variable '{right_compiler_obj.name}'"
+
+            if exception_msg:
+                exception = Compiler.Exceptions.UseBeforeInitialize(
+                    f"{exception_msg} used here but not initialized",
                     node.line_number)
+
+                exception.set_compiler_stub(Compiler.Stub(left_compiler_obj.type))
+                return [exception]
 
             # validation
             cobj_type = "TODO"
@@ -868,7 +898,7 @@ class Compiler():
                     or op == "/="
                     or op == "*="):
 
-                    return Compiler.Stub(left_compiler_obj.type)
+                    return [Compiler.Stub(left_compiler_obj.type)]
 
                 elif   ( op == "=="
                     or op == "<="
@@ -877,7 +907,7 @@ class Compiler():
                     or op == ">"
                     or op == "!="):
 
-                    return Compiler.Stub("#" + Seer.Types.Primitives.Bool)
+                    return [Compiler.Stub("#" + Seer.Types.Primitives.Bool)]
                 
 
             builder_function_params = [
@@ -942,7 +972,7 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
             # start
-            compiler_objs = Compiler.var_decl_.compile(node, cx, args)
+            compiler_objs = Compiler.var_decl_.compile(node, cx, args, options)
             for obj in compiler_objs:
                 obj.is_initialized = False
 

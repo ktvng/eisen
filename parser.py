@@ -469,13 +469,17 @@ class Parser():
             for tok in pretokens[1:]:
                 if tok.type == "symbol" and tok.value == "endl" and cls._isbrace(last_token):
                     continue
-                if tok.type == "symbol" and tok.value == "endl" and last_token.type == "endl":
+                if    ( tok.type == "symbol" 
+                    and tok.value == "endl" 
+                    and last_token.type == "symbol" 
+                    and last_token.value == "endl"):
+                    
                     continue
 
                 if(cls._islbrace(tok) 
                     and last_token.type == "symbol" 
                     and last_token.value == "endl"):
-                    
+
                     tokens.pop()
                 
                 tokens.append(tok)

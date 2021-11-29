@@ -56,7 +56,7 @@ def make_runnable(txt : str):
 
     return readable
 
-code = run("test.txt")
+code = run("test.rs")
 runnable = make_runnable(code)
 
 with open("./build/test.ll", 'w') as f:

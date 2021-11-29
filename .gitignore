@@ -4,6 +4,7 @@ sample.txt
 run.sh
 sandbox.py
 test.txt
+test.rs
 tmp
 __pycache__/*
 .vscode/

@@ -27,7 +27,7 @@ class Compiler():
             print(Compiler.Exceptions.delineator, end="")
             msg = (
                 "Error: One or more fatal exception were encountered",
-                "during \ncompilation. \n\nSee above for details\n")
+                "during \ncompilation. \n\nFix the above errors before re-running your code.\n")
             print(*msg)
             exit(1)
 
@@ -42,6 +42,9 @@ class Compiler():
 
     @classmethod
     def _init_class(cls):
+        if cls._is_init:
+            return
+
         cls._is_init = True
 
         cls.ir_generation_procedures = [
@@ -92,6 +95,7 @@ class Compiler():
         global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
         global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
         global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.bool)
+
 
     @classmethod
     def _init_special_objs(cls, global_scope : Compiler.Scope, module):
@@ -215,6 +219,7 @@ class Compiler():
     ################################################################################################
     class Exceptions():
         delineator = "================================================================\n"
+
         class AbstractException():
             type = None
             description = None
@@ -267,8 +272,6 @@ class Compiler():
         
             def __init__(self, msg: str, line_number: int):
                 super().__init__(msg, line_number)
-
-
 
 
 

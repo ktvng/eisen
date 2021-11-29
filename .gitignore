@@ -1,7 +1,6 @@
 build/*
 ccode.*
 sample.txt
-run.sh
 sandbox.py
 test.txt
 test.rs

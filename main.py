@@ -1,3 +1,5 @@
+import sys
+
 from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
 from parser import Parser
 from compiler import Compiler
@@ -30,14 +32,14 @@ def run(file_name : str):
     ab = AstBuilder(algo.asts, algo.dp_table)
     asthead = ab.run()
 
-    print("====================") 
-    asthead.print()
+    # print("====================") 
+    # asthead.print()
 
     cp = Compiler(asthead, txt)
     code = cp.run()
 
-    print("====================")
-    print(code)
+    # print("====================")
+    # print(code)
     
     return code
 
@@ -56,8 +58,15 @@ def make_runnable(txt : str):
 
     return readable
 
-code = run("test.rs")
-runnable = make_runnable(code)
 
-with open("./build/test.ll", 'w') as f:
-    f.write(runnable)
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Error: expected filename as argument")
+        exit()
+    
+    filename = sys.argv[1]
+    code = run(filename)
+    runnable = make_runnable(code)
+
+    with open("./build/test.ll", 'w') as f:
+        f.write(runnable)

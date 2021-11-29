@@ -1002,7 +1002,7 @@ class Compiler():
             for child in node.vals[1:]:
                 if options.should_not_emit_ir:
                     new_cx = Compiler.Context(cx.module, None, Compiler.Scope(parent_scope=cx.scope))
-                    rdstate.add_child(new_cx= child)
+                    rdstate.add_child(new_cx, child)
                     continue
 
                 new_block = cx.builder.append_basic_block()

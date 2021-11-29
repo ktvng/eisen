@@ -65,7 +65,7 @@ class Parser():
         "==", "!=",                 # equality
         "+", "-", "/", "*",         # arithmetic
         "&",                        # reference
-        "&&", "||", "!"             # logical
+        "&&", "||", "!",            # logical
         "%",                        # modulus
         "++", "--",                 # increment
         "<<", ">>",                 # bitshift
@@ -73,13 +73,13 @@ class Parser():
         "<", ">", "<=", ">=",       # comparison
         ".",                        # attribution
         "::",                       # scope
-        "->", ":"                   # typing
+        "->", ":",                  # typing
     ]
 
     symbols = [
         ",",
         "//",
-        "{", "}", "(", ")", "[", "]"
+        "{", "}", "(", ")", "[", "]",
     ]
 
     keywords = [

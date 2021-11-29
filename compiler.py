@@ -180,7 +180,7 @@ class Compiler():
 
             def __str__(self):
                 return ("================================================================\n"
-                    + f"{self.type}Exception\n    (Line {self.line_number}): {self.description}\n"
+                    + f"{self.type}Exception\n    Line {self.line_number}: {self.description}\n"
                     + f"    Info: {self.msg}\n\n")
 
             def to_str_with_context(self, txt : str):
@@ -201,11 +201,19 @@ class Compiler():
                     str_rep += line
                     
                 return str_rep
+        
         class UseBeforeInitialize(AbstractException):
             type = "UseBeforeInitialize"
             description = "variable cannot be used before it is initialized"
 
             def __init__(self, msg : str, line_number : int):
+                super().__init__(msg, line_number)
+        
+        class UndefinedVariable(AbstractException):
+            type = "UndefinedVariable"
+            description = "variable is not defined"
+        
+            def __init__(self, msg: str, line_number: int):
                 super().__init__(msg, line_number)
 
 
@@ -269,7 +277,9 @@ class Compiler():
                 found_obj = self._parent_scope.get_object(name)
 
             if found_obj is None:
-                Raise.error(f"cannot find obj: {name}")
+                return Compiler.Exceptions.UseBeforeInitialize(
+                    f"variable {name} is not defined", 
+                    0)
             
             return found_obj
 
@@ -440,7 +450,12 @@ class Compiler():
         @classmethod
         def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
             name = node.leaf_val
-            return [cx.scope.get_object(name)]
+            compiler_obj = cx.scope.get_object(name)
+            if isinstance(compiler_obj, Compiler.Exceptions.AbstractException):
+                compiler_obj.line_number = node.line_number
+                return compiler_obj
+
+            return [compiler_obj]
 
     # TODO: fix
     class function_call_(IRGenerationProcedure):
@@ -657,7 +672,7 @@ class Compiler():
                 new_compiler_obj = Compiler.Object(
                     ir_obj,
                     "#" + left_compiler_obj.type)
-                    
+
                 return Compiler.assigns_._single_assign(left_compiler_obj, new_compiler_obj, cx)
 
 
@@ -671,7 +686,7 @@ class Compiler():
                 ir_obj = cx.builder.icmp_signed(op, *builder_function_params)
                 return [Compiler.Object(
                     ir_obj,
-                    Seer.Types.Primitives.Bool)]
+                    "#" + Seer.Types.Primitives.Bool)]
                 
             else:
                 Raise.code_error(f"op ({op}) is not implemented") 
@@ -765,7 +780,7 @@ class Compiler():
                 statement_compiler_obj = node.vals[i].compile_data[0]
 
                 statement_cx.builder.cbranch(
-                    statement_compiler_obj.get_ir(),
+                    Compiler._deref_ir_obj_if_needed(statement_compiler_obj, cx),
                     codeblock_block,
                     next_statement_block)
 
@@ -831,9 +846,9 @@ class Compiler():
             after_block = args["after_block"]
 
             statement_compiler_obj = node.vals[0].compile_data[0]
-
+            print(Compiler.Definitions.is_primitive(statement_compiler_obj.type))
             statement_cx.builder.cbranch(
-                    statement_compiler_obj.get_ir(),
+                    Compiler._deref_ir_obj_if_needed(statement_compiler_obj, cx),
                     body_block,
                     after_block)
 

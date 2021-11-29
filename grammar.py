@@ -246,7 +246,8 @@ class CFGNormalizer():
     # the pattern of that production_symbol in for it and expand the resulting temporary rule
     def _handle_single_prod_rule_case(self, rule : GrammarRule) -> None:
         substitute_production_symbol = rule.pattern[0]
-        substitutions = [r for r in self.original_cfg.rules if r.production_symbol == substitute_production_symbol]
+        substitutions = [r for r in self.original_cfg.rules 
+            if r.production_symbol == substitute_production_symbol]
 
         for rule_to_sub in substitutions:
             pattern_to_sub = rule_to_sub.pattern_str
@@ -254,12 +255,20 @@ class CFGNormalizer():
             # rule_to_sub.reverse with should be executed before the original rule
             steps_to_reverse_both_rules = [*rule_to_sub.reverse_with, *rule.reverse_with]
             
-            temp_rule = GrammarRule(rule.production_symbol, pattern_to_sub, steps_to_reverse_both_rules)
+            temp_rule = GrammarRule(
+                rule.production_symbol, 
+                pattern_to_sub, 
+                steps_to_reverse_both_rules)
+
             self._expand_rule(temp_rule)
 
     def _expand_rule(self, rule : GrammarRule):
         if CFGNormalizer.is_cnf_rule(rule):
-            self.rules.append(GrammarRule(rule.production_symbol, " ".join(rule.pattern), rule.reverse_with))
+            self.rules.append(GrammarRule(
+                rule.production_symbol, 
+                rule.pattern_str, 
+                rule.reverse_with))
+
             return
         
         if len(rule.pattern) == 1:
@@ -374,9 +383,9 @@ class CYKAlgo():
             rname : str=None
             ) -> None:
             """
-            Entry in the DP table used during the CYK algorithm to reverse production rules. An entry
-            consists of a rule which can produce a section of the table and the coordinates of the 
-            rule.
+            Entry in the DP table used during the CYK algorithm to reverse production rules. 
+            An entry consists of a rule which can produce a section of the table and the
+            coordinates of the rule.
 
             Args:
                 rule (GrammarRule): Rule stored inside the table as a possible production rule
@@ -526,7 +535,10 @@ class CYKAlgo():
                 for rule_pair in rule_pairs:
                     lname, rname = rule_pair
                     producing_rules = self._get_producing_rules(lname, rname)
-                    entries = [CYKAlgo.DpTableEntry(rule, x, y, diagonal_number, delta, lname, rname) for rule in producing_rules]
+                    entries = \
+                        [CYKAlgo.DpTableEntry(rule, x, y, diagonal_number, delta, lname, rname) 
+                         for rule in producing_rules]
+                            
                     self.dp_table[x][y] += entries
 
     @classmethod

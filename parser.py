@@ -129,9 +129,9 @@ class Parser():
         
         def _if_str(self, tok : str) -> list[str | Token]:
             """
-            Called in the case that an object in the input mixed-list is a string. Should map this
-            string to one or more string(s)/Tokens(s) which should be returned inside a list. This list 
-            will be automatically appended to the output mixed-list.
+            Called in the case that an object in the input mixed-list is a string. Should map 
+            this string to one or more string(s)/Tokens(s) which should be returned inside a list. 
+            This list will be automatically appended to the output mixed-list.
 
             Args:
                 tok (str): string object from the input-mixed list.
@@ -144,8 +144,8 @@ class Parser():
         def _if_tok(self, tok : Token) -> list[str | Token]:
             """
             Called in the case that an object in the input mixed-list is a Token. Should map this 
-            Token to one or Token(s) which should be returned inside a list. This list will automatically 
-            be appended to the output mixed-list.
+            Token to one or Token(s) which should be returned inside a list. This list will 
+            automatically be appended to the output mixed-list.
 
             By default it returns the input token unchanged.
 
@@ -472,7 +472,10 @@ class Parser():
                 if tok.type == "symbol" and tok.value == "endl" and last_token.type == "endl":
                     continue
 
-                if cls._islbrace(tok) and last_token.type == "symbol" and last_token.value == "endl":
+                if(cls._islbrace(tok) 
+                    and last_token.type == "symbol" 
+                    and last_token.value == "endl"):
+                    
                     tokens.pop()
                 
                 tokens.append(tok)

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import List, Tuple
 from seer import Seer
 from error import Raise
 from ast import AstNode
@@ -10,52 +10,50 @@ class Compiler():
     _ir_generation_procedures = []
     _is_init = False
 
+
     def __init__(self, asthead : AstNode, txt : str):
         Compiler._init_class()
         self.asthead = asthead
         self.txt = txt
-        self.encountered_fatal_exception = False
-        self.global_scope = Compiler.Scope()
-        self.global_context = Compiler.Context(
-            ir.Module(),
-            None,
-            self.global_scope)
 
-        self._init_primitive_types()
-        self._init_special_objs()
 
     def run(self):
-        self._recursive_descent(self.asthead, self.global_context, self)
+        callback = Compiler.Callback(txt=self.txt)
+        options = Compiler.Options(should_not_emit_ir=True)
+        module = ir.Module()
+        global_context = self._generate_new_global_context(module)
+        self._recursive_descent(self.asthead, global_context, callback, options)
         if(self.encountered_fatal_exception):
             return ""
 
-        return str(self.global_context.module)
+        # callback = Compiler.Callback(txt=self.txt)
+        # options = Compiler.Options(should_not_emit_ir=False)
+        # module = ir.Module()
+        # global_context = self._generate_new_global_context(module)
+        # self._recursive_descent(self.asthead, global_context, callback, options)
+
+        return str(module)
+
 
     @classmethod
     def _init_class(cls):
         cls._is_init = True
 
         cls.ir_generation_procedures = [
+            Compiler.default_,
+            Compiler.unwrap_,
             Compiler.int_,
             Compiler.bool_,
             Compiler.string_,
             Compiler.tag_,
             Compiler.var_decl_,
-            Compiler.start_,
-            Compiler.params_decl_,
             Compiler.var_,
-            Compiler.params_,
             Compiler.function_call_,
             Compiler.function_,
-            Compiler.codeblock_,
             Compiler.return_,
             Compiler.assigns_,
             Compiler.bin_op_,
             Compiler.let_,
-            Compiler.vars_,
-            Compiler.var_decl_tuple_,
-            Compiler.tuple_,
-            Compiler.var_name_tuple_,
             Compiler.if_statement_,
             Compiler.while_statement_
         ]
@@ -67,26 +65,46 @@ class Compiler():
             
             for match in proc.matches:
                 cls._build_map[match] = proc
+    
 
-    def _init_primitive_types(self):
-        self.global_scope.add_type(Seer.Types.Primitives.Int, Compiler.IrTypes.int)
-        self.global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
-        self.global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
-        self.global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.bool)
+    @classmethod
+    def _generate_new_global_context(cls, module) -> Compiler.Context:
+        return Compiler.Context(module, None, cls._generate_new_global_scope(module))
 
-    def _init_special_objs(self):
+
+    @classmethod
+    def _generate_new_global_scope(cls, module) -> Compiler.Scope:
+        global_scope = Compiler.Scope(parent_scope=None)
+        Compiler._init_primitive_types(global_scope)
+        Compiler._init_special_objs(global_scope, module)
+
+        return global_scope
+
+
+    @classmethod
+    def _init_primitive_types(cls, global_scope : Compiler.Scope):
+        global_scope.add_type(Seer.Types.Primitives.Int, Compiler.IrTypes.int)
+        global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
+        global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
+        global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.bool)
+
+    @classmethod
+    def _init_special_objs(cls, global_scope : Compiler.Scope, module):
         ir_print_function_type =  ir.FunctionType(ir.IntType(32), [], var_arg=True)
-        ir_print_function = ir.Function(self.global_context.module, ir_print_function_type, name="printf")
+        ir_print_function = ir.Function(
+            module, 
+            ir_print_function_type, 
+            name="printf")
         
-        self.global_scope.add_type(Compiler.Definitions.print_function_type, ir_print_function_type)
-        self.global_scope.add_obj(
+        global_scope.add_type(Compiler.Definitions.print_function_type, ir_print_function_type)
+        global_scope.add_obj(
             Compiler.Definitions.print_function_name,
             Compiler.Object(
                 ir_print_function, 
                 Compiler.Definitions.print_function_type, 
                 Compiler.Definitions.print_function_name))
         
-        
+
     @classmethod
     def get_build_procedure(cls, op : str):
         found_proc = cls._build_map.get(op, None)
@@ -94,35 +112,37 @@ class Compiler():
             Raise.code_error(f"op {op} is not defined in the build map")
         
         return found_proc
-    
-    def _print_exception(self, exception : Compiler.Exceptions.AbstractException):
-        print(exception.to_str_with_context(self.txt))
+
 
     @classmethod
-    def _recursive_descent(self, astnode : AstNode, cx : Compiler.Context, callback : Compiler):
+    def _recursive_descent(self, 
+            astnode : AstNode, 
+            cx : Compiler.Context, 
+            callback : Compiler.Callback,
+            options : Compiler.Options) -> None:
+
+        # start
         build_procedure : Compiler.IRGenerationProcedure = Compiler.get_build_procedure(astnode.op)
-        rdstate = build_procedure.precompile(astnode, cx)
+        rdstate = build_procedure.precompile(astnode, cx, options)
 
         for child_path in rdstate.get_paths():
             child_cx, child_node = child_path
-            self._recursive_descent(child_node, child_cx, callback)
+            self._recursive_descent(child_node, child_cx, callback, options)
 
-        new_obj = build_procedure.compile(astnode, cx, rdstate.args)
-        if isinstance(new_obj, Compiler.Exceptions.AbstractException):
-            callback._print_exception(new_obj)
-            self.encountered_fatal_exception = True
-            exit(0)
+        new_objs = build_procedure.compile(astnode, cx, rdstate.args, options)
+        for obj in new_objs:
+            if isinstance(obj, Compiler.Exceptions.AbstractException):
+                callback._print_exception(obj)
+                callback.notify_of_fatal_exception()
 
-        astnode.compile_data = new_obj
+        astnode.compile_data = new_objs
      
+
     @classmethod
     def _get_children_compiler_objects(cls, node : AstNode):
         return [child.compile_data for child in node.vals]
-
-    @classmethod
-    def _get_ir_objs(cls, compile_objs : list):
-        return [obj[0].get_ir() for obj in compile_objs]
     
+
     @classmethod
     def _deref_ir_obj_if_needed(cls, compiler_obj : Compiler.Object, cx : Compiler.Context):
         if Compiler.Definitions.is_primitive(compiler_obj.type):
@@ -134,15 +154,14 @@ class Compiler():
 
 
 
-            
 
 
-    class IrTypes():
-        char = ir.IntType(8)
-        bool = ir.IntType(1)
-        int = ir.IntType(32)
-        float = ir.FloatType()
 
+    ################################################################################################
+    ##
+    ## Definitions 
+    ##
+    ################################################################################################
     class Definitions():
         @classmethod
         def type_equality(cls, typeA : str, typeB : str):
@@ -168,7 +187,19 @@ class Compiler():
                 or Compiler.Definitions.type_equality(type, Seer.Types.Primitives.Float)
                 or Compiler.Definitions.type_equality(type, Seer.Types.Primitives.Bool))
 
+    class IrTypes():
+        char = ir.IntType(8)
+        bool = ir.IntType(1)
+        int = ir.IntType(32)
+        float = ir.FloatType()
 
+
+
+    ################################################################################################
+    ##
+    ## Exceptions
+    ##
+    ################################################################################################
     class Exceptions():
         class AbstractException():
             type = None
@@ -179,9 +210,10 @@ class Compiler():
                 self.line_number = line_number
 
             def __str__(self):
+                padding = " "*len(str(self.line_number))
                 return ("================================================================\n"
                     + f"{self.type}Exception\n    Line {self.line_number}: {self.description}\n"
-                    + f"    Info: {self.msg}\n\n")
+                    + f"{padding}     INFO: {self.msg}\n\n")
 
             def to_str_with_context(self, txt : str):
                 str_rep = str(self)
@@ -218,8 +250,16 @@ class Compiler():
 
 
 
-            
 
+
+
+
+            
+    ################################################################################################
+    ##
+    ## Architecture
+    ##
+    ################################################################################################
 
     class Object():
         def __init__(self, ir_obj, type : str, name="", is_initialized=True):
@@ -239,6 +279,9 @@ class Compiler():
 
         def get_ir(self):
             return self._ir_obj
+
+        def get_tag_value(self):
+            return self._ir_obj
         
         def get_function_io(self):
             stripstr = lambda x : x.strip()
@@ -253,7 +296,17 @@ class Compiler():
 
         def matches_type(self, type : str) -> bool:
             return Compiler.Definitions.type_equality(self.type, type)
-        
+
+    class Stub(Object):
+        def __init__(self, type : str, name="", is_initialized=True):
+            self._tag_value = None
+            super().__init__(None, type, name, is_initialized)
+
+        def set_tag_value(self, val : str):
+            self._tag_value = val 
+
+        def get_tag_value(self):
+            return self._tag_value
 
     class Scope():
         def __init__(self, parent_scope : Compiler.Scope = None):
@@ -277,8 +330,8 @@ class Compiler():
                 found_obj = self._parent_scope.get_object(name)
 
             if found_obj is None:
-                return Compiler.Exceptions.UseBeforeInitialize(
-                    f"variable {name} is not defined", 
+                return Compiler.Exceptions.UndefinedVariable(
+                    f"variable '{name}' is not defined", 
                     0)
             
             return found_obj
@@ -295,14 +348,22 @@ class Compiler():
             
             self._defined_types[type] = ir_type
 
-
     class Context():
         def __init__(self, module, builder, scope : Compiler.Scope):
             self.module = module
             self.builder = builder
             self.scope = scope
 
-    class RecursiveDescentIntermediateState:
+    class Options():
+        """
+        Used to supply additional parameters to IRGenerationProcedure(s) without having to modify
+        the precompile/compile signatures
+        """
+
+        def __init__(self, should_not_emit_ir : bool=False):
+            self.should_not_emit_ir = should_not_emit_ir
+
+    class RecursiveDescentIntermediateState():
         def __init__(self):
             self._child_paths : list[tuple[Compiler.Context, AstNode]] = []
             self.args = {}
@@ -316,15 +377,15 @@ class Compiler():
         def get_paths(self) -> list[tuple[Compiler.Context, AstNode]]:
             return self._child_paths
 
-
     class IRGenerationProcedure():
         matches = []
 
         @classmethod
         def precompile(cls, 
-            node : AstNode, 
-            cx : Compiler.Context
-            ) -> Compiler.RecursiveDescentIntermediateState:
+                node : AstNode, 
+                cx : Compiler.Context,
+                options : Compiler.Options=None
+                ) -> Compiler.RecursiveDescentIntermediateState:
             """
             Return a list of child nodes and contexts to use when compiling each child node, as 
             well as a dict of args which will be passed to the compile method.
@@ -343,9 +404,27 @@ class Compiler():
             return rdstate
 
         @classmethod
-        def compile(cls, node : AstNode, cx : Compiler.Context, args : dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options=None) -> list[Compiler.Object]:
+            # start
             return []
         
+    class Callback():
+        def __init__(self, txt : str):
+            self.txt = txt
+            self._encountered_fatal_exception = False
+
+        def notify_of_fatal_exception(self):
+            self.encountered_fatal_exception = True
+
+        def encountered_fatal_exception(self):
+            return self._encountered_fatal_exception
+
+        def _print_exception(self, exception : Compiler.Exceptions.AbstractException):
+            print(exception.to_str_with_context(self.txt))
 
 
 
@@ -362,7 +441,18 @@ class Compiler():
         matches = ["string"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            cobj_type = Seer.Types.Primitives.String
+            if options.should_not_emit_ir:
+                return [Compiler.Stub(cobj_type)]
+
+            # generation 
             str_data = node.literal_val + "\0"
             c_str_data = ir.Constant(
                 ir.ArrayType(Compiler.IrTypes.char, 
@@ -374,86 +464,141 @@ class Compiler():
             
             return [Compiler.Object(
                 c_str,
-                Seer.Types.Primitives.String)]
+                cobj_type)]
 
     class int_(IRGenerationProcedure):
         matches = ["int"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            cobj_type = "#" + Seer.Types.Primitives.Int
+            if options.should_not_emit_ir:
+                return [Compiler.Stub(cobj_type)]
+
+            # generation
             return [Compiler.Object(
                 ir.Constant(Compiler.IrTypes.int, int(node.literal_val)),
-                "#" + Seer.Types.Primitives.Int)]
+                cobj_type)]
     
     class bool_(IRGenerationProcedure):
         matches = ["bool"]
         
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            cobj_type = "#" + Seer.Types.Primitives.Bool
+            if options.should_not_emit_ir:
+                return [Compiler.Stub(cobj_type)]
+
+            # generation
             return [Compiler.Object(
                 ir.Constant(Compiler.IrTypes.bool, True if node.literal_val == "true" else False),
-                "#" + Seer.Types.Primitives.Bool)]
+                cobj_type)]
 
     class tag_(IRGenerationProcedure):
         matches = ["tag"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            cobj_type = Compiler.Definitions.reference_type
+            if options.should_not_emit_ir:
+                stub_obj = Compiler.Stub(cobj_type)
+                stub_obj.set_tag_value(node.leaf_val)
+
+                return [stub_obj]
+            
+            # generation
             return [Compiler.Object(
                 node.leaf_val,
-                Compiler.Definitions.reference_type)]
+                cobj_type)]
 
     class var_decl_(IRGenerationProcedure):
         matches = [":"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # shared
             child_objs = Compiler._get_children_compiler_objects(node)
+            compiler_obj_storing_type_tag = child_objs[1][0]
+            cobj_type = compiler_obj_storing_type_tag.get_tag_value()
+
             # name and type objs should be #reference type
             compiler_objs_storing_name_tag = child_objs[0]
-            compiler_obj_storing_type_tag = child_objs[1][0]
-            type = compiler_obj_storing_type_tag.get_ir()
-            ir_type = cx.scope.get_ir_type(type)
-
+            ir_type = cx.scope.get_ir_type(cobj_type)
             new_compiler_objs = []
             for compiler_obj_storing_name in compiler_objs_storing_name_tag:
-                name_str = compiler_obj_storing_name.get_ir()
-                compiler_obj = Compiler.Object(
-                    cx.builder.alloca(ir_type, name=name_str),
-                    type,
-                    name=name_str)
+                name_str = compiler_obj_storing_name.get_tag_value()
+
+                compiler_obj = None
+                if options.should_not_emit_ir:
+                    # validation
+                    compiler_obj = Compiler.Stub(cobj_type, name=name_str)
+                else:
+                    # generation
+                    compiler_obj = Compiler.Object(
+                        cx.builder.alloca(ir_type, name=name_str),
+                        cobj_type,
+                        name=name_str)
 
                 cx.scope.add_obj(name_str, compiler_obj)
                 new_compiler_objs.append(compiler_obj)
 
             return new_compiler_objs
 
-    class start_(IRGenerationProcedure):
-        matches = ["start"]
+    class default_(IRGenerationProcedure):
+        matches = ["start", "params_decl", "codeblock"]
 
-    class params_decl_(IRGenerationProcedure):
-        matches = ["params_decl"]
-
-    class codeblock_(IRGenerationProcedure):
-        matches = ["codeblock"]
-
-    class params_(IRGenerationProcedure):
-        matches = ["params"]
+    class unwrap_(IRGenerationProcedure):
+        matches = ["params", "vars", "tuple", "var_decl_tuple", "var_name_tuple"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+            # start
             return [child.compile_data[0] for child in node.vals]
 
     class var_(IRGenerationProcedure):
         matches = ["var"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+                
+            # start
             name = node.leaf_val
             compiler_obj = cx.scope.get_object(name)
+
+            # set line_number if exception because 'get_object' method does not have access to it
             if isinstance(compiler_obj, Compiler.Exceptions.AbstractException):
                 compiler_obj.line_number = node.line_number
-                return compiler_obj
 
             return [compiler_obj]
 
@@ -462,7 +607,13 @@ class Compiler():
         matches = ["function_call"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # start
             compiler_func = node.vals[0].compile_data[0]
             compiler_param_objs = node.vals[1].compile_data
             ir_param_objs = []
@@ -473,11 +624,21 @@ class Compiler():
                         f"variable '{compiler_obj.name}' used here but not initialized",
                         node.line_number)
 
-                ir_param_objs.append(Compiler._deref_ir_obj_if_needed(compiler_obj, cx))
+                if options.should_not_emit_ir:
+                    # do nothing
+                    None
+                else:
+                    ir_param_objs.append(Compiler._deref_ir_obj_if_needed(compiler_obj, cx))
+        
+            # validation
+            cobj_type = "TODO"
+            if options.should_not_emit_ir:
+                return [Compiler.Stub(cobj_type)]
 
-            return Compiler.Object(
+            # generation
+            return [Compiler.Object(
                 cx.builder.call(compiler_func.get_ir(), ir_param_objs),
-                "TODO")
+                cobj_type)]
 
     # TODO: fix
     class function_(IRGenerationProcedure):
@@ -506,7 +667,8 @@ class Compiler():
 
         @classmethod
         def _get_function_type(cls, node : AstNode, cx : Compiler.Context):
-            param_tuples, return_tuples = cls._get_function_decl_names_and_types_int_tuple_form(node)
+            param_tuples, return_tuples = \
+                cls._get_function_decl_names_and_types_int_tuple_form(node)
             
             param_types = [x[1] for x in param_tuples]
             return_types = [x[1] for x in return_tuples]
@@ -525,7 +687,8 @@ class Compiler():
 
         @classmethod
         def _add_parameters_to_new_context(cls, node : AstNode, cx : Compiler.Context, func):
-            param_tuples, return_tuples = cls._get_function_decl_names_and_types_int_tuple_form(node)
+            param_tuples, return_tuples = \
+                cls._get_function_decl_names_and_types_int_tuple_form(node)
 
             for i, param_tuple in enumerate(param_tuples):
                 name, type = param_tuple
@@ -546,7 +709,13 @@ class Compiler():
                 cx.scope.add_obj(name, compiler_obj)
 
         @classmethod
-        def precompile(cls, node: AstNode, cx: Compiler.Context):
+        def precompile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context,
+                options : Compiler.Options=None
+                ) -> Compiler.RecursiveDescentIntermediateState:
+
+            # start
             name = cls._get_function_name(node, cx)
 
             # TODO: impl
@@ -563,7 +732,11 @@ class Compiler():
             cx.scope.add_obj(func_name, compiler_obj)
 
             builder = ir.IRBuilder(func.append_basic_block("entry"))
-            new_context = Compiler.Context(cx.module, builder, Compiler.Scope(parent_scope=cx.scope))
+            new_context = Compiler.Context(
+                cx.module, 
+                builder, 
+                Compiler.Scope(parent_scope=cx.scope))
+
             cls._add_parameters_to_new_context(node, new_context, func)
 
             rdstate = Compiler.RecursiveDescentIntermediateState()
@@ -574,19 +747,32 @@ class Compiler():
             return rdstate
         
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+            # start
             new_cx = args["new_cx"]
             if(not new_cx.builder.block.is_terminated):
                 new_cx.builder.ret_void()
             return [args["function"]]
 
-
-
     class return_(IRGenerationProcedure):
         matches = ["return"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+            
+            # validation
+            if options.should_not_emit_ir:
+                return []
+
+            # generation
             cx.builder.ret_void()
             return []
 
@@ -594,15 +780,33 @@ class Compiler():
         matches = ["="]
 
         @classmethod
-        def _single_assign(cls, left_compiler_obj, right_compiler_obj, cx : Compiler.Context):
+        def _single_assign(cls, 
+                left_compiler_obj, 
+                right_compiler_obj, 
+                cx : Compiler.Context, 
+                options : Compiler.Options):
+                
+            # start
             ir_obj_to_assign = Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
             left_compiler_obj.is_initialized=True
+
+            # validation
+            cobj_type = "TODO"
+            if options.should_not_emit_ir:
+                return Compiler.Stub(left_compiler_obj.type)
+
             return Compiler.Object(
                 cx.builder.store(ir_obj_to_assign, left_compiler_obj.get_ir()),
                 left_compiler_obj.type)
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # start
             left_compiler_objs = node.left.compile_data
             right_compiler_objs = node.right.compile_data
 
@@ -611,12 +815,15 @@ class Compiler():
             
             compiler_objs = []
             for left_compiler_obj, right_compiler_obj in zip(left_compiler_objs, right_compiler_objs):
-                compiler_objs.append(cls._single_assign(left_compiler_obj, right_compiler_obj, cx))
+                compiler_objs.append(
+                    cls._single_assign(
+                    left_compiler_obj, 
+                    right_compiler_obj, 
+                    cx, 
+                    options))
 
             return compiler_objs
 
-
-            
     class bin_op_(IRGenerationProcedure):
         matches = [
             "+", "-", "/", "*",
@@ -626,17 +833,18 @@ class Compiler():
         ]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # start
             op = node.op
             ir_obj = None
 
             left_compiler_obj = node.left.compile_data[0]
             right_compiler_obj = node.right.compile_data[0]
-
-            builder_function_params = [
-                Compiler._deref_ir_obj_if_needed(left_compiler_obj, cx),
-                Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
-            ]
 
             if not left_compiler_obj.is_initialized:
                 return Compiler.Exceptions.UseBeforeInitialize(
@@ -647,6 +855,35 @@ class Compiler():
                 return Compiler.Exceptions.UseBeforeInitialize(
                     f"variable '{right_compiler_obj.name}' used here but not initialized",
                     node.line_number)
+
+            # validation
+            cobj_type = "TODO"
+            if options.should_not_emit_ir:
+                if   ( op == "+" 
+                    or op == "-" 
+                    or op == "*" 
+                    or op == "/" 
+                    or op == "+="
+                    or op == "-="
+                    or op == "/="
+                    or op == "*="):
+
+                    return Compiler.Stub(left_compiler_obj.type)
+
+                elif   ( op == "=="
+                    or op == "<="
+                    or op == ">="
+                    or op == "<"
+                    or op == ">"
+                    or op == "!="):
+
+                    return Compiler.Stub("#" + Seer.Types.Primitives.Bool)
+                
+
+            builder_function_params = [
+                Compiler._deref_ir_obj_if_needed(left_compiler_obj, cx),
+                Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
+            ]
 
             if op == "+":
                 ir_obj = cx.builder.add(*builder_function_params)
@@ -699,46 +936,29 @@ class Compiler():
         matches = ["let"]
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+            # start
             compiler_objs = Compiler.var_decl_.compile(node, cx, args)
             for obj in compiler_objs:
                 obj.is_initialized = False
 
             return compiler_objs
-
-    class vars_(IRGenerationProcedure):
-        matches = ["vars"]
-
-        @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
-            return [child.compile_data[0] for child in node.vals]
-
-    class var_decl_tuple_(IRGenerationProcedure):
-        matches = ["var_decl_tuple"]
-
-        @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
-            return [child.compile_data[0] for child in node.vals]
-
-    class tuple_(IRGenerationProcedure):
-        matches = ["tuple"]
-
-        @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
-            return [child.compile_data[0] for child in node.vals]
-
-    class var_name_tuple_(IRGenerationProcedure):
-        matches = ["var_name_tuple"]
-
-        @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
-            return [child.compile_data[0] for child in node.vals]
             
     class if_statement_(IRGenerationProcedure):
         matches = ["if_statement"]
 
         @classmethod
-        def precompile(cls, node: AstNode, cx: Compiler.Context):
+        def precompile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context,
+                options : Compiler.Options=None
+                ) -> Compiler.RecursiveDescentIntermediateState:
+                
+            # start
             rdstate = Compiler.RecursiveDescentIntermediateState()
             new_blocks = [cx.builder.block]
             new_contexts = [cx]
@@ -747,6 +967,11 @@ class Compiler():
             rdstate.add_child(cx, node.vals[0])
 
             for child in node.vals[1:]:
+                if options.should_not_emit_ir:
+                    new_cx = Compiler.Context(cx.module, None, Compiler.Scope(parent_scope=cx.scope))
+                    rdstate.add_child(new_cx= child)
+                    continue
+
                 new_block = cx.builder.append_basic_block()
                 new_blocks.append(new_block)
 
@@ -757,7 +982,10 @@ class Compiler():
 
                 new_contexts.append(new_cx)
                 rdstate.add_child(new_cx, child)
-            
+
+            if options.should_not_emit_ir:
+                return rdstate 
+
             new_blocks.append(cx.builder.append_basic_block())
 
             rdstate.add_arg("blocks", new_blocks)
@@ -766,7 +994,17 @@ class Compiler():
             return rdstate
         
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            if options.should_not_emit_ir:
+                return []
+
+            # start
             n = len(node.vals)
             blocks = args["blocks"]
             contexts = args["contexts"]
@@ -809,8 +1047,24 @@ class Compiler():
         matches = ["while_statement"]
 
         @classmethod
-        def precompile(cls, node: AstNode, cx: Compiler.Context) -> Compiler.RecursiveDescentIntermediateState:
+        def precompile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context,
+                options : Compiler.Options=None
+                ) -> Compiler.RecursiveDescentIntermediateState:
+
+            # start
             rdstate = Compiler.RecursiveDescentIntermediateState()
+
+            # validation
+            if options.should_not_emit_ir:
+                statement_cx = Compiler.Context(cx.module, None, Compiler.Scope(parent_scope=cx.scope))
+                rdstate.add_child(statement_cx, node.vals[0])                
+
+                body_cx = Compiler.Context(cx.module, None, Compiler.Scope(parent_scope=cx.scope))
+                rdstate.add_child(body_cx, node.vals[1])
+
+                return rdstate
 
             statement_block = cx.builder.append_basic_block()
             statement_cx = Compiler.Context(
@@ -838,7 +1092,17 @@ class Compiler():
             return rdstate
 
         @classmethod
-        def compile(cls, node: AstNode, cx: Compiler.Context, args: dict) -> list:
+        def compile(cls, 
+                node : AstNode, 
+                cx : Compiler.Context, 
+                args : dict, 
+                options : Compiler.Options = None) -> list[Compiler.Object]:
+
+            # validation
+            if options.should_not_emit_ir:
+                return []
+
+            # start
             statement_block = args["statement_block"]
             statement_cx = args["statement_cx"]
             body_block = args["body_block"]
@@ -846,7 +1110,6 @@ class Compiler():
             after_block = args["after_block"]
 
             statement_compiler_obj = node.vals[0].compile_data[0]
-            print(Compiler.Definitions.is_primitive(statement_compiler_obj.type))
             statement_cx.builder.cbranch(
                     Compiler._deref_ir_obj_if_needed(statement_compiler_obj, cx),
                     body_block,
@@ -855,4 +1118,6 @@ class Compiler():
             body_cx.builder.branch(statement_block)
             cx.builder.branch(statement_block)
             cx.builder.position_at_start(after_block)
+
+            return []
             

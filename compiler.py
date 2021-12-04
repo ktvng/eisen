@@ -139,7 +139,6 @@ class Compiler():
             self._recursive_descent(child_node, child_cx, callback, options)
 
         new_objs = build_procedure.compile(astnode, cx, rdstate.args, options)
-
         if any(map(lambda obj: isinstance(obj, Compiler.Exceptions.AbstractException), new_objs)):
             amended_objs = []
             for obj in new_objs:
@@ -164,7 +163,7 @@ class Compiler():
     def _deref_ir_obj_if_needed(cls, compiler_obj : Compiler.Object, cx : Compiler.Context):
         if Compiler.Definitions.is_primitive(compiler_obj.type):
             return cx.builder.load(compiler_obj.get_ir())
-        
+
         return compiler_obj.get_ir()
 
 
@@ -248,7 +247,7 @@ class Compiler():
 
                 for i in range(start, end):
                     c = ">>" if i == index_of_line_number else "  "
-                    line = f"     {c} {i+1} \t| {lines[i]}\n" 
+                    line = f"       {c} {i+1} \t| {lines[i]}\n" 
                     str_rep += line
                     
                 return str_rep
@@ -603,6 +602,7 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
             # start
+
             return [child.compile_data[0] for child in node.vals]
 
     class var_(IRGenerationProcedure):
@@ -645,9 +645,12 @@ class Compiler():
 
             for compiler_obj in compiler_param_objs:
                 if not compiler_obj.is_initialized:
-                    return Compiler.Exceptions.UseBeforeInitialize(
+                    exception = Compiler.Exceptions.UseBeforeInitialize(
                         f"variable '{compiler_obj.name}' used here but not initialized",
                         node.line_number)
+                    exception.set_compiler_stub(Compiler.Stub(compiler_obj.type))
+
+                    return [exception]
 
                 if options.should_not_emit_ir:
                     # do nothing
@@ -810,9 +813,8 @@ class Compiler():
                 right_compiler_obj, 
                 cx : Compiler.Context, 
                 options : Compiler.Options):
-                
-            # start
-            ir_obj_to_assign = Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
+
+            # shared
             left_compiler_obj.is_initialized=True
 
             # validation
@@ -820,6 +822,8 @@ class Compiler():
             if options.should_not_emit_ir:
                 return Compiler.Stub(left_compiler_obj.type)
 
+            # start
+            ir_obj_to_assign = Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
             return Compiler.Object(
                 cx.builder.store(ir_obj_to_assign, left_compiler_obj.get_ir()),
                 left_compiler_obj.type)
@@ -840,8 +844,7 @@ class Compiler():
             
             compiler_objs = []
             for left_compiler_obj, right_compiler_obj in zip(left_compiler_objs, right_compiler_objs):
-                compiler_objs.append(
-                    cls._single_assign(
+                compiler_objs.append(cls._single_assign(
                     left_compiler_obj, 
                     right_compiler_obj, 
                     cx, 
@@ -943,8 +946,11 @@ class Compiler():
                     ir_obj,
                     "#" + left_compiler_obj.type)
 
-                return Compiler.assigns_._single_assign(left_compiler_obj, new_compiler_obj, cx)
-
+                return [Compiler.assigns_._single_assign(
+                    left_compiler_obj, 
+                    new_compiler_obj, 
+                    cx, 
+                    options)]
 
 
             elif(op == "<" 

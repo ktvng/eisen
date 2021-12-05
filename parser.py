@@ -1,8 +1,6 @@
 from __future__ import annotations
-import ast
 from typing import Any
 from error import Raise
-from grammar import Grammar
 
 class Token():
     """

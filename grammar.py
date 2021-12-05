@@ -1,6 +1,6 @@
 from __future__ import annotations
 from error import Raise
-from ast import AstNode
+from astnode import AstNode
 import itertools
 
 def is_op(txt : str) -> bool:

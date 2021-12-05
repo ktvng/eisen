@@ -550,7 +550,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start 
             cobj_type = cls._get_cobj_type()
             return [Compiler.Stub(cobj_type)]
             
@@ -561,11 +560,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             cobj_type = cls._get_cobj_type()
             str_data = node.literal_val + "\0"
             c_str_data = ir.Constant(
@@ -595,7 +589,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             cobj_type = cls._get_cobj_type()
             return [Compiler.Stub(cobj_type)]
 
@@ -606,11 +599,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # generation
             cobj_type = cls._get_cobj_type()
             return [Compiler.Object(
                 ir.Constant(Compiler.IrTypes.int, int(node.literal_val)),
@@ -631,7 +619,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]: 
 
-            # start
             cobj_type = cls._get_cobj_type()
             return [Compiler.Stub(cobj_type)]
 
@@ -643,11 +630,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # generation
             cobj_type = cls._get_cobj_type()
             return [Compiler.Object(
                 ir.Constant(Compiler.IrTypes.bool, True if node.literal_val == "true" else False),
@@ -689,11 +671,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-            
-            # generation
             cobj_type = cls._get_cobj_type()
             return [Compiler.Object(
                 cls._get_tag_name(node),
@@ -724,7 +701,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             cobj_type = cls._get_cobj_type(node)
             cobj_names = cls._get_cobj_names(node)
 
@@ -740,11 +716,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             cobj_type = cls._get_cobj_type(node)
             cobj_names = cls._get_cobj_names(node)
             ir_type = cx.scope.get_ir_type(cobj_type)
@@ -773,7 +744,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             return cls.compile(node, cx, args, options)
 
         @classmethod
@@ -783,7 +753,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # start
             return [child.compile_data[0] for child in node.vals]
 
         
@@ -807,7 +776,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             name, cobj = cls._get_name_and_cobj(node, cx)
             if cobj is None:
                 exception = Compiler.Exceptions.UndefinedVariable(
@@ -828,7 +796,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
                 
-            # start
             name, cobj = cls._get_name_and_cobj(node, cx)
             return [cobj]
 
@@ -856,7 +823,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             func_cobj = cls._get_function_cobj(node)
             param_cobjs = cls._get_function_param_cobjs(node)
 
@@ -883,11 +849,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validate
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             func_cobj = cls._get_function_cobj(node)
             param_cobjs = cls._get_function_param_cobjs(node)
 
@@ -975,7 +936,6 @@ class Compiler():
                 options : Compiler.Options = None
                 ) -> Compiler.RecursiveDescentIntermediateState:
 
-            # start
             func_name = cls._get_function_name(node)
             func_type, ir_type = cls._get_function_type(node, cx)
 
@@ -1002,7 +962,6 @@ class Compiler():
                 options : Compiler.Options=None
                 ) -> Compiler.RecursiveDescentIntermediateState:
 
-            # start
             # TODO: impl
             func_name = cls._get_function_name(node)
             func_type, ir_type = cls._get_function_type(node, cx)
@@ -1038,7 +997,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             return [args["function"]]
 
         @classmethod
@@ -1048,7 +1006,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # start
             new_cx = args["new_cx"]
             if(not new_cx.builder.block.is_terminated):
                 new_cx.builder.ret_void()
@@ -1066,7 +1023,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             return []
 
         @classmethod
@@ -1076,11 +1032,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
             
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # generation
             cx.builder.ret_void()
             return []
 
@@ -1123,7 +1074,6 @@ class Compiler():
                 args : dict,
                 options : Compiler.Options=None) -> list[Compiler.Object]:
 
-            # start
             return_objs = []
             
             left_cobjs = node.left.compile_data
@@ -1155,15 +1105,7 @@ class Compiler():
                 cx : Compiler.Context, 
                 options : Compiler.Options):
 
-            # shared
             left_compiler_obj.is_initialized=True
-
-            # validation
-            cobj_type = "TODO"
-            if options.should_not_emit_ir:
-                return Compiler.Stub(left_compiler_obj.type)
-
-            # start
             ir_obj_to_assign = Compiler._deref_ir_obj_if_needed(right_compiler_obj, cx)
             return Compiler.Object(
                 cx.builder.store(ir_obj_to_assign, left_compiler_obj.get_ir()),
@@ -1177,10 +1119,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             left_compiler_objs = node.left.compile_data
             right_compiler_objs = node.right.compile_data
 
@@ -1264,10 +1202,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             op = node.op
             ir_obj = None
 
@@ -1340,7 +1274,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # start
             compiler_objs = Compiler.var_decl_.validate_compile(node, cx, args, options)
             for obj in compiler_objs:
                 obj.is_initialized = False
@@ -1354,11 +1287,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validate
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             return Compiler.var_decl_.compile(node, cx, args, options)
             
 
@@ -1401,11 +1329,6 @@ class Compiler():
                 options : Compiler.Options=None
                 ) -> Compiler.RecursiveDescentIntermediateState:
 
-            # validate
-            if options.should_not_emit_ir:
-                return cls.validate_precompile(node, cx, options)
-
-            # start
             rdstate = Compiler.RecursiveDescentIntermediateState()
             new_blocks = [cx.builder.block]
             new_contexts = [cx]
@@ -1449,11 +1372,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_precompile(node, cx, args, options)
-
-            # start
             n = len(node.vals)
             blocks = args["blocks"]
             contexts = args["contexts"]
@@ -1518,11 +1436,6 @@ class Compiler():
                 options : Compiler.Options=None
                 ) -> Compiler.RecursiveDescentIntermediateState:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_precompile(node, cx, options)
-
-            # start
             rdstate = Compiler.RecursiveDescentIntermediateState()
 
             statement_block = cx.builder.append_basic_block()
@@ -1568,11 +1481,6 @@ class Compiler():
                 args : dict, 
                 options : Compiler.Options = None) -> list[Compiler.Object]:
 
-            # validation
-            if options.should_not_emit_ir:
-                return cls.validate_compile(node, cx, args, options)
-
-            # start
             statement_block = args["statement_block"]
             statement_cx = args["statement_cx"]
             body_block = args["body_block"]

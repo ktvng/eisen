@@ -471,7 +471,7 @@ class CYKAlgo():
             elif tok.type == "bool":
                 ast_queue.append(astnode.literal("bool", tok.value))
             else:
-                Raise.code_error("unimplemented token type")
+                Raise.code_error(f"unimplemented token type: ({tok.type})")
 
         return ast_queue
 
@@ -693,13 +693,24 @@ class AstBuilder():
         flag = "build="
         components = [left, right]
         for reversal_step in entry.rule.reverse_with:
-            if reversal_step == "pass":
-                components = AstBuilder.reverse_with_pool(components)
-            elif reversal_step == "merge":
-                components = AstBuilder.reverse_with_merge(components)
-            elif reversal_step == "pool":
-                components = AstBuilder.reverse_with_pool(components)
-            elif reversal_step[0 : len(flag)] == flag:
-                components = AstBuilder.reverse_with_build(reversal_step[len(flag): ], components)
+            if isinstance(reversal_step, str):
+                if reversal_step == "pass":
+                    components = AstBuilder.reverse_with_pool(components)
+                elif reversal_step == "merge":
+                    components = AstBuilder.reverse_with_merge(components)
+                elif reversal_step == "pool":
+                    components = AstBuilder.reverse_with_pool(components)
+                elif reversal_step[0 : len(flag)] == flag:
+                    components = AstBuilder.reverse_with_build(reversal_step[len(flag): ], components)
+
+            else:
+                if reversal_step.type == "pass":
+                    components = AstBuilder.reverse_with_pool(components)
+                elif reversal_step.type == "merge":
+                    components = AstBuilder.reverse_with_merge(components)
+                elif reversal_step.type == "pool":
+                    components = AstBuilder.reverse_with_pool(components)
+                elif reversal_step.type == "build":
+                    components = AstBuilder.reverse_with_build(reversal_step.value, components)
 
         return components

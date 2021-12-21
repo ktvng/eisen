@@ -115,6 +115,10 @@ class if_statement_(IRGenerationProcedure):
         while i < n:
             codeblock_cx = contexts[i]
 
+            if codeblock_cx.builder.block.is_terminated:
+                i += 1
+                continue
+
             # last block is the block added after the if complex
             codeblock_cx.builder.branch(blocks[-1])
             i += 2

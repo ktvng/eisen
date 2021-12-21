@@ -1,0 +1,310 @@
+# ========================================================
+#
+# GrammarMaster (.gm) 
+#
+# ========================================================
+#
+# Define a general purpose grammar for your language and 
+# specify everything you need with a .gm file.
+# 
+# Subtleties:
+#   We leave deducing how the important bits work to the 
+#   reader! (It's intuitive, trust)
+#
+#   Two sections: 'SYMBOLICS' for lexing and 'STRUCTURE'
+#   for the context free grammar rules.
+#   
+#   'SYMBOLICS' works by alignment of the '->' symbol. 
+#       - This is defined by the line
+#               <regex> -> <type> <value>
+#         and only the position of the '->' matters.
+#
+#       - This means that indentation matters, in this
+#         section only!
+#
+#       - All values are stripped, so if you want spaces
+#         in your regex, figure it out.
+#
+#       - If no value is supplied, then the value of the
+#         regex (if matched) is used for the token.
+#
+#       - A type of 'none' will not add the token during
+#         lexing
+#
+#
+#   'STRUCTURE' uses annotations (e.g '@action ...') to 
+#   define the reversal of CFG rules during parsing.
+#       - The most recent annotation is used for each
+#         CFG rule, so you don't have to keep writing 
+#         annotations all the time.
+#
+#       - Only '@action build' takes another argument 
+#         which is the name of the node you want to build.
+#
+#       - Currently '|' bars must be multiline only. Sorry
+#         :(
+#
+#       - Indentation doesn't really matter, but do it 
+#         anyways.    
+#
+# ========================================================
+# ========================================================
+
+SYMBOLICS
+    <regex> -> <type> <value>
+    fn      -> keyword fn
+    class   -> keyword class
+    this    -> keyword this
+    if      -> keyword if
+    else    -> keyword else
+    for     -> keyword for
+    while   -> keyword while
+    let     -> keyword let
+    return  -> keyword return
+
+    ,       -> symbol ,
+    \s*{\s* -> symbol {
+    }\s*    -> symbol }
+    \[      -> symbol [
+    \]      -> symbol ]
+    \(      -> symbol (
+    \)      -> symbol )
+    \/\/    -> symbol //
+    \n\s*   -> symbol endl
+
+    =       -> operator =
+    :=      -> operator :=
+    <-      -> operator <-
+    \+=     -> operator +=
+    -=      -> operator -=
+    \*=     -> operator *=
+    /=      -> operator /=
+    \?      -> operator ?
+    ==      -> operator ==
+    !=      -> operator !=
+    \+      -> operator +
+    -       -> operator -
+    /       -> operator /
+    \*      -> operator *
+    &&      -> operator &&
+    \|\|    -> operator ||
+    !       -> operator !
+    %       -> operator %
+    \|      -> operator |
+    <       -> operator <
+    >       -> operator >
+    <=      -> operator <=
+    >=      -> operator >=
+    \.      -> operator .
+    ::      -> operator ::
+    ->      -> operator ->
+    :       -> operator :
+
+
+    <regex>                         -> <type> <value>
+    (["'])(?:(?=(\\?))\2.)*?\1      -> string
+    [_a-zA-Z]\w*                    -> var
+    [ |\t|]*                        -> none
+    [0-9]+                          -> int
+
+
+STRUCTURE
+    @action build start
+    START -> CONTEXTS
+
+    @action pass
+    START -> fn var
+
+    @action pass
+    OP_ASSIGN ->
+        |   =
+        |   :=
+
+    @action pass 
+    OP_BIN ->
+        |   +
+        |   -
+        |   /
+        |   *
+        |   <
+        |   >
+        |   <=
+        |   >=
+
+    @action pool
+    CONTEXTS -> 
+        |   CONTEXT
+        |   CONTEXT CONTEXTS
+
+    @action pass
+    CONTEXT -> 
+        |   FUNCTION_CONTEXT
+        |   CLASS_CONTEXT
+
+    @action build class
+    CLASS_CONTEXT -> CLASS_HEADER CLASS_BODY
+
+    @action pass
+    CLASS_HEADER -> class var
+    CLASS_BODY -> { CLASS_ELEMENTS }
+
+    @action pool
+    CLASS_ELEMENTS -> 
+        |   CLASS_ELEMENT
+        |   CLASS_ELEMENT CLASS_ELEMENTS
+
+    @action pass
+    CLASS_ELEMENT -> 
+        |   CLASS_LINE endl
+        |   CLASS_CONTEXT
+        |   CLASS_FUNCTION_CONTEXT
+
+    @action build class_function
+    CLASS_FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+    @action pass
+    CLASS_LINE ->
+        |   VAR_DECL
+        |   VAR_DECL OP_ASSIGN EXPR
+
+    @action build function
+    FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+    @action pool
+    FUNCTION_HEADER ->
+        |   fn var PARAMS_DECL
+        |   fn var PARAMS_DECL RETURN_DECL
+
+    @action build return_decl
+    RETURN_DECL -> 
+        |   -> PARAMS_DECL
+        |   -> VAR_DECL
+
+    @action build params_decl
+    PARAMS_DECL ->
+        |   ( VAR_DECL_TUPLE )
+        |   ( VAR_DECL )
+        |   ( )
+
+    @action pool
+    VAR_DECL_TUPLE_BUILDER ->
+        |   VAR_DECL , VAR_DECL
+        |   VAR_DECL , VAR_DECL_TUPLE_BUILDER
+
+    @action build var_decl_tuple
+    VAR_DECL_TUPLE ->
+        |   VAR_DECL_TUPLE_BUILDER
+        |   ( VAR_DECL_TUPLE_BUILDER )
+
+    @action build codeblock
+    CODE_BLOCK -> { BLOCKS }
+
+    @action pool
+    BLOCKS ->
+        |   BLOCK
+        |   BLOCK BLOCKS
+
+    @action pass
+    BLOCK ->
+        |   CONTROL
+        |   LINE
+
+    CONTROL ->
+        |   IF_STATEMENT
+        |   WHILE_STATEMENT
+
+    @action build if_statement
+    IF_STATEMENT -> IF_CONTEXT
+
+    @action pool
+    IF_CONTEXT ->
+        |   if ( EXPR ) CODE_BLOCK
+        |   if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
+
+    ELSE_STATEMENT ->
+        |   else CODE_BLOCK
+        |   else if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
+        |   else if ( EXPR ) CODE_BLOCK
+
+    @action build while_statement
+    WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK
+
+    @action merge
+    VAR_DECL -> 
+        |   VAR_NAME_TUPLE : var
+        |   var : var
+
+    @action build var_name_tuple
+    VAR_NAME_TUPLE -> VAR_NAME_TUPLE_BUILDER
+
+    @action pool
+    VAR_NAME_TUPLE_BUILDER -> 
+        |   var , VAR
+        |   var , VAR_NAME_TUPLE_BUILDER
+
+    @action build let
+    LET_VAR_DECL -> LET VAR_DECL
+
+    @action pass
+    LINE -> ACTION endl
+    ACTION -> LET_VAR_DECL
+
+    @action merge
+    ACTION -> 
+        |   VAR_DECL_TUPLE OP_ASSIGN TUPLE
+        |   VAR_NAME_TUPLE OP_ASSIGN TUPLE
+        |   LET_VAR_DECL OP_ASSIGN EXPR
+        |   LET_VAR_DECL OP_ASSIGN TUPLE
+        |   VAR_DECL OP_ASSIGN EXPR
+        |   VAR_DECL OP_ASSIGN TUPLE
+        |   var OP_ASSIGN EXPR
+
+    @action pass
+    ACTION -> 
+        |   EXPR
+        |   return
+
+    @action merge
+    EXPR -> 
+        |   EXPR OP_BIN EXPR
+        |   EXPR . var
+        |   EXPR . FUNCTION_CALL
+
+    @action pass
+    EXPR ->
+        |   FUNCTION_CALL
+        |   EXPR -> ( EXPR )
+
+    @action build function_call
+    FUNCTION_CALL -> var PARAMS
+
+    @action build params
+    PARAMS ->
+        |   ( )
+        |   ( EXPR )
+        |   ( TUPLE_BUILDER )
+        |   ( TUPLE_BUILDER, NAMED_PARAMS )
+        |   ( NAMED_PARAMS )
+
+    @action merge
+    NAMED_PARAM -> var = EXPR
+
+    @action pool
+    NAMED_PARAMS -> 
+        |   NAMED_PARAM
+        |   NAMED_PARAM , NAMED_PARAMS
+
+    @action build tuple
+    TUPLE -> 
+        |   TUPLE_BUILDER
+        |   ( TUPLE_BUILDER )
+
+    @action pool
+    TUPLE_BUILDER ->
+        |   EXPR , EXPR
+        |   EXPR , TUPLE_BUILDER
+
+    @action pass
+    EXPR ->
+        |   var
+        |   literal

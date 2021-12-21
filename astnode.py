@@ -91,7 +91,6 @@ class AstNode():
         elif self.type == "literal":
             str_rep += f"{self.op} {self.literal_val}\n"
         else:
-            Raise.code_error("unimplemented astnode type")
+            Raise.code_error(f"unimplemented astnode type: ({self.type})")
         
         return str_rep
-

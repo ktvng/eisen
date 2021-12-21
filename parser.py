@@ -84,7 +84,7 @@ class Parser():
         "class",
         "return",
         "this",
-        "fun",
+        "fn",
         "if",
         "else",
         "for",

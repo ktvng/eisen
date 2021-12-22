@@ -1,6 +1,5 @@
-from parser.cfgnormalizer import CFGNormalizer
-from parser.cykalgo import CYKAlgo
-from parser.astbuilder import AstBuilder
+from grammar import CFGNormalizer
+from parser.cyk import CYKAlgo, AstBuilder
 from config import Config
 
 from error import Raise

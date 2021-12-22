@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from parser.cfgnormalizer import CFGNormalizer
-from grammar import CFGRule, CFG
+from grammar import CFGRule, CFG, CFGNormalizer
 from astnode import AstNode
 from error import Raise
 

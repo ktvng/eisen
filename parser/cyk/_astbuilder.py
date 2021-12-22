@@ -1,6 +1,6 @@
 from error import Raise
 from astnode import AstNode
-from parser.cykalgo import CYKAlgo
+from parser.cyk._cykalgo import CYKAlgo
 
 class AstBuilder():
     def __init__(self, astnodes, dp_table):

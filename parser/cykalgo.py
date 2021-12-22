@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 from parser.cfgnormalizer import CFGNormalizer
-from parser.cfgrule import CFGRule
+from grammar import CFGRule, CFG
 from astnode import AstNode
 from error import Raise
 
 import itertools
-
-class CFG:
-    pass
 
 class CYKAlgo():
     """Class which encapsulates the CYK algo to parse a stream of tokens.

@@ -1,9 +1,4 @@
-from parser.action import Action
-from parser.cfgrule import CFGRule
-
-class CFG:
-    def __init__(self, rules):
-        self.rules = rules
+from grammar import CFG, CFGRule, Action
 
 class CFGNormalizer():
     """

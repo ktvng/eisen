@@ -2,9 +2,7 @@ from __future__ import annotations
 import re
 
 from error import Raise
-from parser.action import Action
-from parser.cfgrule import CFGRule
-from functools import reduce
+from grammar import CFGRule, Action
 
 class RegexTokenRule():
     def __init__(self, regex : str, type : str, value : str=None):

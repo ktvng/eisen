@@ -1,4 +1,5 @@
 from grammar import CFGNormalizer
+from ast import AST
 from parser.cyk import CYKAlgo, AstBuilder
 from config import Config
 
@@ -6,7 +7,7 @@ from error import Raise
 
 class Parser():
     @classmethod
-    def run(cls, config : Config, tokens : list, algo : str="cyk"):
+    def run(cls, config : Config, tokens : list, algo : str="cyk") -> AST:
         if algo == "cyk":
             return CYKParser.run(config, tokens)
         else:
@@ -16,7 +17,7 @@ class Parser():
 
 class CYKParser():
     @classmethod
-    def run(cls, config : Config, tokens : list):
+    def run(cls, config : Config, tokens : list) -> AST:
         normer = CFGNormalizer()
         cfg = normer.run(config.cfg)
 

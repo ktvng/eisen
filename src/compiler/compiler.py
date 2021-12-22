@@ -1,9 +1,7 @@
 from __future__ import annotations
-from os import removedirs
-from typing import ContextManager, List, Tuple
 from seer import Seer
 from error import Raise
-from astnode import AstNode
+from ast import AstNode, AST
 from llvmlite import ir
 
 class Compiler():
@@ -20,14 +18,14 @@ class Compiler():
     _is_init = False
 
     @classmethod
-    def run(cls, asthead : AstNode, txt : str):
+    def run(cls, ast : AST, txt : str):
         Compiler._init_class()
 
         callback = Compiler.Callback(txt=txt)
         options = Compiler.Options(should_not_emit_ir=True)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
-        Compiler._recursive_descent_for_validation(asthead, global_context, callback, options)
+        Compiler._recursive_descent_for_validation(ast.head, global_context, callback, options)
 
         if(callback.encountered_fatal_exception()):
             print(Compiler.Exceptions.delineator, end="")
@@ -41,7 +39,7 @@ class Compiler():
         options = Compiler.Options(should_not_emit_ir=False)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
-        Compiler._recursive_descent(asthead, global_context, callback, options)
+        Compiler._recursive_descent(ast.head, global_context, callback, options)
 
         return str(module)
 

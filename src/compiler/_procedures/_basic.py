@@ -8,7 +8,7 @@ from compiler._definitions import Definitions
 from compiler._ir_types import IrTypes
 from compiler._exceptions import Exceptions
 
-from astnode import AstNode
+from ast import AstNode
 from seer import Seer
 
 from llvmlite import ir

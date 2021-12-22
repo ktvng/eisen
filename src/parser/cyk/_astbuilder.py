@@ -1,5 +1,5 @@
 from error import Raise
-from astnode import AstNode
+from ast import AstNode, AST
 from parser.cyk._cykalgo import CYKAlgo
 
 class AstBuilder():
@@ -7,7 +7,7 @@ class AstBuilder():
         self.astnodes = astnodes
         self.dp_table = dp_table
 
-    def run(self):
+    def run(self) -> AST:
         if "START" not in map(lambda x: x.name, self.dp_table[-1][0]):
             Raise.error("input is ungramatical")
 
@@ -19,7 +19,7 @@ class AstBuilder():
         asthead = ast_list[0]
         self._postprocess(asthead)
 
-        return asthead
+        return AST(asthead)
 
     @classmethod
     def _postprocess(cls, node : AstNode):

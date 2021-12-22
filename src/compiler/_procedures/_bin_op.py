@@ -11,7 +11,7 @@ from compiler._procedures._assigns import assigns_
 from compiler._utils import _deref_ir_obj_if_needed
 
 from seer import Seer
-from astnode import AstNode
+from ast import AstNode
 from error import Raise
 
 from llvmlite import ir

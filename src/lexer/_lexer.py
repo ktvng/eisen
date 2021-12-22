@@ -7,16 +7,7 @@ import typing
 from config import Config
 from error import Raise
 
-class Token2():
-    def __init__(self, type : str, value : str, line_number : int):
-        self.type = type
-        self.value = value
-        self.line_number = line_number
-
-    type_print_len = 16
-    def __str__(self):
-        padding = max(0, self.type_print_len - len(self.type))
-        return f"{self.line_number}\t{self.type}{' ' * padding}{self.value}"
+from lexer._token import Token
 
 class Lexer():
     _newline_regex = re.compile("\n+")
@@ -53,7 +44,7 @@ class Lexer():
                         except:
                             Raise.code_error(f"Supplied callback has no callable function for {rule.type}")
 
-                new_token = Token2(rule.type, token_value, line_number)
+                new_token = Token(rule.type, token_value, line_number)
                 tokens.append(new_token)
 
             text = text[match_len :]

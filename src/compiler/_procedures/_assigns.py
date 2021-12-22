@@ -9,7 +9,7 @@ from compiler._definitions import Definitions
 
 from compiler._utils import _deref_ir_obj_if_needed
 
-from astnode import AstNode
+from ast import AstNode
 
 from llvmlite import ir
 

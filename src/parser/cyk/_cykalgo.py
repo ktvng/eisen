@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from grammar import CFGRule, CFG, CFGNormalizer
-from astnode import AstNode
+from ast import AstNode
 from error import Raise
 
 import itertools

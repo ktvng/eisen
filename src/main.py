@@ -4,6 +4,7 @@ from parser.parser import Parser
 from compiler.compiler import Compiler
 from config import ConfigParser, Config
 from lexer import Lexer
+from ast import AST
 
 class LexerCallback():
     @classmethod

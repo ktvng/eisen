@@ -6,7 +6,7 @@ from compiler._object import Object, Stub
 from compiler._options import Options
 from compiler._exceptions import Exceptions
 
-from astnode import AstNode
+from ast import AstNode
 
 from llvmlite import ir
 

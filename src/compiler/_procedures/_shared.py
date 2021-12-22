@@ -5,7 +5,7 @@ from compiler._context import Context
 from compiler._object import Object
 from compiler._options import Options
 
-from astnode import AstNode
+from ast import AstNode
 
 from llvmlite import ir
 

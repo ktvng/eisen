@@ -3,7 +3,7 @@ from __future__ import annotations
 from ._context import Context
 from ._options import Options
 from ._object import Object
-from astnode import AstNode
+from ast import AstNode
 
 class RecursiveDescentIntermediateState():
     def __init__(self):

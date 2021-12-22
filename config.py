@@ -2,6 +2,8 @@ from __future__ import annotations
 import re
 
 from error import Raise
+from parser.action import Action
+from parser.cfgrule import CFGRule
 from functools import reduce
 
 class RegexTokenRule():
@@ -22,30 +24,12 @@ class RegexTokenRule():
 
         return "", 0, self
 
-class Action():
-    def __init__(self, type : str, value : str = ""):
-        self.type = type
-        self.value = value
-
-class CFGRule2():
-    def __init__(self, production_symbol : str, pattern_str : str, action : Action):
-        self.production_symbol = production_symbol
-        self.pattern_str = pattern_str
-        self.pattern = [s.strip() for s in pattern_str.split(' ') if s != ""]
-        self.actions = [action]
-
-        # TODO: replace with above; here for back-compat
-        self.reverse_with = [action]
-
-    def __str__(self):
-        return f"{self.production_symbol} -> {self.pattern_str}"
-
 class Config():
     class CFG():
-        def __init__(self, rules : list[CFGRule2]):
+        def __init__(self, rules : list[CFGRule]):
             self.rules = rules
 
-    def __init__(self, regex_rules : list[RegexTokenRule], cfg_rules : list[CFGRule2]):
+    def __init__(self, regex_rules : list[RegexTokenRule], cfg_rules : list[CFGRule]):
         self.regex_rules = regex_rules
         self.cfg_rules = cfg_rules
         self.cfg = Config.CFG(cfg_rules)
@@ -205,7 +189,7 @@ class ConfigParser():
 
         match = cls.production_pattern_definition_regex.match(line)
         if match:
-            return True, CFGRule2(current_production_symbol, match.group(1), current_action)
+            return True, CFGRule(current_production_symbol, match.group(1), current_action)
         
         return False, None
 
@@ -213,6 +197,6 @@ class ConfigParser():
     def _try_parse_full_rule_definition(cls, line : str, current_action : Action):
         match = cls.full_rule_definition_regex.match(line)
         if match:
-            return True, CFGRule2(match.group(1), match.group(2), current_action)
+            return True, CFGRule(match.group(1), match.group(2), current_action)
 
         return False, None

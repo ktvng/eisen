@@ -1,6 +1,6 @@
 import sys
 
-from grammar import CYKParser, CYKParser
+from parser.parser import Parser
 from compiler.compiler import Compiler
 from config import ConfigParser, Config
 from lexer import Lexer
@@ -21,7 +21,7 @@ def run(file_name : str):
         # for t in tokens:
         #     print(t.type + " " + t.value)
 
-    ast = CYKParser.run(config, tokens)
+    ast = Parser.run(config, tokens, algo="cyk")
 
     # print("====================") 
     # ast.print()

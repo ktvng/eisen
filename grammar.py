@@ -459,7 +459,8 @@ class CYKAlgo():
             if tok.type == "var":
                 ast_queue.append(astnode.leaf(tok.value))
             elif tok.type == "operator":
-                ast_queue.append(astnode.operator(tok.value, match_with=OpCodes[tok.value]))
+                ast_queue.append(astnode.operator(tok.value, match_with=tok.value))
+                # ast_queue.append(astnode.operator(tok.value, match_with=OpCodes[tok.value]))
             elif tok.type == "symbol":
                 ast_queue.append(astnode.symbol(tok.value))
             elif tok.type == "keyword":
@@ -603,6 +604,7 @@ class AstBuilder():
 
     @classmethod
     def _postprocess(cls, node : AstNode):
+        # return
         if node.op == "let" and node.vals[0].op == ":":
             # remove the ':' node underneath let
             node.vals = node.vals[0].vals

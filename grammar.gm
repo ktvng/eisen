@@ -104,16 +104,15 @@ SYMBOLICS
     <regex>                         -> <type> <value>
     (["'])(?:(?=(\\?))\2.)*?\1      -> string
     [_a-zA-Z]\w*                    -> var
-    [ |\t|]*                        -> none
+    [ |\t]*                         -> none
     [0-9]+                          -> int
 
 
 STRUCTURE
     @action build start
-    START -> CONTEXTS
-
-    @action pass
-    START -> fn var
+    START -> 
+        |   endl CONTEXTS
+        |   CONTEXTS
 
     @action pass
     OP_ASSIGN ->
@@ -130,6 +129,8 @@ STRUCTURE
         |   >
         |   <=
         |   >=
+        |   ==
+        |   !=
 
     @action pool
     CONTEXTS -> 
@@ -243,7 +244,7 @@ STRUCTURE
         |   var , VAR_NAME_TUPLE_BUILDER
 
     @action build let
-    LET_VAR_DECL -> LET VAR_DECL
+    LET_VAR_DECL -> let VAR_DECL
 
     @action pass
     LINE -> ACTION endl

@@ -41,9 +41,14 @@ class CFGRule2():
         return f"{self.production_symbol} -> {self.pattern_str}"
 
 class Config():
+    class CFG():
+        def __init__(self, rules : list[CFGRule2]):
+            self.rules = rules
+
     def __init__(self, regex_rules : list[RegexTokenRule], cfg_rules : list[CFGRule2]):
         self.regex_rules = regex_rules
         self.cfg_rules = cfg_rules
+        self.cfg = Config.CFG(cfg_rules)
 
 class ConfigParser():
     class SymbolicMask():
@@ -211,93 +216,3 @@ class ConfigParser():
             return True, CFGRule2(match.group(1), match.group(2), current_action)
 
         return False, None
-
-class Token2():
-    def __init__(self, type : str, value : str, line_number : int):
-        self.type = type
-        self.value = value
-        self.line_number = line_number
-
-    type_print_len = 16
-    def __str__(self):
-        padding = max(0, self.type_print_len - len(self.type))
-        return f"{self.line_number}\t{self.type}{' ' * padding}{self.value}"
-
-class Lexer():
-    _newline_regex = re.compile("\n+")
-
-    @classmethod
-    def _try_increment_line_number(cls, text : str):
-        match = cls._newline_regex.match(text)
-        if match:
-            return len(match.group(0))
-        
-        return 0
-
-    @classmethod
-    def run(cls, text : str, config : Config):
-        tokens = []
-        line_number = 1
-        while text:
-            match_tuples = [rule.match(text) for rule in config.regex_rules]
-            longest_match = reduce(
-                lambda a, b: a if a[1] >= b[1] else b, 
-                match_tuples)
-
-            line_number += cls._try_increment_line_number(text)
-            match_str, match_len, rule = longest_match
-            token_value = rule.value if rule.value is not None else match_str
-            if rule.type != "none":
-                tokens.append(Token2(rule.type, token_value, line_number))
-
-            text = text[match_len :]
-            if match_len == 0:
-                Raise.code_error(f"Error: no regex matches, head of input: {text[0:10]}")
-
-        return tokens
-
-
-
-cf = ConfigParser.run("./grammar.gm")
-# for rule in cf.cfg_rules:
-#     print(rule)
-
-# for rule in cf.regex_rules:
-#     print(rule)
-
-with open("./test.rs", 'r') as f:
-    text = f.read()
-
-tokens = Lexer.run(text, cf)
-# [print(x) for x in tokens]
-
-from grammar import CFGNormalizer
-
-class CFG2():
-    def __init__(self, rules):
-        self.rules = rules
-
-cfg = CFG2(cf.cfg_rules)
-
-normer = CFGNormalizer()
-cfg = normer.run(cfg)
-
-# for rule in cfg.rules:
-#     print(rule)
-
-from grammar import CYKAlgo
-
-cyk = CYKAlgo(cfg)
-cyk.parse(tokens)
-
-for entry in cyk.dp_table[-1][0]:
-    print(entry.name)
-
-
-from grammar import AstBuilder
-
-ab = AstBuilder(cyk.asts, cyk.dp_table)
-ast = ab.run()
-
-print("########")
-ast.print()

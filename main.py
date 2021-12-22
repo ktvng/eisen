@@ -3,23 +3,47 @@ import sys
 from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
 from parser import Parser
 from compiler.compiler import Compiler
+from config import ConfigParser, Config
+from lexer import Lexer
+
+class LexerCallback():
+    @classmethod
+    def symbol(cls, symbol : str):
+        return symbol
+
+    @classmethod
+    def keyword(cls, keyword : str):
+        return keyword
+
+    @classmethod
+    def operator(cls, operator : str):
+        return operator
+
+    @classmethod
+    def var(cls, var : str):
+        return var
+
+    @classmethod
+    def string(cls, string : str):
+        return string.replace('\\n', '\n')[1 : -1]
+
 
 def run(file_name : str):
-    Grammar.load()
-    cfg = Grammar.implementation
+    config = ConfigParser.run("grammar.gm")
 
-    # print("====================")
-    # print(f"CNF starting symbol is: {cfg.start}")
-    # for rule in cfg.rules:
-    #     print(rule.production_symbol + " -> " + " ".join(rule.pattern))
+    # Grammar.load()
+    # cfg = Grammar.implementation
 
     with open(file_name, 'r') as f:
         txt = f.read()
-        tokens = Parser.tokenize(txt)
+        tokens = Lexer.run(txt, config, LexerCallback)
 
-        print("====================")
-        for t in tokens:
-            print(t.type + " " + t.value)
+        # print("====================")
+        # for t in tokens:
+        #     print(t.type + " " + t.value)
+
+    normer = CFGNormalizer()
+    cfg = normer.run(config.cfg)
 
     algo = CYKAlgo(cfg)
     algo.parse(tokens)

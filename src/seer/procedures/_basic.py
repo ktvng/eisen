@@ -1,9 +1,9 @@
 from __future__ import annotations
-import compiler
 
+import compiler
 from ast import AstNode
 from seer import Seer
-
+from seer._definitions import Definitions
 from llvmlite import ir
 
 class string_(compiler.IRGenerationProcedure):
@@ -111,7 +111,7 @@ class tag_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_cobj_type(cls) -> str:
-        return compiler.Definitions.reference_type
+        return Definitions.reference_type
 
     @classmethod
     def _get_tag_name(cls, node : AstNode) -> str:

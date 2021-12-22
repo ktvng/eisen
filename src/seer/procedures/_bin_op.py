@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 import compiler
-
-from seer._procedures._assigns import assigns_
-
-from compiler._utils import _deref_ir_obj_if_needed
-
+from seer._utils import _deref_ir_obj_if_needed
+from seer.procedures._assigns import assigns_
 from seer import Seer
 from ast import AstNode
 from error import Raise
-
-from llvmlite import ir
 
 class bin_op_(compiler.IRGenerationProcedure):
     matches = [

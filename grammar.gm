@@ -113,6 +113,7 @@ STRUCTURE
     START -> 
         |   endl CONTEXTS
         |   CONTEXTS
+        |   WHILE_STATEMENT
 
     @action pass
     OP_ASSIGN ->
@@ -131,6 +132,10 @@ STRUCTURE
         |   >=
         |   ==
         |   !=
+        |   +=
+        |   -=
+        |   *=
+        |   /=
 
     @action pool
     CONTEXTS -> 

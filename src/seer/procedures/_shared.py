@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import compiler
-
 from ast import AstNode
-
-from llvmlite import ir
 
 class default_(compiler.IRGenerationProcedure):
     matches = ["start", "params_decl", "codeblock"]

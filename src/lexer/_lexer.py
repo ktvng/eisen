@@ -13,14 +13,6 @@ class Lexer():
     _newline_regex = re.compile("\n+")
 
     @classmethod
-    def _try_increment_line_number(cls, text : str):
-        match = cls._newline_regex.match(text)
-        if match:
-            return len(match.group(0))
-        
-        return 0
-
-    @classmethod
     def run(cls, text : str, config : Config, callback : typing.Any=None):
         tokens = []
         line_number = 1
@@ -30,9 +22,9 @@ class Lexer():
                 lambda a, b: a if a[1] >= b[1] else b, 
                 match_tuples)
 
-            line_number += cls._try_increment_line_number(text)
             match_str, match_len, rule = longest_match
             token_value = rule.value if rule.value is not None else match_str
+            line_number += match_str.count('\n')
             if rule.type != "none":
                 # apply a processing function based on the rule.type
                 if callback is not None and hasattr(callback, rule.type):

@@ -1,2 +1,3 @@
 from seer._seer import Seer
-from seer._visitors import Visitors
+from seer._visitor import Visitor
+from seer._definitions import Definitions

@@ -3,8 +3,6 @@ from __future__ import annotations
 import compiler
 from ast import AstNode
 
-from llvmlite import ir
-
 class var_decl_(compiler.IRGenerationProcedure):
     matches = [":"]
 

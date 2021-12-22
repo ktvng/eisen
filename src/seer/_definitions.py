@@ -1,3 +1,5 @@
+import compiler
+
 class Definitions():
     @classmethod
     def type_equality(cls, typeA : str, typeB : str):

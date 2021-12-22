@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import compiler
-
-from compiler._utils import _deref_ir_obj_if_needed
-
+from seer._utils import _deref_ir_obj_if_needed
+from seer._definitions import Definitions
 from ast import AstNode
-
-from llvmlite import ir
 
 class assigns_(compiler.IRGenerationProcedure):
     matches = ["="]
@@ -28,7 +25,7 @@ class assigns_(compiler.IRGenerationProcedure):
         left_cobj.is_initialized = True
         stub_cobj = compiler.Stub(left_cobj.type)
 
-        if not compiler.Definitions.type_equality(left_cobj.type, right_cobj.type):
+        if not Definitions.type_equality(left_cobj.type, right_cobj.type):
             exception = compiler.Exceptions.TypeMismatch(
                 f"left of expression expects '{left_cobj.type}' but got '{right_cobj.type}' instead",
                 node.line_number)

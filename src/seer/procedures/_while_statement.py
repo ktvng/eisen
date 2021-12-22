@@ -1,37 +1,25 @@
 from __future__ import annotations
 
-from compiler import (
-    IRGenerationProcedure,
-    Context,
-    Stub,
-    Options,
-    Exceptions,
-    Definitions,
-    IrTypes,
-    Exceptions
-)
-
-from compiler._utils import _deref_ir_obj_if_needed
-
+import compiler
+from seer._utils import _deref_ir_obj_if_needed
 from ast import AstNode
-
 from llvmlite import ir
 
-class while_statement_(IRGenerationProcedure):
+class while_statement_(compiler.IRGenerationProcedure):
     matches = ["while_statement"]
 
     @classmethod
     def validate_precompile(cls, 
             node : AstNode, 
-            cx : Context,
-            options : Options=None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context,
+            options : compiler.Options=None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
-        rdstate = RecursiveDescentIntermediateState()
-        statement_cx = Context(cx.module, None, Scope(parent_scope=cx.scope))
+        rdstate = compiler.RecursiveDescentIntermediateState()
+        statement_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
         rdstate.add_child(statement_cx, node.vals[0])                
 
-        body_cx = Context(cx.module, None, Scope(parent_scope=cx.scope))
+        body_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
         rdstate.add_child(body_cx, node.vals[1])
 
         return rdstate
@@ -40,23 +28,23 @@ class while_statement_(IRGenerationProcedure):
     @classmethod
     def precompile(cls, 
             node : AstNode, 
-            cx : Context,
-            options : Options=None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context,
+            options : compiler.Options=None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
-        rdstate = RecursiveDescentIntermediateState()
+        rdstate = compiler.RecursiveDescentIntermediateState()
 
         statement_block = cx.builder.append_basic_block()
-        statement_cx = Context(
+        statement_cx = compiler.Context(
             cx.module,
             ir.IRBuilder(block=statement_block),
-            Scope(parent_scope=cx.scope))
+            compiler.Scope(parent_scope=cx.scope))
 
         body_block = cx.builder.append_basic_block()
-        body_cx = Context(
+        body_cx = compiler.Context(
             cx.module,
             ir.IRBuilder(block=body_block),
-            Scope(parent_scope=cx.scope))
+            compiler.Scope(parent_scope=cx.scope))
 
         after_block = cx.builder.append_basic_block()
 
@@ -75,9 +63,9 @@ class while_statement_(IRGenerationProcedure):
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
         return []
 
@@ -85,9 +73,9 @@ class while_statement_(IRGenerationProcedure):
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
         statement_block = args["statement_block"]
         statement_cx = args["statement_cx"]

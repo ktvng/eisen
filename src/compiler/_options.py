@@ -4,6 +4,6 @@ class Options():
     the precompile/compile signatures
     """
 
-    def __init__(self, should_not_emit_ir : bool=False, visitors=None):
+    def __init__(self, should_not_emit_ir : bool=False, visitor=None):
         self.should_not_emit_ir = should_not_emit_ir
-        self.visitors = visitors
+        self.visitor = visitor

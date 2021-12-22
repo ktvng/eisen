@@ -4,7 +4,7 @@ from parser.parser import Parser
 import compiler
 from config import ConfigParser
 from lexer import Lexer
-from seer import Visitors
+from seer import Visitor
 
 class LexerCallback():
     @classmethod
@@ -19,15 +19,14 @@ def run(file_name : str):
         tokens = Lexer.run(txt, config, LexerCallback)
 
         # print("====================")
-        # for t in tokens:
-        #     print(t.type + " " + t.value)
+        # [print(t) for t in tokens]
 
     ast = Parser.run(config, tokens, algo="cyk")
 
     # print("====================") 
     # ast.print()
 
-    code = compiler.Compiler.run(ast, txt, Visitors)
+    code = compiler.Compiler.run(ast, txt, Visitor)
 
     # print("====================")
     # print(code)

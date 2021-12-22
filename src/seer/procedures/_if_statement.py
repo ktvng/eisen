@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import compiler 
-
-from compiler._utils import _deref_ir_obj_if_needed
-
+from seer._utils import _deref_ir_obj_if_needed
 from ast import AstNode
-
 from llvmlite import ir
 
 class if_statement_(compiler.IRGenerationProcedure):

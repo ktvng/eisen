@@ -1,6 +1,7 @@
 from __future__ import annotations
 from error import Raise
 from astnode import AstNode
+from config import Config
 import itertools
 
 def is_op(txt : str) -> bool:
@@ -309,6 +310,23 @@ class CFGNormalizer():
 ## Parsing with Grammar
 ##
 ####################################################################################################
+class CYKParser():
+    @classmethod
+    def run(cls, config : Config, tokens : list):
+        normer = CFGNormalizer()
+        cfg = normer.run(config.cfg)
+
+        algo = CYKAlgo(cfg)
+        algo.parse(tokens)
+
+        # print("====================") 
+        # print("PRODUCING RULES:")
+        # for entry in algo.dp_table[-1][0]:
+        #     print(entry.name)
+
+        ab = AstBuilder(algo.asts, algo.dp_table)
+        return ab.run()
+
 class CYKAlgo():
     """Class which encapsulates the CYK algo to parse a stream of tokens.
     """

@@ -1,38 +1,17 @@
 import sys
 
-from grammar import Grammar, CFGNormalizer, CYKAlgo, AstBuilder
-from parser import Parser
+from grammar import CYKParser, CYKParser
 from compiler.compiler import Compiler
 from config import ConfigParser, Config
 from lexer import Lexer
 
 class LexerCallback():
     @classmethod
-    def symbol(cls, symbol : str):
-        return symbol
-
-    @classmethod
-    def keyword(cls, keyword : str):
-        return keyword
-
-    @classmethod
-    def operator(cls, operator : str):
-        return operator
-
-    @classmethod
-    def var(cls, var : str):
-        return var
-
-    @classmethod
     def string(cls, string : str):
         return string.replace('\\n', '\n')[1 : -1]
 
-
 def run(file_name : str):
     config = ConfigParser.run("grammar.gm")
-
-    # Grammar.load()
-    # cfg = Grammar.implementation
 
     with open(file_name, 'r') as f:
         txt = f.read()
@@ -42,25 +21,12 @@ def run(file_name : str):
         # for t in tokens:
         #     print(t.type + " " + t.value)
 
-    normer = CFGNormalizer()
-    cfg = normer.run(config.cfg)
-
-    algo = CYKAlgo(cfg)
-    algo.parse(tokens)
+    ast = CYKParser.run(config, tokens)
 
     # print("====================") 
-    # print("PRODUCING RULES:")
-    # for entry in algo.dp_table[-1][0]:
-    #     print(entry.name)
+    # ast.print()
 
-    ab = AstBuilder(algo.asts, algo.dp_table)
-    asthead = ab.run()
-
-    # print("====================") 
-    # asthead.print()
-
-    cp = Compiler(asthead, txt)
-    code = cp.run()
+    code = Compiler.run(ast, txt)
 
     # print("====================")
     # print(code)

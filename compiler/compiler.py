@@ -19,19 +19,15 @@ class Compiler():
     _ir_generation_procedures = []
     _is_init = False
 
-
-    def __init__(self, asthead : AstNode, txt : str):
+    @classmethod
+    def run(cls, asthead : AstNode, txt : str):
         Compiler._init_class()
-        self.asthead = asthead
-        self.txt = txt
 
-
-    def run(self):
-        callback = Compiler.Callback(txt=self.txt)
+        callback = Compiler.Callback(txt=txt)
         options = Compiler.Options(should_not_emit_ir=True)
         module = ir.Module()
-        global_context = self._generate_new_global_context(module)
-        self._recursive_descent_for_validation(self.asthead, global_context, callback, options)
+        global_context = Compiler._generate_new_global_context(module)
+        Compiler._recursive_descent_for_validation(asthead, global_context, callback, options)
 
         if(callback.encountered_fatal_exception()):
             print(Compiler.Exceptions.delineator, end="")
@@ -41,11 +37,11 @@ class Compiler():
             print(*msg)
             exit(1)
 
-        callback = Compiler.Callback(txt=self.txt)
+        callback = Compiler.Callback(txt=txt)
         options = Compiler.Options(should_not_emit_ir=False)
         module = ir.Module()
-        global_context = self._generate_new_global_context(module)
-        self._recursive_descent(self.asthead, global_context, callback, options)
+        global_context = Compiler._generate_new_global_context(module)
+        Compiler._recursive_descent(asthead, global_context, callback, options)
 
         return str(module)
 

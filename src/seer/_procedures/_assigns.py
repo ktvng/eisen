@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-from compiler._ir_generation import IRGenerationProcedure
-from compiler._context import Context
-from compiler._object import Object, Stub
-from compiler._options import Options
-from compiler._exceptions import Exceptions
-from compiler._definitions import Definitions
+import compiler
 
 from compiler._utils import _deref_ir_obj_if_needed
 
@@ -13,28 +8,28 @@ from ast import AstNode
 
 from llvmlite import ir
 
-class assigns_(IRGenerationProcedure):
+class assigns_(compiler.IRGenerationProcedure):
     matches = ["="]
 
     @classmethod
     def _validate_single_assign(cls,
             node : AstNode,
-            left_cobj : Object,
-            right_cobj : Object):
+            left_cobj : compiler.Object,
+            right_cobj : compiler.Object):
 
         return_objs = []
         if not right_cobj.is_initialized:
-            exception = Exceptions.UseBeforeInitialize(
+            exception = compiler.Exceptions.UseBeforeInitialize(
                 f"variable {right_cobj.name} is used as assignment value but not initialized",
                 node.line_number)
 
             return_objs.append(exception)
         
         left_cobj.is_initialized = True
-        stub_cobj = Stub(left_cobj.type)
+        stub_cobj = compiler.Stub(left_cobj.type)
 
-        if not Definitions.type_equality(left_cobj.type, right_cobj.type):
-            exception = Exceptions.TypeMismatch(
+        if not compiler.Definitions.type_equality(left_cobj.type, right_cobj.type):
+            exception = compiler.Exceptions.TypeMismatch(
                 f"left of expression expects '{left_cobj.type}' but got '{right_cobj.type}' instead",
                 node.line_number)
             
@@ -47,9 +42,9 @@ class assigns_(IRGenerationProcedure):
     @classmethod
     def validate_compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict,
-            options : Options=None) -> list[Object]:
+            options : compiler.Options=None) -> list[compiler.Object]:
 
         return_objs = []
         
@@ -59,7 +54,7 @@ class assigns_(IRGenerationProcedure):
         left_len = len(left_cobjs)
         right_len = len(right_cobjs)
         if left_len != right_len:
-            exception = Exceptions.TupleSizeMismatch(
+            exception = compiler.Exceptions.TupleSizeMismatch(
                 f"got size '{left_len}' != '{right_len}'",
                 node.line_number)
 
@@ -79,12 +74,12 @@ class assigns_(IRGenerationProcedure):
     def _single_assign(cls, 
             left_compiler_obj, 
             right_compiler_obj, 
-            cx : Context, 
-            options : Options):
+            cx : compiler.Context, 
+            options : compiler.Options):
 
         left_compiler_obj.is_initialized=True
         ir_obj_to_assign = _deref_ir_obj_if_needed(right_compiler_obj, cx)
-        return Object(
+        return compiler.Object(
             cx.builder.store(ir_obj_to_assign, left_compiler_obj.get_ir()),
             left_compiler_obj.type)
 
@@ -92,9 +87,9 @@ class assigns_(IRGenerationProcedure):
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
         left_compiler_objs = node.left.compile_data
         right_compiler_objs = node.right.compile_data

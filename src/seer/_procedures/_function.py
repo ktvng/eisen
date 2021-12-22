@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from compiler._ir_generation import IRGenerationProcedure, RecursiveDescentIntermediateState
-from compiler._context import Context, Scope
-from compiler._object import Object, Stub
-from compiler._options import Options
-from compiler._exceptions import Exceptions
-
+import compiler
 from ast import AstNode
 
 from llvmlite import ir
 
 # TODO: fix
-class function_(IRGenerationProcedure):
+class function_(compiler.IRGenerationProcedure):
     matches = ["function"]
 
     @classmethod
@@ -36,7 +31,7 @@ class function_(IRGenerationProcedure):
         return param_tuples, return_tuples
 
     @classmethod
-    def _get_function_type(cls, node : AstNode, cx : Context):
+    def _get_function_type(cls, node : AstNode, cx : compiler.Context):
         param_tuples, return_tuples = \
             cls._get_function_decl_names_and_types_in_tuple_form(node)
         
@@ -56,14 +51,14 @@ class function_(IRGenerationProcedure):
         return node.vals[0].leaf_val
 
     @classmethod
-    def _add_parameters_to_new_context(cls, node : AstNode, cx : Context, func):
+    def _add_parameters_to_new_context(cls, node : AstNode, cx : compiler.Context, func):
         param_tuples, return_tuples = \
             cls._get_function_decl_names_and_types_in_tuple_form(node)
 
         for i, param_tuple in enumerate(param_tuples):
             name, type = param_tuple
             ir_obj = cx.builder.alloca(cx.scope.get_ir_type(type), name=name)
-            compiler_obj = Object(
+            compiler_obj = compiler.Object(
                 ir_obj,
                 type,
                 name=name)
@@ -72,7 +67,7 @@ class function_(IRGenerationProcedure):
 
         for name, type in return_tuples:
             cx.builder.alloca(cx.scope.get_ir_type(type), name=name)
-            compiler_obj = Object(
+            compiler_obj = compiler.Object(
                 ir_obj,
                 type,
                 name=name)
@@ -82,23 +77,23 @@ class function_(IRGenerationProcedure):
     @classmethod
     def validate_precompile(cls, 
             node : AstNode,
-            cx : Context, 
-            options : Options = None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context, 
+            options : compiler.Options = None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
         func_name = cls._get_function_name(node)
         func_type, ir_type = cls._get_function_type(node, cx)
 
-        func_obj = Stub(func_type, name=func_name)
+        func_obj = compiler.Stub(func_type, name=func_name)
         cx.scope.add_obj(func_name, func_obj)
 
-        func_context = Context(cx.module, None, Scope(parent_scope=cx.scope))
+        func_context = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
         param_tuples, return_tuples = cls._get_function_decl_names_and_types_in_tuple_form(node)
         for param_tuple in param_tuples:
             name, type = param_tuple
-            func_context.scope.add_obj(name, Stub(type, name=name))
+            func_context.scope.add_obj(name, compiler.Stub(type, name=name))
 
-        rdstate = RecursiveDescentIntermediateState()
+        rdstate = compiler.RecursiveDescentIntermediateState()
         rdstate.add_arg("function", func_obj)
         rdstate.add_child(func_context, node.vals[-1])
 
@@ -108,9 +103,9 @@ class function_(IRGenerationProcedure):
     @classmethod
     def precompile(cls, 
             node : AstNode, 
-            cx : Context,
-            options : Options=None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context,
+            options : compiler.Options=None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
         # TODO: impl
         func_name = cls._get_function_name(node)
@@ -118,7 +113,7 @@ class function_(IRGenerationProcedure):
         # TODO: figure out how to get parameter names
         func = ir.Function(cx.module, ir_type, name=func_name)
 
-        compiler_obj = Object(
+        compiler_obj = compiler.Object(
             func,
             func_type,
             name=func_name)
@@ -126,14 +121,14 @@ class function_(IRGenerationProcedure):
         cx.scope.add_obj(func_name, compiler_obj)
 
         builder = ir.IRBuilder(func.append_basic_block("entry"))
-        new_context = Context(
+        new_context = compiler.Context(
             cx.module, 
             builder, 
-            Scope(parent_scope=cx.scope))
+            compiler.Scope(parent_scope=cx.scope))
 
         cls._add_parameters_to_new_context(node, new_context, func)
 
-        rdstate = RecursiveDescentIntermediateState()
+        rdstate = compiler.RecursiveDescentIntermediateState()
         rdstate.add_arg("function", compiler_obj)
         rdstate.add_arg("new_cx", new_context)
         rdstate.add_child(new_context, node.vals[-1])
@@ -143,18 +138,18 @@ class function_(IRGenerationProcedure):
     @classmethod
     def validate_compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict,
-            options : Options=None) -> list[Object]:
+            options : compiler.Options=None) -> list[compiler.Object]:
 
         return [args["function"]]
 
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
         new_cx = args["new_cx"]
         if(not new_cx.builder.block.is_terminated):
@@ -163,25 +158,24 @@ class function_(IRGenerationProcedure):
         return [args["function"]]
 
 
-class return_(IRGenerationProcedure):
+class return_(compiler.IRGenerationProcedure):
     matches = ["return"]
 
     @classmethod
     def validate_compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict,
-            options : Options=None) -> list[Object]:
+            options : compiler.Options=None) -> list[compiler.Object]:
 
         return []
 
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
         
         cx.builder.ret_void()
         return []
-

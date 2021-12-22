@@ -1,7 +1,7 @@
 import sys
 
 from parser.parser import Parser
-from compiler import Compiler
+import compiler
 from config import ConfigParser
 from lexer import Lexer
 from seer import Visitors
@@ -27,7 +27,7 @@ def run(file_name : str):
     # print("====================") 
     # ast.print()
 
-    code = Compiler.run(ast, txt, Visitors)
+    code = compiler.Compiler.run(ast, txt, Visitors)
 
     # print("====================")
     # print(code)

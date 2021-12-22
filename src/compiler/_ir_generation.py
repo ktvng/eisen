@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ._context import Context
-from ._options import Options
-from ._object import Object
+from compiler._context import Context
+from compiler._options import Options
+from compiler._object import Object
 from ast import AstNode
 
 class RecursiveDescentIntermediateState():

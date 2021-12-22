@@ -1,5 +1,3 @@
-from seer import Seer
-
 class Definitions():
     @classmethod
     def type_equality(cls, typeA : str, typeB : str):
@@ -24,6 +22,6 @@ class Definitions():
 
     @classmethod
     def is_primitive(cls, type : str):
-        return (Definitions.type_equality(type, Seer.Types.Primitives.Int) 
-            or Definitions.type_equality(type, Seer.Types.Primitives.Float)
-            or Definitions.type_equality(type, Seer.Types.Primitives.Bool))
+        return (Definitions.type_equality(type, "int") #Seer.Types.Primitives.Int) 
+            or Definitions.type_equality(type, "float") #Seer.Types.Primitives.Float)
+            or Definitions.type_equality(type, "bool")) #Seer.Types.Primitives.Bool))

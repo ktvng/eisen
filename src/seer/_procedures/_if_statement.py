@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from compiler._ir_generation import IRGenerationProcedure, RecursiveDescentIntermediateState
-from compiler._context import Context, Scope
-from compiler._object import Object
-from compiler._options import Options
-from compiler._exceptions import Exceptions
+import compiler 
 
 from compiler._utils import _deref_ir_obj_if_needed
 
@@ -12,17 +8,17 @@ from ast import AstNode
 
 from llvmlite import ir
 
-class if_statement_(IRGenerationProcedure):
+class if_statement_(compiler.IRGenerationProcedure):
     matches = ["if_statement"]
 
     @classmethod
     def validate_precompile(cls, 
             node : AstNode, 
-            cx : Context,
-            options : Options=None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context,
+            options : compiler.Options=None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
-        rdstate = RecursiveDescentIntermediateState()
+        rdstate = compiler.RecursiveDescentIntermediateState()
         # don't need to worry about new blocks
         new_contexts = [cx]
 
@@ -30,7 +26,7 @@ class if_statement_(IRGenerationProcedure):
         rdstate.add_child(cx, node.vals[0])
 
         for child in node.vals[1:]:
-            new_cx = Context(cx.module, None, Scope(parent_scope=cx.scope))
+            new_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
             rdstate.add_child(new_cx, child)
 
         return rdstate
@@ -39,11 +35,11 @@ class if_statement_(IRGenerationProcedure):
     @classmethod
     def precompile(cls, 
             node : AstNode, 
-            cx : Context,
-            options : Options=None
-            ) -> RecursiveDescentIntermediateState:
+            cx : compiler.Context,
+            options : compiler.Options=None
+            ) -> compiler.RecursiveDescentIntermediateState:
 
-        rdstate = RecursiveDescentIntermediateState()
+        rdstate = compiler.RecursiveDescentIntermediateState()
         new_blocks = [cx.builder.block]
         new_contexts = [cx]
 
@@ -54,10 +50,10 @@ class if_statement_(IRGenerationProcedure):
             new_block = cx.builder.append_basic_block()
             new_blocks.append(new_block)
 
-            new_cx = Context(
+            new_cx = compiler.Context(
                 cx.module, 
                 ir.IRBuilder(block=new_block),
-                Scope(parent_scope=cx.scope))
+                compiler.Scope(parent_scope=cx.scope))
 
             new_contexts.append(new_cx)
             rdstate.add_child(new_cx, child)
@@ -73,18 +69,18 @@ class if_statement_(IRGenerationProcedure):
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
             return []
 
     @classmethod
     def compile(cls, 
             node : AstNode, 
-            cx : Context, 
+            cx : compiler.Context, 
             args : dict, 
-            options : Options = None) -> list[Object]:
+            options : compiler.Options = None) -> list[compiler.Object]:
 
         n = len(node.vals)
         blocks = args["blocks"]
@@ -126,3 +122,4 @@ class if_statement_(IRGenerationProcedure):
         cx.builder.position_at_start(blocks[-1])
 
         return []
+        

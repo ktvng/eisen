@@ -1,18 +1,18 @@
 from __future__ import annotations
-from seer import Seer
+from seer._seer import Seer
 from error import Raise
 from ast import AstNode, AST
 from llvmlite import ir
 
-class Compiler():
-    from ._definitions import Definitions
-    from ._ir_types import IrTypes
-    from ._exceptions import Exceptions
-    from ._object import Object
-    from ._context import Scope, Context
-    from ._options import Options
-    from ._ir_generation import IRGenerationProcedure
+from compiler._ir_generation import IRGenerationProcedure
+from compiler._context import Context, Scope
+from compiler._object import Object
+from compiler._options import Options
+from compiler._exceptions import Exceptions
+from compiler._definitions import Definitions
+from compiler._ir_types import IrTypes
 
+class Compiler():
     _build_map = {}
     _ir_generation_procedures = []
     _is_init = False
@@ -20,13 +20,13 @@ class Compiler():
     @classmethod
     def run(cls, ast : AST, txt : str, visitors):
         callback = Compiler.Callback(txt=txt)
-        options = Compiler.Options(should_not_emit_ir=True, visitors=visitors)
+        options = Options(should_not_emit_ir=True, visitors=visitors)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
         Compiler._recursive_descent_for_validation(ast.head, global_context, callback, options)
 
         if(callback.encountered_fatal_exception()):
-            print(Compiler.Exceptions.delineator, end="")
+            print(Exceptions.delineator, end="")
             msg = (
                 "Error: One or more fatal exception were encountered",
                 "during \ncompilation. \n\nFix the above errors before re-running your code.\n")
@@ -34,7 +34,7 @@ class Compiler():
             exit(1)
 
         callback = Compiler.Callback(txt=txt)
-        options = Compiler.Options(should_not_emit_ir=False, visitors=visitors)
+        options = Options(should_not_emit_ir=False, visitors=visitors)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
         Compiler._recursive_descent(ast.head, global_context, callback, options)
@@ -48,13 +48,13 @@ class Compiler():
     ##
     ################################################################################################
     @classmethod
-    def _generate_new_global_context(cls, module) -> Compiler.Context:
-        return Compiler.Context(module, None, cls._generate_new_global_scope(module))
+    def _generate_new_global_context(cls, module) -> Context:
+        return Context(module, None, cls._generate_new_global_scope(module))
 
 
     @classmethod
-    def _generate_new_global_scope(cls, module) -> Compiler.Scope:
-        global_scope = Compiler.Scope(parent_scope=None)
+    def _generate_new_global_scope(cls, module) -> Scope:
+        global_scope = Scope(parent_scope=None)
         Compiler._init_primitive_types(global_scope)
         Compiler._init_special_objs(global_scope, module)
 
@@ -62,28 +62,28 @@ class Compiler():
 
 
     @classmethod
-    def _init_primitive_types(cls, global_scope : Compiler.Scope):
-        global_scope.add_type(Seer.Types.Primitives.Int, Compiler.IrTypes.int)
+    def _init_primitive_types(cls, global_scope : Scope):
+        global_scope.add_type(Seer.Types.Primitives.Int, IrTypes.int)
         global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
-        global_scope.add_type(Seer.Types.Primitives.Float, Compiler.IrTypes.float)
-        global_scope.add_type(Seer.Types.Primitives.Bool, Compiler.IrTypes.bool)
+        global_scope.add_type(Seer.Types.Primitives.Float, IrTypes.float)
+        global_scope.add_type(Seer.Types.Primitives.Bool,IrTypes.bool)
 
 
     @classmethod
-    def _init_special_objs(cls, global_scope : Compiler.Scope, module):
+    def _init_special_objs(cls, global_scope : Scope, module):
         ir_print_function_type =  ir.FunctionType(ir.IntType(32), [], var_arg=True)
         ir_print_function = ir.Function(
             module, 
             ir_print_function_type, 
             name="printf")
         
-        global_scope.add_type(Compiler.Definitions.print_function_type, ir_print_function_type)
+        global_scope.add_type(Definitions.print_function_type, ir_print_function_type)
         global_scope.add_obj(
-            Compiler.Definitions.print_function_name,
-            Compiler.Object(
+            Definitions.print_function_name,
+            Object(
                 ir_print_function, 
-                Compiler.Definitions.print_function_type, 
-                Compiler.Definitions.print_function_name))
+                Definitions.print_function_type, 
+                Definitions.print_function_name))
 
 
     ################################################################################################
@@ -104,11 +104,11 @@ class Compiler():
     @classmethod
     def _recursive_descent_for_validation(self,
             astnode : AstNode,
-            cx : Compiler.Context,
-            callback : Compiler.Callback,
-            options : Compiler.Options) -> None:
+            cx : Context,
+            callback : Callback,
+            options : Options) -> None:
 
-        build_procedure : Compiler.IRGenerationProcedure = \
+        build_procedure : IRGenerationProcedure = \
             Compiler.get_build_procedure(astnode.op, options.visitors)
 
         rdstate = build_procedure.validate_precompile(astnode, cx, options)
@@ -127,10 +127,10 @@ class Compiler():
         # The list of new_objs is expected to contain exceptions and objects together. If exceptions 
         # contain references to stub objects, these are unpacked into the amended objs. Otherwise 
         # the exceptions are filtered out. All objects are moved to amended_objs in order
-        if any(map(lambda obj: isinstance(obj, Compiler.Exceptions.AbstractException), new_objs)):
+        if any(map(lambda obj: isinstance(obj, Exceptions.AbstractException), new_objs)):
             amended_objs = []
             for obj in new_objs:
-                if isinstance(obj, Compiler.Exceptions.AbstractException):
+                if isinstance(obj, Exceptions.AbstractException):
                     callback._print_exception(obj)
                     callback.notify_of_fatal_exception()
                     if(obj.has_stub()):
@@ -146,12 +146,12 @@ class Compiler():
     @classmethod
     def _recursive_descent(self, 
             astnode : AstNode, 
-            cx : Compiler.Context, 
+            cx : Context, 
             callback : Compiler.Callback,
-            options : Compiler.Options) -> None:
+            options : Options) -> None:
 
         # start
-        build_procedure : Compiler.IRGenerationProcedure = \
+        build_procedure : IRGenerationProcedure = \
             Compiler.get_build_procedure(astnode.op, options.visitors)
             
         rdstate = build_procedure.precompile(astnode, cx, options)
@@ -192,5 +192,5 @@ class Compiler():
         def encountered_fatal_exception(self):
             return self._encountered_fatal_exception
 
-        def _print_exception(self, exception : Compiler.Exceptions.AbstractException):
+        def _print_exception(self, exception : Exceptions.AbstractException):
             print(exception.to_str_with_context(self.txt))

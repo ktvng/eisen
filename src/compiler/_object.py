@@ -1,5 +1,3 @@
-from ._definitions import Definitions
-
 class Object():
     def __init__(self, ir_obj, type : str, name="", is_initialized=True):
         self._ir_obj = ir_obj
@@ -34,7 +32,7 @@ class Object():
         return params, returns
 
     def matches_type(self, type : str) -> bool:
-        return Definitions.type_equality(self.type, type)
+        return self.type == type
 
 class Stub(Object):
     def __init__(self, type : str, name="", is_initialized=True):

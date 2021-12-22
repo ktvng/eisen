@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from compiler._ir_generation import IRGenerationProcedure, RecursiveDescentIntermediateState
-from compiler._context import Context, Scope
-from compiler._object import Object
-from compiler._options import Options
-from compiler._exceptions import Exceptions
+from compiler import (
+    IRGenerationProcedure,
+    Context,
+    Stub,
+    Options,
+    Exceptions,
+    Definitions,
+    IrTypes,
+    Exceptions
+)
 
 from compiler._utils import _deref_ir_obj_if_needed
 

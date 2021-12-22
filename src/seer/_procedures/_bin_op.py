@@ -6,7 +6,7 @@ from compiler._object import Object, Stub
 from compiler._options import Options
 from compiler._exceptions import Exceptions
 from compiler._definitions import Definitions
-from compiler._procedures._assigns import assigns_
+from seer._procedures._assigns import assigns_
 
 from compiler._utils import _deref_ir_obj_if_needed
 

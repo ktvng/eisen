@@ -8,21 +8,19 @@ class Compiler():
     from ._definitions import Definitions
     from ._ir_types import IrTypes
     from ._exceptions import Exceptions
-    from ._object import Object, Stub
+    from ._object import Object
     from ._context import Scope, Context
     from ._options import Options
-    from ._ir_generation import IRGenerationProcedure, RecursiveDescentIntermediateState
+    from ._ir_generation import IRGenerationProcedure
 
     _build_map = {}
     _ir_generation_procedures = []
     _is_init = False
 
     @classmethod
-    def run(cls, ast : AST, txt : str):
-        Compiler._init_class()
-
+    def run(cls, ast : AST, txt : str, visitors):
         callback = Compiler.Callback(txt=txt)
-        options = Compiler.Options(should_not_emit_ir=True)
+        options = Compiler.Options(should_not_emit_ir=True, visitors=visitors)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
         Compiler._recursive_descent_for_validation(ast.head, global_context, callback, options)
@@ -36,7 +34,7 @@ class Compiler():
             exit(1)
 
         callback = Compiler.Callback(txt=txt)
-        options = Compiler.Options(should_not_emit_ir=False)
+        options = Compiler.Options(should_not_emit_ir=False, visitors=visitors)
         module = ir.Module()
         global_context = Compiler._generate_new_global_context(module)
         Compiler._recursive_descent(ast.head, global_context, callback, options)
@@ -49,41 +47,6 @@ class Compiler():
     ## Initialization
     ##
     ################################################################################################
-    @classmethod
-    def _init_class(cls):
-        if cls._is_init:
-            return
-
-        cls._is_init = True
-
-        cls.ir_generation_procedures = [
-            Compiler.default_,
-            Compiler.unwrap_,
-            Compiler.int_,
-            Compiler.bool_,
-            Compiler.string_,
-            Compiler.tag_,
-            Compiler.var_decl_,
-            Compiler.var_,
-            Compiler.function_call_,
-            Compiler.function_,
-            Compiler.return_,
-            Compiler.assigns_,
-            Compiler.bin_op_,
-            Compiler.let_,
-            Compiler.if_statement_,
-            Compiler.while_statement_
-        ]
-
-        cls._build_map = {}
-        for proc in cls.ir_generation_procedures:
-            if not proc.matches:
-                Raise.code_error(f"{proc} requires matches field")
-            
-            for match in proc.matches:
-                cls._build_map[match] = proc
-    
-
     @classmethod
     def _generate_new_global_context(cls, module) -> Compiler.Context:
         return Compiler.Context(module, None, cls._generate_new_global_scope(module))
@@ -129,11 +92,12 @@ class Compiler():
     ##
     ################################################################################################
     @classmethod
-    def get_build_procedure(cls, op : str):
-        found_proc = cls._build_map.get(op, None)
+    def get_build_procedure(cls, op : str, visitors):
+        found_proc = visitors.build_map.get(op, None)
         if found_proc is None:
+            print("here")
             Raise.code_error(f"op {op} is not defined in the build map")
-        
+
         return found_proc
 
 
@@ -144,7 +108,9 @@ class Compiler():
             callback : Compiler.Callback,
             options : Compiler.Options) -> None:
 
-        build_procedure : Compiler.IRGenerationProcedure = Compiler.get_build_procedure(astnode.op)
+        build_procedure : Compiler.IRGenerationProcedure = \
+            Compiler.get_build_procedure(astnode.op, options.visitors)
+
         rdstate = build_procedure.validate_precompile(astnode, cx, options)
 
         for child_path in rdstate.get_paths():
@@ -185,7 +151,9 @@ class Compiler():
             options : Compiler.Options) -> None:
 
         # start
-        build_procedure : Compiler.IRGenerationProcedure = Compiler.get_build_procedure(astnode.op)
+        build_procedure : Compiler.IRGenerationProcedure = \
+            Compiler.get_build_procedure(astnode.op, options.visitors)
+            
         rdstate = build_procedure.precompile(astnode, cx, options)
 
         for child_path in rdstate.get_paths():
@@ -226,19 +194,3 @@ class Compiler():
 
         def _print_exception(self, exception : Compiler.Exceptions.AbstractException):
             print(exception.to_str_with_context(self.txt))
-
-
-    ################################################################################################
-    ##
-    ## Compiler generation procedures
-    ##
-    ################################################################################################
-    from ._procedures._basic import string_, int_, bool_, tag_, var_
-    from ._procedures._shared import default_, unwrap_
-    from ._procedures._var_decl import var_decl_, let_
-    from ._procedures._function_call import function_call_
-    from ._procedures._function import function_, return_
-    from ._procedures._assigns import assigns_
-    from ._procedures._bin_op import bin_op_
-    from ._procedures._if_statement import if_statement_
-    from ._procedures._while_statement import while_statement_

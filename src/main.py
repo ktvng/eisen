@@ -1,10 +1,10 @@
 import sys
 
 from parser.parser import Parser
-from compiler.compiler import Compiler
-from config import ConfigParser, Config
+from compiler import Compiler
+from config import ConfigParser
 from lexer import Lexer
-from ast import AST
+from seer import Visitors
 
 class LexerCallback():
     @classmethod
@@ -27,7 +27,7 @@ def run(file_name : str):
     # print("====================") 
     # ast.print()
 
-    code = Compiler.run(ast, txt)
+    code = Compiler.run(ast, txt, Visitors)
 
     # print("====================")
     # print(code)

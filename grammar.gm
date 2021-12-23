@@ -69,7 +69,6 @@ SYMBOLICS
     \]      -> symbol ]
     \(      -> symbol (
     \)      -> symbol )
-    \/\/    -> symbol //
     \n\s*   -> symbol endl
 
     =       -> operator =
@@ -103,11 +102,13 @@ SYMBOLICS
 
     <regex>                         -> <type> <value>
     (["'])(?:(?=(\\?))\2.)*?\1      -> string
-    [_a-zA-Z]\w*                    -> var
     [ |\t]*                         -> none
     [0-9]+                          -> int
+    true|false                      -> bool
 
-
+    [_a-zA-Z]\w*                    -> var
+    [ |\t]*\/\/.*?\n+               -> none
+    
 STRUCTURE
     @action build start
     START -> 
@@ -245,7 +246,7 @@ STRUCTURE
 
     @action pool
     VAR_NAME_TUPLE_BUILDER -> 
-        |   var , VAR
+        |   var , var
         |   var , VAR_NAME_TUPLE_BUILDER
 
     @action build let

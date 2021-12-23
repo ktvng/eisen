@@ -1,5 +1,5 @@
 class Exceptions():
-    delineator = "================================================================\n"
+    delineator = "="*80+"\n"
 
     class AbstractException():
         type = None

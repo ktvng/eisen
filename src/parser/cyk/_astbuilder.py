@@ -21,6 +21,7 @@ class AstBuilder():
 
         return AST(asthead)
 
+    # TODO: this should be abstracted out to some seer callback
     @classmethod
     def _postprocess(cls, node : AstNode):
         # return
@@ -67,6 +68,7 @@ class AstBuilder():
             else:
                 flattened_comps.append(comp)
 
+        # TODO: this should be abstracted out. Allow for custom build methods
         newnode = AstNode()
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
@@ -78,6 +80,30 @@ class AstBuilder():
         
         return [newnode]
 
+    # TODO:
+    # merge to be replaced with consume
+    #
+    # @action consume B
+    # X -> A B C
+    # build would have (1) fix build to do this, takes no arguments
+    #            X 
+    #         /  |  \
+    #        A   B   C
+    # 
+    # but consume would have
+    #            B
+    #           / \
+    #          A   C
+    #
+    # and
+    # @action consume C
+    # X -> A B C
+    # yields
+    #            C
+    #           / \
+    #          A   B
+    #
+    #
     @classmethod
     def reverse_with_build(cls, build_name : str, components : list):
         newnode = AstNode()

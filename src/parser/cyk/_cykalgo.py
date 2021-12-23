@@ -147,6 +147,7 @@ class CYKAlgo():
 
         # end class
 
+    # TODO: this should be standardized based on type:value of each token
     @classmethod
     def tokens_to_ast_queue(cls, tokens : list) -> list[AstNode]:
         ast_queue = []

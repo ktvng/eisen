@@ -22,7 +22,7 @@ class CFGNormalizer():
         for rule in cfg.rules:
             self._expand_rule(rule)
 
-        new_cfg = CFG(self.rules)
+        new_cfg = CFG(self.rules, self.original_cfg.terminals)
         # new_cfg.set_start(self.starting_rule_name)
 
         return new_cfg
@@ -32,11 +32,11 @@ class CFGNormalizer():
         return "_CONNECTOR" in name and name[-1] == "_"
 
     @classmethod
-    def is_cnf_rule(cls, rule : CFGRule) -> bool:
+    def is_cnf_rule(cls, cfg : CFG, rule : CFGRule) -> bool:
         if len(rule.pattern) == 2:
-            return all(map(CFGRule.is_production_symbol, rule.pattern))
+            return all(map(cfg.is_production_symbol, rule.pattern))
         elif len(rule.pattern) == 1:
-            return not CFGRule.is_production_symbol(rule.pattern[0])
+            return not cfg.is_production_symbol(rule.pattern[0])
         else:
             return False
 
@@ -102,7 +102,7 @@ class CFGNormalizer():
             self._expand_rule(temp_rule)
 
     def _expand_rule(self, rule : CFGRule):
-        if CFGNormalizer.is_cnf_rule(rule):
+        if CFGNormalizer.is_cnf_rule(self.original_cfg, rule):
             self.rules.append(CFGRule(
                 rule.production_symbol, 
                 rule.pattern_str, 
@@ -115,7 +115,7 @@ class CFGNormalizer():
             return
 
         # working pattern is a list of CFG production_symbols
-        working_pattern = [part if CFGRule.is_production_symbol(part) 
+        working_pattern = [part if self.original_cfg.is_production_symbol(part) 
             else self._get_rule_for_literal(part).production_symbol
             for part in rule.pattern]
 

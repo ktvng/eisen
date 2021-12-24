@@ -4,14 +4,14 @@ from compiler._context import Context
 from compiler._options import Options
 from compiler._object import Object
 from compiler._intermediatestate import RecursiveDescentIntermediateState
-from ast import AstNode
+from asts import ASTNode
 
 class IRGenerationProcedure():
     matches = []
 
     @classmethod
     def precompile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : Context,
             options : Options=None
             ) -> RecursiveDescentIntermediateState:
@@ -20,7 +20,7 @@ class IRGenerationProcedure():
         well as a dict of args which will be passed to the compile method.
 
         Args:
-            node (AstNode): Node to precompile
+            node (ASTNode): Node to precompile
             cx (Context): Context to precompile node over.
 
         Returns:
@@ -34,7 +34,7 @@ class IRGenerationProcedure():
 
     @classmethod
     def validate_precompile(cls,
-            node : AstNode,
+            node : ASTNode,
             cx : Context,
             options : Options=None
             ) -> RecursiveDescentIntermediateState:
@@ -48,7 +48,7 @@ class IRGenerationProcedure():
         
     @classmethod
     def validate_compile(cls,
-            node : AstNode,
+            node : ASTNode,
             cx : Context,
             args : dict,
             options : Options=None) -> list[Object]:
@@ -58,7 +58,7 @@ class IRGenerationProcedure():
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : Context, 
             args : dict, 
             options : Options=None) -> list[Object]:

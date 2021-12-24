@@ -60,7 +60,7 @@ SYMBOLICS
     for     -> keyword for
     while   -> keyword while
     let     -> keyword let
-    return  -> keyword return
+    return  -> keyword RETURN
 
     ,       -> symbol ,
     \s*{\s* -> symbol {
@@ -106,7 +106,7 @@ SYMBOLICS
     [0-9]+                          -> int
     true|false                      -> bool
 
-    [_a-zA-Z]\w*                    -> var
+    [_a-zA-Z]\w*                    -> TAG
     [ |\t]*\/\/.*?\n+               -> none
     
 STRUCTURE
@@ -114,7 +114,7 @@ STRUCTURE
     START -> 
         |   endl CONTEXTS
         |   CONTEXTS
-        |   WHILE_STATEMENT
+        |   VAR endl
 
     @action pass
     OP_ASSIGN ->
@@ -152,7 +152,7 @@ STRUCTURE
     CLASS_CONTEXT -> CLASS_HEADER CLASS_BODY
 
     @action pass
-    CLASS_HEADER -> class var
+    CLASS_HEADER -> class VAR
     CLASS_BODY -> { CLASS_ELEMENTS }
 
     @action pool
@@ -179,8 +179,8 @@ STRUCTURE
 
     @action pool
     FUNCTION_HEADER ->
-        |   fn var PARAMS_DECL
-        |   fn var PARAMS_DECL RETURN_DECL
+        |   fn TAG PARAMS_DECL
+        |   fn TAG PARAMS_DECL RETURN_DECL
 
     @action build return_decl
     RETURN_DECL -> 
@@ -238,16 +238,16 @@ STRUCTURE
 
     @action merge
     VAR_DECL -> 
-        |   VAR_NAME_TUPLE : var
-        |   var : var
+        |   VAR_NAME_TUPLE : TAG
+        |   TAG : TAG
 
     @action build var_name_tuple
     VAR_NAME_TUPLE -> VAR_NAME_TUPLE_BUILDER
 
     @action pool
     VAR_NAME_TUPLE_BUILDER -> 
-        |   var , var
-        |   var , VAR_NAME_TUPLE_BUILDER
+        |   TAG , TAG
+        |   TAG , VAR_NAME_TUPLE_BUILDER
 
     @action build let
     LET_VAR_DECL -> let VAR_DECL
@@ -264,17 +264,17 @@ STRUCTURE
         |   LET_VAR_DECL OP_ASSIGN TUPLE
         |   VAR_DECL OP_ASSIGN EXPR
         |   VAR_DECL OP_ASSIGN TUPLE
-        |   var OP_ASSIGN EXPR
+        |   VAR OP_ASSIGN EXPR
 
     @action pass
     ACTION -> 
         |   EXPR
-        |   return
+        |   RETURN
 
     @action merge
     EXPR -> 
         |   EXPR OP_BIN EXPR
-        |   EXPR . var
+        |   EXPR . VAR
         |   EXPR . FUNCTION_CALL
 
     @action pass
@@ -283,7 +283,7 @@ STRUCTURE
         |   EXPR -> ( EXPR )
 
     @action build function_call
-    FUNCTION_CALL -> var PARAMS
+    FUNCTION_CALL -> VAR PARAMS
 
     @action build params
     PARAMS ->
@@ -294,7 +294,7 @@ STRUCTURE
         |   ( NAMED_PARAMS )
 
     @action merge
-    NAMED_PARAM -> var = EXPR
+    NAMED_PARAM -> VAR = EXPR
 
     @action pool
     NAMED_PARAMS -> 
@@ -313,5 +313,15 @@ STRUCTURE
 
     @action pass
     EXPR ->
-        |   var
-        |   literal
+        |   VAR
+        |   LITERAL
+
+    @action pass
+    LITERAL ->
+        |   int
+        |   string
+        |   bool
+        |   float
+
+    @action convert VAR
+    VAR -> TAG

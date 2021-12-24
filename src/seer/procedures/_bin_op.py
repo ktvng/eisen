@@ -4,7 +4,7 @@ import compiler
 from seer._utils import _deref_ir_obj_if_needed
 from seer.procedures._assigns import assigns_
 from seer import Seer
-from ast import AstNode
+from asts import ASTNode
 from error import Raise
 
 class bin_op_(compiler.IRGenerationProcedure):
@@ -18,15 +18,15 @@ class bin_op_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
         # start
         op = node.op
-        left_cobj = node.left.compile_data[0]
-        right_cobj = node.right.compile_data[0]
+        left_cobj = node.vals[0].compile_data[0]
+        right_cobj = node.vals[1].compile_data[0]
 
         exception_msg = ""
         if not left_cobj.is_initialized:
@@ -74,7 +74,7 @@ class bin_op_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -82,8 +82,8 @@ class bin_op_(compiler.IRGenerationProcedure):
         op = node.op
         ir_obj = None
 
-        left_compiler_obj = node.left.compile_data[0]
-        right_compiler_obj = node.right.compile_data[0]                
+        left_compiler_obj = node.vals[0].compile_data[0]
+        right_compiler_obj = node.vals[1].compile_data[0]                
 
         builder_function_params = [
             _deref_ir_obj_if_needed(left_compiler_obj, cx),

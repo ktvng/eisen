@@ -1,5 +1,5 @@
 from grammar import CFGNormalizer
-from ast import AST
+from asts import AST
 from parser.cyk import CYKAlgo, AstBuilder
 from config import Config
 
@@ -24,10 +24,10 @@ class CYKParser():
         algo = CYKAlgo(cfg)
         algo.parse(tokens)
 
-        # print("====================") 
-        # print("PRODUCING RULES:")
-        # for entry in algo.dp_table[-1][0]:
-        #     print(entry.name)
+        print("====================") 
+        print("PRODUCING RULES:")
+        for entry in algo.dp_table[-1][0]:
+            print(entry.name)
 
         ab = AstBuilder(algo.asts, algo.dp_table)
         return ab.run()

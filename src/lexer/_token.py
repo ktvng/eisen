@@ -1,8 +1,11 @@
+from config import RegexTokenRule
+
 class Token():
-    def __init__(self, type : str, value : str, line_number : int):
+    def __init__(self, type : str, value : str, line_number : int, rule : RegexTokenRule):
         self.type = type
         self.value = value
         self.line_number = line_number
+        self.rule = rule
 
     type_print_len = 16
     def __str__(self):

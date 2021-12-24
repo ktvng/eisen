@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import compiler
-from ast import AstNode
+from asts import ASTNode
 from seer import Seer
 from seer._definitions import Definitions
 from llvmlite import ir
@@ -15,7 +15,7 @@ class string_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -25,7 +25,7 @@ class string_(compiler.IRGenerationProcedure):
         
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -54,7 +54,7 @@ class int_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -64,7 +64,7 @@ class int_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -84,7 +84,7 @@ class bool_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]: 
@@ -95,7 +95,7 @@ class bool_(compiler.IRGenerationProcedure):
     
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -107,19 +107,19 @@ class bool_(compiler.IRGenerationProcedure):
 
 
 class tag_(compiler.IRGenerationProcedure):
-    matches = ["tag"]
+    matches = ["TAG"]
 
     @classmethod
     def _get_cobj_type(cls) -> str:
         return Definitions.reference_type
 
     @classmethod
-    def _get_tag_name(cls, node : AstNode) -> str:
+    def _get_tag_name(cls, node : ASTNode) -> str:
         return node.leaf_val
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -136,7 +136,7 @@ class tag_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -148,10 +148,10 @@ class tag_(compiler.IRGenerationProcedure):
 
 
 class var_(compiler.IRGenerationProcedure):
-    matches = ["var"]
+    matches = ["VAR"]
 
     @classmethod
-    def _get_name_and_cobj(cls, node : AstNode, cx : compiler.Context
+    def _get_name_and_cobj(cls, node : ASTNode, cx : compiler.Context
             ) -> tuple[str, compiler.Object]:
         
         name = node.leaf_val
@@ -161,7 +161,7 @@ class var_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -181,7 +181,7 @@ class var_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

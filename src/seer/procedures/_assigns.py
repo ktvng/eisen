@@ -3,14 +3,14 @@ from __future__ import annotations
 import compiler
 from seer._utils import _deref_ir_obj_if_needed
 from seer._definitions import Definitions
-from ast import AstNode
+from asts import ASTNode
 
 class assigns_(compiler.IRGenerationProcedure):
     matches = ["="]
 
     @classmethod
     def _validate_single_assign(cls,
-            node : AstNode,
+            node : ASTNode,
             left_cobj : compiler.Object,
             right_cobj : compiler.Object):
 
@@ -38,15 +38,15 @@ class assigns_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
 
         return_objs = []
         
-        left_cobjs = node.left.compile_data
-        right_cobjs= node.right.compile_data
+        left_cobjs = node.vals[0].compile_data
+        right_cobjs= node.vals[1].compile_data
 
         left_len = len(left_cobjs)
         right_len = len(right_cobjs)
@@ -83,13 +83,13 @@ class assigns_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
-        left_compiler_objs = node.left.compile_data
-        right_compiler_objs = node.right.compile_data
+        left_compiler_objs = node.vals[0].compile_data
+        right_compiler_objs = node.vals[1].compile_data
 
         compiler_objs = []
         for left_compiler_obj, right_compiler_obj in zip(left_compiler_objs, right_compiler_objs):

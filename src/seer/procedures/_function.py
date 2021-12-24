@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import compiler
-from ast import AstNode
+from asts import ASTNode
 from llvmlite import ir
 
 # TODO: fix
@@ -9,7 +9,7 @@ class function_(compiler.IRGenerationProcedure):
     matches = ["function"]
 
     @classmethod
-    def _get_function_decl_names_and_types_in_tuple_form(cls, node : AstNode):
+    def _get_function_decl_names_and_types_in_tuple_form(cls, node : ASTNode):
         # params/returns is a tuple of ':' operation nodes. we need to get the leaf_val
         # from the left and right children of each node in params
         params = node.vals[1].vals
@@ -30,7 +30,7 @@ class function_(compiler.IRGenerationProcedure):
         return param_tuples, return_tuples
 
     @classmethod
-    def _get_function_type(cls, node : AstNode, cx : compiler.Context):
+    def _get_function_type(cls, node : ASTNode, cx : compiler.Context):
         param_tuples, return_tuples = \
             cls._get_function_decl_names_and_types_in_tuple_form(node)
         
@@ -46,11 +46,11 @@ class function_(compiler.IRGenerationProcedure):
         return f"({','.join(param_types)}) -> ({','.join(return_types)})", ir_type
 
     @classmethod
-    def _get_function_name(cls, node : AstNode):
+    def _get_function_name(cls, node : ASTNode):
         return node.vals[0].leaf_val
 
     @classmethod
-    def _add_parameters_to_new_context(cls, node : AstNode, cx : compiler.Context, func):
+    def _add_parameters_to_new_context(cls, node : ASTNode, cx : compiler.Context, func):
         param_tuples, return_tuples = \
             cls._get_function_decl_names_and_types_in_tuple_form(node)
 
@@ -75,7 +75,7 @@ class function_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_precompile(cls, 
-            node : AstNode,
+            node : ASTNode,
             cx : compiler.Context, 
             options : compiler.Options = None
             ) -> compiler.RecursiveDescentIntermediateState:
@@ -101,7 +101,7 @@ class function_(compiler.IRGenerationProcedure):
 
     @classmethod
     def precompile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context,
             options : compiler.Options=None
             ) -> compiler.RecursiveDescentIntermediateState:
@@ -136,7 +136,7 @@ class function_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -145,7 +145,7 @@ class function_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -158,11 +158,11 @@ class function_(compiler.IRGenerationProcedure):
 
 
 class return_(compiler.IRGenerationProcedure):
-    matches = ["return"]
+    matches = ["RETURN"]
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -171,7 +171,7 @@ class return_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

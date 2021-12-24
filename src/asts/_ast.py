@@ -1,7 +1,7 @@
-from ast._astnode import AstNode
+from asts._astnode import ASTNode
 
 class AST():
-    def __init__(self, head : AstNode):
+    def __init__(self, head : ASTNode):
         self.head = head
         
     def __str__(self):

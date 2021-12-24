@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import compiler
 from seer._utils import _deref_ir_obj_if_needed
-from ast import AstNode
+from asts import ASTNode
 from llvmlite import ir
 
 class while_statement_(compiler.IRGenerationProcedure):
@@ -10,7 +10,7 @@ class while_statement_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_precompile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context,
             options : compiler.Options=None
             ) -> compiler.RecursiveDescentIntermediateState:
@@ -27,7 +27,7 @@ class while_statement_(compiler.IRGenerationProcedure):
 
     @classmethod
     def precompile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context,
             options : compiler.Options=None
             ) -> compiler.RecursiveDescentIntermediateState:
@@ -62,7 +62,7 @@ class while_statement_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -72,7 +72,7 @@ class while_statement_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

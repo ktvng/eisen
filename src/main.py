@@ -35,7 +35,7 @@ def run(file_name : str):
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
 
     # print("====================") 
-    # print(ast)
+    print(ast)
 
     starttime = time.perf_counter_ns()
     code = alpaca.compiler.Compiler.run(ast, txt, Visitor)

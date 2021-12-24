@@ -36,7 +36,7 @@ class Lexer():
                         except:
                             Raise.code_error(f"Supplied callback has no callable function for {rule.type}")
 
-                new_token = Token(rule.type, token_value, line_number)
+                new_token = Token(rule.type, token_value, line_number, rule)
                 tokens.append(new_token)
 
             text = text[match_len :]

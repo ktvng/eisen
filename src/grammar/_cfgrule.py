@@ -18,7 +18,3 @@ class CFGRule():
 
     def __str__(self):
         return f"{self.production_symbol} -> {self.pattern_str}"
-
-    @classmethod
-    def is_production_symbol(cls, token : str):
-        return token.isupper() and all(map(lambda x : x.isalnum() or x == '_', token))

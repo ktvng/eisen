@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import compiler
 from seer._utils import _deref_ir_obj_if_needed
-from ast import AstNode
+from asts import ASTNode
 
 # TODO: fix
 class function_call_(compiler.IRGenerationProcedure):
     matches = ["function_call"]
 
     @classmethod
-    def _get_function_cobj(cls, node : AstNode) -> compiler.Object:
+    def _get_function_cobj(cls, node : ASTNode) -> compiler.Object:
         return node.vals[0].compile_data[0]
 
     @classmethod
-    def _get_function_param_cobjs(cls, node : AstNode) -> list[compiler.Object]:
+    def _get_function_param_cobjs(cls, node : ASTNode) -> list[compiler.Object]:
         return node.vals[1].compile_data
 
     @classmethod
@@ -22,7 +22,7 @@ class function_call_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -48,7 +48,7 @@ class function_call_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

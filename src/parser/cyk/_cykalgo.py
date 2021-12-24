@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from grammar import CFGRule, CFG, CFGNormalizer
-from ast import AstNode
+from asts import ASTNode
 from error import Raise
+
+from parser._utils import tokens_to_astnode
 
 import itertools
 
@@ -59,7 +61,7 @@ class CYKAlgo():
 
     def __init__(self, cfg : CFG):
         for rule in cfg.rules:
-            if not CFGNormalizer.is_cnf_rule(rule):
+            if not CFGNormalizer.is_cnf_rule(cfg, rule):
                 Raise.error("grammar is not normalized")
 
         self.cfg = cfg
@@ -149,29 +151,9 @@ class CYKAlgo():
 
     # TODO: this should be standardized based on type:value of each token
     @classmethod
-    def tokens_to_ast_queue(cls, tokens : list) -> list[AstNode]:
-        ast_queue = []
-        for tok in tokens:
-            astnode = AstNode()
-            astnode.line_number = tok.line_number
-            if tok.type == "var":
-                ast_queue.append(astnode.leaf(tok.value))
-            elif tok.type == "operator":
-                ast_queue.append(astnode.operator(tok.value, match_with=tok.value))
-            elif tok.type == "symbol":
-                ast_queue.append(astnode.symbol(tok.value))
-            elif tok.type == "keyword":
-                ast_queue.append(astnode.keyword(tok.value))
-            elif tok.type == "string":
-                ast_queue.append(astnode.literal("string", tok.value))
-            elif tok.type == "int":
-                ast_queue.append(astnode.literal("int", tok.value))
-            elif tok.type == "bool":
-                ast_queue.append(astnode.literal("bool", tok.value))
-            else:
-                Raise.code_error(f"unimplemented token type: ({tok.type})")
-
-        return ast_queue
+    def tokens_to_ast_queue(cls, tokens : list) -> list[ASTNode]:
+        astnode_queue = [tokens_to_astnode(tok) for tok in tokens]
+        return astnode_queue
 
     def parse(self, tokens : list):
         self.n = len(tokens)

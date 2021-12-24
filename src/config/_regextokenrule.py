@@ -18,3 +18,9 @@ class RegexTokenRule():
             return match_str, len(match_str), self
 
         return "", 0, self
+
+    def get_identifier(self):
+        if self.value is None:
+            return self.type
+        
+        return self.value

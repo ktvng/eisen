@@ -1,6 +1,6 @@
 from __future__ import annotations
 from error import Raise
-from ast import AstNode, AST
+from asts import ASTNode, AST
 from llvmlite import ir
 
 from compiler._ir_generation import IRGenerationProcedure
@@ -36,7 +36,6 @@ class Compiler():
     def get_build_procedure(cls, op : str, visitor):
         found_proc = visitor.build_map.get(op, None)
         if found_proc is None:
-            print("here")
             Raise.code_error(f"op {op} is not defined in the build map")
 
         return found_proc
@@ -44,7 +43,7 @@ class Compiler():
 
     @classmethod
     def _recursive_descent_for_validation(self,
-            astnode : AstNode,
+            astnode : ASTNode,
             cx : Context,
             options : Options) -> None:
 
@@ -84,7 +83,7 @@ class Compiler():
 
     @classmethod
     def _recursive_descent(self, 
-            astnode : AstNode, 
+            astnode : ASTNode, 
             cx : Context, 
             options : Options) -> None:
 

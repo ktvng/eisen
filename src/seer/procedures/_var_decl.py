@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import compiler
-from ast import AstNode
+from asts import ASTNode
 
 class var_decl_(compiler.IRGenerationProcedure):
     matches = [":"]
 
     @classmethod
-    def _get_cobj_type(cls, node : AstNode) -> str:
+    def _get_cobj_type(cls, node : ASTNode) -> str:
         return node.vals[1].compile_data[0].get_tag_value()
 
     @classmethod
-    def _get_cobj_names(cls, node : AstNode) -> list[str]:
+    def _get_cobj_names(cls, node : ASTNode) -> list[str]:
         cobjs_storing_names = node.vals[0].compile_data
         return [cobj.get_tag_value() for cobj in cobjs_storing_names]
 
@@ -22,7 +22,7 @@ class var_decl_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -37,7 +37,7 @@ class var_decl_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -62,7 +62,7 @@ class let_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
@@ -75,7 +75,7 @@ class let_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

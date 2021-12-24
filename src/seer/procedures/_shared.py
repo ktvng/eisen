@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import compiler
-from ast import AstNode
+from asts import ASTNode
 
 class default_(compiler.IRGenerationProcedure):
     matches = ["start", "params_decl", "codeblock"]
@@ -11,7 +11,7 @@ class unwrap_(compiler.IRGenerationProcedure):
 
     @classmethod
     def validate_compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict,
             options : compiler.Options=None) -> list[compiler.Object]:
@@ -20,7 +20,7 @@ class unwrap_(compiler.IRGenerationProcedure):
 
     @classmethod
     def compile(cls, 
-            node : AstNode, 
+            node : ASTNode, 
             cx : compiler.Context, 
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:

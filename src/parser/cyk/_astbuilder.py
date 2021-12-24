@@ -1,5 +1,5 @@
 from error import Raise
-from ast import AstNode, AST
+from asts import AST, ASTNode
 from parser.cyk._cykalgo import CYKAlgo
 
 class AstBuilder():
@@ -23,25 +23,11 @@ class AstBuilder():
 
     # TODO: this should be abstracted out to some seer callback
     @classmethod
-    def _postprocess(cls, node : AstNode):
+    def _postprocess(cls, node : ASTNode):
         # return
         if node.op == "let" and node.vals[0].op == ":":
             # remove the ':' node underneath let
             node.vals = node.vals[0].vals
-            node.left = node.vals[0]
-            node.right = node.vals[1]
-
-        if node.op == ":" or node.op == "let":
-            if node.left.op == "var_name_tuple":
-                for child in node.left.vals:
-                    child.convert_var_to_tag()
-            else:
-                node.left.convert_var_to_tag()
-            node.right.convert_var_to_tag()
-            return
-
-        if node.op == "function":
-            node.vals[0].convert_var_to_tag()
 
         for child in node.vals:
             AstBuilder._postprocess(child)
@@ -52,12 +38,22 @@ class AstBuilder():
         for component in components:
             if isinstance(component, list):
                 pass_up_list += component
-            elif isinstance(component, AstNode):
+            elif isinstance(component, ASTNode):
                 pass_up_list.append(component)
             else:
-                Raise.code_error("reverse engineering with pooling must be either list or AstNode")
+                Raise.code_error("reverse engineering with pooling must be either list or ASTNode")
 
         return pass_up_list
+
+    @classmethod
+    def reverse_with_convert(cls, name : str, components : list) -> list:
+        if len(components) != 1:
+            Raise.code_error("expects size of 1")
+
+        components[0].type = name
+        components[0].op = name        
+        return components
+
 
     @classmethod
     def reverse_with_merge(cls, components : list) -> list:
@@ -69,16 +65,20 @@ class AstBuilder():
                 flattened_comps.append(comp)
 
         # TODO: this should be abstracted out. Allow for custom build methods
-        newnode = AstNode()
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
         elif len(flattened_comps) == 3:
+            newnode = ASTNode(
+                type=flattened_comps[1].type,
+                value=flattened_comps[1].op,
+                match_with="value",
+                children=[flattened_comps[0], flattened_comps[2]])
+
             newnode.line_number = flattened_comps[1].line_number
-            newnode.binary(flattened_comps[1].op, flattened_comps[0], flattened_comps[2])
+            return [newnode]
         else:
             Raise.code_error("should not merge with more than 3 nodes")
         
-        return [newnode]
 
     # TODO:
     # merge to be replaced with consume
@@ -106,7 +106,6 @@ class AstBuilder():
     #
     @classmethod
     def reverse_with_build(cls, build_name : str, components : list):
-        newnode = AstNode()
         flattened_components = []
         for comp in components:
             if isinstance(comp, list):
@@ -114,45 +113,45 @@ class AstBuilder():
             else:
                 flattened_components.append(comp)
 
+        newnode = ASTNode(
+            type=build_name,
+            value="none",
+            match_with="type",
+            children=flattened_components)
+
         line_number = 0 if not flattened_components else flattened_components[0].line_number
         newnode.line_number = line_number
-        
-        return [newnode.plural(build_name, flattened_components)]
+
+        return [newnode]
 
     @classmethod
     def reverse_with_pass(cls, components : list) -> list:
         return components
 
     def _recursive_descent(self, entry : CYKAlgo.DpTableEntry) -> list:
-        expressional_keywords = ["this", "return"]
+        expressional_keywords = ["this", "return", "RETURN"]
         if entry.is_main_diagonal:
             astnode = self.astnodes[entry.x]
             if astnode.type == "symbol":
                 return []
             
             # TODO: why does this work?
+            # answer: probably because we need return to be an operator
             elif astnode.type == "keyword" and astnode.op not in expressional_keywords:
                 return []
             else:
-                return [astnode]
+                components = [astnode]
+        
+        else:
+            left = self._recursive_descent(entry.get_left_child(self.dp_table))
+            right = self._recursive_descent(entry.get_right_child(self.dp_table)) 
 
-        left = self._recursive_descent(entry.get_left_child(self.dp_table))
-        right = self._recursive_descent(entry.get_right_child(self.dp_table)) 
+            components = [left, right]
 
-
-        flag = "build="
-        components = [left, right]
         for reversal_step in entry.rule.reverse_with:
+            print(entry.rule)
             if isinstance(reversal_step, str):
                 Raise.code_error("deprecated codepath")
-                if reversal_step == "pass":
-                    components = AstBuilder.reverse_with_pool(components)
-                elif reversal_step == "merge":
-                    components = AstBuilder.reverse_with_merge(components)
-                elif reversal_step == "pool":
-                    components = AstBuilder.reverse_with_pool(components)
-                elif reversal_step[0 : len(flag)] == flag:
-                    components = AstBuilder.reverse_with_build(reversal_step[len(flag): ], components)
 
             else:
                 if reversal_step.type == "pass":
@@ -163,6 +162,8 @@ class AstBuilder():
                     components = AstBuilder.reverse_with_pool(components)
                 elif reversal_step.type == "build":
                     components = AstBuilder.reverse_with_build(reversal_step.value, components)
+                elif reversal_step.type == "convert":
+                    components = AstBuilder.reverse_with_convert(reversal_step.value, components)
                 else:
                     print("FAILURE")
 

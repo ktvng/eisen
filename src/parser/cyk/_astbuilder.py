@@ -12,7 +12,7 @@ class AstBuilder():
 
     def run(self) -> AST:
         if "START" not in map(lambda x: x.name, self.dp_table[-1][0]):
-            Raise.error("input is ungramatical")
+            Raise.error("input is ungrammatical")
 
         starting_entry = [x for x in self.dp_table[-1][0] if x.name == "START"][0]
         ast_list = self._recursive_descent(starting_entry)

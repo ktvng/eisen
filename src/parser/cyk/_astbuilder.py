@@ -28,11 +28,11 @@ class AstBuilder():
     @classmethod
     def _postprocess(cls, node : ASTNode):
         # return
-        if node.match_with() == "let" and node.vals[0].match_with() == ":":
+        if node.match_with() == "let" and node.children[0].match_with() == ":":
             # remove the ':' node underneath let
-            node.vals = node.vals[0].vals
+            node.children = node.children[0].children
 
-        for child in node.vals:
+        for child in node.children:
             AstBuilder._postprocess(child)
 
     @classmethod
@@ -150,7 +150,7 @@ class AstBuilder():
             (c.type != "keyword" and c.type != "symbol")]
 
         newnode.children = filtered_children
-        newnode.vals = filtered_children
+        newnode.children = filtered_children
         return [newnode]
 
     @classmethod

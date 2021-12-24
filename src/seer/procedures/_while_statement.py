@@ -17,10 +17,10 @@ class while_statement_(compiler.IRGenerationProcedure):
 
         rdstate = compiler.RecursiveDescentIntermediateState()
         statement_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
-        rdstate.add_child(statement_cx, node.vals[0])                
+        rdstate.add_child(statement_cx, node.children[0])                
 
         body_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
-        rdstate.add_child(body_cx, node.vals[1])
+        rdstate.add_child(body_cx, node.children[1])
 
         return rdstate
 
@@ -48,8 +48,8 @@ class while_statement_(compiler.IRGenerationProcedure):
 
         after_block = cx.builder.append_basic_block()
 
-        rdstate.add_child(statement_cx, node.vals[0])
-        rdstate.add_child(body_cx, node.vals[1])
+        rdstate.add_child(statement_cx, node.children[0])
+        rdstate.add_child(body_cx, node.children[1])
 
         rdstate.add_arg("statement_block", statement_block)
         rdstate.add_arg("statement_cx", statement_cx)
@@ -83,7 +83,7 @@ class while_statement_(compiler.IRGenerationProcedure):
         body_cx = args["body_cx"]
         after_block = args["after_block"]
 
-        statement_compiler_obj = node.vals[0].compile_data[0]
+        statement_compiler_obj = node.children[0].compile_data[0]
         statement_cx.builder.cbranch(
                 _deref_ir_obj_if_needed(statement_compiler_obj, cx),
                 body_block,

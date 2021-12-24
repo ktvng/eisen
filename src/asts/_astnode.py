@@ -12,12 +12,6 @@ class ASTNode():
         self.line_number = None
         self._match_with = match_with
 
-
-        # TODO: remove; currently for backwards compat
-        self.leaf_val = value
-        self.literal_val = value
-        self.vals = children
-
     def __str__(self):
         type = "" if self.value == "none" else self.value
         return f"{self.type} {type}"

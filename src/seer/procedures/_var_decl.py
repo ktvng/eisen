@@ -8,11 +8,11 @@ class var_decl_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_cobj_type(cls, node : ASTNode) -> str:
-        return node.vals[1].compile_data[0].get_tag_value()
+        return node.children[1].compile_data[0].get_tag_value()
 
     @classmethod
     def _get_cobj_names(cls, node : ASTNode) -> list[str]:
-        cobjs_storing_names = node.vals[0].compile_data
+        cobjs_storing_names = node.children[0].compile_data
         return [cobj.get_tag_value() for cobj in cobjs_storing_names]
 
     @classmethod

@@ -31,7 +31,7 @@ class string_(compiler.IRGenerationProcedure):
             options : compiler.Options = None) -> list[compiler.Object]:
 
         cobj_type = cls._get_cobj_type()
-        str_data = node.literal_val + "\0"
+        str_data = node.value + "\0"
         c_str_data = ir.Constant(
             ir.ArrayType(compiler.IrTypes.char, 
             len(str_data)), 
@@ -71,7 +71,7 @@ class int_(compiler.IRGenerationProcedure):
 
         cobj_type = cls._get_cobj_type()
         return [compiler.Object(
-            ir.Constant(compiler.IrTypes.int, int(node.literal_val)),
+            ir.Constant(compiler.IrTypes.int, int(node.value)),
             cobj_type)]
 
 
@@ -102,7 +102,7 @@ class bool_(compiler.IRGenerationProcedure):
 
         cobj_type = cls._get_cobj_type()
         return [compiler.Object(
-            ir.Constant(compiler.IrTypes.bool, True if node.literal_val == "true" else False),
+            ir.Constant(compiler.IrTypes.bool, True if node.value == "true" else False),
             cobj_type)]
 
 
@@ -115,7 +115,7 @@ class tag_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_tag_name(cls, node : ASTNode) -> str:
-        return node.leaf_val
+        return node.value
 
     @classmethod
     def validate_compile(cls, 
@@ -154,7 +154,7 @@ class var_(compiler.IRGenerationProcedure):
     def _get_name_and_cobj(cls, node : ASTNode, cx : compiler.Context
             ) -> tuple[str, compiler.Object]:
         
-        name = node.leaf_val
+        name = node.value
         cobj = cx.scope.get_object(name)
 
         return name, cobj

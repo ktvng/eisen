@@ -45,8 +45,8 @@ class assigns_(compiler.IRGenerationProcedure):
 
         return_objs = []
         
-        left_cobjs = node.vals[0].compile_data
-        right_cobjs= node.vals[1].compile_data
+        left_cobjs = node.children[0].compile_data
+        right_cobjs= node.children[1].compile_data
 
         left_len = len(left_cobjs)
         right_len = len(right_cobjs)
@@ -88,8 +88,8 @@ class assigns_(compiler.IRGenerationProcedure):
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
-        left_compiler_objs = node.vals[0].compile_data
-        right_compiler_objs = node.vals[1].compile_data
+        left_compiler_objs = node.children[0].compile_data
+        right_compiler_objs = node.children[1].compile_data
 
         compiler_objs = []
         for left_compiler_obj, right_compiler_obj in zip(left_compiler_objs, right_compiler_objs):

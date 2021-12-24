@@ -12,19 +12,19 @@ class function_(compiler.IRGenerationProcedure):
     def _get_function_decl_names_and_types_in_tuple_form(cls, node : ASTNode):
         # params/returns is a tuple of ':' operation nodes. we need to get the leaf_val
         # from the left and right children of each node in params
-        params = node.vals[1].vals
+        params = node.children[1].children
         if params and params[0].match_with() == "var_decl_tuple":
-            params = params[0].vals
+            params = params[0].children
 
-        param_tuples = [(p.vals[0].leaf_val, p.vals[1].leaf_val) for p in params]
+        param_tuples = [(p.children[0].value, p.children[1].value) for p in params]
 
         # if no return node is provided
         return_tuples = []
 
         # if a return node is provided
-        if len(node.vals) == 4:
-            returns = node.vals[2].vals
-            return_tuples = [(r.val[0].leaf_val, r.vals[1].leaf_val) for r in returns]
+        if len(node.children) == 4:
+            returns = node.children[2].children
+            return_tuples = [(r.children[0].value, r.children[1].value) for r in returns]
 
 
         return param_tuples, return_tuples
@@ -47,7 +47,7 @@ class function_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_function_name(cls, node : ASTNode):
-        return node.vals[0].leaf_val
+        return node.children[0].value
 
     @classmethod
     def _add_parameters_to_new_context(cls, node : ASTNode, cx : compiler.Context, func):
@@ -94,7 +94,7 @@ class function_(compiler.IRGenerationProcedure):
 
         rdstate = compiler.RecursiveDescentIntermediateState()
         rdstate.add_arg("function", func_obj)
-        rdstate.add_child(func_context, node.vals[-1])
+        rdstate.add_child(func_context, node.children[-1])
 
         return rdstate
 
@@ -130,7 +130,7 @@ class function_(compiler.IRGenerationProcedure):
         rdstate = compiler.RecursiveDescentIntermediateState()
         rdstate.add_arg("function", compiler_obj)
         rdstate.add_arg("new_cx", new_context)
-        rdstate.add_child(new_context, node.vals[-1])
+        rdstate.add_child(new_context, node.children[-1])
 
         return rdstate
 

@@ -25,6 +25,6 @@ class unwrap_(compiler.IRGenerationProcedure):
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
-        return [child.compile_data[0] for child in node.vals]
+        return [child.compile_data[0] for child in node.children]
 
     

@@ -10,11 +10,11 @@ class function_call_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_function_cobj(cls, node : ASTNode) -> compiler.Object:
-        return node.vals[0].compile_data[0]
+        return node.children[0].compile_data[0]
 
     @classmethod
     def _get_function_param_cobjs(cls, node : ASTNode) -> list[compiler.Object]:
-        return node.vals[1].compile_data
+        return node.children[1].compile_data
 
     @classmethod
     def _get_function_returned_cobj_types(cls, func_cobj : compiler.Object) -> list[str]:

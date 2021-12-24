@@ -27,7 +27,7 @@ class IRGenerationProcedure():
             [type]: [description]
         """
         rdstate = RecursiveDescentIntermediateState()
-        for child in node.vals:
+        for child in node.children:
             rdstate.add_child(cx, child)
 
         return rdstate
@@ -41,7 +41,7 @@ class IRGenerationProcedure():
         
         # start
         rdstate = RecursiveDescentIntermediateState()
-        for child in node.vals:
+        for child in node.children:
             rdstate.add_child(cx, child)
         
         return rdstate

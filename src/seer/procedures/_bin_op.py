@@ -25,8 +25,8 @@ class bin_op_(compiler.IRGenerationProcedure):
 
         # start
         op = node.value
-        left_cobj = node.vals[0].compile_data[0]
-        right_cobj = node.vals[1].compile_data[0]
+        left_cobj = node.children[0].compile_data[0]
+        right_cobj = node.children[1].compile_data[0]
 
         exception_msg = ""
         if not left_cobj.is_initialized:
@@ -82,8 +82,8 @@ class bin_op_(compiler.IRGenerationProcedure):
         op = node.value
         ir_obj = None
 
-        left_compiler_obj = node.vals[0].compile_data[0]
-        right_compiler_obj = node.vals[1].compile_data[0]                
+        left_compiler_obj = node.children[0].compile_data[0]
+        right_compiler_obj = node.children[1].compile_data[0]                
 
         builder_function_params = [
             _deref_ir_obj_if_needed(left_compiler_obj, cx),

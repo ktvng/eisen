@@ -20,9 +20,9 @@ class if_statement_(compiler.IRGenerationProcedure):
         new_contexts = [cx]
 
         # first child is an if-statement clause which lives in the original block
-        rdstate.add_child(cx, node.vals[0])
+        rdstate.add_child(cx, node.children[0])
 
-        for child in node.vals[1:]:
+        for child in node.children[1:]:
             new_cx = compiler.Context(cx.module, None, compiler.Scope(parent_scope=cx.scope))
             rdstate.add_child(new_cx, child)
 
@@ -41,9 +41,9 @@ class if_statement_(compiler.IRGenerationProcedure):
         new_contexts = [cx]
 
         # first child is an if-statement clause which lives in the original block
-        rdstate.add_child(cx, node.vals[0])
+        rdstate.add_child(cx, node.children[0])
 
-        for child in node.vals[1:]:
+        for child in node.children[1:]:
             new_block = cx.builder.append_basic_block()
             new_blocks.append(new_block)
 
@@ -79,7 +79,7 @@ class if_statement_(compiler.IRGenerationProcedure):
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
-        n = len(node.vals)
+        n = len(node.children)
         blocks = args["blocks"]
         contexts = args["contexts"]
 
@@ -89,7 +89,7 @@ class if_statement_(compiler.IRGenerationProcedure):
             codeblock_block = blocks[i+1]
             next_statement_block = blocks[i+2]
 
-            statement_compiler_obj = node.vals[i].compile_data[0]
+            statement_compiler_obj = node.children[i].compile_data[0]
 
             statement_cx.builder.cbranch(
                 _deref_ir_obj_if_needed(statement_compiler_obj, cx),

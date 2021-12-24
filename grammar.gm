@@ -60,7 +60,7 @@ SYMBOLICS
     for     -> keyword for
     while   -> keyword while
     let     -> keyword let
-    return  -> keyword RETURN
+    return  -> keyword_op RETURN
 
     ,       -> symbol ,
     \s*{\s* -> symbol {
@@ -110,7 +110,7 @@ SYMBOLICS
     [ |\t]*\/\/.*?\n+               -> none
     
 STRUCTURE
-    @action build start
+    @action filter_build start
     START -> 
         |   endl CONTEXTS
         |   CONTEXTS
@@ -148,7 +148,7 @@ STRUCTURE
         |   FUNCTION_CONTEXT
         |   CLASS_CONTEXT
 
-    @action build class
+    @action filter_build class
     CLASS_CONTEXT -> CLASS_HEADER CLASS_BODY
 
     @action pass
@@ -166,7 +166,7 @@ STRUCTURE
         |   CLASS_CONTEXT
         |   CLASS_FUNCTION_CONTEXT
 
-    @action build class_function
+    @action filter_build class_function
     CLASS_FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
 
     @action pass
@@ -174,7 +174,7 @@ STRUCTURE
         |   VAR_DECL
         |   VAR_DECL OP_ASSIGN EXPR
 
-    @action build function
+    @action filter_build function
     FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
 
     @action pool
@@ -182,12 +182,12 @@ STRUCTURE
         |   fn TAG PARAMS_DECL
         |   fn TAG PARAMS_DECL RETURN_DECL
 
-    @action build return_decl
+    @action filter_build return_decl
     RETURN_DECL -> 
         |   -> PARAMS_DECL
         |   -> VAR_DECL
 
-    @action build params_decl
+    @action filter_build params_decl
     PARAMS_DECL ->
         |   ( VAR_DECL_TUPLE )
         |   ( VAR_DECL )
@@ -198,12 +198,12 @@ STRUCTURE
         |   VAR_DECL , VAR_DECL
         |   VAR_DECL , VAR_DECL_TUPLE_BUILDER
 
-    @action build var_decl_tuple
+    @action filter_build var_decl_tuple
     VAR_DECL_TUPLE ->
         |   VAR_DECL_TUPLE_BUILDER
         |   ( VAR_DECL_TUPLE_BUILDER )
 
-    @action build codeblock
+    @action filter_build codeblock
     CODE_BLOCK -> { BLOCKS }
 
     @action pool
@@ -220,7 +220,7 @@ STRUCTURE
         |   IF_STATEMENT
         |   WHILE_STATEMENT
 
-    @action build if_statement
+    @action filter_build if_statement
     IF_STATEMENT -> IF_CONTEXT
 
     @action pool
@@ -233,7 +233,7 @@ STRUCTURE
         |   else if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
         |   else if ( EXPR ) CODE_BLOCK
 
-    @action build while_statement
+    @action filter_build while_statement
     WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK
 
     @action merge
@@ -241,7 +241,7 @@ STRUCTURE
         |   VAR_NAME_TUPLE : TAG
         |   TAG : TAG
 
-    @action build var_name_tuple
+    @action filter_build var_name_tuple
     VAR_NAME_TUPLE -> VAR_NAME_TUPLE_BUILDER
 
     @action pool
@@ -249,7 +249,7 @@ STRUCTURE
         |   TAG , TAG
         |   TAG , VAR_NAME_TUPLE_BUILDER
 
-    @action build let
+    @action filter_build let
     LET_VAR_DECL -> let VAR_DECL
 
     @action pass
@@ -282,10 +282,10 @@ STRUCTURE
         |   FUNCTION_CALL
         |   EXPR -> ( EXPR )
 
-    @action build function_call
+    @action filter_build function_call
     FUNCTION_CALL -> VAR PARAMS
 
-    @action build params
+    @action filter_build params
     PARAMS ->
         |   ( )
         |   ( EXPR )
@@ -301,7 +301,7 @@ STRUCTURE
         |   NAMED_PARAM
         |   NAMED_PARAM , NAMED_PARAMS
 
-    @action build tuple
+    @action filter_build tuple
     TUPLE -> 
         |   TUPLE_BUILDER
         |   ( TUPLE_BUILDER )

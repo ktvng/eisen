@@ -3,7 +3,6 @@ from compiler._abstractvisitor import AbstractVisitor
 
 from compiler._ir_generation import IRGenerationProcedure
 from compiler._intermediatestate import RecursiveDescentIntermediateState
-from compiler._ir_types import IrTypes
 from compiler._exceptions import Exceptions
 from compiler._object import Object
 from compiler._stub import Stub

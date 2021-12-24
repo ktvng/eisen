@@ -1,6 +1,7 @@
 import compiler
 from seer import Seer
 from seer._definitions import Definitions
+from seer._ir_types import IrTypes
 from llvmlite import ir
 
 class Visitor(compiler.AbstractVisitor):
@@ -49,10 +50,10 @@ class Visitor(compiler.AbstractVisitor):
 
     @classmethod
     def _init_primitive_types(cls, global_scope : compiler.Scope):
-        global_scope.add_type(Seer.Types.Primitives.Int, compiler.IrTypes.int)
+        global_scope.add_type(Seer.Types.Primitives.Int, IrTypes.int)
         global_scope.add_type(Seer.Types.Primitives.String, None)# TODO: fix
-        global_scope.add_type(Seer.Types.Primitives.Float, compiler.IrTypes.float)
-        global_scope.add_type(Seer.Types.Primitives.Bool, compiler.IrTypes.bool)
+        global_scope.add_type(Seer.Types.Primitives.Float, IrTypes.float)
+        global_scope.add_type(Seer.Types.Primitives.Bool, IrTypes.bool)
 
     @classmethod
     def _init_special_objs(cls, global_scope : compiler.Scope, module):

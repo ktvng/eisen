@@ -4,6 +4,7 @@ import compiler
 from asts import ASTNode
 from seer import Seer
 from seer._definitions import Definitions
+from seer._ir_types import IrTypes
 from llvmlite import ir
 
 class string_(compiler.IRGenerationProcedure):
@@ -33,7 +34,7 @@ class string_(compiler.IRGenerationProcedure):
         cobj_type = cls._get_cobj_type()
         str_data = node.value + "\0"
         c_str_data = ir.Constant(
-            ir.ArrayType(compiler.IrTypes.char, 
+            ir.ArrayType(IrTypes.char, 
             len(str_data)), 
             bytearray(str_data.encode("utf8")))
         
@@ -71,7 +72,7 @@ class int_(compiler.IRGenerationProcedure):
 
         cobj_type = cls._get_cobj_type()
         return [compiler.Object(
-            ir.Constant(compiler.IrTypes.int, int(node.value)),
+            ir.Constant(IrTypes.int, int(node.value)),
             cobj_type)]
 
 
@@ -102,7 +103,7 @@ class bool_(compiler.IRGenerationProcedure):
 
         cobj_type = cls._get_cobj_type()
         return [compiler.Object(
-            ir.Constant(compiler.IrTypes.bool, True if node.value == "true" else False),
+            ir.Constant(IrTypes.bool, True if node.value == "true" else False),
             cobj_type)]
 
 

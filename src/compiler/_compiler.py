@@ -7,25 +7,26 @@ from compiler._ir_generation import IRGenerationProcedure
 from compiler._context import Context
 from compiler._options import Options
 from compiler._exceptions import Exceptions
+from compiler._abstractvisitor import AbstractVisitor
 
 class Compiler():
     @classmethod
-    def run(cls, ast : AST, txt : str, visitor) -> str:
+    def run(cls, ast : AST, txt : str, visitor : AbstractVisitor) -> str:
         if not ast or ast is None:
             return ""
 
         visitor.init(txt)
-        options = Options(should_not_emit_ir=True, visitor=visitor)
+        options = Options(should_not_emit_ir=True)
         module = ir.Module()
         global_context = visitor.new_global_context(module)
-        Compiler._recursive_descent_for_validation(ast.head, global_context, options)
+        Compiler._recursive_descent_for_validation(ast.head, global_context, visitor, options)
 
         visitor.finally_handle_exceptions()
 
-        options = Options(should_not_emit_ir=False, visitor=visitor)
+        options = Options(should_not_emit_ir=False)
         module = ir.Module()
         global_context = visitor.new_global_context(module)
-        Compiler._recursive_descent(ast.head, global_context, options)
+        Compiler._recursive_descent(ast.head, global_context, visitor, options)
 
         return str(module)
 
@@ -48,16 +49,17 @@ class Compiler():
     def _recursive_descent_for_validation(self,
             astnode : ASTNode,
             cx : Context,
+            visitor : AbstractVisitor,
             options : Options) -> None:
 
         build_procedure : IRGenerationProcedure = \
-            Compiler.get_build_procedure(astnode.match_with(), options.visitor)
+            Compiler.get_build_procedure(astnode.match_with(), visitor)
 
         rdstate = build_procedure.validate_precompile(astnode, cx, options)
 
         for child_path in rdstate.get_paths():
             child_cx, child_node = child_path
-            self._recursive_descent_for_validation(child_node, child_cx, options)
+            self._recursive_descent_for_validation(child_node, child_cx, visitor, options)
 
         new_objs = build_procedure.validate_compile(astnode, cx, rdstate.args, options)
         
@@ -73,7 +75,7 @@ class Compiler():
             amended_objs = []
             for obj in new_objs:
                 if isinstance(obj, Exceptions.AbstractException):
-                    options.visitor.exception_callback(obj)
+                    visitor.exception_callback(obj)
                     if(obj.has_stub()):
                         amended_objs.append(obj.get_stub())
                 else:
@@ -88,17 +90,18 @@ class Compiler():
     def _recursive_descent(self, 
             astnode : ASTNode, 
             cx : Context, 
+            visitor : AbstractVisitor,
             options : Options) -> None:
 
         # start
         build_procedure : IRGenerationProcedure = \
-            Compiler.get_build_procedure(astnode.match_with(), options.visitor)
+            Compiler.get_build_procedure(astnode.match_with(), visitor)
             
         rdstate = build_procedure.precompile(astnode, cx, options)
 
         for child_path in rdstate.get_paths():
             child_cx, child_node = child_path
-            self._recursive_descent(child_node, child_cx, options)
+            self._recursive_descent(child_node, child_cx, visitor, options)
 
         new_objs = build_procedure.compile(astnode, cx, rdstate.args, options)
         

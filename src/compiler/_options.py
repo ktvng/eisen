@@ -4,7 +4,5 @@ class Options():
     the precompile/compile signatures
     """
 
-    # TODO: visitor should not be in options; pass directly to recursive_descent
-    def __init__(self, should_not_emit_ir : bool=False, visitor=None):
+    def __init__(self, should_not_emit_ir : bool=False):
         self.should_not_emit_ir = should_not_emit_ir
-        self.visitor = visitor

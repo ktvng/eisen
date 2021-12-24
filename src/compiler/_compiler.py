@@ -10,7 +10,10 @@ from compiler._exceptions import Exceptions
 
 class Compiler():
     @classmethod
-    def run(cls, ast : AST, txt : str, visitor):
+    def run(cls, ast : AST, txt : str, visitor) -> str:
+        if not ast or ast is None:
+            return ""
+
         visitor.init(txt)
         options = Options(should_not_emit_ir=True, visitor=visitor)
         module = ir.Module()

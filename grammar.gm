@@ -108,13 +108,13 @@ SYMBOLICS
 
     [_a-zA-Z]\w*                    -> TAG
     [ |\t]*\/\/.*?\n+               -> none
+    [ |\t]*\/\/[^\n]*               -> none
     
 STRUCTURE
     @action filter_build start
     START -> 
-        |   endl CONTEXTS
+        |   ENDLS CONTEXTS
         |   CONTEXTS
-        |   VAR endl
 
     @action pass
     OP_ASSIGN ->
@@ -162,7 +162,7 @@ STRUCTURE
 
     @action pass
     CLASS_ELEMENT -> 
-        |   CLASS_LINE endl
+        |   CLASS_LINE ENDLS
         |   CLASS_CONTEXT
         |   CLASS_FUNCTION_CONTEXT
 
@@ -253,7 +253,7 @@ STRUCTURE
     LET_VAR_DECL -> let VAR_DECL
 
     @action pass
-    LINE -> ACTION endl
+    LINE -> ACTION ENDLS
     ACTION -> LET_VAR_DECL
 
     @action merge
@@ -325,3 +325,8 @@ STRUCTURE
 
     @action convert VAR
     VAR -> TAG
+
+    @action pass
+    ENDLS ->
+        | endl
+        | endl ENDLS

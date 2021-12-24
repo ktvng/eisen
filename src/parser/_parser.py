@@ -8,6 +8,9 @@ from error import Raise
 class Parser():
     @classmethod
     def run(cls, config : Config, tokens : list, algo : str="cyk") -> AST:
+        if not tokens:
+            return None
+
         if algo == "cyk":
             return CYKParser.run(config, tokens)
         else:

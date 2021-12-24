@@ -5,8 +5,8 @@ from asts import AST, ASTNode
 from parser.cyk._cykalgo import CYKAlgo
 
 class AstBuilder():
-    def __init__(self, astnodes, dp_table):
-        self.astnodes = astnodes
+    def __init__(self, nodes : list[ASTNode], dp_table):
+        self.nodes = nodes
         self.dp_table = dp_table
         self.build_map = self._get_standard_build_map()
 
@@ -36,7 +36,7 @@ class AstBuilder():
             AstBuilder._postprocess(child)
 
     @classmethod
-    def pool_(cls, components : list, *args) -> list:
+    def pool_(cls, components : list[ASTNode], *args) -> list[ASTNode]:
         pass_up_list = []
         for component in components:
             if isinstance(component, list):
@@ -49,22 +49,26 @@ class AstBuilder():
         return pass_up_list
 
     @classmethod
-    def convert_(cls, components : list, name : str, *args) -> list:
+    def convert_(cls, components : list[ASTNode], name : str, *args) -> list[ASTNode]:
         if len(components) != 1:
             Raise.code_error("expects size of 1")
 
         components[0].type = name
         return components
 
+    @classmethod
+    def promote_(cls, components : list[ASTNode], type_name : str, *args) -> list[ASTNode]:
+        matches = [x for x in components if x.type == type_name]
+        if len(matches) != 1:
+            Raise.code_error("multiple matches during promote_")
+        
+        captain = matches[0]
+        captain.children = [x for x in components if x != captain]
+        return [captain]
 
     @classmethod
-    def merge_(cls, components : list, *args) -> list:
-        flattened_comps = []
-        for comp in components:
-            if isinstance(comp, list):
-                flattened_comps += comp
-            else:
-                flattened_comps.append(comp)
+    def merge_(cls, components : list[ASTNode], *args) -> list[ASTNode]:
+        flattened_comps = cls._flatten_components(components)
 
         # TODO: this should be abstracted out. Allow for custom build methods
         if len(flattened_comps) == 2:
@@ -82,7 +86,7 @@ class AstBuilder():
             Raise.code_error("should not merge with more than 3 nodes")
         
     @classmethod
-    def _flatten_components(cls, components : list[ASTNode]):
+    def _flatten_components(cls, components : list[ASTNode | list[ASTNode]]) -> list[ASTNode]:
         flattened_components = []
         for comp in components:
             if isinstance(comp, list):
@@ -136,7 +140,7 @@ class AstBuilder():
     #
     #
     @classmethod
-    def build_(cls, components : list, build_name : str, *args):
+    def build_(cls, components : list[ASTNode], build_name : str, *args) -> list[ASTNode]:
         return [cls._build_internal(components, build_name, *args)]
 
     @classmethod
@@ -154,7 +158,7 @@ class AstBuilder():
         return [newnode]
 
     @classmethod
-    def pass_(cls, components : list, *args) -> list:
+    def pass_(cls, components : list[ASTNode], *args) -> list[ASTNode]:
         return components
 
     @classmethod
@@ -165,6 +169,7 @@ class AstBuilder():
             "merge": cls.merge_,
             "convert": cls.convert_,
             "pool": cls.pool_,
+            "promote": cls.promote_,
             "filter_build": cls.filter_build_
         }
 
@@ -172,7 +177,7 @@ class AstBuilder():
 
     def _recursive_descent(self, entry : CYKAlgo.DpTableEntry) -> list:
         if entry.is_main_diagonal:
-            astnode = self.astnodes[entry.x]
+            astnode = self.nodes[entry.x]
             components = [astnode]
         else:
             left = self._recursive_descent(entry.get_left_child(self.dp_table))

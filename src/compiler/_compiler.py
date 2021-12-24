@@ -51,7 +51,7 @@ class Compiler():
             options : Options) -> None:
 
         build_procedure : IRGenerationProcedure = \
-            Compiler.get_build_procedure(astnode.op, options.visitor)
+            Compiler.get_build_procedure(astnode.match_with(), options.visitor)
 
         rdstate = build_procedure.validate_precompile(astnode, cx, options)
 
@@ -92,7 +92,7 @@ class Compiler():
 
         # start
         build_procedure : IRGenerationProcedure = \
-            Compiler.get_build_procedure(astnode.op, options.visitor)
+            Compiler.get_build_procedure(astnode.match_with(), options.visitor)
             
         rdstate = build_procedure.precompile(astnode, cx, options)
 

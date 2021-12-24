@@ -196,7 +196,7 @@ class CYKAlgo():
             x, y = point
 
             astnode = self.asts[x]
-            producing_rules = self._get_producing_rules_for_token(astnode.match_with)
+            producing_rules = self._get_producing_rules_for_token(astnode.match_with())
             entries = [CYKAlgo.DpTableEntry(rule, x, y, 0) for rule in producing_rules]
             self.dp_table[x][y] = entries
 

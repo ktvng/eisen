@@ -24,7 +24,7 @@ class bin_op_(compiler.IRGenerationProcedure):
             options : compiler.Options = None) -> list[compiler.Object]:
 
         # start
-        op = node.op
+        op = node.value
         left_cobj = node.vals[0].compile_data[0]
         right_cobj = node.vals[1].compile_data[0]
 
@@ -79,7 +79,7 @@ class bin_op_(compiler.IRGenerationProcedure):
             args : dict, 
             options : compiler.Options = None) -> list[compiler.Object]:
 
-        op = node.op
+        op = node.value
         ir_obj = None
 
         left_compiler_obj = node.vals[0].compile_data[0]

@@ -28,7 +28,7 @@ class AstBuilder():
     @classmethod
     def _postprocess(cls, node : ASTNode):
         # return
-        if node.op == "let" and node.vals[0].op == ":":
+        if node.match_with() == "let" and node.vals[0].match_with() == ":":
             # remove the ':' node underneath let
             node.vals = node.vals[0].vals
 
@@ -54,7 +54,6 @@ class AstBuilder():
             Raise.code_error("expects size of 1")
 
         components[0].type = name
-        components[0].op = name        
         return components
 
 
@@ -73,7 +72,7 @@ class AstBuilder():
         elif len(flattened_comps) == 3:
             newnode = ASTNode(
                 type=flattened_comps[1].type,
-                value=flattened_comps[1].op,
+                value=flattened_comps[1].value,
                 match_with="value",
                 children=[flattened_comps[0], flattened_comps[2]])
 

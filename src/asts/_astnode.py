@@ -10,17 +10,10 @@ class ASTNode():
 
         self.compile_data = None
         self.line_number = None
-
-        if match_with == "type":
-            self.match_with = self.type
-        elif match_with == "value":
-            self.match_with = self.value
-        else:
-            Raise.code_error(f"unknown match with value {match_with}")
+        self._match_with = match_with
 
 
         # TODO: remove; currently for backwards compat
-        self.op = self.match_with
         self.leaf_val = value
         self.literal_val = value
         self.vals = children
@@ -42,3 +35,11 @@ class ASTNode():
             str_rep += child.rs_to_string("", indent+1)
 
         return str_rep
+
+    def match_with(self):
+        if self._match_with == "type":
+            return self.type
+        elif self._match_with == "value":
+            return self.value
+        else:
+            Raise.code_error(f"unknown match with value {self._match_with}")

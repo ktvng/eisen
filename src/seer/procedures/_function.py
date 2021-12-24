@@ -13,7 +13,7 @@ class function_(compiler.IRGenerationProcedure):
         # params/returns is a tuple of ':' operation nodes. we need to get the leaf_val
         # from the left and right children of each node in params
         params = node.vals[1].vals
-        if params and params[0].op == "var_decl_tuple":
+        if params and params[0].match_with() == "var_decl_tuple":
             params = params[0].vals
 
         param_tuples = [(p.vals[0].leaf_val, p.vals[1].leaf_val) for p in params]

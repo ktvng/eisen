@@ -2,7 +2,7 @@ import sys
 import time
 
 import alpaca
-from seer import Visitor
+from seer import Visitor, Builder
 
 class LexerCallback():
     @classmethod
@@ -29,7 +29,7 @@ def run(file_name : str):
         # [print(t) for t in tokens]
 
     starttime = time.perf_counter_ns()
-    ast = alpaca.parser.Parser.run(config, tokens, algo="cyk")
+    ast = alpaca.parser.Parser.run(config, tokens, Builder, algo="cyk")
     endtime = time.perf_counter_ns()
 
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")

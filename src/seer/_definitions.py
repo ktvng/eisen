@@ -1,4 +1,4 @@
-from seer._seer import Seer
+from seer import Seer
 
 class Definitions():
     @classmethod

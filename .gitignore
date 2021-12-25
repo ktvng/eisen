@@ -5,8 +5,9 @@ sandbox.py
 test.txt
 test.rs
 tmp
-__pycache__/*
-*/__pycache__/*
-*/*/__pycache__/*
-*/*/*/__pycache__/*
+__pycache__
+*/__pycache__
+*/*/__pycache__
+*/*/*/__pycache__
+*/*/*/*/__pycache__
 .vscode/

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import compiler
+import alpaca.compiler as compiler
 from seer._utils import _deref_ir_obj_if_needed
-from asts import ASTNode
+from alpaca.asts import ASTNode
 
 # TODO: fix
 class function_call_(compiler.IRGenerationProcedure):

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import compiler
+import alpaca.compiler as compiler
 from seer._utils import _deref_ir_obj_if_needed
 from seer._definitions import Definitions
-from asts import ASTNode
+from alpaca.asts import ASTNode
 
 class assigns_(compiler.IRGenerationProcedure):
     matches = ["="]

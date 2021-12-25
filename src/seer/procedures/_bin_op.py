@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import compiler
+import alpaca.compiler as compiler
 from seer._utils import _deref_ir_obj_if_needed
 from seer.procedures._assigns import assigns_
 from seer import Seer
-from asts import ASTNode
+from alpaca.asts import ASTNode
 from error import Raise
 
 class bin_op_(compiler.IRGenerationProcedure):

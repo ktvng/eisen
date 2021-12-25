@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import compiler
-from asts import ASTNode
+import alpaca.compiler as compiler
+from alpaca.asts import ASTNode
 from seer import Seer
 from seer._definitions import Definitions
 from seer._ir_types import IrTypes

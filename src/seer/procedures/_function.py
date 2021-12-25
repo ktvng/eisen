@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import compiler
-from asts import ASTNode
+import alpaca.compiler as compiler
+from alpaca.asts import ASTNode
 from llvmlite import ir
 
 # TODO: fix

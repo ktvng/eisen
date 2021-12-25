@@ -1,4 +1,4 @@
-import compiler
+import alpaca.compiler as compiler
 from seer import Seer
 from seer._definitions import Definitions
 from seer._ir_types import IrTypes

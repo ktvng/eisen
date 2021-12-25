@@ -1,4 +1,4 @@
-import compiler
+import alpaca.compiler as compiler
 from seer._definitions import Definitions
 
 def _deref_ir_obj_if_needed(compiler_obj : compiler.Object, cx : compiler.Context):

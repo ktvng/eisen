@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import compiler
-from asts import ASTNode
+import alpaca.compiler as compiler
+from alpaca.asts import ASTNode
 
 class default_(compiler.IRGenerationProcedure):
     matches = ["start", "params_decl", "codeblock"]

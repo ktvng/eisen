@@ -10,4 +10,4 @@ from alpaca.compiler._context import Context
 from alpaca.compiler._scope import Scope
 from alpaca.compiler._options import Options
 
-from alpaca.compiler._compiler import Compiler
+from alpaca.compiler._compiler import run

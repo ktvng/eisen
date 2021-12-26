@@ -2,45 +2,41 @@ import sys
 import time
 
 import alpaca
-from seer import Visitor, Builder
-
-class LexerCallback():
-    @classmethod
-    def string(cls, string : str):
-        return string.replace('\\n', '\n')[1 : -1]
+from seer import Visitor, Builder, Callback
 
 def run(file_name : str):
+    # PARSE SEER CONFIG
     starttime = time.perf_counter_ns()
     config = alpaca.config.ConfigParser.run("grammar.gm")
     endtime = time.perf_counter_ns()
-
     print(f"Parsed config in {(endtime-starttime)/1000000} ms")
 
+    # READ FILE TO STR
     with open(file_name, 'r') as f:
         txt = f.read()
 
-        starttime = time.perf_counter_ns()
-        tokens = alpaca.lexer.Lexer.run(txt, config, LexerCallback)
-        endtime = time.perf_counter_ns()
-
-        print(f"Lexer finished in {(endtime-starttime)/1000000} ms")
-
-        # print("====================")
-        # [print(t) for t in tokens]
-
+    # TOKENIZE
     starttime = time.perf_counter_ns()
-    ast = alpaca.parser.Parser.run(config, tokens, Builder, algo="cyk")
+    tokens = alpaca.lexer.run(txt, config, Callback)
     endtime = time.perf_counter_ns()
+    print(f"Lexer finished in {(endtime-starttime)/1000000} ms")
 
+    # print("====================")
+    # [print(t) for t in tokens]
+
+    # PARSE TO AST
+    starttime = time.perf_counter_ns()
+    ast = alpaca.parser.run(config, tokens, Builder, algo="cyk")
+    endtime = time.perf_counter_ns()
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
 
     # print("====================") 
     # print(ast)
 
+    # COMPILE TO IR
     starttime = time.perf_counter_ns()
-    code = alpaca.compiler.Compiler.run(ast, txt, Visitor)
+    code = alpaca.compiler.run(ast, txt, Visitor)
     endtime = time.perf_counter_ns()
-
     print(f"Compiler finished in {(endtime-starttime)/1000000} ms")
 
     # print("====================")

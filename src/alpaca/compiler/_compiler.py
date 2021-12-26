@@ -9,6 +9,9 @@ from alpaca.compiler._options import Options
 from alpaca.compiler._exceptions import Exceptions
 from alpaca.compiler._abstractvisitor import AbstractVisitor
 
+def run(ast : AST, txt : str, visitor : AbstractVisitor) -> str:
+    return Compiler.run(ast, txt, visitor)
+
 class Compiler():
     @classmethod
     def run(cls, ast : AST, txt : str, visitor : AbstractVisitor) -> str:

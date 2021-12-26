@@ -34,7 +34,6 @@ class Builder(AbstractBuilder):
     def merge_(components : list[ASTNode], *args) -> list[ASTNode]:
         flattened_comps = CommonBuilder.flatten_components(components)
 
-        # TODO: this should be abstracted out. Allow for custom build methods
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
         elif len(flattened_comps) == 3:

@@ -157,17 +157,12 @@ class function_(compiler.IRGenerationProcedure):
         return [args["function"]]
 
 
+
+
+
+
 class return_(compiler.IRGenerationProcedure):
     matches = ["RETURN"]
-
-    @classmethod
-    def validate_compile(cls, 
-            node : ASTNode, 
-            cx : compiler.Context, 
-            args : dict,
-            options : compiler.Options=None) -> list[compiler.Object]:
-
-        return []
 
     @classmethod
     def compile(cls, 

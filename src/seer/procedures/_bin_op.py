@@ -60,7 +60,7 @@ class bin_op_(compiler.IRGenerationProcedure):
 
             return [compiler.Stub(left_cobj.type)]
 
-        elif   ( op == "=="
+        elif ( op == "=="
             or op == "<="
             or op == ">="
             or op == "<"

@@ -18,7 +18,9 @@ class function_call_(compiler.IRGenerationProcedure):
 
     @classmethod
     def _get_function_returned_cobj_types(cls, func_cobj : compiler.Object) -> list[str]:
-        return ["TODO"]
+        return (func_cobj.type.split('->')[1]
+            .strip()[1:-1]
+            .split(','))
 
     @classmethod
     def validate_compile(cls, 
@@ -55,10 +57,26 @@ class function_call_(compiler.IRGenerationProcedure):
 
         func_cobj = cls._get_function_cobj(node)
         param_cobjs = cls._get_function_param_cobjs(node)
+        return_cobjs = cls._make_return_ir_objs(cx, func_cobj)
 
-        ir_param_objs = [_deref_ir_obj_if_needed(cobj, cx) for cobj in param_cobjs]
+        ir_param_objs = [_deref_ir_obj_if_needed(cobj, cx) for cobj in param_cobjs] \
+            + [cobj.get_ir() for cobj in return_cobjs]
 
-        # TODO: fix return value
-        return [compiler.Object(
-            cx.builder.call(func_cobj.get_ir(), ir_param_objs),
-            "TODO")]
+        cx.builder.call(func_cobj.get_ir(), ir_param_objs)
+
+        return return_cobjs
+
+    @classmethod
+    def _make_return_ir_objs(cls, cx : compiler.Context, func_cobj : compiler.Object):
+        return_ctypes = cls._get_function_returned_cobj_types(func_cobj)
+
+        if len(return_ctypes) == 1 and return_ctypes[0] == "void":
+            return []
+
+        def _make_ir_obj(cobj_type):
+            ir_type = cx.scope.get_ir_type(cobj_type)
+            return compiler.Object(
+                cx.builder.alloca(ir_type),
+                cobj_type)
+            
+        return [_make_ir_obj(cobj_type) for cobj_type in return_ctypes]

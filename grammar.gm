@@ -259,12 +259,13 @@ STRUCTURE
     @action merge
     ACTION -> 
         |   VAR_DECL_TUPLE OP_ASSIGN TUPLE
-        |   VAR_NAME_TUPLE OP_ASSIGN TUPLE
         |   LET_VAR_DECL OP_ASSIGN EXPR
         |   LET_VAR_DECL OP_ASSIGN TUPLE
         |   VAR_DECL OP_ASSIGN EXPR
         |   VAR_DECL OP_ASSIGN TUPLE
         |   VAR OP_ASSIGN EXPR
+        |   TUPLE OP_ASSIGN EXPR
+        |   TUPLE OP_ASSIGN TUPLE
 
     @action pass
     ACTION -> 

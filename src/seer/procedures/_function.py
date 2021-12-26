@@ -5,6 +5,7 @@ from alpaca.asts import ASTNode
 from llvmlite import ir
 
 # TODO: fix
+# children are: name params return codeblock
 class function_(compiler.IRGenerationProcedure):
     matches = ["function"]
 
@@ -23,9 +24,14 @@ class function_(compiler.IRGenerationProcedure):
 
         # if a return node is provided
         if len(node.children) == 4:
-            returns = node.children[2].children
-            return_tuples = [(r.children[0].value, r.children[1].value) for r in returns]
+            return_decl_node = node.children[2]
+            params_node = return_decl_node.children[1] # first node is '->
 
+            if params_node.match_with() == "params_decl":
+                var_decl_nodes = params_node.children[0].children # node is var_decl_tuple
+            else:
+                var_decl_nodes = [params_node]
+            return_tuples = [(r.children[0].value, r.children[1].value) for r in var_decl_nodes]
 
         return param_tuples, return_tuples
 
@@ -37,9 +43,9 @@ class function_(compiler.IRGenerationProcedure):
         param_types = [x[1] for x in param_tuples]
         return_types = [x[1] for x in return_tuples]
 
-        function_ir_types = []
-        function_ir_types += [cx.scope.get_ir_type(type) for type in param_types]
-        function_ir_types += [cx.scope.get_ir_type(type) for type in return_types]
+        function_ir_types = [] \
+            + [cx.scope.get_ir_type(type) for type in param_types] \
+            + [cx.scope.get_ir_type(type).as_pointer() for type in return_types]
 
         ir_type = ir.FunctionType(ir.VoidType(), function_ir_types)
 
@@ -64,8 +70,12 @@ class function_(compiler.IRGenerationProcedure):
             cx.scope.add_obj(name, compiler_obj)
             cx.builder.store(func.args[i], ir_obj)
 
-        for name, type in return_tuples:
-            cx.builder.alloca(cx.scope.get_ir_type(type), name=name)
+        for i, return_tuple in enumerate(return_tuples):
+            name, type = return_tuple
+            ir_tmp = cx.builder.alloca(cx.scope.get_ir_type(type).as_pointer())
+            cx.builder.store(func.args[i + len(param_tuples)], ir_tmp)
+            ir_obj = cx.builder.load(ir_tmp, name=name)
+
             compiler_obj = compiler.Object(
                 ir_obj,
                 type,
@@ -90,6 +100,10 @@ class function_(compiler.IRGenerationProcedure):
         param_tuples, return_tuples = cls._get_function_decl_names_and_types_in_tuple_form(node)
         for param_tuple in param_tuples:
             name, type = param_tuple
+            func_context.scope.add_obj(name, compiler.Stub(type, name=name))
+
+        for return_tuple in return_tuples:
+            name, type = return_tuple
             func_context.scope.add_obj(name, compiler.Stub(type, name=name))
 
         rdstate = compiler.RecursiveDescentIntermediateState()

@@ -103,7 +103,7 @@ SYMBOLICS
     <regex>                         -> <type> <value>
     (["'])(?:(?=(\\?))\2.)*?\1      -> string
     [ |\t]*                         -> none
-    [0-9]+                          -> int
+    -?[0-9]+                        -> int
     true|false                      -> bool
 
     [_a-zA-Z]\w*                    -> TAG

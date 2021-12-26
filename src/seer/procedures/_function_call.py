@@ -4,7 +4,6 @@ import alpaca.compiler as compiler
 from seer._utils import _deref_ir_obj_if_needed
 from alpaca.asts import ASTNode
 
-# TODO: fix
 class function_call_(compiler.IRGenerationProcedure):
     matches = ["function_call"]
 
@@ -41,7 +40,6 @@ class function_call_(compiler.IRGenerationProcedure):
 
                 return_objs.append(exception)
 
-        # TODO: enable functions that return stuff
         for return_type_str in cls._get_function_returned_cobj_types(func_cobj):
             return_objs.append(compiler.Stub(return_type_str))
 

@@ -4,7 +4,6 @@ import alpaca.compiler as compiler
 from alpaca.asts import ASTNode
 from llvmlite import ir
 
-# TODO: fix
 # children are: name params return codeblock
 class function_(compiler.IRGenerationProcedure):
     matches = ["function"]
@@ -120,10 +119,8 @@ class function_(compiler.IRGenerationProcedure):
             options : compiler.Options=None
             ) -> compiler.RecursiveDescentIntermediateState:
 
-        # TODO: impl
         func_name = cls._get_function_name(node)
         func_type, ir_type = cls._get_function_type(node, cx)
-        # TODO: figure out how to get parameter names
         func = ir.Function(cx.module, ir_type, name=func_name)
 
         compiler_obj = compiler.Object(

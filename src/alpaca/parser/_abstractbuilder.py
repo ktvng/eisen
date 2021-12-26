@@ -1,4 +1,5 @@
 from __future__ import annotations
+from alpaca.asts import ASTNode
 
 class AbstractBuilder():
     build_map = {}
@@ -12,4 +13,8 @@ class AbstractBuilder():
         return _decorator
         
     pass
+
+    @classmethod
+    def postprocess(cls, node : ASTNode) -> None:
+        return
 

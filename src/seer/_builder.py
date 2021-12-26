@@ -48,7 +48,15 @@ class Builder(AbstractBuilder):
             return [newnode]
         else:
             Raise.code_error("should not merge with more than 3 nodes")
-        
+
+    @classmethod
+    def postprocess(cls, node : ASTNode) -> None:
+        if node.match_with() == "let" and node.children[0].match_with() == ":":
+            # remove the ':' node underneath let
+            node.children = node.children[0].children
+
+        for child in node.children:
+            cls.postprocess(child) 
 
 
     # TODO:

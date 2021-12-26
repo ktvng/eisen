@@ -10,6 +10,7 @@ class AstBuilder():
     def __init__(self, nodes : list[ASTNode], dp_table, builder : AbstractBuilder):
         self.nodes = nodes
         self.dp_table = dp_table
+        self.builder = builder
 
         common_build_map = CommonBuilder.build_map
         builder_build_map = {} if builder is None else builder.build_map
@@ -25,20 +26,9 @@ class AstBuilder():
             Raise.code_error("ast heads not parsed to single state")
         
         asthead = ast_list[0]
-        self._postprocess(asthead)
+        self.builder.postprocess(asthead)
 
         return AST(asthead)
-
-    # TODO: this should be abstracted out to some seer callback
-    @classmethod
-    def _postprocess(cls, node : ASTNode):
-        # return
-        if node.match_with() == "let" and node.children[0].match_with() == ":":
-            # remove the ':' node underneath let
-            node.children = node.children[0].children
-
-        for child in node.children:
-            AstBuilder._postprocess(child)
 
 
     def _recursive_descent(self, entry : CYKAlgo.DpTableEntry) -> list:

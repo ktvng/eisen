@@ -50,7 +50,7 @@ class AstBuilder():
             right = self._recursive_descent(entry.get_right_child(self.dp_table)) 
             components = [left, right]
 
-        for reversal_step in entry.rule.reverse_with:
+        for reversal_step in entry.rule.actions:
             build_procedure = self.build_map.get(reversal_step.type, None)
             if build_procedure is None:
                 Raise.code_error(f"build procedure {reversal_step.type} not found by ast_builder")

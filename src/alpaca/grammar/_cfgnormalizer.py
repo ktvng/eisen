@@ -92,7 +92,7 @@ class CFGNormalizer():
             pattern_to_sub = rule_to_sub.pattern_str
             
             # rule_to_sub.reverse with should be executed before the original rule
-            steps_to_reverse_both_rules = [*rule_to_sub.reverse_with, *rule.reverse_with]
+            steps_to_reverse_both_rules = [*rule_to_sub.actions, *rule.actions]
             
             temp_rule = CFGRule(
                 rule.production_symbol, 
@@ -106,7 +106,7 @@ class CFGNormalizer():
             self.rules.append(CFGRule(
                 rule.production_symbol, 
                 rule.pattern_str, 
-                rule.reverse_with))
+                rule.actions))
 
             return
         
@@ -139,4 +139,4 @@ class CFGNormalizer():
 
         # final connector should inherit the reverse_with method of the original rule as it inherits
         # the pattern
-        connector.reverse_with.extend(rule.reverse_with)
+        connector.actions.extend(rule.actions)

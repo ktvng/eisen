@@ -9,12 +9,8 @@ class CFGRule():
 
         if isinstance(action, list):
             self.actions = action
-            self.reverse_with = action
         else:
-            
             self.actions = [action]
-            # TODO: replace with above; here for back-compat
-            self.reverse_with = [action]
 
     def __str__(self):
         return f"{self.production_symbol} -> {self.pattern_str}"

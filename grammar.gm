@@ -51,64 +51,62 @@
 # ========================================================
 
 SYMBOLICS
-    <regex> -> <type> <value>
-    fn      -> keyword fn
-    class   -> keyword class
-    this    -> keyword this
-    if      -> keyword if
-    else    -> keyword else
-    for     -> keyword for
-    while   -> keyword while
-    let     -> keyword let
-    return  -> keyword_op RETURN
+    <type> <value>      ->  <regex>
+    keyword fn          ->  fn
+    keyword class       ->  class
+    keyword this        ->  this
+    keyword if          ->  if
+    keyword else        ->  else
+    keyword while       ->  while
+    keyword let         ->  let
+    keyword return      ->  return
 
-    ,       -> symbol ,
-    \s*{\s* -> symbol {
-    }\s*    -> symbol }
-    \[      -> symbol [
-    \]      -> symbol ]
-    \(      -> symbol (
-    \)      -> symbol )
-    \n\s*   -> symbol endl
+    symbol ,            ->  ,
+    symbol {            ->  \s*{\s* 
+    symbol }            ->  }\s* 
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol endl         ->  \n\s*
 
-    =       -> operator =
-    :=      -> operator :=
-    <-      -> operator <-
-    \+=     -> operator +=
-    -=      -> operator -=
-    \*=     -> operator *=
-    /=      -> operator /=
-    \?      -> operator ?
-    ==      -> operator ==
-    !=      -> operator !=
-    \+      -> operator +
-    -       -> operator -
-    /       -> operator /
-    \*      -> operator *
-    &&      -> operator &&
-    \|\|    -> operator ||
-    !       -> operator !
-    %       -> operator %
-    \|      -> operator |
-    <       -> operator <
-    >       -> operator >
-    <=      -> operator <=
-    >=      -> operator >=
-    \.      -> operator .
-    ::      -> operator ::
-    ->      -> operator ->
-    :       -> operator :
+    operator =          ->  =      
+    operator :=         ->  :=     
+    operator <-         ->  <-     
+    operator +=         ->  \+=    
+    operator -=         ->  -=     
+    operator *=         ->  \*=    
+    operator /=         ->  /=     
+    operator ?          ->  \?     
+    operator ==         ->  ==     
+    operator !=         ->  !=     
+    operator +          ->  \+     
+    operator -          ->  -      
+    operator /          ->  /      
+    operator *          ->  \*     
+    operator &&         ->  &&     
+    operator ||         ->  \|\|   
+    operator !          ->  !      
+    operator %          ->  %      
+    operator |          ->  \|     
+    operator <          ->  <      
+    operator >          ->  >      
+    operator <=         ->  <=     
+    operator >=         ->  >=     
+    operator .          ->  \.     
+    operator ::         ->  ::     
+    operator ->         ->  ->     
+    operator :          ->  :      
 
+    string              ->  (["'])(?:(?=(\\?))\2.)*?\1
+    int                 ->  -?[0-9]+  
+    bool                ->  true|false
+    
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ |\t]*
+    none                ->  [ |\t]*\/\/.*?\n+
+    none                ->  [ |\t]*\/\/[^\n]*
 
-    <regex>                         -> <type> <value>
-    (["'])(?:(?=(\\?))\2.)*?\1      -> string
-    [ |\t]*                         -> none
-    -?[0-9]+                        -> int
-    true|false                      -> bool
-
-    [_a-zA-Z]\w*                    -> TAG
-    [ |\t]*\/\/.*?\n+               -> none
-    [ |\t]*\/\/[^\n]*               -> none
     
 STRUCTURE
     @action filter_build start

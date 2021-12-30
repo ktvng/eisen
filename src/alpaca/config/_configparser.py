@@ -9,14 +9,14 @@ from error import Raise
 
 class ConfigParser():
     class SymbolicMask():
-        def __init__(self, regex_part_len):
-            self.regex_start = 0
-            self.regex_end = regex_part_len
-            self.token_start = regex_part_len + 2
+        def __init__(self, token_part_len):
+            self.token_start = 0
+            self.token_end = token_part_len
+            self.regex_start = token_part_len + 2
 
         def apply(self, line : str) -> tuple[str, str, str|None]:
-            regex = line[self.regex_start : self.regex_end].strip()
-            token_line = line[self.token_start : len(line)].strip()
+            regex = line[self.regex_start : ].strip()
+            token_line = line[self.token_start : self.token_end].strip()
             token_parts = token_line.split(' ')
 
             if len(token_parts) == 1:
@@ -32,7 +32,7 @@ class ConfigParser():
     top_level_regex_str = f"{symbolics_section}|{structure_section}"
     top_level_regex = re.compile(top_level_regex_str)
 
-    symbolics_headings_regex_str = "( *<regex> *)->( *<type> *<value>)"
+    symbolics_headings_regex_str = "( *<type> *<value> *)->( *<regex>)"
     symbolics_headings_regex = re.compile(symbolics_headings_regex_str)
 
     action_flag_regex_str = " *@action"

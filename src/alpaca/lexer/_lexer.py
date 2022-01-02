@@ -2,7 +2,6 @@ from __future__ import annotations
 import re
 
 from functools import reduce
-import typing
 
 from alpaca.config import Config
 from error import Raise

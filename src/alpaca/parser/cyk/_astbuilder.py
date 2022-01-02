@@ -27,7 +27,8 @@ class AstBuilder():
             Raise.code_error("ast heads not parsed to single state")
         
         asthead = ast_list[0]
-        cls.builder.postprocess(asthead)
+        if builder is not None:
+            cls.builder.postprocess(asthead)
 
         return AST(asthead)
 

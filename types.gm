@@ -1,0 +1,91 @@
+
+SYMBOLICS
+    <type> <value>      ->  <regex>
+    symbol :            ->  :
+    symbol ,            ->  ,
+    symbol |            ->  \|
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol <            ->  <
+    symbol >            ->  >    
+    symbol #            ->  #
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol ->           ->  ->
+    symbol :=           ->  :=
+    
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t]*
+
+STRUCTURE
+    @action filter_build start
+    START ->
+        |   TERM_DECL
+        |   TYPE_DECL
+
+    @action filter_build term
+    TERM_DECL ->  
+        |   TAG : TYPE
+        |   TAGS : TYPE
+
+    @action pool
+    TAGS -> 
+        |   TAG , TAG
+        |   TAG , TAGS
+
+    @action filter_build type
+    TYPE_DECL ->  TAG := TYPE
+
+    @action pass
+    TYPE ->
+        |   DEP_PROD_TYPE
+        |   FUNC_TYPE
+        |   PROD_TYPE
+        |   COPR_TYPE
+
+    @action filter_build simple
+    TYPE -> 
+        |   TAG
+        |   ( TAG )
+        |   ( TYPE )
+
+    @action filter_build func
+    FUNC_TYPE ->
+        |   PROD_TYPE -> TYPE
+        |   COPR_TYPE -> TYPE
+        |   ( TYPE ) -> TYPE
+        |   DEP_PROD_TYPE -> TYPE
+        |   DEP_PROD_TYPE ( TYPE ) -> TYPE
+        |   DEP_PROD_TYPE PROD_TYPE -> TYPE
+        |   DEP_PROD_TYPE COPR_TYPE -> TYPE
+
+    @action filter_build eval
+    TYPE -> 
+        |   TYPE [ TAG ]
+        |   TYPE [ TAGS ]
+
+
+
+    @action pool
+    TUPLE ->
+        |   TYPE , TYPE
+        |   TYPE , TUPLE
+
+    @action pool
+    TERM_TUPLE ->
+        |   TERM_DECL , TERM_DECL
+        |   TERM_DECL , TERM_TUPLE
+
+    @action filter_build prod
+    PROD_TYPE -> ( TUPLE )
+
+    @action filter_build depd
+    DEP_PROD_TYPE -> 
+        |   < TERM_TUPLE >
+        |   < TERM_DECL >
+    
+    @action filter_build copr
+    COPR_TYPE ->
+        |   ( TYPE | TYPE )
+        |   ( TYPE | COPR_TYPE )
+

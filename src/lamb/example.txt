@@ -1,0 +1,21 @@
+succ = \n.\f.\x.(f ((n f) x));
+plus = \m.\n.\f.\x.((m f) ((n f) x));
+mult = \m.\n.\f.\x.((m (n f)) x);
+
+0 = \f.\x.x;
+1 = \f.\x.(f x);
+2 = \f.\x.(f (f x));
+3 = ((plus 2) 1);
+4 = ((mult 2) 2);
+
+true = \a.\b.a;
+false = \a.\b.b;
+if = \p.\a.\b.((p a) b);
+and = \p.\q.((p q) p);
+or = \p.\q.((p p) q);
+
+
+say = \x.baa x;
+(((mult 4) 1) say) x;
+
+say (((if ((or false) true)) t) f);

@@ -1,0 +1,43 @@
+SYMBOLICS
+    <type> <value>      ->  <regex>
+    keyword LAMBDA      ->  \\
+    keyword FUNC        ->  baa
+
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol .            ->  \.
+    symbol =            ->  =
+    symbol ;            ->  ;
+
+    TAG                 ->  [_a-zA-Z0-9]\w*
+
+    none                ->  [ \t\n]*
+
+STRUCTURE
+    @action filter_build start
+    START -> LINES
+
+    @action pool
+    LINES ->    
+        |   LINE
+        |   LINE LINES
+    
+    @action pass
+    LINE ->
+        |   DEF ;
+        |   EXPR ;
+
+    @action filter_build def
+    DEF -> TAG = EXPR
+
+    EXPR ->
+        @action filter_build lambda
+        |   LAMBDA TAG . EXPR
+        @action filter_build apply
+        |   EXPR EXPR 
+        @action pass
+        |   ( EXPR )
+        |   TAG
+        @action filter_build print
+        |   FUNC EXPR
+    

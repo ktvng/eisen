@@ -9,6 +9,7 @@ class ASTNode():
         self.children = children
 
         self.compile_data = None
+        self.visitor = None
         self.line_number = None
         self._match_with = match_with
 

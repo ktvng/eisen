@@ -3,8 +3,33 @@ import time
 
 import alpaca
 from seer import Visitor, Builder, Callback
+import lamb
+
+def run_lamb(filename : str):
+    with open(filename, 'r') as f:
+        txt = f.read()
+
+    config = alpaca.config.ConfigParser.run("./src/lamb/grammar.gm")
+    tokens = alpaca.lexer.run(txt, config, None)
+    ast = alpaca.parser.run(config, tokens, lamb.Builder)
+    # print(ast)
+
+    fun = lamb.LambRunner()
+    fun.run(ast)
+
 
 def run(file_name : str):
+    print("="*80)
+    config = alpaca.config.ConfigParser.run("types.gm")
+    with open(file_name, 'r') as f:
+        txt = f.read()
+    tokens = alpaca.lexer.run(txt, config, callback=None)
+    ast = alpaca.parser.run(config, tokens, builder=Builder)
+    # print(ast)
+    exit()
+    
+
+
     # PARSE SEER CONFIG
     starttime = time.perf_counter_ns()
     config = alpaca.config.ConfigParser.run("grammar.gm")
@@ -66,7 +91,9 @@ if __name__ == "__main__":
         exit()
     
     filename = sys.argv[1]
-    code = run(filename)
+    # code = run(filename)
+    run_lamb(filename)
+    exit()
     runnable = make_runnable(code)
 
     with open("./build/test.ll", 'w') as f:

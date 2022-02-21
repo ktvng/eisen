@@ -1,3 +1,4 @@
+from re import A
 from alpaca.config import RegexTokenRule
 
 class Token():
@@ -7,8 +8,9 @@ class Token():
         self.line_number = line_number
         self.rule = rule
 
-    type_print_len = 16
+    type_print_len = 12
     def __str__(self):
         padding = max(0, self.type_print_len - len(self.type))
-        return f"{self.line_number}\t{self.type}{' ' * padding}{self.value}"
+        clean_value = self.value.replace('\n', '\\n')
+        return f"{self.line_number}\t{self.type}{' ' * padding}{clean_value}"
         

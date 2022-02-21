@@ -14,17 +14,13 @@ class ConfigParser():
             self.token_end = token_part_len
             self.regex_start = token_part_len + 2
 
-        def apply(self, line : str) -> tuple[str, str, str|None]:
+        def apply(self, line : str) -> tuple[str, str, list[str]]:
             regex = line[self.regex_start : ].strip()
             token_line = line[self.token_start : self.token_end].strip()
             token_parts = token_line.split(' ')
 
-            if len(token_parts) == 1:
-                return regex, token_parts[0], None
-            elif len(token_parts) == 2:
-                return regex, token_parts[0], token_parts[1]
-            else:
-                Raise.code_error("Error: malformed config")
+            # the type is the last piece of the token parts
+            return regex, token_parts[-1], token_parts[: -1]
 
     symbolics_section = "SYMBOLICS" 
     structure_section = "STRUCTURE"
@@ -32,7 +28,7 @@ class ConfigParser():
     top_level_regex_str = f"{symbolics_section}|{structure_section}"
     top_level_regex = re.compile(top_level_regex_str)
 
-    symbolics_headings_regex_str = "( *<type> *<value> *)->( *<regex>)"
+    symbolics_headings_regex_str = "( *<type> *)->( *<regex>)"
     symbolics_headings_regex = re.compile(symbolics_headings_regex_str)
 
     action_flag_regex_str = " *@action"
@@ -51,7 +47,7 @@ class ConfigParser():
     comment_regex = re.compile(comment_regex_str)
 
     @classmethod
-    def run(cls, filename):
+    def run(cls, filename) -> Config:
         with open(filename, 'r') as f:
             lines = f.readlines()
 
@@ -61,6 +57,8 @@ class ConfigParser():
         current_production_symbol = None
         regex_tokens = []
         cfg_rules = []
+        hierarchy = Config.TypeHierarchy()
+
         for line in lines:
             if not line.strip():
                 continue
@@ -85,8 +83,9 @@ class ConfigParser():
                 if current_symbolics_mask is None:
                     Raise.code_error("Error: symbolics header not yet defined.")
 
-                regex, type, value = current_symbolics_mask.apply(line)
-                regex_tokens.append(RegexTokenRule(regex, type, value))
+                regex, type, parent_types  = current_symbolics_mask.apply(line)
+                hierarchy.add_parent_types(type, parent_types)
+                regex_tokens.append(RegexTokenRule(regex, type))
 
             elif current_section == cls.structure_section:
                 was_action, current_action = cls._try_change_action(current_action, line)
@@ -116,7 +115,7 @@ class ConfigParser():
                     current_production_symbol = None
                     cfg_rules.append(cfg_rule)
         
-        return Config(regex_tokens, cfg_rules)
+        return Config(regex_tokens, cfg_rules, hierarchy=hierarchy)
                 
 
     @classmethod

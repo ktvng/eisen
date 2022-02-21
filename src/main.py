@@ -1,8 +1,9 @@
+from re import A
 import sys
 import time
 
 import alpaca
-from seer import Visitor, Builder, Callback
+from seer import Visitor, Builder, Callback, Builder2
 import lamb
 
 def run_lamb(filename : str):
@@ -19,16 +20,15 @@ def run_lamb(filename : str):
 
 
 def run(file_name : str):
-    print("="*80)
-    config = alpaca.config.ConfigParser.run("types.gm")
-    with open(file_name, 'r') as f:
-        txt = f.read()
-    tokens = alpaca.lexer.run(txt, config, callback=None)
-    ast = alpaca.parser.run(config, tokens, builder=Builder)
-    # print(ast)
-    exit()
+    # print("="*80)
+    # config = alpaca.config.ConfigParser.run("types.gm")
+    # with open(file_name, 'r') as f:
+    #     txt = f.read()
+    # tokens = alpaca.lexer.run(txt, config, callback=None)
+    # ast = alpaca.parser.run(config, tokens, builder=Builder)
+    # # print(ast)
+    # exit()
     
-
 
     # PARSE SEER CONFIG
     starttime = time.perf_counter_ns()
@@ -47,13 +47,15 @@ def run(file_name : str):
     print(f"Lexer finished in {(endtime-starttime)/1000000} ms")
 
     # print("====================")
-    # [print(t) for t in tokens]
+    [print(t) for t in tokens]
 
     # PARSE TO AST
     starttime = time.perf_counter_ns()
-    ast = alpaca.parser.run(config, tokens, Builder, algo="cyk")
+    ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
     endtime = time.perf_counter_ns()
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
+
+    exit()
 
     # print("====================") 
     # print(ast)
@@ -91,9 +93,8 @@ if __name__ == "__main__":
         exit()
     
     filename = sys.argv[1]
-    # code = run(filename)
-    run_lamb(filename)
-    exit()
+    code = run(filename)
+    # run_lamb(filename)
     runnable = make_runnable(code)
 
     with open("./build/test.ll", 'w') as f:

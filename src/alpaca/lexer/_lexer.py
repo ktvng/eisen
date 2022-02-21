@@ -25,9 +25,8 @@ class Lexer():
                 lambda a, b: a if a[1] >= b[1] else b, 
                 match_tuples)
 
-            match_str, match_len, rule = longest_match
-            token_value = rule.value if rule.value is not None else match_str
-            line_number += match_str.count('\n')
+            token_value, match_len, rule = longest_match
+            line_number += token_value.count('\n')
 
             text = text[match_len :]
             if match_len == 0:
@@ -37,14 +36,12 @@ class Lexer():
                 continue 
 
             # apply a processing function based on the rule.type
-            if callback is not None and hasattr(callback, rule.type):
-                f = getattr(callback, rule.type)
-
-                if f is not None:
-                    try:
+            if callback is not None:
+                matching_types = [rule.type, *config.type_hierachy.parent_types_for(rule.type)]
+                for type in matching_types:
+                    if hasattr(callback, type):
+                        f = getattr(callback, type)
                         token_value = f(token_value)
-                    except:
-                        Raise.code_error(f"Supplied callback has no callable function for {rule.type}")
 
             new_token = Token(rule.type, token_value, line_number, rule)
             tokens.append(new_token)

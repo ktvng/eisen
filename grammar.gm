@@ -51,7 +51,7 @@
 # ========================================================
 
 SYMBOLICS
-    <type> <value>      ->  <regex>
+    <type>              ->  <regex>
     keyword fn          ->  fn
     keyword class       ->  class
     keyword this        ->  this
@@ -268,7 +268,10 @@ STRUCTURE
     @action pass
     ACTION -> 
         |   EXPR
-        |   RETURN
+
+    @action filter_build return
+    ACTION ->
+        |   return 
 
     @action merge
     EXPR -> 
@@ -329,3 +332,24 @@ STRUCTURE
     ENDLS ->
         | endl
         | endl ENDLS
+
+
+    # TESTING
+    @action build start
+    START -> TESTING1 ( )
+
+    @action build t1
+    TESTING1 -> TAG + TESTING1
+
+    @action pass
+    TESTING1 -> TAG
+
+    @action pass
+    TESTING1 -> TESTING2
+
+    @action build t2
+    TESTING2 -> TAG * TESTING2
+
+    @action pass
+    TESTING2 -> TAG
+

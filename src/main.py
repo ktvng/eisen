@@ -47,13 +47,14 @@ def run(file_name : str):
     print(f"Lexer finished in {(endtime-starttime)/1000000} ms")
 
     # print("====================")
-    [print(t) for t in tokens]
+    # [print(t) for t in tokens]
 
     # PARSE TO AST
     starttime = time.perf_counter_ns()
     ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
     endtime = time.perf_counter_ns()
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
+    print(ast)
 
     exit()
 

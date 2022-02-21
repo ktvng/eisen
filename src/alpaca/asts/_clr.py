@@ -11,7 +11,7 @@ class CLRToken:
 
     def __str__(self):
         # TODO: formalize this hack
-        if self.type == "TAG":
+        if self.type == "TAG" or self.type == "string" or self.type == "int":
             return self.value
         else:
             return self.type
@@ -50,7 +50,7 @@ class CLRList:
             return f"({self.type}\n{parts_str})"
         
         else:
-            total_len = reduce(lambda sum, s: sum + len(s), str_reps, 0)
+            total_len = reduce(lambda sum, s: sum + len(s.strip()), str_reps, 0)
             if total_len < 64:
                 parts_str = " ".join(str_reps)
                 return f"({self.type} {parts_str})"

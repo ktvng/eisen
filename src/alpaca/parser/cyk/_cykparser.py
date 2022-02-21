@@ -33,5 +33,4 @@ class CYKParser2():
         algo = CYKAlgo2(cfg)
         algo.parse(tokens)
         astbuilder = AstBuilder2()
-        lst = astbuilder.run(config, algo.tokens, algo.dp_table, builder)
-        print(lst)
+        return astbuilder.run(config, algo.tokens, algo.dp_table, builder)

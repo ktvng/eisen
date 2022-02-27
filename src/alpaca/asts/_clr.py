@@ -11,8 +11,10 @@ class CLRToken:
 
     def __str__(self):
         # TODO: formalize this hack
-        if self.type == "TAG" or self.type == "string" or self.type == "int":
+        if self.type == "TAG" or self.type == "int" or self.type == "bool":
             return self.value
+        elif self.type == "string":
+            return f'"{self.value}"'
         else:
             return self.type
 
@@ -47,6 +49,10 @@ class CLRList:
             parts = reduce(lambda lst, s: lst + s.split('\n'), str_reps, [])
             parts = [CLRList.indent + s for s in parts]
             parts_str = "\n".join(parts)
+            if parts_str.strip()[0] != "(":
+                parts_str = parts_str.strip()
+                return f"({self.type} {parts_str})"
+
             return f"({self.type}\n{parts_str})"
         
         else:
@@ -57,6 +63,10 @@ class CLRList:
             else:
                 parts = [CLRList.indent + s for s in str_reps]
                 parts_str = "\n".join(parts)
+                if parts_str.strip()[0] != "(":
+                    parts_str = parts_str.strip()
+                    return f"({self.type} {parts_str})"
+
                 return f"({self.type}\n{parts_str})"
 
     def __iter__(self):

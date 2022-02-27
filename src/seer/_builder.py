@@ -1,5 +1,8 @@
 from __future__ import annotations
+from distutils.command.build import build
 from readline import clear_history
+from sys import float_repr_style
+from tracemalloc import clear_traces
 from alpaca.parser import AbstractBuilder, CommonBuilder, CommonBuilder2
 from alpaca.asts import ASTNode, CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
@@ -9,6 +12,15 @@ from error import Raise
 class Builder2(AbstractBuilder):
     build_map = {}
 
+    @classmethod
+    def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
+        return [c for c in components 
+            if  (isinstance(c, CLRToken) 
+                    and not config.type_hierachy.is_child_type(c.type, "keyword")
+                    and not config.type_hierachy.is_child_type(c.type, "symbol")
+                    and not config.type_hierachy.is_child_type(c.type, "operator"))
+                or isinstance(c, CLRList)]
+         
     @AbstractBuilder.build_procedure(build_map, "filter_build")
     def filter_build_(
             config : Config,
@@ -16,14 +28,34 @@ class Builder2(AbstractBuilder):
             *args) -> CLRRawList:
 
         newCLRList = CommonBuilder2.build(config, components, *args)[0]
-        filtered_children = [c for c in newCLRList 
-            if (isinstance(c, CLRToken) 
-                and not config.type_hierachy.is_child_type(c.type, "keyword")
-                and not config.type_hierachy.is_child_type(c.type, "symbol"))
-            or isinstance(c, CLRList)]
+        filtered_children = Builder2._filter(config, newCLRList)
 
         newCLRList[:] = filtered_children
         return [newCLRList]
+
+    @AbstractBuilder.build_procedure(build_map, "filter_pass")
+    def filter_pass(
+            config : Config,
+            components : CLRRawList,
+            *args) -> CLRRawList:
+
+        return Builder2._filter(config, components)
+        
+    @AbstractBuilder.build_procedure(build_map, "handle_call")
+    def filter_pass(
+            config : Config,
+            components : CLRRawList,
+            *args) -> CLRRawList:
+
+        # EXPR . FUNCTION_CALL
+        function_call = components[2]
+        if not isinstance(function_call, CLRList):
+            Raise.error("function call should be CLRList")
+
+        params = function_call[1]
+        params[:] = [components[0], *params]
+
+        return function_call
 
     @AbstractBuilder.build_procedure(build_map, "promote")
     def promote_(
@@ -56,6 +88,19 @@ class Builder2(AbstractBuilder):
             return [newCLRList]
         else:
             Raise.code_error("should not merge with more than 3 nodes")
+
+    @AbstractBuilder.build_procedure(build_map, "handle_op_pref")
+    def handle_op_pref(
+            config : Config,
+            components : CLRRawList,
+            *args) -> CLRRawList:
+
+        flattened_comps = CommonBuilder2.flatten_components(components)
+        if len(flattened_comps) != 2:
+            Raise.error("expected size 2 for handle_op_pref")
+            
+        return [CLRList(flattened_comps[0], [flattened_comps[1]])]
+
 
     @classmethod
     def postprocess(cls, node : ASTNode) -> None:

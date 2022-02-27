@@ -53,13 +53,20 @@
 SYMBOLICS
     <type>              ->  <regex>
     keyword fn          ->  fn
-    keyword class       ->  class
+    keyword struct      ->  struct
     keyword this        ->  this
     keyword if          ->  if
     keyword else        ->  else
     keyword while       ->  while
     keyword let         ->  let
     keyword return      ->  return
+    keyword module      ->  mod
+    keyword create      ->  create
+    keyword destroy     ->  destroy
+    keyword var         ->  var
+    keyword val         ->  val
+    keyword mut         ->  mut
+    keyword null        ->  null
 
     symbol ,            ->  ,
     symbol {            ->  \s*{\s* 
@@ -84,8 +91,8 @@ SYMBOLICS
     operator -          ->  -      
     operator /          ->  /      
     operator *          ->  \*     
-    operator &&         ->  &&     
-    operator ||         ->  \|\|   
+    operator and        ->  &&     
+    operator or         ->  \|\|   
     operator !          ->  !      
     operator %          ->  %      
     operator |          ->  \|     
@@ -103,9 +110,9 @@ SYMBOLICS
     bool                ->  true|false
     
     TAG                 ->  [_a-zA-Z]\w*
-    none                ->  [ |\t]*
-    none                ->  [ |\t]*\/\/.*?\n+
-    none                ->  [ |\t]*\/\/[^\n]*
+    none                ->  [ \t]*
+    none                ->  [ \t]*\/\/.*?\n+
+    none                ->  [ \t]*\/\/[^\n]*
 
     
 STRUCTURE
@@ -113,11 +120,15 @@ STRUCTURE
     START -> 
         |   ENDLS CONTEXTS
         |   CONTEXTS
+    
+    ############################################################################
+    # Aliases
 
     @action pass
     OP_ASSIGN ->
         |   =
         |   :=
+        |   <-
 
     @action pass 
     OP_BIN ->
@@ -135,7 +146,40 @@ STRUCTURE
         |   -=
         |   *=
         |   /=
+        |   or
+        |   and
 
+    @action pass
+    OP_PREF ->
+        |   !
+
+    @action pass
+    LITERAL ->
+        |   int
+        |   string
+        |   bool
+        |   float
+
+    VAR ->
+        @action convert var
+        |   TAG
+        @action pass
+        |   MODULE_LOOKUP
+
+    FN  -> 
+        @action convert fn
+        |   TAG
+        @action pass
+        |   MODULE_LOOKUP
+
+    @action pass
+    ENDLS ->
+        | endl
+        | endl ENDLS
+
+    ############################################################################
+    # Contexts
+   
     @action pool
     CONTEXTS -> 
         |   CONTEXT
@@ -144,64 +188,102 @@ STRUCTURE
     @action pass
     CONTEXT -> 
         |   FUNCTION_CONTEXT
-        |   CLASS_CONTEXT
+        |   STRUCT_CONTEXT
+        |   MODULE_CONTEXT
 
-    @action filter_build class
-    CLASS_CONTEXT -> CLASS_HEADER CLASS_BODY
+    @action filter_build mod
+    MODULE_CONTEXT -> 
+        |   module TAG { CONTEXTS }
+        |   module TAG { ENDLS CONTEXTS }
 
-    @action pass
-    CLASS_HEADER -> class VAR
-    CLASS_BODY -> { CLASS_ELEMENTS }
+
+    ############################################################################
+    # Structs
+
+    @action filter_build struct
+    STRUCT_CONTEXT -> STRUCT_HEADER STRUCT_BODY
 
     @action pool
-    CLASS_ELEMENTS -> 
-        |   CLASS_ELEMENT
-        |   CLASS_ELEMENT CLASS_ELEMENTS
+    STRUCT_HEADER -> struct TAG
+    STRUCT_BODY -> { STRUCT_ELEMENTS }
+    STRUCT_ELEMENTS -> 
+        |   STRUCT_ELEMENT
+        |   STRUCT_ELEMENT STRUCT_ELEMENTS
 
     @action pass
-    CLASS_ELEMENT -> 
-        |   CLASS_LINE ENDLS
-        |   CLASS_CONTEXT
-        |   CLASS_FUNCTION_CONTEXT
+    STRUCT_ELEMENT -> 
+        |   STRUCT_LINE ENDLS
+        |   STRUCT_CONSTRUCTOR
+        |   STRUCT_DESTRUCTOR
 
-    @action filter_build class_function
-    CLASS_FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+    @action filter_build create 
+    STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
 
-    @action pass
-    CLASS_LINE ->
-        |   VAR_DECL
-        |   VAR_DECL OP_ASSIGN EXPR
+    @action filter_build destroy
+    STRUCT_DESTRUCTOR -> destroy ARGS_DECL CODE_BLOCK
 
-    @action filter_build function
+    STRUCT_LINE ->
+        @action pass
+        |   TYPING 
+        @action merge
+        |   TYPING OP_ASSIGN EXPR
+
+
+    ############################################################################
+    # Functions 
+
+    @action filter_build def
     FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
 
     @action pool
     FUNCTION_HEADER ->
-        |   fn TAG PARAMS_DECL
-        |   fn TAG PARAMS_DECL RETURN_DECL
+        |   fn TAG ARGS_DECL
+        |   fn TAG ARGS_DECL RETURN_DECL
 
-    @action filter_build return_decl
+    @action filter_build rets
     RETURN_DECL -> 
-        |   -> PARAMS_DECL
-        |   -> VAR_DECL
+        |   -> ARGS_DECL
+        |   -> TYPING
+        |   -> TYPE
 
-    @action filter_build params_decl
-    PARAMS_DECL ->
-        |   ( VAR_DECL_TUPLE )
-        |   ( VAR_DECL )
+    @action filter_build args
+    ARGS_DECL ->
+        |   ( TYPING_TUPLE , TYPING_DEFAULT_TUPLE )
+        |   ( TYPING_TUPLE , TYPING_DEFAULT )
+        |   ( TYPING_TUPLE )
+        |   ( TYPING , TYPING_DEFAULT_TUPLE )
+        |   ( TYPING , TYPING_DEFAULT )
+        |   ( TYPING )
+        |   ( TYPING_DEFAULT_TUPLE )
+        |   ( TYPING_DEFAULT )
         |   ( )
 
     @action pool
-    VAR_DECL_TUPLE_BUILDER ->
-        |   VAR_DECL , VAR_DECL
-        |   VAR_DECL , VAR_DECL_TUPLE_BUILDER
+    TYPING_TUPLE_BUILDER ->
+        |   TYPING , TYPING
+        |   TYPING , TYPING_TUPLE_BUILDER
 
-    @action filter_build var_decl_tuple
-    VAR_DECL_TUPLE ->
-        |   VAR_DECL_TUPLE_BUILDER
-        |   ( VAR_DECL_TUPLE_BUILDER )
+    @action filter_build prod_type
+    TYPING_TUPLE ->
+        |   TYPING_TUPLE_BUILDER
+        |   ( TYPING_TUPLE_BUILDER )
 
-    @action filter_build codeblock
+    @action filter_build default
+    TYPING_DEFAULT -> TYPING = EXPR
+
+    @action pool
+    TYPING_DEFAULT_TUPLE_BUILDER ->
+        |   TYPING_DEFAULT , TYPING_DEFAULT
+        |   TYPING_DEFAULT , TYPING_DEFAULT_TUPLE_BUILDER
+
+    @action filter_build defaults
+    TYPING_DEFAULT_TUPLE -> TYPING_DEFAULT_TUPLE_BUILDER 
+
+
+    ############################################################################
+    # Control flow
+ 
+    @action filter_build seq
     CODE_BLOCK -> { BLOCKS }
 
     @action pool
@@ -212,80 +294,189 @@ STRUCTURE
     @action pass
     BLOCK ->
         |   CONTROL
-        |   LINE
+        |   ACTION ENDLS
 
     CONTROL ->
         |   IF_STATEMENT
         |   WHILE_STATEMENT
 
-    @action filter_build if_statement
+    @action filter_build if
     IF_STATEMENT -> IF_CONTEXT
 
     @action pool
     IF_CONTEXT ->
-        |   if ( EXPR ) CODE_BLOCK
-        |   if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
-
-    ELSE_STATEMENT ->
-        |   else CODE_BLOCK
-        |   else if ( EXPR ) CODE_BLOCK ELSE_STATEMENT
-        |   else if ( EXPR ) CODE_BLOCK
-
-    @action filter_build while_statement
-    WHILE_STATEMENT -> while ( EXPR ) CODE_BLOCK
-
-    @action merge
-    VAR_DECL -> 
-        |   VAR_NAME_TUPLE : TAG
-        |   TAG : TAG
-
-    @action filter_build var_name_tuple
-    VAR_NAME_TUPLE -> VAR_NAME_TUPLE_BUILDER
+        |   if CONDITIONAL_BRANCH
+        |   if CONDITIONAL_BRANCH ELSE_STATEMENT
 
     @action pool
-    VAR_NAME_TUPLE_BUILDER -> 
+    ELSE_STATEMENT ->
+        |   else CODE_BLOCK
+        |   else if CONDITIONAL_BRANCH
+        |   else if CONDITIONAL_BRANCH ELSE_STATEMENT
+
+    @action filter_build while
+    WHILE_STATEMENT -> while CONDITIONAL_BRANCH
+
+    @action filter_build cond
+    CONDITIONAL_BRANCH -> ( EXPR ) CODE_BLOCK
+
+
+    ############################################################################
+    # Typing
+
+    @action merge
+    TYPING -> 
+        |   TAGS : TYPE
+        |   TAG : TYPE
+
+    TYPE -> 
+        @action filter_build type
+        |   TAG
+        @action filter_build type?
+        |   TAG ?
+        @action pass
+        |   FN_TYPE
+        |   ARR_TYPE
+
+    @action filter_build types 
+    TYPES -> TYPES_BUILDER
+
+    @action pool
+    TYPES_BUILDER ->
+        |   TYPE , TYPE
+        |   TYPE , TYPES_BUILDER
+
+    @action filter_build fn_type
+    FN_TYPE -> FN_TYPE_IN FN_TYPE_OUT
+
+    @action filter_build fn_type_in
+    FN_TYPE_IN ->
+        |   ( TYPES )
+        |   ( TYPE )
+        |   ( )
+
+    @action filter_build fn_type_out
+    FN_TYPE_OUT ->
+        |   -> TYPE
+        |   -> ( TYPES )
+        |   -> null
+
+    @action filter_build arr_type
+    ARR_TYPE ->
+        |   TYPE [ ]
+        |   TYPE [ int ]
+
+
+    @action filter_build tags 
+    TAGS -> TAGS_TUPLE_BUILDER
+
+    @action pool
+    TAGS_TUPLE_BUILDER -> 
         |   TAG , TAG
-        |   TAG , VAR_NAME_TUPLE_BUILDER
+        |   TAG , TAGS_TUPLE_BUILDER
+
+
+    ############################################################################
+    # Declaration
 
     @action filter_build let
-    LET_VAR_DECL -> let VAR_DECL
+    LET_DECL -> 
+        |   let TYPING
+        |   let DECL_ASSIGNMENT
+
+    VAR_DECL -> 
+        @action filter_build var
+        |   var TYPING
+        |   var DECL_ASSIGNMENT
+        
+        @action filter_build mut_var
+        |   mut var TYPING
+        |   mut var DECL_ASSIGNMENT
+       
+    VAL_DECL -> 
+        @action filter_build val
+        |   val TYPING
+        |   val DECL_ASSIGNMENT
+        @action filter_build mut_val
+        |   mut val TYPING
+        |   mut val DECL_ASSIGNMENT
 
     @action pass
-    LINE -> ACTION ENDLS
-    ACTION -> LET_VAR_DECL
+    DECL -> 
+        |   LET_DECL
+        |   VAR_DECL
+        |   VAL_DECL
+
+
+    ############################################################################
+    # Assignment 
 
     @action merge
-    ACTION -> 
-        |   VAR_DECL_TUPLE OP_ASSIGN TUPLE
-        |   LET_VAR_DECL OP_ASSIGN EXPR
-        |   LET_VAR_DECL OP_ASSIGN TUPLE
-        |   VAR_DECL OP_ASSIGN EXPR
-        |   VAR_DECL OP_ASSIGN TUPLE
-        |   VAR OP_ASSIGN EXPR
-        |   TUPLE OP_ASSIGN EXPR
-        |   TUPLE OP_ASSIGN TUPLE
+    ASSIGNMENT -> 
+        |   DECL OP_ASSIGN RVALUE
+        |   VAR OP_ASSIGN RVALUE
+        |   TUPLE OP_ASSIGN RVALUE
+        |   SCOPED_VAR OP_ASSIGN RVALUE
+
+    # only used when assigning during declaration and type inference.
+    @action pool
+    DECL_ASSIGNMENT ->
+        |   TAG OP_ASSIGN RVALUE
+        |   TAGS OP_ASSIGN RVALUE
 
     @action pass
-    ACTION -> 
+    RVALUE ->
         |   EXPR
-
-    @action filter_build return
-    ACTION ->
-        |   return 
+        |   TUPLE
 
     @action merge
+    SCOPED_VAR ->
+        |   EXPR . TAG
+        |   SCOPED_VAR . TAG
+
+    @action merge
+    MODULE_LOOKUP ->
+        |   TAG :: TAG
+        |   MODULE_LOOKUP :: TAG
+
+
+    ############################################################################
+    # Actions/Expressions
+    
+    ACTION -> 
+        @action pass
+        |   EXPR
+        |   ASSIGNMENT
+        |   DECL
+        
+        @action filter_build return
+        |   return 
+        |   return EXPR
+
     EXPR -> 
+        @action merge
         |   EXPR OP_BIN EXPR
-        |   EXPR . VAR
+
+        @action handle_op_pref
+        |   OP_PREF EXPR
+
+        @action handle_call
         |   EXPR . FUNCTION_CALL
 
-    @action pass
-    EXPR ->
-        |   FUNCTION_CALL
-        |   EXPR -> ( EXPR )
+        @action handle_call
+        |   SCOPED_VAR . FUNCTION_CALL
 
-    @action filter_build function_call
-    FUNCTION_CALL -> VAR PARAMS
+        @action pass
+        |   FUNCTION_CALL
+        |   SCOPED_VAR
+        |   VAR
+        |   LITERAL
+
+        @action filter_pass
+        |   ( EXPR )
+
+    @action filter_build call
+    FUNCTION_CALL -> FN PARAMS
 
     @action filter_build params
     PARAMS ->
@@ -295,8 +486,8 @@ STRUCTURE
         |   ( TUPLE_BUILDER, NAMED_PARAMS )
         |   ( NAMED_PARAMS )
 
-    @action merge
-    NAMED_PARAM -> VAR = EXPR
+    @action filter_build kwarg
+    NAMED_PARAM -> TAG = EXPR
 
     @action pool
     NAMED_PARAMS -> 
@@ -313,43 +504,9 @@ STRUCTURE
         |   EXPR , EXPR
         |   EXPR , TUPLE_BUILDER
 
-    @action pass
-    EXPR ->
-        |   VAR
-        |   LITERAL
 
-    @action pass
-    LITERAL ->
-        |   int
-        |   string
-        |   bool
-        |   float
-
-    @action convert VAR
-    VAR -> TAG
-
-    @action pass
-    ENDLS ->
-        | endl
-        | endl ENDLS
-
-
-    # TESTING
+    ############################################################################
+    # Testing
+    
     @action build start
-    START -> TESTING1 ( )
-
-    @action build t1
-    TESTING1 -> TAG + TESTING1
-
-    @action pass
-    TESTING1 -> TAG
-
-    @action pass
-    TESTING1 -> TESTING2
-
-    @action build t2
-    TESTING2 -> TAG * TESTING2
-
-    @action pass
-    TESTING2 -> TAG
-
+    START -> MODULE_LOOKUP

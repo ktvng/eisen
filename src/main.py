@@ -1,4 +1,5 @@
-from re import A
+from distutils import text_file
+import re
 import sys
 import time
 
@@ -18,6 +19,44 @@ def run_lamb(filename : str):
     fun = lamb.LambRunner()
     fun.run(ast)
 
+def run_seer_tests():
+    delim = "="*64
+    # PARSE SEER CONFIG
+    starttime = time.perf_counter_ns()
+    config = alpaca.config.ConfigParser.run("grammar.gm")
+    endtime = time.perf_counter_ns()
+    print(f"Parsed config in {(endtime-starttime)/1000000} ms")
+
+    # READ FILE TO STR
+    with open("./src/seer/tests/test.rs", 'r') as f:
+        txt = f.read()
+
+    txt_chunks = re.split(r"\/\/ *#\d+ *([\w ]+ *\n)", txt)
+    for i in range(1, len(txt_chunks), 2):
+        print(delim)
+        print(f"| Testing: #{i//2} {txt_chunks[i]}", end="")
+        chunk = txt_chunks[i+1]
+
+        # TOKENIZE
+        starttime = time.perf_counter_ns()
+        tokens = alpaca.lexer.run(chunk, config, Callback)
+        endtime = time.perf_counter_ns()
+        print(f"|  - Lexer finished in {(endtime-starttime)/1000000} ms")
+
+        # print("====================")
+        # [print(t) for t in tokens]
+
+        # PARSE TO AST
+        starttime = time.perf_counter_ns()
+        ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
+        endtime = time.perf_counter_ns()
+        print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
+        print(f"| Output:\n")
+        print(ast)
+        print()
+
+    print(delim, "\nSuccess! All tests passed\n")
+
 
 def run(file_name : str):
     # print("="*80)
@@ -28,6 +67,9 @@ def run(file_name : str):
     # ast = alpaca.parser.run(config, tokens, builder=Builder)
     # # print(ast)
     # exit()
+
+    run_seer_tests()
+    exit()
     
 
     # PARSE SEER CONFIG

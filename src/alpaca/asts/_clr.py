@@ -4,10 +4,10 @@ from typing import Union, List
 import re
 
 class CLRToken:
-    def __init__(self, type : str, value : str):
+    def __init__(self, type : str, value : str, line_number : int):
         self.type = type
         self.value = value
-        self.line_number = 0
+        self.line_number = line_number
 
     def __str__(self):
         # TODO: formalize this hack
@@ -19,10 +19,10 @@ class CLRToken:
             return self.type
 
 class CLRList:
-    def __init__(self, type : str, lst : list[CLRList | CLRToken]):
+    def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0):
         self.type = type
         self._list = lst
-        self.line_number = 0
+        self.line_number = line_number
 
     def __getitem__(self, key : int) -> CLRList | CLRToken:
         return self._list[key]
@@ -41,6 +41,9 @@ class CLRList:
 
     def __delslice__(self, *args, **kwargs):
         return self._list.__delslice__(args, kwargs)
+
+    def __len__(self) -> int:
+        return len(self._list)
 
     def __str__(self) -> str:
         str_reps = [str(x) for x in self._list]

@@ -1,10 +1,10 @@
-from distutils import text_file
 import re
 import sys
 import time
 
 import alpaca
 from seer import Visitor, Builder, Callback, Builder2
+from seer._validator import validate, Validator
 import lamb
 
 def run_lamb(filename : str):
@@ -68,8 +68,8 @@ def run(file_name : str):
     # # print(ast)
     # exit()
 
-    run_seer_tests()
-    exit()
+    # run_seer_tests()
+    # exit()
     
 
     # PARSE SEER CONFIG
@@ -97,6 +97,8 @@ def run(file_name : str):
     endtime = time.perf_counter_ns()
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
     print(ast)
+
+    validate(config, ast, Validator, txt)
 
     exit()
 

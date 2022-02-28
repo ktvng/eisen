@@ -161,7 +161,7 @@ STRUCTURE
         |   float
 
     VAR ->
-        @action convert var
+        @action convert ref
         |   TAG
         @action pass
         |   MODULE_LOOKUP
@@ -242,7 +242,7 @@ STRUCTURE
 
     @action filter_build rets
     RETURN_DECL -> 
-        |   -> ARGS_DECL
+        |   -> TYPING_TUPLE
         |   -> TYPING
         |   -> TYPE
 

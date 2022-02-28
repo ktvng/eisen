@@ -83,8 +83,10 @@ class Builder2(AbstractBuilder):
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
         elif len(flattened_comps) == 3:
-            newCLRList = CLRList(flattened_comps[1], [flattened_comps[0], flattened_comps[2]])
-            newCLRList.line_number = flattened_comps[1].line_number
+            newCLRList = CLRList(
+                flattened_comps[1].value, 
+                [flattened_comps[0], flattened_comps[2]], 
+                flattened_comps[1].line_number)
             return [newCLRList]
         else:
             Raise.code_error("should not merge with more than 3 nodes")
@@ -98,8 +100,8 @@ class Builder2(AbstractBuilder):
         flattened_comps = CommonBuilder2.flatten_components(components)
         if len(flattened_comps) != 2:
             Raise.error("expected size 2 for handle_op_pref")
-            
-        return [CLRList(flattened_comps[0], [flattened_comps[1]])]
+
+        return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
 
 
     @classmethod

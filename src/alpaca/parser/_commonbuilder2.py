@@ -41,8 +41,7 @@ class CommonBuilder2(AbstractBuilder):
         if not flattened_components:
             Raise.code_error("flattened_components must not be empty")
 
-        newCLRList = CLRList(build_name, flattened_components)
-        newCLRList.line_number = flattened_components[0].line_number
+        newCLRList = CLRList(build_name, flattened_components, flattened_components[0].line_number)
         return [newCLRList]
 
 
@@ -90,5 +89,5 @@ class CommonBuilder2(AbstractBuilder):
         if isinstance(components[0], CLRList):
             components[0].set_type(name)
         elif isinstance(components[0], CLRToken):
-            components = [CLRList(name, components)]
+            components = [CLRList(name, components, components[0].line_number)]
         return components

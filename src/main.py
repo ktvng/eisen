@@ -5,6 +5,7 @@ import time
 import alpaca
 from seer import Visitor, Builder, Callback, Builder2
 from seer._validator import validate, Validator
+from seer._transpiler import Transpiler, SeerFunctions
 import lamb
 
 def run_lamb(filename : str):
@@ -98,7 +99,11 @@ def run(file_name : str):
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
     print(ast)
 
-    validate(config, ast, Validator, txt)
+    # mod = validate(config, ast, Validator, txt)
+    # print(mod)
+    txt = Transpiler.run(config, ast, SeerFunctions(), None)
+    with open("test.c", 'w') as f:
+        f.write(txt)
 
     exit()
 

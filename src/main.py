@@ -99,9 +99,8 @@ def run(file_name : str):
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
     print(ast)
 
-    # mod = validate(config, ast, Validator, txt)
-    # print(mod)
-    txt = Transpiler.run(config, ast, SeerFunctions(), None)
+    mod = validate(config, ast, Validator, txt)
+    txt = Transpiler.run(config, ast, SeerFunctions(), mod)
     with open("test.c", 'w') as f:
         f.write(txt)
 

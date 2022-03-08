@@ -1,11 +1,10 @@
 from __future__ import annotations
 import re
-from sys import base_prefix
 
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
 
-from seer._validator import AbstractModule
+from seer._validator import AbstractModule, Typing, AbstractObject
 
 from error import Raise
 
@@ -13,27 +12,24 @@ class TranspilerFunctions:
     pass
 
 class TranspilerParams():
-    attrs = ['config', 'asl', 'functions', 'mod_prefix', 'mod']
+    attrs = ['config', 'asl', 'functions', 'mod']
 
     def __init__(self,
             config : Config,
             asl : CLRList,
             functions : dict,
-            mod_prefix : str,
             mod : AbstractModule):
 
         self.config = config
         self.asl = asl
         self.functions = functions
-        self.mod_prefix = mod_prefix
         self.mod = mod
 
 
-    def given(self,
+    def but_with(self,
             config : Config = None,
             asl : CLRList = None,
             functions : dict = None,
-            mod_prefix : str = None,
             mod : AbstractModule = None):
 
         new_params = TranspilerParams.new_from(self)
@@ -43,8 +39,6 @@ class TranspilerParams():
             new_params.asl = asl
         if functions is not None:
             new_params.functions = functions
-        if mod_prefix is not None:
-            new_params.mod_prefix = mod_prefix
         if mod is not None:
             new_params.mod = mod
         
@@ -56,7 +50,6 @@ class TranspilerParams():
             params.config,
             params.asl,
             params.functions,
-            params.mod_prefix,
             params.mod)
 
         for k, v in overrides:
@@ -70,11 +63,10 @@ class Transpiler():
     @classmethod
     def run(cls, config : Config, asl : CLRList, functions : TranspilerFunctions, mod : AbstractModule):
         functions = functions.get_build_map()
-        params = TranspilerParams(config, asl, functions, Transpiler.base_prefix, mod)
+        params = TranspilerParams(config, asl, functions, mod)
         parts = Transpiler.transpile(params)
         code = Transpiler._postformat(parts)
-        print("="*80)
-        print(code)
+        cls._add_method_decls(mod)
         return code
 
     @classmethod
@@ -115,14 +107,47 @@ class Transpiler():
 
     @classmethod
     def _add_main_method(cls):
-        return "void main() {\n  " + Transpiler.base_prefix + "main();\n}\n"
+        return "void main() {\n  " + Transpiler.base_prefix + "global_main();\n}\n"
+
+    @classmethod
+    def _get_all_function_in_module(cls, mod : AbstractModule):
+        objs = mod.context.objs_in_scope._objs.values()
+        fn_objs = [o for o in objs if o.type.type == Typing.function_type_name]
+
+        for child in mod.child_modules:
+            fn_objs += cls._get_all_function_in_module(child)
+
+        return fn_objs
+
+    @classmethod
+    def _add_method_decls(cls, mod : AbstractModule):
+        fn_objs = cls._get_all_function_in_module(mod)
+
+    @classmethod
+    def get_mod_prefix(cls, mod : AbstractModule):
+        prefix = ""
+        while mod is not None:
+            prefix = mod.name + "_" + prefix
+            mod = mod.parent_module
+
+        return Transpiler.base_prefix + prefix
 
 
         
 class SeerFunctions(TranspilerFunctions):
     @classmethod
-    def global_name(cls, name : str, params : TranspilerParams):
-        return params.mod_prefix + name
+    def global_name(cls, name : str, mod : AbstractModule):
+        return Transpiler.get_mod_prefix(mod) + name
+
+    @classmethod
+    def global_name_for_type(cls, token_type : Typing.Type, mod : AbstractModule):
+        # case if is primitive
+        if token_type.type == Typing.base_type_name:
+            type_name = token_type.name()
+        else:
+            type_name = "struct " + SeerFunctions.global_name(token_type.name(), mod)
+
+        return type_name
 
     indent = "  "
 
@@ -137,60 +162,72 @@ class SeerFunctions(TranspilerFunctions):
             "seq": self.seq_,
             "let": self.let_,
             "return": self.return_,
-            "=": self.binary_op("="),
+            "=": self.equals_,
             "ref": self.ref_,
             "+": self.binary_op("+"),
+            "<": self.binary_op("<"),
             "rets": self.rets_,
             "prod_type": self.prod_type_,
             "call": self.call_,
             "params": self.params_,
+            "while": self.while_,
         }
 
     def pass_through_(self, params : TranspilerParams):
         parts = []
         for child in params.asl:
-            parts += Transpiler.transpile(params.given(asl=child))
+            parts += Transpiler.transpile(params.but_with(asl=child))
 
         return parts
 
+    def while_(self, params: TranspilerParams):
+        cond = params.asl[0]
+        parts = ["while ("]
+        parts += Transpiler.transpile(params.but_with(asl=cond[0]))
+        parts += [") ", "{\n"]
+        parts += Transpiler.transpile(params.but_with(asl=cond[1]))
+        parts += ["}"]
+
+        return parts
+        
+
     def mod_(self, params : TranspilerParams):
-        name = params.asl[0].value
-        new_prefix = params.mod_prefix + name + "_"
         parts = []
         for child in params.asl[1:]:
-            parts += Transpiler.transpile(params.given(asl=child, mod_prefix=new_prefix))
+            parts += Transpiler.transpile(params.but_with(asl=child))
 
         return parts
 
     def struct_(self, params : TranspilerParams):
-        name = params.asl[0].value
-        parts = [f"struct {SeerFunctions.global_name(name, params)}", " {\n"]
+        obj: AbstractObject = params.asl.data
+        full_name = SeerFunctions.global_name(obj.name, obj.mod)
+        parts = [f"struct {full_name}", " {\n"]
         for child in params.asl[1:]:
-            parts += Transpiler.transpile(params.given(asl=child)) + [";\n"]
+            parts += Transpiler.transpile(params.but_with(asl=child)) + [";\n"]
         
         parts.append("};\n")
         return parts
 
     def colon_(self, params : TranspilerParams):
-        name = params.asl[0].value
-        type = params.asl[1][0].value
-        return [f"{type} {name}"]
+        obj: AbstractObject = params.asl.data
+        type_name = SeerFunctions.global_name_for_type(obj.type, obj.mod)
+        return [f"{type_name} {obj.name}"]
 
     def def_(self, params : TranspilerParams):
-        name = params.asl[0].value
-        parts = [f"void {SeerFunctions.global_name(name, params)}(/*args*/ "]
+        obj: AbstractObject = params.asl.data
+        parts = [f"void {SeerFunctions.global_name(obj.name, obj.mod)}(/*args*/ "]
 
         # args
-        parts += Transpiler.transpile(params.given(asl=params.asl[1])) 
+        parts += Transpiler.transpile(params.but_with(asl=params.asl[1])) 
 
         # rets
         if len(params.asl) == 4:
-            parts += [", /*rets*/ "] + Transpiler.transpile(params.given(asl=params.asl[2]))
+            parts += [", /*rets*/ "] + Transpiler.transpile(params.but_with(asl=params.asl[2]))
         
         parts.append(") {\n")
 
         # seq
-        parts += Transpiler.transpile(params.given(asl=params.asl[-1])) 
+        parts += Transpiler.transpile(params.but_with(asl=params.asl[-1])) 
         parts.append("}\n")
         return parts
 
@@ -198,10 +235,10 @@ class SeerFunctions(TranspilerFunctions):
         if len(params.asl) == 0:
             return []
 
-        return Transpiler.transpile(params.given(asl=params.asl[0]))
+        return Transpiler.transpile(params.but_with(asl=params.asl[0]))
 
     def rets_(self, params : TranspilerParams):
-        parts = Transpiler.transpile(params.given(asl=params.asl[0]))
+        parts = Transpiler.transpile(params.but_with(asl=params.asl[0]))
 
         # need to add '*' to make it a pointer
         def amend(part : str):
@@ -219,61 +256,87 @@ class SeerFunctions(TranspilerFunctions):
     def seq_(self, params : TranspilerParams):
         parts = []
         for child in params.asl:
-            parts += Transpiler.transpile(params.given(asl=child)) + [";\n"]
+            parts += Transpiler.transpile(params.but_with(asl=child)) + [";\n"]
          
         return parts
 
     def let_(self, params : TranspilerParams):
         if isinstance(params.asl[0], CLRList):
-            return Transpiler.transpile(params.given(asl=params.asl[0]))
-        name = params.asl[0].value
-        # TODO make good
-        type = params.asl[1].type
+            return Transpiler.transpile(params.but_with(asl=params.asl[0]))
 
-        return [f"{type} {name} = {params.asl[1].value}"]
+        obj: AbstractObject = params.asl.data
+        type_name = SeerFunctions.global_name_for_type(obj.type, obj.mod)
+
+        return [f"{type_name} {obj.name} = {params.asl[1].value}"]
 
     def return_(self, params : TranspilerParams):
         return ["return"]
 
     def ref_(self, params : TranspilerParams):
-        return [params.asl[0].value]
+        prefix = "*" if params.asl.data.is_ret else ""
+        return [prefix, params.asl[0].value]
+
+    def equals_(self, params : TranspilerParams):
+        # special case if we are assigning from a function; else it is trivial
+        if isinstance(params.asl[1], CLRList) and params.asl[1].type == "call":
+            parts = []
+            parts += Transpiler.transpile(params.but_with(asl=params.asl[1]))
+
+            # remove end ')'
+            parts = parts[:-1]
+
+            parts.append(", ")
+            parts.append("&")
+            parts += Transpiler.transpile(params.but_with(asl=params.asl[0]))
+            parts.append(")")
+            return parts
+
+
+        else:
+            binary_op_fn = SeerFunctions.binary_op(self, "=")
+            return binary_op_fn(params)
     
     def binary_op(self, op : str):
         def op_fn(params : TranspilerParams):
             parts = []
-            parts += (Transpiler.transpile(params.given(asl=params.asl[0])) 
+            parts += (Transpiler.transpile(params.but_with(asl=params.asl[0])) 
                 + [f" {op} "]
-                + Transpiler.transpile(params.given(asl=params.asl[1])))
+                + Transpiler.transpile(params.but_with(asl=params.asl[1])))
 
             return parts
         
         return op_fn
 
     def prod_type_(self, params : TranspilerParams):
-        parts = Transpiler.transpile(params.given(asl=params.asl[0]))
+        parts = Transpiler.transpile(params.but_with(asl=params.asl[0]))
         for child in params.asl[1:]:
-            parts += [", "] + Transpiler.transpile(params.given(asl=child))
+            parts += [", "] + Transpiler.transpile(params.but_with(asl=child))
         
         return parts
 
     def call_(self, params : TranspilerParams):
-        fn_name = params.asl[0][0].value
-        if fn_name == "print":
-            parts = ["printf("] + Transpiler.transpile(params.given(asl=params.asl[1])) + [")"]
+        name = params.asl[0][0].value
+        if name == "print":
+            parts = ["printf("] + Transpiler.transpile(params.but_with(asl=params.asl[1])) + [")"]
             return parts
 
-        Raise.error("call_ unimplemented")
+        obj: AbstractObject = params.asl.data
+        prefix = Transpiler.get_mod_prefix(obj.mod)
+        full_name = prefix + obj.name 
+
+        parts = [full_name, "("] + Transpiler.transpile(params.but_with(asl=params.asl[1])) + [")"]
+        return parts
 
     def params_(self, params : TranspilerParams):
         if len(params.asl) == 0:
             return []
 
-        parts = Transpiler.transpile(params.given(asl=params.asl[0]))
+        parts = Transpiler.transpile(params.but_with(asl=params.asl[0]))
         if len(params.asl) == 1:
             return parts
 
         for child in params.asl[1:]:
-            parts += [", "] + Transpiler.transpile(params.given(asl=child))
+            parts += [", "] + Transpiler.transpile(params.but_with(asl=child))
 
         return parts
             

@@ -1,4 +1,6 @@
 from __future__ import annotations
+from os import kill
+from typing import TypeVar, Generic
 
 import alpaca
 from alpaca.asts import CLRList, CLRToken
@@ -10,18 +12,22 @@ class AbstractObject():
     def __init__(self, 
             name : str, 
             type : AbstractType, 
+            mod : AbstractModule,
             is_let : bool = False, 
             is_mut : bool = False, 
-            is_const : bool = False):
+            is_const : bool = False,
+            is_ret : bool = False):
 
         self.name = name
         self.type = type
+        self.mod = mod
         self.is_let = is_let
         self.is_mut = is_mut
         self.is_const = is_const
+        self.is_ret = is_ret
 
     def __str__(self) -> str:
-        return f"{self.name}<{self.type.name()}>"
+        return f"{self.name}<{self.type.cannonical_name()}>"
 
     @classmethod
     def assignable(cls, left_obj : AbstractObject, right_obj : AbstractObject):
@@ -44,35 +50,43 @@ class AbstractObject():
 class AbstractType():
     pass
 
+class Context:
+    def __init__(self, parent: Context = None):
+        self.parent_context = parent
+        parent_types_scope = None if parent is None else parent.types_in_scope
+        parent_objs_scope = None if parent is None else parent.objs_in_scope
+
+        self.types_in_scope: AbstractScope[Typing.Type] = \
+            AbstractScope(parent_scope=parent_types_scope)
+        self.objs_in_scope: AbstractScope[AbstractObject] = \
+            AbstractScope(parent_scope=parent_objs_scope)
+
+    def add_object(self, name : str, obj : AbstractObject):
+        self.objs_in_scope.add(name, obj)
+
+    def add_type(self, name : str, type : AbstractType):
+        self.types_in_scope.add(name, type)
+
+    def resolve_object_name(self, name: str, local: bool = False) -> AbstractObject:
+        return self.objs_in_scope.resolve(name, local=local)
+
+    def resolve_type_name(self, name: str, local: bool = False) -> AbstractType:
+        return self.types_in_scope.resolve(name, local=local)
+
 
 class AbstractModule():
     def __init__(self, name : str, parent_module : AbstractModule=None):
         self.name = name
         self.parent_module = parent_module
-        self.scope : AbstractScope = AbstractScope()
+        parent_context = None if parent_module is None else parent_module.context
+        self.context: Context = Context(parent=parent_context)
         self.child_modules : list[AbstractModule] = []
 
     def resolve_object_name(self, name : str, local : bool=False) -> AbstractObject:
-        current_module = self
-        while current_module is not None:
-            obj = current_module.scope.get_object_by_name(name)
-            if local or obj is not None:
-                return obj
-            
-            current_module = current_module.parent_module
-        
-        return None
+        return self.context.resolve_object_name(name, local=local)
 
     def resolve_type_name(self, name : str, local : bool=False) -> AbstractType:
-        current_module = self
-        while current_module is not None:
-            type = current_module.scope.get_type_by_name(name)
-            if local or type is not None:
-                return type
-
-            current_module = current_module.parent_module
-        
-        return None
+        return self.context.resolve_type_name(name, local=local)
 
     def add_child_module(self, module : AbstractModule):
         self.child_modules.append(module)
@@ -100,32 +114,25 @@ class AbstractModule():
         formatted_components_str = self._add_indent(components)
         return header + formatted_components_str + formatted_child_mod_str
 
-
-class AbstractScope():
-    def __init__(self, parent_scope : AbstractScope = None):
-        self._defined_types = {}
-        self._defined_objects = {}
+T = TypeVar("T")
+class AbstractScope(Generic[T]):
+    def __init__(self, parent_scope : AbstractScope[T] = None):
         self._parent_scope = parent_scope
+        self._objs : dict[str, T] = {}
 
-    def get_object_by_name(self, name : str) -> AbstractObject:
-        return self._defined_objects.get(name, None)
+    def add(self, name : str, obj : T):
+        if name in self._objs:
+            Raise.error(f"Attempting to add existing object {name} {obj}")
 
-    def get_type_by_name(self, name : str) -> AbstractType:
-        return self._defined_types.get(name, None)
+        self._objs[name] = obj
 
-    def add_object(self, name : str, obj : AbstractObject):
-        self._defined_objects[name] = obj
-
-    def add_type(self, name : str, type : AbstractType):
-        self._defined_types[name] = type
-
-    def resolve_object_name(self, name : str, local : bool=False) -> AbstractObject:
+    def resolve(self, name : str, local: bool = False) -> T:
         current_scope = self
         while current_scope is not None:
-            obj = current_scope.get_object_by_name(name)
+            obj = current_scope._objs.get(name, None)
             if local or obj is not None:
                 return obj
-            
+
             current_scope = current_scope._parent_scope
         
         return None
@@ -254,14 +261,20 @@ class Exceptions():
 
 class Typing:
     types = ["function", "product", "named_product", "or", "base", "struct"]
+    base_type_name = "base"
+    function_type_name = "function"
+    product_type_name = "product"
+    or_type_name = "or"
+    struct_type_name = "struct"
+
     class Type(AbstractType):
         def __init__(self, type=None):
             self._name = None
             self.type = type
             self.components : list[Typing.Type] = []
             self.names : list[str] = []
-            self.args : list[Typing.Type] = []
-            self.rets : list[Typing.Type] = []
+            self.arg: Typing.Type = None
+            self.ret: Typing.Type = None
             self.nullable = False
         
         def _equiv(self, u : list, v : list) -> bool:
@@ -289,8 +302,8 @@ class Typing:
                 return (self._equiv(self.components, o.components) 
                     and self._equiv(self.names, o.names))
             elif self.type == "function":
-                return (self._equiv(self.args, o.arg) 
-                    and self._equiv(self.rets, o.rets))
+                return (self.arg == o.arg
+                    and self.ret == o.ret)
             else:
                 Raise.error("Unimplemented __eq__ for Typing.Type")
 
@@ -306,34 +319,40 @@ class Typing:
                     for name, type in zip(self.names, component_type_strs)]
                 return f"({', '.join(component_key_value_strs)})"
             elif self.type == "function":
-                args_names = [x.cannonical_name() for x in self.args]
-                rets_names = [x.cannonical_name() for x in self.rets]
-                return f"({', '.join(args_names)}) -> ({', '.join(rets_names)})"
+                args_names = self.arg.cannonical_name() if self.arg is not None else ""
+                rets_names = self.ret.cannonical_name() if self.ret is not None else "void"
+                return f"({args_names}) -> {rets_names}"
             else:
                 Raise.error("cannoncial_name not implemented")
+
+        def __str__(self):
+            if self._name is not None:
+                return f"{self._name}<{self.cannonical_name()}>"
+            return self.name()
             
     @classmethod
-    def base_type(cls, name : str, nullable=False) -> Typing.Type:
+    def new_base_type(cls, name : str, nullable=False) -> Typing.Type:
         type = Typing.Type("base")
         type._name = name
         type.nullable=nullable
         return type
 
     @classmethod
-    def function_type(cls, args : list[Typing.Type], rets : list[Typing.Type]) -> Typing.Type:
+    def new_function_type(cls, arg: Typing.Type, ret: Typing.Type, name : str=None) -> Typing.Type:
         type = Typing.Type("function")
-        type.args = args
-        type.rets = rets
+        type.arg = arg
+        type.ret = ret
+        type._name = name
         return type
 
     @classmethod
-    def product_type(cls, components : list[Typing.Type]) -> Typing.Type:
+    def new_product_type(cls, components : list[Typing.Type]) -> Typing.Type:
         type = Typing.Type("product")
         type.components = components
         return type
 
     @classmethod
-    def named_product_type(cls, components : list[Typing.Type], names : list[str], name : str=None) -> Typing.Type:
+    def new_named_product_type(cls, components : list[Typing.Type], names : list[str], name : str=None) -> Typing.Type:
         type = Typing.Type("named_product")
         type.components = components
         type.names = names
@@ -352,15 +371,14 @@ class Typing:
         # Raise Exception here
         Raise.error(f"Could not find type {type_str} _unpack_colon_operator")
 
-
     @classmethod
     def get_type_of(cls, asl : CLRList, mod : AbstractModule):
         if asl.type == "prod_type":
             components = [Typing._unpack_colon_operator(child, mod) for child in asl]
-            new_type = Typing.product_type(components)
+            new_type = Typing.new_product_type(components)
             found_type = mod.resolve_type_name(new_type.name())
             if found_type is None:
-                mod.scope.add_type(new_type.name(), new_type)
+                mod.context.add_type(new_type.name(), new_type)
                 return new_type
             return found_type
 
@@ -373,14 +391,22 @@ class Typing:
             rets = []
             if len(asl) == 4:
                 rets = asl[2]
-            
-            args_types = [Typing.get_type_of(arg, mod) for arg in args]
-            rets_types = [Typing.get_type_of(ret, mod) for ret in rets]
 
-            new_type = Typing.function_type(args_types, rets_types)
+            if len(args) == 0:
+                arg_type = None
+            else:
+                arg_type = Typing.get_type_of(args[0], mod)
+
+            if len(rets) == 0:
+                ret_type = None 
+            else:
+                ret_type = Typing.get_type_of(rets[0], mod)
+
+            # don't use name because functions are not named types
+            new_type = Typing.new_function_type(arg_type, ret_type)
             found_type = mod.resolve_type_name(new_type.name())
             if found_type is None:
-                mod.scope.add_type(new_type.name(), new_type)
+                mod.context.add_type(new_type.name(), new_type)
                 return new_type
             return found_type
 
@@ -391,14 +417,17 @@ class Typing:
             component_names = [comp[0].value for comp in components if comp.type == ":"]
             component_types = [Typing.get_type_of(comp, mod) for comp in components if comp.type == ":"]
 
-            new_type = Typing.named_product_type(component_types, component_names, name=name)
+            new_type = Typing.new_named_product_type(component_types, component_names, name=name)
             found_type = mod.resolve_type_name(new_type.name(), local=True)
             if found_type is None:
-                mod.scope.add_type(new_type.name(), new_type)
+                mod.context.add_type(new_type.name(), new_type)
                 return new_type
             
             # TODO: throw exception
             Raise.code_error(f"already defined a struct of name {name}")
+
+        else:
+            Raise.error(f"unknown type to index {asl.type}")
 
 
 
@@ -406,8 +435,8 @@ class Typing:
 def _index(config : Config, asl : CLRList, mod : AbstractModule, validator : ValidateFunctions) -> None:
     for child in asl:
         if child.type == "struct":
-            name = child[0].value
-            type = Typing.get_type_of(child, mod)
+            Typing.get_type_of(child, mod)
+
     for child in asl:
         if child.type == "mod":
             child_mod = AbstractModule(child[0].value, parent_module=mod)
@@ -416,6 +445,8 @@ def _index(config : Config, asl : CLRList, mod : AbstractModule, validator : Val
         if child.type == "def":
             name = child[0].value
             type = Typing.get_type_of(child, mod)
+            new_obj = AbstractObject(name, type, mod)
+            mod.context.add_object(name, new_obj)
 
 def index(config : Config, asl : CLRList, validator : ValidateFunctions) -> AbstractModule:
     # TODO: make this a config option
@@ -423,25 +454,25 @@ def index(config : Config, asl : CLRList, validator : ValidateFunctions) -> Abst
         Raise.error(f"unexpected asl starting token; expected start, got {asl.type}")
 
     global_mod = AbstractModule(name="global")
-    global_mod.scope.add_type("int", Typing.base_type("int"))
-    global_mod.scope.add_type("str", Typing.base_type("str"))
-    global_mod.scope.add_type("flt", Typing.base_type("flt"))
-    global_mod.scope.add_type("bool", Typing.base_type("bool"))
-    global_mod.scope.add_type("int*", Typing.base_type("int*"))
-    global_mod.scope.add_type("str*", Typing.base_type("str*"))
-    global_mod.scope.add_type("flt*", Typing.base_type("flt*"))
-    global_mod.scope.add_type("bool*", Typing.base_type("bool*"))
-    global_mod.scope.add_type("int?", Typing.base_type("int?", nullable=True))
-    global_mod.scope.add_type("str?", Typing.base_type("str?", nullable=True))
-    global_mod.scope.add_type("flt?", Typing.base_type("flt?", nullable=True))
-    global_mod.scope.add_type("bool?", Typing.base_type("bool?", nullable=True))
+    global_mod.context.add_type("int", Typing.new_base_type("int"))
+    global_mod.context.add_type("str", Typing.new_base_type("str"))
+    global_mod.context.add_type("flt", Typing.new_base_type("flt"))
+    global_mod.context.add_type("bool", Typing.new_base_type("bool"))
+    global_mod.context.add_type("int*", Typing.new_base_type("int*"))
+    global_mod.context.add_type("str*", Typing.new_base_type("str*"))
+    global_mod.context.add_type("flt*", Typing.new_base_type("flt*"))
+    global_mod.context.add_type("bool*", Typing.new_base_type("bool*"))
+    global_mod.context.add_type("int?", Typing.new_base_type("int?", nullable=True))
+    global_mod.context.add_type("str?", Typing.new_base_type("str?", nullable=True))
+    global_mod.context.add_type("flt?", Typing.new_base_type("flt?", nullable=True))
+    global_mod.context.add_type("bool?", Typing.new_base_type("bool?", nullable=True))
 
     _index(config, asl, global_mod, validator)
     return global_mod
 
 
 def validate(config : Config, asl : CLRList, validator : ValidateFunctions, txt : str):
-    return Validator.run(config, asl, SeerValidateFunctions(), txt)
+    return Validator.run(config, asl, SeerValidation(), txt)
 
 
 binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/=']
@@ -459,7 +490,7 @@ class Abort():
         return
 
 class ValidateParams:
-    attrs = ["config", "asl", "validator", "exceptions", "mod", "scope"]
+    attrs = ["config", "asl", "validator", "exceptions", "mod", "context", "flags"]
 
     def __init__(self, 
             config : Config, 
@@ -467,23 +498,35 @@ class ValidateParams:
             validatefunctions : ValidateFunctions,
             exceptions : list[Exceptions.AbstractException],
             mod : AbstractModule,
-            scope : AbstractScope):
+            context : Context,
+            flags : str,
+            ):
 
         self.config = config
         self.asl = asl
         self.functions = validatefunctions
         self.exceptions = exceptions
         self.mod = mod
-        self.scope = scope
+        self.context = context
+        self.flags = flags
 
+    def has_flag(self, flag : str) -> bool:
+        if self.flags is None:
+            return False
+        return flag in self.flags
 
-    def given(self,
+    def derive_flags_including(self, flags : str) -> str:
+        return self.flags + ";" + flags
+
+    def but_with(self,
             config : Config = None,
             asl : CLRList = None,
             validatefunctions : ValidateFunctions = None,
             exceptions : list[Exceptions.AbstractException] = None,
             mod : AbstractModule = None,
-            scope : AbstractScope = None):
+            context : Context = None,
+            flags : str = None,
+            ):
 
         new_params = ValidateParams.new_from(self)
         if config is not None:
@@ -496,8 +539,10 @@ class ValidateParams:
             new_params.exceptions = exceptions
         if mod is not None:
             new_params.mod = mod
-        if scope is not None:
-            new_params.scope = scope
+        if context is not None:
+            new_params.context = context
+        if flags is not None:
+            new_params.flags = flags
         
         return new_params
 
@@ -509,7 +554,9 @@ class ValidateParams:
             params.functions,
             params.exceptions,
             params.mod,
-            params.scope)
+            params.context,
+            params.flags,
+            )
 
         for k, v in overrides:
             if k in ValidateParams.attrs:
@@ -523,7 +570,14 @@ class Validator():
     def run(cls, config : Config, asl : CLRList, validator : ValidateFunctions, txt : str):
         exceptions : list[Exceptions.AbstractException] = []
         global_mod = index(config, asl, validator)
-        vparams = ValidateParams(config, asl, validator, exceptions, global_mod, global_mod.scope)
+        vparams = ValidateParams(
+            config, 
+            asl, 
+            validator, 
+            exceptions, 
+            global_mod, 
+            global_mod.context, 
+            "")
 
         Validator.validate(vparams)
 
@@ -551,15 +605,15 @@ class SeerEnsure():
             params.exceptions.append(e)
 
 
-class SeerValidateFunctions(ValidateFunctions):
-    binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/=']
-    decls = ['val', 'var', 'mut_val', 'mut_var', 'let']
-    unimpl = ['start', ':', 'fn', 'args', 'arr_type', 'seq', 'rets', 'return', 'prod_type', 'call', 'params']
+class SeerValidation(ValidateFunctions):
+    class Flags:
+        is_ret = "is_ret"
+
 
     @classmethod
     def resolve_object_name(cls, name : str, params : ValidateParams, local : bool=False):
         # lookup from local scope first
-        obj = params.scope.resolve_object_name(name, local=False)
+        obj = params.context.resolve_object_name(name, local=False)
         if obj:
             return obj
 
@@ -572,27 +626,139 @@ class SeerValidateFunctions(ValidateFunctions):
         names = [member[0].value for member in asl[1:]]
         return len(names) == len(set(names))
 
-    @ValidateFunctions.indexes(['struct'])
-    def struct(params : ValidateParams):
-        name = params.asl[0].value
-        SeerEnsure.struct_has_unique_names(params)
+    @classmethod
+    def _get_global_module(cls, mod : AbstractModule) -> AbstractModule:
+        next_mod = mod.parent_module
+        while next_mod is not None:
+            mod = next_mod
+            next_mod = mod.parent_module
 
-    @ValidateFunctions.indexes(['mod'])
+        return mod
+
+    @classmethod
+    def _resolve_object_in_module(cls, asl : CLRList, params : ValidateParams) -> AbstractObject:
+        global_mod = cls._get_global_module(params.mod)
+        # if the resolution chain is 1 deep (special case)
+        if isinstance(asl[0], CLRToken):
+            mod = global_mod.get_child_module(asl[0].value)
+        else:
+            mod = cls._decend_module_structure(asl[0], global_mod)
+            
+
+        return mod.context.resolve_object_name(asl[1].value)
+
+    @classmethod
+    def _decend_module_structure(cls, asl : CLRList, mod : AbstractModule) -> AbstractModule:
+        if isinstance(asl[0], CLRList) and asl[0].type == "::":
+            mod = cls._decend_module_structure(cls, asl[0], mod)
+        elif isinstance(asl[0], CLRToken):
+            return mod.get_child_module(asl[0].value).get_child_module(asl[1].value)
+
+        return mod.get_child_module(asl[1].value)
+
+        
+
+
+
+
+    unimpl = ['start', 'fn', 'args', 'arr_type', 'seq', 'rets', 'return', 'prod_type']
+
+    @ValidateFunctions.indexes("while")
+    def while_(params: ValidateParams):
+        cond = params.asl[0]
+        Validator.validate(params.but_with(asl=cond[0]))
+        Validator.validate(params.but_with(asl=cond[1]))
+
+    @ValidateFunctions.indexes(":")
+    def colon_(params : ValidateParams):
+        name_token = params.asl[0]
+        name = name_token.value
+        type = Validator.validate(params.but_with(asl=params.asl[1]))
+        new_obj = AbstractObject(name, type, params.mod, is_ret=params.has_flag(SeerValidation.Flags.is_ret))
+        params.asl.data = new_obj
+        params.context.add_object(
+            name, 
+            new_obj)
+        return type
+
+    @ValidateFunctions.indexes("params")
+    def params_(params : ValidateParams):
+        for child in params.asl:
+            Validator.validate(params.but_with(asl=child))
+
+    @ValidateFunctions.indexes("call")
+    def call(params : ValidateParams):
+        # always validate the function params
+        Validator.validate(params.but_with(asl=params.asl[1]))
+
+        # unpack the (fn #value) member
+        if params.asl[0].type == "fn":
+            name= params.asl[0][0].value
+            # TODO: formalize
+            if name == "print":
+                return Abort()
+            found_obj = SeerValidation.resolve_object_name(name, params)
+        else:
+            found_obj = SeerValidation._resolve_object_in_module(params.asl[0], params)
+
+        if found_obj is None:
+            e = Exceptions.UndefinedVariable(
+                f"'{name}' was never defined",
+                params.asl.line_number)
+            params.exceptions.append(e)
+            return Abort()
+
+        params.asl.data = found_obj
+        return found_obj.type
+         
+    @ValidateFunctions.indexes('struct')
+    def struct(params : ValidateParams):
+        name_token = params.asl[0]
+        name = name_token.value
+        type = params.mod.resolve_type_name(name)
+        params.asl.data = AbstractObject(name, type, params.mod)
+        SeerEnsure.struct_has_unique_names(params)
+        for child in params.asl[1:]:
+            Validator.validate(params.but_with(asl=child, context=Context()))
+
+    @ValidateFunctions.indexes('mod')
     def mod(params : ValidateParams):
         name = params.asl[0].value
         child_mod = params.mod.get_child_module(name)
-        return [Validator.validate(params.given(asl=child, mod=child_mod)) for child in params.asl] 
+        return [Validator.validate(params.but_with(asl=child, mod=child_mod)) for child in params.asl] 
 
     @ValidateFunctions.indexes("def")
     def fn(params : ValidateParams):
-        fn_scope = AbstractScope()
-        x = params.given(scope=fn_scope)
-        return [Validator.validate(params.given(asl=child, scope=fn_scope)) for child in params.asl]
+        name_token = params.asl[0]
+        name = name_token.value
 
+        # object exists due to indexing
+        obj = params.mod.context.resolve_object_name(name)
+        params.asl.data = obj
+        fn_context = Context()
+
+        # validate args
+        args = params.asl[1]
+        for child in args:
+            Validator.validate(params.but_with(asl=child, context=fn_context))
+
+        # validate rets
+        if len(params.asl) == 4:
+            rets = params.asl[2]
+            for child in rets:
+                Validator.validate(params.but_with(
+                    asl=child, 
+                    context=fn_context, 
+                    flags=params.derive_flags_including(SeerValidation.Flags.is_ret)))
+
+        Validator.validate(params.but_with(asl=params.asl[-1], context=fn_context))
+        return obj.type
+
+    binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
     @ValidateFunctions.indexes(binary_ops)
     def binary_ops(params : ValidateParams):
-        left_type = Validator.validate(params.given(asl=params.asl[0]))
-        right_type = Validator.validate(params.given(asl=params.asl[1]))
+        left_type = Validator.validate(params.but_with(asl=params.asl[0]))
+        right_type = Validator.validate(params.but_with(asl=params.asl[1]))
 
         if _any_exceptions(left_type, right_type):
             return Abort()
@@ -606,16 +772,21 @@ class SeerValidateFunctions(ValidateFunctions):
         
         return left_type
 
-    @ValidateFunctions.indexes(decls)
+    @ValidateFunctions.indexes(['val', 'var', 'mut_val', 'mut_var', 'let'])
     def decls(params : ValidateParams):
         if isinstance(params.asl[0], CLRList) and params.asl[0].type == ":":
+            asl_to_instr = params.asl[0]
             name = params.asl[0][0].value
-            type = Validator.validate(params.given(asl=params.asl[0][1]))
+            type = Validator.validate(params.but_with(asl=params.asl[0][1]))
         else:
+            asl_to_instr = params.asl
+            if isinstance(params.asl[1], CLRList):
+                Raise.code_error("unimplemented for decls = expr") 
+
             name = params.asl[0].value
-            type = Validator.validate(params.given(asl=params.asl[1]))
+            type = Validator.validate(params.but_with(asl=params.asl[1]))
         
-        if SeerValidateFunctions.resolve_object_name(name, params) is not None:
+        if SeerValidation.resolve_object_name(name, params) is not None:
             e = Exceptions.RedefinedIdentifier(
                 f"'{name}' is already in use",
                 params.asl.line_number)
@@ -625,16 +796,17 @@ class SeerValidateFunctions(ValidateFunctions):
         is_let = params.asl.type == "let"
         is_mut = "mut" in params.asl.type
         is_const = "val" in params.asl.type
-        new_obj = AbstractObject(name, type, is_let=is_let, is_mut=is_mut, is_const=is_const)
-        params.scope.add_object(
+        new_obj = AbstractObject(name, type, params.mod, is_let=is_let, is_mut=is_mut, is_const=is_const)
+        params.context.add_object(
             name, 
             new_obj)
 
-        return new_obj
+        asl_to_instr.data = new_obj
+        return new_obj.type
 
     @ValidateFunctions.indexes(unimpl)
     def ignore(params : ValidateParams):
-        return [Validator.validate(params.given(asl=child)) for child in params.asl]
+        return [Validator.validate(params.but_with(asl=child)) for child in params.asl]
 
     @ValidateFunctions.indexes(['type']) 
     def _type1(params : ValidateParams):
@@ -653,43 +825,25 @@ class SeerValidateFunctions(ValidateFunctions):
 
     @ValidateFunctions.indexes(['='])
     def assigns(params : ValidateParams):
-        left_obj = Validator.validate(params.given(asl=params.asl[0]))
-        right_obj = Validator.validate(params.given(asl=params.asl[1]))
+        left_obj = Validator.validate(params.but_with(asl=params.asl[0]))
+        right_obj = Validator.validate(params.but_with(asl=params.asl[1]))
 
         if _any_exceptions(left_obj, right_obj):
             return Abort()
 
         return left_obj
 
-    @ValidateFunctions.indexes(['ref'])
+    @ValidateFunctions.indexes("ref")
     def ref(params : ValidateParams):
-        return SeerValidateFunctions.resolve_object_name(params.asl[0].value, params).type
+        name = params.asl[0].value
+        found_obj = SeerValidation.resolve_object_name(name, params)
+        if found_obj is None:
+            e = Exceptions.UndefinedVariable(
+                f"'{name}' was never defined",
+                params.asl.line_number)
+            params.exceptions.append(e)
+            return Abort()
+
+        params.asl.data = found_obj
+        return found_obj.type
             
-def _validate(
-        asl : CLRList, 
-        mod : AbstractModule, 
-        exceptions : list[Exceptions.AbstractException]) -> AbstractType | AbstractObject | Abort:
-
-    if isinstance(asl, CLRToken):
-        return mod.resolve_type_name(asl.type)
-
-
-    elif asl.type == "ref":
-        return mod.resolve_object_name(asl[0].value)
-
-    elif asl.type == "<-":
-        left_obj = _validate(asl[0], mod, exceptions)
-        right_obj = _validate(asl[1], mod, exceptions)
-
-        if _any_exceptions(left_obj, right_obj):
-            return Abort()
-
-        if not AbstractObject.copyable(left_obj, right_obj):
-            e = Exceptions.MemoryTypeMismatch(
-                f"who knows?",
-                asl.line_number)
-            exceptions.append(e)
-            return Abort()
-
-        return left_obj
-        

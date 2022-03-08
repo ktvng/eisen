@@ -23,6 +23,7 @@ class CLRList:
         self.type = type
         self._list = lst
         self.line_number = line_number
+        self.data = None
 
     def __getitem__(self, key : int) -> CLRList | CLRToken:
         return self._list[key]

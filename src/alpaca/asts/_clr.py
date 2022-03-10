@@ -1,7 +1,9 @@
 from __future__ import annotations
 from functools import reduce
+from re import A
 from typing import Union, List
-import re
+
+from error import Raise
 
 class CLRToken:
     def __init__(self, type : str, value : str, line_number : int):
@@ -13,8 +15,8 @@ class CLRToken:
         # TODO: formalize this hack
         if self.type == "TAG" or self.type == "int" or self.type == "bool":
             return self.value
-        elif self.type == "string":
-            return f'"{self.value}"'
+        elif self.type == "str":
+            return f'{self.value}'
         else:
             return self.type
 
@@ -24,6 +26,15 @@ class CLRList:
         self._list = lst
         self.line_number = line_number
         self.data = None
+
+    # The head of a CLRList is the first element; if that element is a token, then
+    # head_value will return the value of that CLRToken
+    def head_value(self) -> str:
+        if not isinstance(self._list[0], CLRToken):
+            raise Exception(
+                f"expected first element of CLRList to be a CLRToken. Got:\n {str(self)}")
+        
+        return self._list[0].value
 
     def __getitem__(self, key : int) -> CLRList | CLRToken:
         return self._list[key]

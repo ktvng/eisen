@@ -1,4 +1,5 @@
 from __future__ import annotations
+from asyncio import start_unix_server
 
 from alpaca.config import Config
 from alpaca.asts import CLRList
@@ -20,23 +21,32 @@ class Indexer():
             return self.f(*args, **kwargs)
 
     class Params():
-        def __init__(self, config : Config, asl : CLRList, mod : AbstractModule, fns : Typing.Any):
+        def __init__(self, 
+                config : Config, 
+                asl : CLRList, 
+                mod : AbstractModule, 
+                fns : Typing.Any,
+                struct_name: str):
+
             self.config = config
             self.asl = asl
             self.mod = mod
             self.fns = fns
+            self.struct_name = struct_name
 
         def but_with(self,
                 config: Config = None,
                 asl: CLRList = None,
                 mod: AbstractModule = None,
-                fns: Typing.Any = None) -> Indexer.Params:
+                fns: Typing.Any = None,
+                struct_name: str = None) -> Indexer.Params:
 
             return Indexer.Params(
                 config = self.config if config is None else config,
                 asl = self.asl if asl is None else asl,
                 mod = self.mod if mod is None else mod,
                 fns = self.fns if fns is None else fns,
+                struct_name= self.struct_name if struct_name is None else struct_name,
                 )
 
     # args and kwargs used are the same as the initializer method decorated by

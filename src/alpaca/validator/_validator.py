@@ -117,7 +117,7 @@ class Validator():
 
         for e in exceptions:
             print(e.to_str_with_context(txt))
-            return None
+            # return None
 
         return global_mod
 

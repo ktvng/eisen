@@ -2,8 +2,9 @@ from __future__ import annotations
 from typing import Generic, TypeVar
 
 class Context:
-    def __init__(self, parent: Context = None):
+    def __init__(self, parent: Context = None, name=None):
         self.parent_context = parent
+        self.name = name
         parent_types_scope = None if parent is None else parent.types_in_scope
         parent_objs_scope = None if parent is None else parent.objs_in_scope
 

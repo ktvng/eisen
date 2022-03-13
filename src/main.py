@@ -1,6 +1,8 @@
 import re
 import sys
 import time
+import subprocess
+from typing import SupportsRound
 
 import alpaca
 from seer import Visitor, Builder, Callback, Builder2, SeerValidator
@@ -32,9 +34,12 @@ def run_seer_tests():
     # READ FILE TO STR
     with open("./src/seer/tests/test.rs", 'r') as f:
         txt = f.read()
-
+    
+    failure_count = 0
+    test_count = 0
     txt_chunks = re.split(r"\/\/ *#\d+ *([\w ]+ *\n)", txt)
     for i in range(1, len(txt_chunks), 2):
+        expected = txt_chunks[i+1].split('\n')[0][2:].strip()
         print(delim)
         print(f"| Testing: #{i//2} {txt_chunks[i]}", end="")
         chunk = txt_chunks[i+1]
@@ -53,11 +58,43 @@ def run_seer_tests():
         ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
-        print(f"| Output:\n")
         print(ast)
-        print()
+        # print(f"| Output:\n")
+        # print(ast)
+        # print()
 
-    print(delim, "\nSuccess! All tests passed\n")
+        starttime = time.perf_counter_ns()
+        mod = alpaca.validator.run(config, ast, SeerValidator(), txt)
+        endtime = time.perf_counter_ns()
+        print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
+
+        if mod is None:
+            exit()
+            
+        starttime = time.perf_counter_ns()
+        txt = Transpiler.run(config, ast, SeerFunctions(), mod)
+        endtime = time.perf_counter_ns()
+        print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
+        with open("build/test.c", 'w') as f:
+            f.write(txt)
+
+        # run tests
+        subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
+        x = subprocess.run(["./build/test"], capture_output=True)
+        got = x.stdout.decode("utf-8") 
+        is_expected = got == expected
+        if is_expected:
+            print(f"| Result: SUCCESS!")
+        else:
+            print(f"| Result: FAILED, expected {expected} but got {got}")
+            failure_count += 1
+        
+        test_count +=1
+        
+    if failure_count == 0:
+        print(delim, "\nSuccess! All tests passed\n")
+    else:
+        print(delim, f"\n{failure_count}/{test_count} test failed!")
 
 
 def run(file_name : str):
@@ -70,8 +107,8 @@ def run(file_name : str):
     # # print(ast)
     # exit()
 
-    # run_seer_tests()
-    # exit()
+    run_seer_tests()
+    exit()
 
 
 

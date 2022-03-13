@@ -528,12 +528,24 @@ class Seer():
 
         params.asl.data = objs
 
+    @Validator.for_these_types("cond")
+    def cond_(params: Validator.Params):
+        for child in params.asl:
+            Validator.validate(params.but_with(asl=child))
+
+    @Validator.for_these_types("if")
+    def if_(params: Validator.Params):
+        for child in params.asl:
+            Validator.validate(params.but_with(
+                asl=child, 
+                context=Context(parent=params.context)))
 
     @Validator.for_these_types("while")
     def while_(params: Validator.Params):
-        cond = params.asl[0]
-        Validator.validate(params.but_with(asl=cond[0]))
-        Validator.validate(params.but_with(asl=cond[1]))
+        context = Context(parent=params.context)
+        Validator.validate(params.but_with(
+            asl=params.asl.head(),
+            context=context))
 
     @Validator.for_these_types(":")
     def colon_(params : Validator.Params):

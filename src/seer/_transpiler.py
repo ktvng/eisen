@@ -338,11 +338,15 @@ class SeerFunctions(TranspilerFunctions):
             "+=": self.binary_op("+="),
             "-=": self.binary_op("-="),
             "==": self.binary_op("=="),
+            "||": self.binary_op("||"),
+            "&&": self.binary_op("&&"),
             "rets": self.rets_,
             "prod_type": self.prod_type_,
             "call": self.call_,
             "params": self.params_,
             "while": self.while_,
+            "cond": self.cond_,
+            "if": self.if_,
             ".": self.dot_,
         }
 
@@ -362,16 +366,28 @@ class SeerFunctions(TranspilerFunctions):
         return Transpiler.transpile(params.but_with(asl=params.asl.head())) + \
             [".", params.asl[1].value]
 
-    def while_(self, params: TranspilerParams):
-        cond = params.asl.head()
-        parts = ([]
-            + ["while ("]
-            + Transpiler.transpile(params.but_with(asl=cond[0]))
-            + [") ", "{\n"]
-            + Transpiler.transpile(params.but_with(asl=cond[1]))
+    def cond_(self, params: TranspilerParams):
+        return ([] 
+            + ["("] 
+            + Transpiler.transpile(params.but_with(asl=params.asl[0]))
+            + [")", " {\n"]
+            + Transpiler.transpile(params.but_with(asl=params.asl[1]))
             + ["}"])
 
+    def if_(self, params: TranspilerParams):
+        parts = ["if "] + Transpiler.transpile(params.but_with(asl=params.asl[0]))
+        for child in params.asl[1:]:
+            if child.type == "cond":
+                parts += [" else if "] + Transpiler.transpile(params.but_with(asl=child))
+            else:
+                parts += [" else {\n"] + Transpiler.transpile(params.but_with(asl=child)) + ["}"]
+
+         
+
         return parts
+
+    def while_(self, params: TranspilerParams):
+        return ["while "] + Transpiler.transpile(params.but_with(asl=params.asl[0]))
         
     def mod_(self, params : TranspilerParams):
         parts = []

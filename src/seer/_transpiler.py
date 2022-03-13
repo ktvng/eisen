@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import arg
 import re
 from unicodedata import name
 
@@ -116,6 +117,10 @@ class Helpers:
         return obj.type.type == Typing.function_type_name
 
     @classmethod
+    def is_named_product_type(cls, obj: AbstractObject):
+        return obj.type.type == Typing.named_product_type_name
+
+    @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
         return Transpiler.get_mod_prefix(mod) + name
 
@@ -130,8 +135,8 @@ class Helpers:
             return name + ptr
         elif Helpers.is_function_type(obj):
             return Helpers._global_name(obj.name, obj.mod)
-        else:
-            return "struct " + Helpers._global_name(obj.type.name(), obj.mod) + ptr
+        elif Helpers.is_named_product_type(obj):
+            return "struct " + Helpers._global_name(obj.type.name(), obj.type.mod) + ptr
 
     @classmethod
     def get_c_function_pointer(cls, obj: AbstractObject, params: TranspilerParams) -> str:
@@ -468,6 +473,10 @@ class SeerFunctions(TranspilerFunctions):
 
         obj: AbstractObject = params.asl.data
         type_name = Helpers.global_name_for(obj)
+
+        if isinstance(params.asl[1], CLRList) and params.asl[1].type == "::":
+            return [f"{type_name} {obj.name}"]
+
         return [f"{type_name} {obj.name} = "] + Transpiler.transpile(params.but_with(asl=params.asl[1]))
 
     def var_(self, params: TranspilerParams):

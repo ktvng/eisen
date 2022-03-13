@@ -328,6 +328,8 @@ STRUCTURE
     TYPING -> 
         |   TAGS : TYPE
         |   TAG : TYPE
+        |   TAGS : MODULE_LOOKUP
+        |   TAG : MODULE_LOOKUP
 
     TYPE -> 
         @action filter_build type

@@ -152,6 +152,7 @@ class Typing:
         def __init__(self, type=None):
             self._name = None
             self.type = type
+            self.mod = None
             self.components : list[Typing.Type] = []
             self.names : list[str] = []
             self.arg: Typing.Type = None
@@ -241,11 +242,12 @@ class Typing:
         return type
 
     @classmethod
-    def new_named_product_type(cls, components : list[Typing.Type], names : list[str], name : str=None) -> Typing.Type:
+    def new_named_product_type(cls, components : list[Typing.Type], names : list[str], name : str=None, mod: AbstractModule = None) -> Typing.Type:
         type = Typing.Type("named_product")
         type.components = components
         type.names = names
         type._name = name
+        type.mod = mod
         return type
 
     @classmethod
@@ -297,7 +299,7 @@ class Typing:
             mod: AbstractModule,
             args: CLRList = [], 
             rets: CLRList = []):
-        
+
         arg_type = None if len(args) == 0 else Typing.get_type_of(config, args[0], mod)
         ret_type = None if len(rets) == 0 else Typing.get_type_of(config, rets[0], mod)
         return Typing.new_function_type(arg_type, ret_type) 
@@ -328,8 +330,8 @@ class Typing:
             return Typing._unpack_colon_operator(config, asl, mod)
 
         elif asl.type == "create" or asl.type == "def":
-            args = asl[1]
-            rets = [] if len(asl) == 3 else asl[2]
+            args = Seer._get_args_from_function_asl(asl)
+            rets = Seer._get_rets_from_function_asl(asl)
             new_type = cls._unpack_args_and_rets_to_fn_type(config, mod, args, rets)
 
         elif asl.type == "struct":
@@ -339,7 +341,7 @@ class Typing:
             component_names = [comp[0].value for comp in components if comp.type == ":"]
             component_types = [Typing.get_type_of(config, comp, mod) for comp in components if comp.type == ":"]
 
-            new_type = Typing.new_named_product_type(component_types, component_names, name=name)
+            new_type = Typing.new_named_product_type(component_types, component_names, name=name, mod=mod)
             found_type = mod.resolve_type_name(new_type.name(), local=True)
             if found_type is None:
                 mod.context.add_type(new_type.name(), new_type)
@@ -459,7 +461,22 @@ class Seer():
         else:
             mod = cls._decend_module_structure(asl[0], global_mod)
 
-        return mod.context.resolve_object_name(asl[1].value)
+        found_obj = mod.context.resolve_object_name(asl[1].value)
+        if not found_obj:
+            # try looking up create
+            found_obj = mod.context.resolve_object_name("create_" + asl[1].value)
+        return found_obj
+
+    @classmethod
+    def _resolve_type_in_module(cls, asl: CLRList, params: Validator.Params) -> Typing.Type:
+        global_mod = cls._get_global_module(params.mod)
+        # if the resolution chain is 1 deep (special case)
+        if isinstance(asl[0], CLRToken):
+            mod = global_mod.get_child_module(asl[0].value)
+        else:
+            mod = cls._decend_module_structure(asl[0], global_mod)
+
+        return mod.context.resolve_type_name(asl[1].value)
 
     @classmethod
     def _decend_module_structure(cls, asl : CLRList, mod : AbstractModule) -> AbstractModule:
@@ -496,6 +513,12 @@ class Seer():
         obj = AbstractObject(attr_name, type, params.mod)
         params.asl.data = obj
         return attr_type
+
+    # this handle the case for a::b but not for a::b() as that is a call and 
+    # will be unwrapped in the "call" handler
+    @Validator.for_these_types("::")
+    def scope_(params: Validator.Params):
+        return Seer._resolve_type_in_module(params.asl, params)
 
     @Validator.for_these_types("tuple")
     def tuple_(params: Validator.Params):
@@ -551,6 +574,8 @@ class Seer():
             found_obj = Seer.resolve_object_name(name, params)
         elif params.asl.head().type == "::":
             found_obj = Seer._resolve_object_in_module(params.asl[0], params)
+            if found_obj is None:
+                exit()
 
         if found_obj is None:
             e = Exceptions.UndefinedVariable(
@@ -581,7 +606,14 @@ class Seer():
 
 
 
-
+    @classmethod
+    def _get_args_from_function_asl(cls, asl: CLRList):
+        if asl.type == "def":
+            return asl[1]
+        elif asl.type == "create":
+            return asl[0]
+        else:
+            raise Exception(f"provided type not a function type; got '{asl.type}'")
 
     @classmethod
     def _get_rets_from_function_asl(cls, asl: CLRList):

@@ -101,8 +101,18 @@ def run(file_name : str):
     print(f"Parser finished in {(endtime-starttime)/1000000} ms")
     print(ast)
 
+    starttime = time.perf_counter_ns()
     mod = alpaca.validator.run(config, ast, SeerValidator(), txt)
+    endtime = time.perf_counter_ns()
+    print(f"Validator finished in {(endtime-starttime)/1000000} ms")
+
+    if mod is None:
+        exit()
+         
+    starttime = time.perf_counter_ns()
     txt = Transpiler.run(config, ast, SeerFunctions(), mod)
+    endtime = time.perf_counter_ns()
+    print(f"Transpiler finished in {(endtime-starttime)/1000000} ms")
     with open("test.c", 'w') as f:
         f.write(txt)
 

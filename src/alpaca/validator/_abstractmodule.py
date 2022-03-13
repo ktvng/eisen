@@ -50,7 +50,7 @@ class AbstractModule():
         if not s:
             return ""
 
-        tab = " "
+        tab = "  "
         indent = tab * level
         return "\n".join([indent + part for part in s.split("\n")])
 
@@ -59,7 +59,9 @@ class AbstractModule():
         child_mod_str = "".join([str(child) for child in self.child_modules])
         formatted_child_mod_str = self._add_indent(child_mod_str)
         components = ""
-        for k, v in self.scope._defined_objects.items():
+        for v in self.context.objs_in_scope._objs.values():
+            components += f"{v}\n"
+        for v in self.context.types_in_scope._objs.values():
             components += f"{v}\n"
 
         formatted_components_str = self._add_indent(components)

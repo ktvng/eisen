@@ -27,6 +27,12 @@ class CLRList:
         self.line_number = line_number
         self.data = None
 
+    def head(self) -> CLRList | CLRToken:
+        if not self._list:
+            raise Exception("list is empty; head does not exist")
+
+        return self._list[0]
+
     # The head of a CLRList is the first element; if that element is a token, then
     # head_value will return the value of that CLRToken
     def head_value(self) -> str:

@@ -1,5 +1,39 @@
 from __future__ import annotations
 from typing import Generic, TypeVar
+from functools import wraps
+
+class AbstractType:
+    pass
+
+class RecursiveContainer():
+    @classmethod
+    def make_callable(cls, obj, fn):
+        @wraps(fn)
+        def new_fn(*args, **kwargs):
+            return RecursiveContainer.call(obj, fn, *args, **kwargs)
+        return new_fn
+
+    def call(obj, fn, *args, **kwargs):
+        kwargs_copy = dict(kwargs)
+        if "local" in kwargs_copy:
+            del kwargs_copy["local"]
+        result = fn(*args, **kwargs_copy)
+        if (result is not None
+                or obj.parent is None
+                or kwargs.get("local") == True):
+            return result
+
+        return RecursiveContainer.call(obj.parent, getattr(obj.parent, fn.__name__))
+
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
+        setattr(obj, "parent", None)
+        obj.__init__(*args, **kwargs)
+        fns = [f for f in dir(obj) if f.startswith("resolve")]
+        for fname in fns:
+            new_f = RecursiveContainer.make_callable(obj, getattr(obj, fname))
+            setattr(obj, fname, new_f)
+        return obj
 
 class Context:
     def __init__(self, parent: Context = None, name=None):

@@ -1,12 +1,12 @@
 from __future__ import annotations
-from asyncio import start_unix_server
 
 from alpaca.config import Config
 from alpaca.asts import CLRList
+from alpaca.validator._abstracts import AbstractModule
 
 class Indexer():
     class _Procedure():
-        def __init__(self, f : Typing.Any, for_types : list[str]):
+        def __init__(self, f, for_types : list[str]):
             self.f = f
             self.for_types = for_types
         
@@ -14,7 +14,7 @@ class Indexer():
             return type_name in self.for_types
 
     class _Initializer():
-        def __init__(self, f : Typing.Any):
+        def __init__(self, f):
             self.f = f
 
         def __call__(self, *args, **kwargs):
@@ -25,7 +25,7 @@ class Indexer():
                 config : Config, 
                 asl : CLRList, 
                 mod : AbstractModule, 
-                fns : Typing.Any,
+                fns,
                 struct_name: str):
 
             self.config = config
@@ -38,7 +38,7 @@ class Indexer():
                 config: Config = None,
                 asl: CLRList = None,
                 mod: AbstractModule = None,
-                fns: Typing.Any = None,
+                fns = None,
                 struct_name: str = None) -> Indexer.Params:
 
             return Indexer.Params(
@@ -52,7 +52,7 @@ class Indexer():
     # args and kwargs used are the same as the initializer method decorated by
     # @initialize_by
     @classmethod
-    def run(cls, fns : Typing.Any, *args, **kwargs):
+    def run(cls, fns, *args, **kwargs):
         initializer = cls._get_initializer(fns)
         params = initializer(*args, **kwargs)
         Indexer.index(params)
@@ -70,7 +70,7 @@ class Indexer():
         return Indexer._Initializer(f)
 
     @classmethod
-    def _get_initializer(cls, obj_containing_fns : Typing.Any):
+    def _get_initializer(cls, obj_containing_fns):
         attrs = dir(obj_containing_fns)
         fns = [getattr(obj_containing_fns, k) for k in attrs 
             if isinstance(getattr(obj_containing_fns, k), Indexer._Initializer)]

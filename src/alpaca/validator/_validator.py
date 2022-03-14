@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
-from alpaca.validator._abstractmodule import AbstractModule
+from alpaca.validator._abstracts import AbstractModule
 from alpaca.validator._indexer import Indexer
 
 class Validator():
     class _Procedure():
-        def __init__(self, f : Typing.Any, handles : list[str]):
+        def __init__(self, f, handles: list[str]):
             self.f = f
             self._handles = handles
 
@@ -100,7 +100,7 @@ class Validator():
         return decorator
 
     @classmethod
-    def run(cls, config : Config, asl : CLRList, fns : Typing.Any, txt : str):
+    def run(cls, config : Config, asl : CLRList, fns, txt : str):
         exceptions : list[Exceptions.AbstractException] = []
         global_mod = AbstractModule("global")
         Indexer.run(fns, config, asl, global_mod)

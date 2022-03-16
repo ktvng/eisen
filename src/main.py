@@ -64,7 +64,8 @@ def run_seer_tests():
         # print()
 
         starttime = time.perf_counter_ns()
-        mod = alpaca.validator.run(config, ast, SeerValidator(), txt)
+        params = SeerValidator.init_params(config, ast, txt, SeerValidator)
+        mod = alpaca.validator.run(params)
         endtime = time.perf_counter_ns()
         print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
 

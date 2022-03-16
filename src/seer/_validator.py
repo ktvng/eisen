@@ -1,8 +1,11 @@
 from __future__ import annotations
+import struct
+from wsgiref import validate
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
-from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject
+from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
+from alpaca.utils import AbstractFlags
 
 from seer._listir import ListIRParser
 
@@ -11,7 +14,7 @@ from error import Raise
 class Object(AbstractObject):
     def __init__(self, 
             name : str, 
-            type : Typing.Type, 
+            type : Type, 
             mod: AbstractModule,
             is_let : bool = False, 
             is_mut : bool = False, 
@@ -41,42 +44,6 @@ class Object(AbstractObject):
         return f"{self.name}<{self.type.cannonical_name()}>"
 
 class Exceptions():
-    delineator = "="*80+"\n"
-
-    class AbstractException():
-        type = None
-        description = None
-
-        def __init__(self, msg : str, line_number : int):
-            self.msg = msg
-            self.line_number = line_number
-            self._stub = None
-
-        def __str__(self):
-            padding = " "*len(str(self.line_number))
-            return (Exceptions.delineator
-                + f"{self.type}Exception\n    Line {self.line_number}: {self.description}\n"
-                + f"{padding}     INFO: {self.msg}\n\n")
-
-        def to_str_with_context(self, txt : str):
-            str_rep = str(self)
-
-            lines = txt.split('\n')
-            index_of_line_number = self.line_number - 1
-
-            start = index_of_line_number - 2
-            start = 0 if start < 0 else start
-
-            end = index_of_line_number + 3
-            end = len(lines) if end > len(lines) else end
-
-            for i in range(start, end):
-                c = ">>" if i == index_of_line_number else "  "
-                line = f"       {c} {i+1} \t| {lines[i]}\n" 
-                str_rep += line
-                
-            return str_rep
-
     class MemoryTypeMismatch(AbstractException):
         type = "MemoryTypeMismatch"
         description = "cannot assign due to let/var/val differences"
@@ -119,108 +86,107 @@ class Exceptions():
         def __init__(self, msg : str, line_number : int):
             super().__init__(msg, line_number)
 
-class Typing:
-    types = ["function", "product", "named_product", "or", "base"]
+class Type(AbstractType):
+    classifications = ["function", "product", "named_product", "or", "base"]
     base_type_name = "base"
     function_type_name = "function"
     product_type_name = "product"
     or_type_name = "or"
     named_product_type_name = "named_product"
 
-    class Type(AbstractType):
-        def __init__(self, type=None):
-            self._name = None
-            self.type = type
-            self.mod = None
-            self.components: list[Typing.Type] = []
-            self.names : list[str] = []
-            self.arg: Typing.Type = None
-            self.ret: Typing.Type = None
-            self.nullable = False
-            self.is_ptr = False
-        
-        def _equiv(self, u : list, v : list) -> bool:
-            return (u is not None 
-                and v is not None 
-                and len(u) == len(v) 
-                and all([x == y for x, y in zip(u, v)]))
+    def __init__(self, type=None):
+        self._name = None
+        self.classification = type
+        self.mod = None
+        self.components: list[Type] = []
+        self.names : list[str] = []
+        self.arg: Type = None
+        self.ret: Type = None
+        self.nullable = False
+        self.is_ptr = False
+    
+    def _equiv(self, u : list, v : list) -> bool:
+        return (u is not None 
+            and v is not None 
+            and len(u) == len(v) 
+            and all([x == y for x, y in zip(u, v)]))
 
-        def name(self):
-            if self._name is not None:
-                return self._name
-            return self.cannonical_name()
+    def name(self):
+        if self._name is not None:
+            return self._name
+        return self.cannonical_name()
 
-        def get_member_attribute_named(self, name: str):
-            if self.type != Typing.named_product_type_name:
-                raise Exception(f"can only get member attribute of structs; got {self.type} instead")
-            idx = self.names.index(name)
-            return self.components[idx]
+    def get_member_attribute_named(self, name: str):
+        if self.classification != Type.named_product_type_name:
+            raise Exception(f"can only get member attribute of structs; got {self.classification} instead")
+        idx = self.names.index(name)
+        return self.components[idx]
 
-        def __eq__(self, o: object) -> bool:
-            if not isinstance(o, Typing.Type): return False
-            if self.type != o.type: return False
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, Type): return False
+        if self.classification != o.classification: return False
 
-            if self.type == "base":
-                return self._name == o._name
-            elif self.type == "product":
-                return self._equiv(self.components, o.components)
-            elif self.type == "named_product":
-                return (self._equiv(self.components, o.components) 
-                    and self._equiv(self.names, o.names))
-            elif self.type == "function":
-                return (self.arg == o.arg
-                    and self.ret == o.ret)
-            else:
-                Raise.error("Unimplemented __eq__ for Typing.Type")
+        if self.classification == "base":
+            return self._name == o._name
+        elif self.classification == "product":
+            return self._equiv(self.components, o.components)
+        elif self.classification == "named_product":
+            return (self._equiv(self.components, o.components) 
+                and self._equiv(self.names, o.names))
+        elif self.classification == "function":
+            return (self.arg == o.arg
+                and self.ret == o.ret)
+        else:
+            Raise.error("Unimplemented __eq__ for Type")
 
-        def cannonical_name(self) -> str:
-            if self.type == "base":
-                return self._name
-            elif self.type == "product":
-                component_type_strs = [x.cannonical_name() for x in self.components]
-                return f"({', '.join(component_type_strs)})"
-            elif self.type == "named_product":
-                component_type_strs = [x.cannonical_name() for x in self.components]
-                component_key_value_strs = [f"{name}:{type}" 
-                    for name, type in zip(self.names, component_type_strs)]
-                return f"({', '.join(component_key_value_strs)})"
-            elif self.type == "function":
-                args_names = self.arg.cannonical_name() if self.arg is not None else ""
-                rets_names = self.ret.cannonical_name() if self.ret is not None else "void"
-                return f"({args_names}) -> {rets_names}"
-            else:
-                Raise.error("cannoncial_name not implemented")
+    def cannonical_name(self) -> str:
+        if self.classification == "base":
+            return self._name
+        elif self.classification == "product":
+            component_type_strs = [x.cannonical_name() for x in self.components]
+            return f"({', '.join(component_type_strs)})"
+        elif self.classification == "named_product":
+            component_type_strs = [x.cannonical_name() for x in self.components]
+            component_key_value_strs = [f"{name}:{type}" 
+                for name, type in zip(self.names, component_type_strs)]
+            return f"({', '.join(component_key_value_strs)})"
+        elif self.classification == "function":
+            args_names = self.arg.cannonical_name() if self.arg is not None else ""
+            rets_names = self.ret.cannonical_name() if self.ret is not None else "void"
+            return f"({args_names}) -> {rets_names}"
+        else:
+            Raise.error("cannoncial_name not implemented")
 
-        def __str__(self):
-            if self._name is not None:
-                return f"{self._name}<{self.cannonical_name()}>"
-            return self.name()
+    def __str__(self):
+        if self._name is not None:
+            return f"{self._name}<{self.cannonical_name()}>"
+        return self.name()
             
     @classmethod
-    def new_base_type(cls, name: str, nullable=False, is_ptr=False) -> Typing.Type:
-        type = Typing.Type("base")
+    def new_base_type(cls, name: str, nullable=False, is_ptr=False) -> Type:
+        type = Type("base")
         type._name = name
         type.nullable = nullable
         type.is_ptr = is_ptr
         return type
 
     @classmethod
-    def new_function_type(cls, arg: Typing.Type, ret: Typing.Type, name: str=None) -> Typing.Type:
-        type = Typing.Type("function")
+    def new_function_type(cls, arg: Type, ret: Type, name: str=None) -> Type:
+        type = Type("function")
         type.arg = arg
         type.ret = ret
         type._name = name
         return type
 
     @classmethod
-    def new_product_type(cls, components: list[Typing.Type]) -> Typing.Type:
-        type = Typing.Type("product")
+    def new_product_type(cls, components: list[Type]) -> Type:
+        type = Type("product")
         type.components = components
         return type
 
     @classmethod
-    def new_named_product_type(cls, components: list[Typing.Type], names : list[str], name : str=None, mod: AbstractModule = None) -> Typing.Type:
-        type = Typing.Type("named_product")
+    def new_named_product_type(cls, components: list[Type], names : list[str], name : str=None, mod: AbstractModule = None) -> Type:
+        type = Type("named_product")
         type.components = components
         type.names = names
         type._name = name
@@ -228,16 +194,15 @@ class Typing:
         return type
 
     @classmethod
-    def _unpack_colon_operator(cls, config: Config, asl: CLRList, mod: AbstractModule) -> Typing.Type:
+    def _unpack_colon_operator(cls, config: Config, asl: CLRList, mod: AbstractModule) -> Type:
         type_asl = asl[1]
-
         if type_asl.type == "fn_type":
             return cls.get_type_of(config, type_asl, mod)
+        
         type_str = type_asl[0].value
-
         if type_asl.type == "type*":
             type_str += "*"
-        if type_asl.type == "type?":
+        elif type_asl.type == "type?":
             type_str += "?"
         
         found_type = mod.resolve_type_by(type_str)
@@ -249,7 +214,7 @@ class Typing:
         Raise.error(f"Could not find type {type_str} _unpack_colon_operator")
 
     @classmethod
-    def lookup_type_in_mod(cls, new_type: Typing.Type, mod: AbstractModule):
+    def lookup_type_in_mod(cls, new_type: Type, mod: AbstractModule):
         found_type = mod.resolve_type_by(new_type.name())
         if found_type is None:
             mod.add_type(new_type)
@@ -257,7 +222,7 @@ class Typing:
         return found_type
 
     @classmethod
-    def _unpack_types_tuple(cls, asl: CLRList, mod: AbstractModule) -> list[Typing.Type]:
+    def _unpack_types_tuple(cls, asl: CLRList, mod: AbstractModule) -> list[Type]:
         if asl.type != "types" and asl.type != "type":
             raise Exception(f"expected asl to be of type 'types' or 'type'; got '{asl.type}' instead")
 
@@ -268,7 +233,7 @@ class Typing:
             components = [asl]
 
         types = [mod.resolve_type_by(t.head_value()) for t in components]
-        return Typing.new_product_type(types)
+        return Type.new_product_type(types)
 
     @classmethod
     def _unpack_args_and_rets_to_fn_type(cls, 
@@ -277,34 +242,34 @@ class Typing:
             args: CLRList = [], 
             rets: CLRList = []):
 
-        arg_type = None if len(args) == 0 else Typing.get_type_of(config, args[0], mod)
-        ret_type = None if len(rets) == 0 else Typing.get_type_of(config, rets[0], mod)
-        return Typing.new_function_type(arg_type, ret_type) 
+        arg_type = None if len(args) == 0 else Type.get_type_of(config, args[0], mod)
+        ret_type = None if len(rets) == 0 else Type.get_type_of(config, rets[0], mod)
+        return Type.new_function_type(arg_type, ret_type) 
 
 
     @classmethod
     def get_type_of(cls, config: Config, asl: CLRList, mod: AbstractModule):
         if asl.type == "prod_type":
-            components = [Typing._unpack_colon_operator(config, child, mod) for child in asl]
-            new_type = Typing.new_product_type(components)
+            components = [Type._unpack_colon_operator(config, child, mod) for child in asl]
+            new_type = Type.new_product_type(components)
 
         elif asl.type == "fn_type":
-            arg_type = Typing.get_type_of(config, asl[0], mod)
-            ret_type = Typing.get_type_of(config, asl[1], mod)
-            new_type = Typing.new_function_type(arg_type, ret_type)
+            arg_type = Type.get_type_of(config, asl[0], mod)
+            ret_type = Type.get_type_of(config, asl[1], mod)
+            new_type = Type.new_function_type(arg_type, ret_type)
     
         elif asl.type == "fn_type_out": 
             if isinstance(asl[0], CLRList) and asl[0].head_value() == "void":
                 return None
-            new_type = Typing._unpack_types_tuple(asl[0], mod)
+            new_type = Type._unpack_types_tuple(asl[0], mod)
 
         elif asl.type == "fn_type_in":
             if len(asl) == 0:
                 return None
-            new_type = Typing._unpack_types_tuple(asl[0], mod)
+            new_type = Type._unpack_types_tuple(asl[0], mod)
 
         elif asl.type == ":":
-            return Typing._unpack_colon_operator(config, asl, mod)
+            return Type._unpack_colon_operator(config, asl, mod)
 
         elif asl.type == "create" or asl.type == "def":
             args = Seer._get_args_from_function_asl(asl)
@@ -316,9 +281,9 @@ class Typing:
             components = asl[1:]
 
             component_names = [comp[0].value for comp in components if comp.type == ":"]
-            component_types = [Typing.get_type_of(config, comp, mod) for comp in components if comp.type == ":"]
+            component_types = [Type.get_type_of(config, comp, mod) for comp in components if comp.type == ":"]
 
-            new_type = Typing.new_named_product_type(component_types, component_names, name=name, mod=mod)
+            new_type = Type.new_named_product_type(component_types, component_names, name=name, mod=mod)
             found_type = mod.resolve_type_by(new_type.name(), local=True)
             if found_type is None:
                 mod.add_type(new_type)
@@ -330,7 +295,62 @@ class Typing:
         else:
             Raise.error(f"unknown type to index {asl.type}")
 
-        return Typing.lookup_type_in_mod(new_type, mod)
+        return Type.lookup_type_in_mod(new_type, mod)
+
+class Flags(AbstractFlags):
+    is_ret = "is_ret"
+    is_arg = "is_arg"
+
+class Params(Validator.Params):
+    attrs = ["config", "asl", "validator", "exceptions", "mod", "context", "flags"]
+
+    def __init__(self, 
+            config: Config, 
+            asl: CLRList, 
+            txt: str,
+            mod: AbstractModule,
+            fns,
+            exceptions: list[AbstractException],
+            context: AbstractModule,
+            flags: Flags,
+            struct_name: str
+            ):
+
+        self.config = config
+        self.asl = asl
+        self.txt = txt
+        self.mod = mod
+        self.fns = fns 
+        self.exceptions = exceptions
+        self.context = context
+        self.flags = flags
+        self.struct_name = struct_name
+
+    def but_with(self,
+            config : Config = None,
+            asl : CLRList = None,
+            txt: str = None,
+            mod : AbstractModule = None,
+            fns = None,
+            exceptions : list[AbstractException] = None,
+            context : AbstractModule = None,
+            flags : Flags = None,
+            struct_name: str = None,
+            ):
+
+        params = Params(
+            config = self.config if config is None else config,
+            asl = self.asl if asl is None else asl,
+            txt = self.txt if txt is None else txt,
+            mod = self.mod if mod is None else mod,
+            fns = self.fns if fns is None else fns,
+            exceptions = self.exceptions if exceptions is None else exceptions,
+            context = self.context if context is None else context,
+            flags = self.flags if flags is None else flags,
+            struct_name = self.struct_name if struct_name is None else struct_name,
+            )
+
+        return params
 
 class Abort():
     def __init__(self):
@@ -339,7 +359,7 @@ class Abort():
     
 class SeerEnsure():
     @classmethod
-    def struct_has_unique_names(cls, params: Validator.Params):
+    def struct_has_unique_names(cls, params: Params):
         names = [member[0].value for member in params.asl[1:]]
         if len(names) != len(set(names)):
             e = Exceptions.RedefinedIdentifier(
@@ -360,7 +380,7 @@ class Seer():
 
     @Indexer.for_these_types("struct")
     def struct_i(params: Indexer.Params):
-        Typing.get_type_of(params.config, params.asl, params.mod)
+        Type.get_type_of(params.config, params.asl, params.mod)
         for child in params.asl:
             Indexer.index(params.but_with(asl=child, struct_name=params.asl.head_value()))
 
@@ -373,38 +393,20 @@ class Seer():
     @Indexer.for_these_types("def")
     def def_i(params: Indexer.Params):
         name = params.asl.head_value()
-        type = Typing.get_type_of(params.config, params.asl, params.mod)
+        type = Type.get_type_of(params.config, params.asl, params.mod)
         new_obj = Object(name, type, params.mod)
         params.mod.add_object(new_obj)
 
     @Indexer.for_these_types("create")
     def create_i(params: Indexer.Params):
-        type = Typing.get_type_of(params.config, params.asl, params.mod)
+        type = Type.get_type_of(params.config, params.asl, params.mod)
         new_obj = Object("create_" + params.struct_name, type, params.mod)
         params.mod.add_object(new_obj)
-
-    @Indexer.initialize_by
-    def initialize_i(config: Config, asl: CLRList, global_mod: AbstractModule) -> Indexer.Params: 
-        global_mod.add_type(Typing.new_base_type("int"))
-        global_mod.add_type(Typing.new_base_type("str"))
-        global_mod.add_type(Typing.new_base_type("flt"))
-        global_mod.add_type(Typing.new_base_type("bool"))
-        global_mod.add_type(Typing.new_base_type("int*", is_ptr=True))
-        global_mod.add_type(Typing.new_base_type("str*", is_ptr=True))
-        global_mod.add_type(Typing.new_base_type("flt*", is_ptr=True))
-        global_mod.add_type(Typing.new_base_type("bool*", is_ptr=True))
-        global_mod.add_type(Typing.new_base_type("int?", is_ptr=True, nullable=True))
-        global_mod.add_type(Typing.new_base_type("str?", is_ptr=True, nullable=True))
-        global_mod.add_type(Typing.new_base_type("flt?", is_ptr=True, nullable=True))
-        global_mod.add_type(Typing.new_base_type("bool?", is_ptr=True, nullable=True)) 
-
-        return Indexer.Params(config, asl, global_mod, Seer, None)
-
 
 
 
     @classmethod
-    def resolve_object_by(cls, name : str, params:  Validator.Params, local : bool=False):
+    def resolve_object_by(cls, name : str, params:  Params, local : bool=False):
         # lookup from local scope first
         obj = params.context.resolve_object_by(name, local=False)
         if obj:
@@ -415,16 +417,7 @@ class Seer():
         return obj
 
     @classmethod
-    def _get_global_module(cls, mod: AbstractModule) -> AbstractModule:
-        next_mod = mod.parent
-        while next_mod is not None:
-            mod = next_mod
-            next_mod = mod.parent
-
-        return mod
-
-    @classmethod
-    def _resolve_object_in_module(cls, asl: CLRList, params:  Validator.Params) -> Object:
+    def _resolve_object_in_module(cls, asl: CLRList, params:  Params) -> Object:
         global_mod = cls._get_global_module(params.mod)
         # if the resolution chain is 1 deep (special case)
         if isinstance(asl[0], CLRToken):
@@ -439,13 +432,12 @@ class Seer():
         return found_obj
 
     @classmethod
-    def _resolve_type_in_module(cls, asl: CLRList, params: Validator.Params) -> Typing.Type:
-        global_mod = cls._get_global_module(params.mod)
+    def _resolve_type_in_module(cls, asl: CLRList, params: Params) -> Type:
         # if the resolution chain is 1 deep (special case)
         if isinstance(asl[0], CLRToken):
-            mod = global_mod.get_child_module(asl[0].value)
+            mod = params.mod.get_child_module(asl[0].value)
         else:
-            mod = cls._decend_module_structure(asl[0], global_mod)
+            mod = cls._decend_module_structure(asl[0], params.mod)
 
         return mod.resolve_type_by(asl[1].value)
 
@@ -466,7 +458,32 @@ class Seer():
         return False
         
 
+    @classmethod
+    def init_params(cls, config: Config, asl: CLRList, txt: str, fns):
+        global_mod = AbstractModule("global")
+        global_mod.add_type(Type.new_base_type("int"))
+        global_mod.add_type(Type.new_base_type("str"))
+        global_mod.add_type(Type.new_base_type("flt"))
+        global_mod.add_type(Type.new_base_type("bool"))
+        global_mod.add_type(Type.new_base_type("int*", is_ptr=True))
+        global_mod.add_type(Type.new_base_type("str*", is_ptr=True))
+        global_mod.add_type(Type.new_base_type("flt*", is_ptr=True))
+        global_mod.add_type(Type.new_base_type("bool*", is_ptr=True))
+        global_mod.add_type(Type.new_base_type("int?", is_ptr=True, nullable=True))
+        global_mod.add_type(Type.new_base_type("str?", is_ptr=True, nullable=True))
+        global_mod.add_type(Type.new_base_type("flt?", is_ptr=True, nullable=True))
+        global_mod.add_type(Type.new_base_type("bool?", is_ptr=True, nullable=True)) 
 
+        return Params(
+            config=config, 
+            asl=asl,
+            txt=txt,
+            mod=global_mod,
+            fns=cls,
+            exceptions=[],
+            context=global_mod,
+            flags=Flags(),
+            struct_name=None)
 
     # terminal types are . :: ref fn
     # handled in call are fn, args, rets
@@ -475,17 +492,17 @@ class Seer():
     unimpl = ['arr_type']
     no_action = ["start", "prod_type", "return", "seq", "params"]
     @Validator.for_these_types(no_action + unimpl)
-    def ignore(params:  Validator.Params):
+    def ignore(params:  Params):
         for child in params.asl:
             Validator.validate(params.but_with(asl=child)) 
 
     @Validator.for_these_types("fn_type")
-    def fn_type_(params: Validator.Params):
-        return Typing.get_type_of(params.config, params.asl, params.mod)
+    def fn_type_(params: Params):
+        return Type.get_type_of(params.config, params.asl, params.mod)
 
     @Validator.for_these_types(".")
-    def dot_(params: Validator.Params):
-        type: Typing.Type = Validator.validate(params.but_with(asl=params.asl.head()))
+    def dot_(params: Params):
+        type: Type = Validator.validate(params.but_with(asl=params.asl.head()))
         attr_name = params.asl[1].value
         attr_type = type.get_member_attribute_named(attr_name)
         obj = Object(attr_name, type, params.mod)
@@ -495,11 +512,11 @@ class Seer():
     # this handle the case for a::b but not for a::b() as that is a call and 
     # will be unwrapped in the "call" handler
     @Validator.for_these_types("::")
-    def scope_(params: Validator.Params):
+    def scope_(params: Params):
         return Seer._resolve_type_in_module(params.asl, params)
 
     @Validator.for_these_types("tuple")
-    def tuple_(params: Validator.Params):
+    def tuple_(params: Params):
         objs = []
         for child in params.asl:
             objs.append(Validator.validate(params.but_with(asl=child)))
@@ -507,33 +524,33 @@ class Seer():
         params.asl.data = objs
 
     @Validator.for_these_types("cond")
-    def cond_(params: Validator.Params):
+    def cond_(params: Params):
         for child in params.asl:
             Validator.validate(params.but_with(asl=child))
 
     @Validator.for_these_types("if")
-    def if_(params: Validator.Params):
+    def if_(params: Params):
         for child in params.asl:
             Validator.validate(params.but_with(
                 asl=child, 
                 context=AbstractModule(parent=params.context)))
 
     @Validator.for_these_types("while")
-    def while_(params: Validator.Params):
+    def while_(params: Params):
         Validator.validate(params.but_with(
             asl=params.asl.head(),
             context=AbstractModule(parent=params.context)))
 
     @Validator.for_these_types(":")
-    def colon_(params: Validator.Params):
+    def colon_(params: Params):
         name = params.asl.head_value()
-        type: Typing.Type = Validator.validate(params.but_with(asl=params.asl[1]))
+        type: Type = Validator.validate(params.but_with(asl=params.asl[1]))
         new_obj = Object(
-            name, 
-            type, 
-            params.mod, 
-            is_ret=params.has_flag(Seer.Flags.is_ret),
-            is_arg=params.has_flag(Seer.Flags.is_arg),
+            name=name, 
+            type=type, 
+            mod=params.mod, 
+            is_ret=(Flags.is_ret in params.flags),
+            is_arg=(Flags.is_arg in params.flags),
             is_ptr=type.is_ptr)
 
         params.asl.data = new_obj
@@ -542,7 +559,7 @@ class Seer():
         return type
 
     @Validator.for_these_types("call")
-    def call(params:  Validator.Params):
+    def call(params:  Params):
         # always validate the function params
         Validator.validate(params.but_with(asl=params.asl[1]))
 
@@ -569,7 +586,7 @@ class Seer():
         return found_obj.type.ret
          
     @Validator.for_these_types("struct")
-    def struct(params:  Validator.Params):
+    def struct(params:  Params):
         name = params.asl.head_value()
         type = params.mod.resolve_type_by(name)
         params.asl.data = Object(name, type, params.mod)
@@ -579,12 +596,16 @@ class Seer():
             Validator.validate(params.but_with(asl=child, context=AbstractModule(name=name)))
 
     @Validator.for_these_types("mod")
-    def mod(params:  Validator.Params):
+    def mod(params:  Params):
         name = params.asl[0].value
         child_mod = params.mod.get_child_module(name)
         for child in params.asl:
             Validator.validate(params.but_with(asl=child, mod=child_mod))
+ 
 
+
+    ################################################################################################
+    # Functions and function likes
     @classmethod
     def _get_args_from_function_asl(cls, asl: CLRList):
         if asl.type == "def":
@@ -609,7 +630,7 @@ class Seer():
             args: CLRList, 
             rets: CLRList, 
             seq: CLRList, 
-            params: Validator.Params):
+            params: Params):
 
         # object exists due to indexing
         obj: Object = params.mod.resolve_object_by(name)
@@ -621,14 +642,14 @@ class Seer():
             Validator.validate(params.but_with(
                 asl=child, 
                 context=fn_context,
-                flags=params.derive_flags_including(Seer.Flags.is_arg)))
+                flags=params.flags.but_with(Flags.is_arg)))
 
         # validate rets
         for child in rets:
             Validator.validate(params.but_with(
                 asl=child, 
                 context=fn_context, 
-                flags=params.derive_flags_including(Seer.Flags.is_ret)))
+                flags=params.flags.but_with(Flags.is_ret)))
 
         # validate seq
         Validator.validate(params.but_with(
@@ -639,7 +660,7 @@ class Seer():
 
 
     @Validator.for_these_types("create")
-    def create_(params: Validator.Params):
+    def create_(params: Params):
         # context name will be the name of the struct
         return Seer._validate_function_object(
             name="create_" + params.context.name,
@@ -649,7 +670,7 @@ class Seer():
             params=params)
     
     @Validator.for_these_types("def")
-    def fn(params:  Validator.Params):
+    def fn(params:  Params):
         return Seer._validate_function_object(
             name=params.asl.head_value(),
             args=Seer._get_args_from_function_asl(params.asl),
@@ -657,9 +678,12 @@ class Seer():
             seq=params.asl[-1], 
             params=params)
 
+
+    ################################################################################################
+    
     binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
     @Validator.for_these_types(binary_ops)
-    def binary_ops(params:  Validator.Params):
+    def binary_ops(params:  Params):
         left_type = Validator.validate(params.but_with(asl=params.asl[0]))
         right_type = Validator.validate(params.but_with(asl=params.asl[1]))
 
@@ -676,15 +700,15 @@ class Seer():
         return left_type
 
     @Validator.for_these_types(['val', 'var', 'mut_val', 'mut_var', 'let'])
-    def decls(params:  Validator.Params):
+    def decls(params:  Params):
         if isinstance(params.asl[0], CLRList) and params.asl[0].type == ":":
             asl_to_instr = params.asl[0]
             name = params.asl[0][0].value
-            type: Typing.Type = Validator.validate(params.but_with(asl=params.asl[0][1]))
+            type: Type = Validator.validate(params.but_with(asl=params.asl[0][1]))
         else:
             asl_to_instr = params.asl
             name = params.asl.head_value()
-            type: Typing.Type = Validator.validate(params.but_with(asl=params.asl[1]))
+            type: Type = Validator.validate(params.but_with(asl=params.asl[1]))
         
         if Seer.resolve_object_by(name, params) is not None:
             e = Exceptions.RedefinedIdentifier(
@@ -707,22 +731,22 @@ class Seer():
         return new_obj.type
 
     @Validator.for_these_types("type") 
-    def _type1(params:  Validator.Params):
+    def _type1(params:  Params):
         name = params.asl.head_value()
         return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("type?") 
-    def _type2(params:  Validator.Params):
+    def _type2(params:  Params):
         name = params.asl.head_value() + "?"
         return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("type*") 
-    def _type3(params:  Validator.Params):
+    def _type3(params:  Params):
         name = params.asl.head_value() + "*"
         return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("=")
-    def assigns(params:  Validator.Params):
+    def assigns(params:  Params):
         left_obj = Validator.validate(params.but_with(asl=params.asl[0]))
         right_obj = Validator.validate(params.but_with(asl=params.asl[1]))
 
@@ -732,7 +756,7 @@ class Seer():
         return left_obj
 
     @Validator.for_these_types("<-")
-    def larrow_(params: Validator.Params):
+    def larrow_(params: Params):
         left_obj = Validator.validate(params.but_with(asl=params.asl[0]))
         right_obj = Validator.validate(params.but_with(asl=params.asl[1]))
 
@@ -742,7 +766,7 @@ class Seer():
         return left_obj
 
     @Validator.for_these_types("ref")
-    def ref(params:  Validator.Params):
+    def ref(params:  Params):
         name = params.asl.head_value()
         found_obj = Seer.resolve_object_by(name, params)
         if found_obj is None:

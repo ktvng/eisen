@@ -5,7 +5,7 @@ from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
 from alpaca.validator import AbstractModule
 
-from seer._validator import Typing, Object, Validator, Seer 
+from seer._validator import Type, Object, Validator, Seer 
 from seer._listir import ListIRParser
 
 
@@ -109,15 +109,15 @@ class SharedCounter():
 class Helpers:
     @classmethod
     def is_primitive_type(cls, obj: Object):
-        return obj.type.type == Typing.base_type_name
+        return obj.type.classification == Type.base_type_name
 
     @classmethod
     def is_function_type(cls, obj: Object):
-        return obj.type.type == Typing.function_type_name
+        return obj.type.classification == Type.function_type_name
 
     @classmethod
     def is_named_product_type(cls, obj: Object):
-        return obj.type.type == Typing.named_product_type_name
+        return obj.type.classification == Type.named_product_type_name
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
@@ -140,8 +140,8 @@ class Helpers:
     @classmethod
     def get_c_function_pointer(cls, obj: Object, params: TranspilerParams) -> str:
         typ = obj.type
-        if typ.type != Typing.function_type_name:
-            raise Exception(f"required a function type; got {typ.type} instead")
+        if typ.classification != Type.function_type_name:
+            raise Exception(f"required a function type; got {typ.classification} instead")
 
         args = ""
         args += cls._to_function_pointer_arg(typ.arg, params)
@@ -152,21 +152,21 @@ class Helpers:
         return f"void (*{obj.name})({args})" 
 
     @classmethod
-    def _to_function_pointer_arg(cls, typ: Typing.Type, params: TranspilerParams, as_pointers: bool = False) -> str:
+    def _to_function_pointer_arg(cls, typ: Type, params: TranspilerParams, as_pointers: bool = False) -> str:
         if typ is None:
             return ""
 
-        if typ.type == Typing.base_type_name:
+        if typ.classification == Type.base_type_name:
             if typ._name == "int":
                 return "int";
             else:
                 raise Exception("unimpl")
 
-        elif typ.type == Typing.product_type_name:
+        elif typ.classification == Type.product_type_name:
             suffix = "*" if as_pointers else ""
             return ", ".join(
                 [cls._to_function_pointer_arg(x, params) + suffix for x in typ.components])
-        elif typ.type == Typing.named_product_type_name:
+        elif typ.classification == Type.named_product_type_name:
             return Helpers._global_name_for_type(typ, params.mod)
 
     @classmethod
@@ -278,7 +278,7 @@ class Transpiler():
     @classmethod
     def _get_all_function_in_module(cls, mod : AbstractModule):
         objs = mod.objects.values()
-        fn_objs = [o for o in objs if o.type.type == Typing.function_type_name]
+        fn_objs = [o for o in objs if o.type.classification == Type.function_type_name]
 
         for child in mod.children:
             fn_objs += cls._get_all_function_in_module(child)
@@ -312,8 +312,8 @@ class SeerFunctions(TranspilerFunctions):
         return params.pre_parts is None and cls.contains_call(params.asl)
 
     @classmethod
-    def is_primitive_type(cls, type : Typing.Type):
-        return type.type == Typing.base_type_name
+    def is_primitive_type(cls, type : Type):
+        return type.classification == Type.base_type_name
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
@@ -418,7 +418,7 @@ class SeerFunctions(TranspilerFunctions):
 
     def colon_(self, params: TranspilerParams):
         obj: Object = params.asl.data
-        if obj.type.type == Typing.function_type_name:
+        if obj.type.classification == Type.function_type_name:
             return [Helpers.get_c_function_pointer(obj, params)]
         full_name = Helpers.global_name_for(obj)
         ptr = "*" if Helpers.type_is_pointer(obj, params) else ""
@@ -655,9 +655,9 @@ class SeerFunctions(TranspilerFunctions):
         return parts
 
     @classmethod
-    def _define_variables_for_return(cls, ret_type: Typing.Type, params: TranspilerParams):
+    def _define_variables_for_return(cls, ret_type: Type, params: TranspilerParams):
         types = []
-        if ret_type.type == Typing.product_type_name:
+        if ret_type.classification == Type.product_type_name:
             types += ret_type.components
         else:
             types = [ret_type]
@@ -704,19 +704,19 @@ class SeerFunctions(TranspilerFunctions):
             if params.name_of_rets:
                 var_names = params.name_of_rets
             else:
-                ret_type: Typing.Type = obj.type.ret
+                ret_type: Type = obj.type.ret
                 var_names = SeerFunctions._define_variables_for_return(ret_type, params)
 
         if obj.type.arg is None:
             arg_types = []
-        elif obj.type.arg.type == Typing.product_type_name:
+        elif obj.type.arg.classification == Type.product_type_name:
             arg_types = obj.type.arg.components
         else:
             arg_types = [obj.type.arg]
         
         # if obj.type.ret is None:
         #     ret_types = []
-        # elif obj.type.arg.type == Typing.product_type_name:
+        # elif obj.type.arg.type == Type.product_type_name:
         #     ret_types = obj.type.arg.components
         # else:
         #     ret_types = [obj.type.ret]

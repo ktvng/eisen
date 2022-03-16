@@ -58,7 +58,7 @@ def run_seer_tests():
         ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
-        print(ast)
+        # print(ast)
         # print(f"| Output:\n")
         # print(ast)
         # print()
@@ -109,7 +109,6 @@ def run(file_name : str):
     # exit()
 
     run_seer_tests()
-    exit()
 
 
 
@@ -140,7 +139,8 @@ def run(file_name : str):
     print(ast)
 
     starttime = time.perf_counter_ns()
-    mod = alpaca.validator.run(config, ast, SeerValidator(), txt)
+    params = SeerValidator.init_params(config, ast, txt, SeerValidator)
+    mod = alpaca.validator.run(params)
     endtime = time.perf_counter_ns()
     print(f"Validator finished in {(endtime-starttime)/1000000} ms")
 

@@ -99,17 +99,11 @@ class Type(AbstractType):
         self.classification = type
         self.mod = None
         self.components: list[Type] = []
-        self.names : list[str] = []
+        self.component_names : list[str] = []
         self.arg: Type = None
         self.ret: Type = None
         self.nullable = False
         self.is_ptr = False
-    
-    def _equiv(self, u : list, v : list) -> bool:
-        return (u is not None 
-            and v is not None 
-            and len(u) == len(v) 
-            and all([x == y for x, y in zip(u, v)]))
 
     def name(self):
         if self._name is not None:
@@ -117,40 +111,23 @@ class Type(AbstractType):
         return self.cannonical_name()
 
     def get_member_attribute_named(self, name: str):
-        if self.classification != Type.named_product_type_name:
+        if self.classification != AbstractType.struct_classification:
             raise Exception(f"can only get member attribute of structs; got {self.classification} instead")
-        idx = self.names.index(name)
+        idx = self.component_names.index(name)
         return self.components[idx]
 
-    def __eq__(self, o: object) -> bool:
-        if not isinstance(o, Type): return False
-        if self.classification != o.classification: return False
-
-        if self.classification == "base":
-            return self._name == o._name
-        elif self.classification == "product":
-            return self._equiv(self.components, o.components)
-        elif self.classification == "named_product":
-            return (self._equiv(self.components, o.components) 
-                and self._equiv(self.names, o.names))
-        elif self.classification == "function":
-            return (self.arg == o.arg
-                and self.ret == o.ret)
-        else:
-            Raise.error("Unimplemented __eq__ for Type")
-
     def cannonical_name(self) -> str:
-        if self.classification == "base":
+        if self.classification == AbstractType.base_classification:
             return self._name
-        elif self.classification == "product":
+        elif self.classification == AbstractType.tuple_classification:
             component_type_strs = [x.cannonical_name() for x in self.components]
             return f"({', '.join(component_type_strs)})"
-        elif self.classification == "named_product":
+        elif self.classification == AbstractType.struct_classification:
             component_type_strs = [x.cannonical_name() for x in self.components]
             component_key_value_strs = [f"{name}:{type}" 
-                for name, type in zip(self.names, component_type_strs)]
+                for name, type in zip(self.component_names, component_type_strs)]
             return f"({', '.join(component_key_value_strs)})"
-        elif self.classification == "function":
+        elif self.classification == AbstractType.function_classification:
             args_names = self.arg.cannonical_name() if self.arg is not None else ""
             rets_names = self.ret.cannonical_name() if self.ret is not None else "void"
             return f"({args_names}) -> {rets_names}"
@@ -164,7 +141,7 @@ class Type(AbstractType):
             
     @classmethod
     def new_base_type(cls, name: str, nullable=False, is_ptr=False) -> Type:
-        type = Type("base")
+        type = Type(AbstractType.base_classification)
         type._name = name
         type.nullable = nullable
         type.is_ptr = is_ptr
@@ -172,7 +149,7 @@ class Type(AbstractType):
 
     @classmethod
     def new_function_type(cls, arg: Type, ret: Type, name: str=None) -> Type:
-        type = Type("function")
+        type = Type(AbstractType.function_classification)
         type.arg = arg
         type.ret = ret
         type._name = name
@@ -180,15 +157,15 @@ class Type(AbstractType):
 
     @classmethod
     def new_product_type(cls, components: list[Type]) -> Type:
-        type = Type("product")
+        type = Type(AbstractType.tuple_classification)
         type.components = components
         return type
 
     @classmethod
-    def new_named_product_type(cls, components: list[Type], names : list[str], name : str=None, mod: AbstractModule = None) -> Type:
-        type = Type("named_product")
+    def new_named_product_type(cls, components: list[Type], component_names : list[str], name : str=None, mod: AbstractModule = None) -> Type:
+        type = Type(AbstractType.struct_classification)
         type.components = components
-        type.names = names
+        type.component_names = component_names
         type._name = name
         type.mod = mod
         return type
@@ -277,20 +254,22 @@ class Type(AbstractType):
             new_type = cls._unpack_args_and_rets_to_fn_type(config, mod, args, rets)
 
         elif asl.type == "struct":
-            name = asl[0].value
             components = asl[1:]
 
-            component_names = [comp[0].value for comp in components if comp.type == ":"]
-            component_types = [Type.get_type_of(config, comp, mod) for comp in components if comp.type == ":"]
+            # need to filter by ":" to avoid "create" and "destroy" children
+            new_type = Type.new_named_product_type(
+                components = [Type.get_type_of(config, comp, mod) for comp in components if comp.type == ":"],
+                component_names = [comp.head_value() for comp in components if comp.type == ":"],
+                name = asl.head_value(),
+                mod = mod)
 
-            new_type = Type.new_named_product_type(component_types, component_names, name=name, mod=mod)
             found_type = mod.resolve_type_by(new_type.name(), local=True)
             if found_type is None:
                 mod.add_type(new_type)
                 return new_type
-            
-            # TODO: throw exception
-            Raise.code_error(f"already defined a struct of name {name}")
+
+            # TODO: this should be a Seer exception 
+            raise Exception(f"already defined a struct of name {found_type.name()}")
 
         else:
             Raise.error(f"unknown type to index {asl.type}")
@@ -310,7 +289,6 @@ class Params(Validator.Params):
             txt: str,
             mod: AbstractModule,
             fns,
-            exceptions: list[AbstractException],
             context: AbstractModule,
             flags: Flags,
             struct_name: str
@@ -321,7 +299,6 @@ class Params(Validator.Params):
         self.txt = txt
         self.mod = mod
         self.fns = fns 
-        self.exceptions = exceptions
         self.context = context
         self.flags = flags
         self.struct_name = struct_name
@@ -332,7 +309,6 @@ class Params(Validator.Params):
             txt: str = None,
             mod : AbstractModule = None,
             fns = None,
-            exceptions : list[AbstractException] = None,
             context : AbstractModule = None,
             flags : Flags = None,
             struct_name: str = None,
@@ -344,7 +320,6 @@ class Params(Validator.Params):
             txt = self.txt if txt is None else txt,
             mod = self.mod if mod is None else mod,
             fns = self.fns if fns is None else fns,
-            exceptions = self.exceptions if exceptions is None else exceptions,
             context = self.context if context is None else context,
             flags = self.flags if flags is None else flags,
             struct_name = self.struct_name if struct_name is None else struct_name,
@@ -362,11 +337,11 @@ class SeerEnsure():
     def struct_has_unique_names(cls, params: Params):
         names = [member[0].value for member in params.asl[1:]]
         if len(names) != len(set(names)):
-            e = Exceptions.RedefinedIdentifier(
+            Validator.report_exception(
+                Exceptions.RedefinedIdentifier(
                 "some identifier was defined multiple times",
-                params.asl.line_number)
-            params.exceptions.append(e)
-
+                params.asl.line_number))
+            return Abort()
 
 class Seer():
     class Flags:
@@ -388,22 +363,25 @@ class Seer():
     def mod_i(params: Indexer.Params):
         child_mod = AbstractModule(name=params.asl[0].value, parent=params.mod)
         for child in params.asl:
-            Indexer.index(params.but_with(asl=child, mod=child_mod))
+            Indexer.index(params.but_with(
+                asl = child, 
+                mod = child_mod))
 
     @Indexer.for_these_types("def")
     def def_i(params: Indexer.Params):
-        name = params.asl.head_value()
-        type = Type.get_type_of(params.config, params.asl, params.mod)
-        new_obj = Object(name, type, params.mod)
+        new_obj = Object(
+            name = params.asl.head_value(),
+            type = Type.get_type_of(params.config, params.asl, params.mod),
+            mod = params.mod)
         params.mod.add_object(new_obj)
 
     @Indexer.for_these_types("create")
     def create_i(params: Indexer.Params):
-        type = Type.get_type_of(params.config, params.asl, params.mod)
-        new_obj = Object("create_" + params.struct_name, type, params.mod)
+        new_obj = Object(
+            name = "create_" + params.struct_name, 
+            type = Type.get_type_of(params.config, params.asl, params.mod),
+            mod = params.mod)
         params.mod.add_object(new_obj)
-
-
 
     @classmethod
     def resolve_object_by(cls, name : str, params:  Params, local : bool=False):
@@ -418,12 +396,11 @@ class Seer():
 
     @classmethod
     def _resolve_object_in_module(cls, asl: CLRList, params:  Params) -> Object:
-        global_mod = cls._get_global_module(params.mod)
         # if the resolution chain is 1 deep (special case)
         if isinstance(asl[0], CLRToken):
-            mod = global_mod.get_child_module(asl[0].value)
+            mod = params.mod.get_child_module(asl[0].value)
         else:
-            mod = cls._decend_module_structure(asl[0], global_mod)
+            mod = cls._decend_module_structure(asl[0], params.mod)
 
         found_obj = mod.resolve_object_by(asl[1].value)
         if not found_obj:
@@ -480,7 +457,6 @@ class Seer():
             txt=txt,
             mod=global_mod,
             fns=cls,
-            exceptions=[],
             context=global_mod,
             flags=Flags(),
             struct_name=None)
@@ -576,10 +552,10 @@ class Seer():
                 exit()
 
         if found_obj is None:
-            e = Exceptions.UndefinedVariable(
+            Validator.report_exception(
+                Exceptions.UndefinedVariable(
                 f"'{name}' was never defined",
-                params.asl.line_number)
-            params.exceptions.append(e)
+                params.asl.line_number))
             return Abort()
 
         params.asl.data = found_obj
@@ -691,10 +667,10 @@ class Seer():
             return Abort()
 
         if left_type != right_type:
-            e = Exceptions.TypeMismatch(
+            Validator.report_exception(
+                Exceptions.TypeMismatch(
                 f"operator '{params.asl.type}' used with '{left_type.name()}' and '{right_type.name()}'",
-                params.asl.line_number)
-            params.exceptions.append(e)
+                params.asl.line_number))
             return Abort()
         
         return left_type
@@ -711,10 +687,10 @@ class Seer():
             type: Type = Validator.validate(params.but_with(asl=params.asl[1]))
         
         if Seer.resolve_object_by(name, params) is not None:
-            e = Exceptions.RedefinedIdentifier(
+            Validator.report_exception(
+                Exceptions.RedefinedIdentifier(
                 f"'{name}' is already in use",
-                params.asl.line_number)
-            params.exceptions.append(e)
+                params.asl.line_number))
             return Abort()
 
         new_obj = Object(name, type, params.mod, 
@@ -766,14 +742,14 @@ class Seer():
         return left_obj
 
     @Validator.for_these_types("ref")
-    def ref(params:  Params):
+    def ref(params: Params):
         name = params.asl.head_value()
         found_obj = Seer.resolve_object_by(name, params)
         if found_obj is None:
-            e = Exceptions.UndefinedVariable(
-                f"'{name}' was never defined",
-                params.asl.line_number)
-            params.exceptions.append(e)
+            Validator.report_exception(
+                Exceptions.UndefinedVariable(
+                    f"'{name}' was never defined",
+                    params.asl.line_number))
             return Abort()
 
         params.asl.data = found_obj

@@ -1,11 +1,13 @@
 from __future__ import annotations
 import re
+import struct
 
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
-from alpaca.validator import AbstractModule
+from alpaca.validator import AbstractModule, AbstractType
 
-from seer._validator import Type, Object, Validator, Seer 
+from seer._validator import Type, Object, Validator, Seer
+from seer._validator import Params as VParams
 from seer._listir import ListIRParser
 
 
@@ -109,15 +111,15 @@ class SharedCounter():
 class Helpers:
     @classmethod
     def is_primitive_type(cls, obj: Object):
-        return obj.type.classification == Type.base_type_name
+        return obj.type.classification == AbstractType.base_classification 
 
     @classmethod
     def is_function_type(cls, obj: Object):
-        return obj.type.classification == Type.function_type_name
+        return obj.type.classification == AbstractType.function_classification
 
     @classmethod
-    def is_named_product_type(cls, obj: Object):
-        return obj.type.classification == Type.named_product_type_name
+    def is_struct_type(cls, obj: Object):
+        return obj.type.classification == AbstractType.struct_classification
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
@@ -134,13 +136,13 @@ class Helpers:
             return name + ptr
         elif Helpers.is_function_type(obj):
             return Helpers._global_name(obj.name, obj.mod)
-        elif Helpers.is_named_product_type(obj):
+        elif Helpers.is_struct_type(obj):
             return "struct " + Helpers._global_name(obj.type.name(), obj.type.mod) + ptr
 
     @classmethod
     def get_c_function_pointer(cls, obj: Object, params: TranspilerParams) -> str:
         typ = obj.type
-        if typ.classification != Type.function_type_name:
+        if not Helpers.is_function_type(obj):
             raise Exception(f"required a function type; got {typ.classification} instead")
 
         args = ""
@@ -156,13 +158,13 @@ class Helpers:
         if typ is None:
             return ""
 
-        if typ.classification == Type.base_type_name:
+        if typ.classification == AbstractType.base_classification:
             if typ._name == "int":
                 return "int";
             else:
                 raise Exception("unimpl")
 
-        elif typ.classification == Type.product_type_name:
+        elif typ.classification == AbstractType.tuple_classification:
             suffix = "*" if as_pointers else ""
             return ", ".join(
                 [cls._to_function_pointer_arg(x, params) + suffix for x in typ.components])
@@ -278,7 +280,7 @@ class Transpiler():
     @classmethod
     def _get_all_function_in_module(cls, mod : AbstractModule):
         objs = mod.objects.values()
-        fn_objs = [o for o in objs if o.type.classification == Type.function_type_name]
+        fn_objs = [o for o in objs if Helpers.is_function_type(o)]
 
         for child in mod.children:
             fn_objs += cls._get_all_function_in_module(child)
@@ -313,7 +315,7 @@ class SeerFunctions(TranspilerFunctions):
 
     @classmethod
     def is_primitive_type(cls, type : Type):
-        return type.classification == Type.base_type_name
+        return type.classification == AbstractType.base_classification
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
@@ -418,7 +420,7 @@ class SeerFunctions(TranspilerFunctions):
 
     def colon_(self, params: TranspilerParams):
         obj: Object = params.asl.data
-        if obj.type.classification == Type.function_type_name:
+        if Helpers.is_function_type(obj):
             return [Helpers.get_c_function_pointer(obj, params)]
         full_name = Helpers.global_name_for(obj)
         ptr = "*" if Helpers.type_is_pointer(obj, params) else ""
@@ -657,7 +659,7 @@ class SeerFunctions(TranspilerFunctions):
     @classmethod
     def _define_variables_for_return(cls, ret_type: Type, params: TranspilerParams):
         types = []
-        if ret_type.classification == Type.product_type_name:
+        if ret_type.classification == AbstractType.tuple_classification:
             types += ret_type.components
         else:
             types = [ret_type]
@@ -668,14 +670,17 @@ class SeerFunctions(TranspilerFunctions):
             params.n_hidden_vars += 1
             listir_code = f"(let (: {tmp_name} (type {type.name()})))"
             clrlist = ListIRParser.run(params.config, listir_code)
-            vparams = Validator.Params(
-                params.config, 
-                clrlist, 
-                Seer(), 
-                [], 
-                params.asl.data.mod,
-                Context(), 
-                "")
+            # use none as these fields will not be used
+            vparams = VParams(
+                config = params.config,
+                asl = clrlist,
+                txt = None,
+                mod = params.asl.data.mod,
+                fns = Seer(),
+                context = AbstractModule(),
+                flags = None,
+                struct_name = None)
+            
             Validator.validate(vparams)
 
             params.pre_parts += Transpiler.transpile(params.but_with(asl=clrlist))
@@ -700,23 +705,27 @@ class SeerFunctions(TranspilerFunctions):
         full_name = prefix + obj.name 
 
         var_names = []
+        ret_parts = []
         if params.pre_parts is not None:
             if params.name_of_rets:
                 var_names = params.name_of_rets
+                ret_parts = [", " + var for var in var_names]
             else:
                 ret_type: Type = obj.type.ret
                 var_names = SeerFunctions._define_variables_for_return(ret_type, params)
+                ret_parts = [", &" + var for var in var_names]
+                
 
         if obj.type.arg is None:
             arg_types = []
-        elif obj.type.arg.classification == Type.product_type_name:
+        elif obj.type.arg.classification == AbstractType.tuple_classification:
             arg_types = obj.type.arg.components
         else:
             arg_types = [obj.type.arg]
         
         # if obj.type.ret is None:
         #     ret_types = []
-        # elif obj.type.arg.type == Type.product_type_name:
+        # elif obj.type.arg.type == AbstractType.tuple_classification:
         #     ret_types = obj.type.arg.components
         # else:
         #     ret_types = [obj.type.ret]
@@ -735,7 +744,6 @@ class SeerFunctions(TranspilerFunctions):
         if parameter_parts:
             parameter_parts = parameter_parts[:-1]
 
-        ret_parts = [", " + var for var in var_names]
         if not parameter_parts and ret_parts:
             # remove ", "
             ret_parts[0] = ret_parts[0][2:]

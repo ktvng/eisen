@@ -15,57 +15,36 @@ class Validator():
             return type in self._handles
 
     class Params:
-        def __init__(self, config: Config, asl: CLRList, txt: str, mod: AbstractModule, exceptions: list[AbstractException], fns):
+        def __init__(self, config: Config, asl: CLRList, txt: str, mod: AbstractModule, fns):
             self.config = config
             self.asl = asl
             self.txt = txt
             self.mod = mod
             self.fns = fns
-            self.exceptions = exceptions
 
         def but_with(self, *args, **kwargs):
             pass
+    
+    exceptions: list[AbstractException] = []
 
     @classmethod
     def for_these_types(cls, names : list[str] | str):
         if isinstance(names, str):
             names = [names]
-
         def decorator(f):
             return Validator._Procedure(f, names)
-
         return decorator
 
     @classmethod
     def run(cls, params):
+        cls.exceptions.clear()
         Indexer.index(params)
         Validator.validate(params)
 
-
-        # exceptions : list[AbstractException] = []
-        # global_mod = AbstractModule("global")
-        # Indexer.run(fns, config, asl, global_mod)
-        # params = Validator._get_init_params_fn(fns)
-        # Validator.validate(params)
-
-        for e in params.exceptions:
+        for e in cls.exceptions:
             print(e.to_str_with_context(params.txt))
             # return None
-
         return params.mod
-
-    @classmethod
-    def _get_init_params_fn(cls, fns):
-        attrs = dir(fns)
-        fns = [getattr(fns, k) for k in attrs 
-            if isinstance(getattr(fns, k), Validator._Inits)]
-        if not fns:
-            raise Exception(f"Validation expects at least one method decorated with @Validator.inits_params")
-        if len(fns) > 1:
-            raise Exception(f"Validation expects at only one method decorated with @Validator.inits_params")
-
-        return fns[0].f
-
 
     @classmethod
     def _get_matching_procedure_for_type(cls, fns, type_name : str):
@@ -85,7 +64,9 @@ class Validator():
     def validate(cls, params : Validator.Params):
         if isinstance(params.asl, CLRToken):
             return params.mod.resolve_type_by(name=params.asl.type)
-
         f = cls._get_matching_procedure_for_type(params.fns, params.asl.type)
         return f(params)
- 
+
+    @classmethod
+    def report_exception(cls, e: AbstractException):
+        cls.exceptions.append(e)

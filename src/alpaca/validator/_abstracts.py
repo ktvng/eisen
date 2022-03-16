@@ -3,6 +3,47 @@ from typing import Generic, TypeVar
 from functools import wraps
 
 class AbstractType:
+    classifications = ["base", "tuple", "struct", "function"]
+    base_classification = "base"
+    tuple_classification = "tuple"
+    struct_classification = "struct"
+    function_classification = "function"
+
+    def __init__(self, classification: str):
+
+        self._name = None
+        self.classification = classification
+        self.mod = None
+        self.components: list[AbstractType] = []
+        self.component_names : list[str] = []
+        self.arg: AbstractType = None
+        self.ret: AbstractType = None
+        self.nullable = False
+        self.is_ptr = False
+
+    def _equiv(self, u : list, v : list) -> bool:
+        return (u is not None 
+            and v is not None 
+            and len(u) == len(v) 
+            and all([x == y for x, y in zip(u, v)]))
+
+    def __eq__(self, o) -> bool:
+        if not isinstance(o, AbstractType): return False
+        if self.classification != o.classification: return False
+
+        if self.classification == AbstractType.base_classification:
+            return self._name == o._name
+        elif self.classification == AbstractType.tuple_classification:
+            return self._equiv(self.components, o.components)
+        elif self.classification == AbstractType.struct_classification:
+            return (self._equiv(self.components, o.components) 
+                and self._equiv(self.component_names, o.component_names))
+        elif self.classification == AbstractType.function_classification:
+            return (self.arg == o.arg
+                and self.ret == o.ret)
+        else:
+            raise Exception(f"AbstractType  __eq__ unimplemented for classification {self.classification}")
+
     def name() -> str:
         pass
 

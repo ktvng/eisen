@@ -110,7 +110,7 @@ class Validator():
             fns, 
             exceptions, 
             global_mod, 
-            global_mod.context, 
+            global_mod, 
             "")
 
         Validator.validate(vparams)
@@ -138,7 +138,7 @@ class Validator():
     @classmethod
     def validate(cls, params : Validator.Params):
         if isinstance(params.asl, CLRToken):
-            return params.mod.resolve_type_name(params.asl.type)
+            return params.mod.resolve_type_by(name=params.asl.type)
 
         f = cls._get_matching_procedure_for_type(params.functions, params.asl.type)
         return f(params)

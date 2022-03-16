@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
-from alpaca.validator import Indexer, Validator, AbstractModule, Context, AbstractType
+from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject
 
 from seer._listir import ListIRParser
 
 from error import Raise
 
-class AbstractObject():
+class Object(AbstractObject):
     def __init__(self, 
             name : str, 
             type : Typing.Type, 
@@ -18,8 +18,9 @@ class AbstractObject():
             is_const : bool = False,
             is_ret : bool = False,
             is_arg : bool = False,
-            is_var: bool = False,
+            is_ptr: bool = False,
             is_val: bool = False,
+            is_var: bool = False,
             is_safe_ptr: bool = False, 
             ):
 
@@ -31,8 +32,9 @@ class AbstractObject():
         self.is_const = is_const
         self.is_ret = is_ret
         self.is_arg = is_arg
-        self.is_var = is_var
+        self.is_ptr = is_ptr
         self.is_val = is_val
+        self.is_var = is_var
         self.is_safe_ptr = is_safe_ptr
 
     def __str__(self) -> str:
@@ -238,7 +240,7 @@ class Typing:
         if type_asl.type == "type?":
             type_str += "?"
         
-        found_type = mod.resolve_type_name(type_str)
+        found_type = mod.resolve_type_by(type_str)
 
         if found_type is not None:
             return found_type
@@ -248,9 +250,9 @@ class Typing:
 
     @classmethod
     def lookup_type_in_mod(cls, new_type: Typing.Type, mod: AbstractModule):
-        found_type = mod.resolve_type_name(new_type.name())
+        found_type = mod.resolve_type_by(new_type.name())
         if found_type is None:
-            mod.context.add_type(new_type.name(), new_type)
+            mod.add_type(new_type)
             return new_type
         return found_type
 
@@ -265,7 +267,7 @@ class Typing:
         else:
             components = [asl]
 
-        types = [mod.context.resolve_type_name(t.head_value()) for t in components]
+        types = [mod.resolve_type_by(t.head_value()) for t in components]
         return Typing.new_product_type(types)
 
     @classmethod
@@ -317,9 +319,9 @@ class Typing:
             component_types = [Typing.get_type_of(config, comp, mod) for comp in components if comp.type == ":"]
 
             new_type = Typing.new_named_product_type(component_types, component_names, name=name, mod=mod)
-            found_type = mod.resolve_type_name(new_type.name(), local=True)
+            found_type = mod.resolve_type_by(new_type.name(), local=True)
             if found_type is None:
-                mod.context.add_type(new_type.name(), new_type)
+                mod.add_type(new_type)
                 return new_type
             
             # TODO: throw exception
@@ -364,8 +366,7 @@ class Seer():
 
     @Indexer.for_these_types("mod")
     def mod_i(params: Indexer.Params):
-        child_mod = AbstractModule(params.asl[0].value, parent_module=params.mod)
-        params.mod.add_child_module(child_mod)
+        child_mod = AbstractModule(name=params.asl[0].value, parent=params.mod)
         for child in params.asl:
             Indexer.index(params.but_with(asl=child, mod=child_mod))
 
@@ -373,29 +374,29 @@ class Seer():
     def def_i(params: Indexer.Params):
         name = params.asl.head_value()
         type = Typing.get_type_of(params.config, params.asl, params.mod)
-        new_obj = AbstractObject(name, type, params.mod)
-        params.mod.context.add_object(name, new_obj)
+        new_obj = Object(name, type, params.mod)
+        params.mod.add_object(new_obj)
 
     @Indexer.for_these_types("create")
     def create_i(params: Indexer.Params):
         type = Typing.get_type_of(params.config, params.asl, params.mod)
-        new_obj = AbstractObject("create_" + params.struct_name, type, params.mod)
-        params.mod.context.add_object(new_obj.name, new_obj)
+        new_obj = Object("create_" + params.struct_name, type, params.mod)
+        params.mod.add_object(new_obj)
 
     @Indexer.initialize_by
     def initialize_i(config: Config, asl: CLRList, global_mod: AbstractModule) -> Indexer.Params: 
-        global_mod.context.add_type("int", Typing.new_base_type("int"))
-        global_mod.context.add_type("str", Typing.new_base_type("str"))
-        global_mod.context.add_type("flt", Typing.new_base_type("flt"))
-        global_mod.context.add_type("bool", Typing.new_base_type("bool"))
-        global_mod.context.add_type("int*", Typing.new_base_type("int*", is_ptr=True))
-        global_mod.context.add_type("str*", Typing.new_base_type("str*", is_ptr=True))
-        global_mod.context.add_type("flt*", Typing.new_base_type("flt*", is_ptr=True))
-        global_mod.context.add_type("bool*", Typing.new_base_type("bool*", is_ptr=True))
-        global_mod.context.add_type("int?", Typing.new_base_type("int?", is_ptr=True, nullable=True))
-        global_mod.context.add_type("str?", Typing.new_base_type("str?", is_ptr=True, nullable=True))
-        global_mod.context.add_type("flt?", Typing.new_base_type("flt?", is_ptr=True, nullable=True))
-        global_mod.context.add_type("bool?", Typing.new_base_type("bool?", is_ptr=True, nullable=True)) 
+        global_mod.add_type(Typing.new_base_type("int"))
+        global_mod.add_type(Typing.new_base_type("str"))
+        global_mod.add_type(Typing.new_base_type("flt"))
+        global_mod.add_type(Typing.new_base_type("bool"))
+        global_mod.add_type(Typing.new_base_type("int*", is_ptr=True))
+        global_mod.add_type(Typing.new_base_type("str*", is_ptr=True))
+        global_mod.add_type(Typing.new_base_type("flt*", is_ptr=True))
+        global_mod.add_type(Typing.new_base_type("bool*", is_ptr=True))
+        global_mod.add_type(Typing.new_base_type("int?", is_ptr=True, nullable=True))
+        global_mod.add_type(Typing.new_base_type("str?", is_ptr=True, nullable=True))
+        global_mod.add_type(Typing.new_base_type("flt?", is_ptr=True, nullable=True))
+        global_mod.add_type(Typing.new_base_type("bool?", is_ptr=True, nullable=True)) 
 
         return Indexer.Params(config, asl, global_mod, Seer, None)
 
@@ -403,27 +404,27 @@ class Seer():
 
 
     @classmethod
-    def resolve_object_name(cls, name : str, params:  Validator.Params, local : bool=False):
+    def resolve_object_by(cls, name : str, params:  Validator.Params, local : bool=False):
         # lookup from local scope first
-        obj = params.context.resolve_object_name(name, local=False)
+        obj = params.context.resolve_object_by(name, local=False)
         if obj:
             return obj
 
         # lookup from module structure
-        obj = params.mod.resolve_object_name(name, local=local)
+        obj = params.mod.resolve_object_by(name, local=local)
         return obj
 
     @classmethod
     def _get_global_module(cls, mod: AbstractModule) -> AbstractModule:
-        next_mod = mod.parent_module
+        next_mod = mod.parent
         while next_mod is not None:
             mod = next_mod
-            next_mod = mod.parent_module
+            next_mod = mod.parent
 
         return mod
 
     @classmethod
-    def _resolve_object_in_module(cls, asl: CLRList, params:  Validator.Params) -> AbstractObject:
+    def _resolve_object_in_module(cls, asl: CLRList, params:  Validator.Params) -> Object:
         global_mod = cls._get_global_module(params.mod)
         # if the resolution chain is 1 deep (special case)
         if isinstance(asl[0], CLRToken):
@@ -431,10 +432,10 @@ class Seer():
         else:
             mod = cls._decend_module_structure(asl[0], global_mod)
 
-        found_obj = mod.context.resolve_object_name(asl[1].value)
+        found_obj = mod.resolve_object_by(asl[1].value)
         if not found_obj:
             # try looking up create
-            found_obj = mod.context.resolve_object_name("create_" + asl[1].value)
+            found_obj = mod.resolve_object_by("create_" + asl[1].value)
         return found_obj
 
     @classmethod
@@ -446,7 +447,7 @@ class Seer():
         else:
             mod = cls._decend_module_structure(asl[0], global_mod)
 
-        return mod.context.resolve_type_name(asl[1].value)
+        return mod.resolve_type_by(asl[1].value)
 
     @classmethod
     def _decend_module_structure(cls, asl: CLRList, mod: AbstractModule) -> AbstractModule:
@@ -487,7 +488,7 @@ class Seer():
         type: Typing.Type = Validator.validate(params.but_with(asl=params.asl.head()))
         attr_name = params.asl[1].value
         attr_type = type.get_member_attribute_named(attr_name)
-        obj = AbstractObject(attr_name, type, params.mod)
+        obj = Object(attr_name, type, params.mod)
         params.asl.data = obj
         return attr_type
 
@@ -515,28 +516,28 @@ class Seer():
         for child in params.asl:
             Validator.validate(params.but_with(
                 asl=child, 
-                context=Context(parent=params.context)))
+                context=AbstractModule(parent=params.context)))
 
     @Validator.for_these_types("while")
     def while_(params: Validator.Params):
         Validator.validate(params.but_with(
             asl=params.asl.head(),
-            context=Context(parent=params.context)))
+            context=AbstractModule(parent=params.context)))
 
     @Validator.for_these_types(":")
     def colon_(params: Validator.Params):
         name = params.asl.head_value()
         type: Typing.Type = Validator.validate(params.but_with(asl=params.asl[1]))
-        new_obj = AbstractObject(
+        new_obj = Object(
             name, 
             type, 
             params.mod, 
             is_ret=params.has_flag(Seer.Flags.is_ret),
             is_arg=params.has_flag(Seer.Flags.is_arg),
-            is_var=type.is_ptr)
+            is_ptr=type.is_ptr)
 
         params.asl.data = new_obj
-        params.context.add_object(name, new_obj)
+        params.context.add_object(new_obj)
         
         return type
 
@@ -551,7 +552,7 @@ class Seer():
             # TODO: formalize
             if name == "print":
                 return Abort()
-            found_obj = Seer.resolve_object_name(name, params)
+            found_obj = Seer.resolve_object_by(name, params)
         elif params.asl.head().type == "::":
             found_obj = Seer._resolve_object_in_module(params.asl[0], params)
             if found_obj is None:
@@ -570,12 +571,12 @@ class Seer():
     @Validator.for_these_types("struct")
     def struct(params:  Validator.Params):
         name = params.asl.head_value()
-        type = params.mod.resolve_type_name(name)
-        params.asl.data = AbstractObject(name, type, params.mod)
+        type = params.mod.resolve_type_by(name)
+        params.asl.data = Object(name, type, params.mod)
         # SeerEnsure.struct_has_unique_names(params)
         # pass struct name into context so the create method knows where it is defined
         for child in params.asl[1:]:
-            Validator.validate(params.but_with(asl=child, context=Context(name=name)))
+            Validator.validate(params.but_with(asl=child, context=AbstractModule(name=name)))
 
     @Validator.for_these_types("mod")
     def mod(params:  Validator.Params):
@@ -611,9 +612,9 @@ class Seer():
             params: Validator.Params):
 
         # object exists due to indexing
-        obj: AbstractObject = params.mod.context.resolve_object_name(name)
+        obj: Object = params.mod.resolve_object_by(name)
         params.asl.data = obj
-        fn_context = Context()
+        fn_context = AbstractModule()
 
         # validate args
         for child in args:
@@ -685,20 +686,21 @@ class Seer():
             name = params.asl.head_value()
             type: Typing.Type = Validator.validate(params.but_with(asl=params.asl[1]))
         
-        if Seer.resolve_object_name(name, params) is not None:
+        if Seer.resolve_object_by(name, params) is not None:
             e = Exceptions.RedefinedIdentifier(
                 f"'{name}' is already in use",
                 params.asl.line_number)
             params.exceptions.append(e)
             return Abort()
 
-        new_obj = AbstractObject(name, type, params.mod, 
+        new_obj = Object(name, type, params.mod, 
             is_let = params.asl.type == "let",
             is_mut = "mut" in params.asl.type,
             is_const = "val" in params.asl.type,
-            is_var = "var" in params.asl.type or type.is_ptr)
+            is_var = "var" in params.asl.type,
+            is_ptr = "val" in params.asl.type or "var" in params.asl.type or type.is_ptr)
 
-        params.context.add_object(name, new_obj)
+        params.context.add_object(new_obj)
         asl_to_instr.data = new_obj
         # needed for let c: int = 5
         params.asl.data = new_obj
@@ -707,17 +709,17 @@ class Seer():
     @Validator.for_these_types("type") 
     def _type1(params:  Validator.Params):
         name = params.asl.head_value()
-        return params.mod.resolve_type_name(name)
+        return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("type?") 
     def _type2(params:  Validator.Params):
         name = params.asl.head_value() + "?"
-        return params.mod.resolve_type_name(name)
+        return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("type*") 
     def _type3(params:  Validator.Params):
         name = params.asl.head_value() + "*"
-        return params.mod.resolve_type_name(name)
+        return params.mod.resolve_type_by(name)
 
     @Validator.for_these_types("=")
     def assigns(params:  Validator.Params):
@@ -742,7 +744,7 @@ class Seer():
     @Validator.for_these_types("ref")
     def ref(params:  Validator.Params):
         name = params.asl.head_value()
-        found_obj = Seer.resolve_object_name(name, params)
+        found_obj = Seer.resolve_object_by(name, params)
         if found_obj is None:
             e = Exceptions.UndefinedVariable(
                 f"'{name}' was never defined",

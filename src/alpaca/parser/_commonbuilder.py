@@ -1,7 +1,30 @@
 from __future__ import annotations
 from alpaca.parser._abstractbuilder import AbstractBuilder
 from alpaca.asts import ASTNode
+from alpaca.utils._transform import PartialTransform, _TransformFunction
+
 from error import Raise
+
+class Builder():
+    @classmethod
+    def for_procedure(cls, matching_names: str):
+        def decorator(f):
+            predicate = lambda n: n == matching_names
+            return PartialTransform(predicate, f)
+
+        return decorator 
+
+    def run(self, type_name: str, components: list[ASTNode | list[ASTNode]]):
+        transform = _TransformFunction(self)
+        return transform.apply([type_name], [components])
+
+    class Params:
+        def __init__(self, components : list[ASTNode | list[ASTNode]]):
+            self.components = components
+
+        def but_with(self, *args, **kwargs):
+            pass
+
 
 class CommonBuilder(AbstractBuilder):
     build_map = {}

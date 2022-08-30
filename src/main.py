@@ -2,10 +2,9 @@ import re
 import sys
 import time
 import subprocess
-from typing import SupportsRound
 
 import alpaca
-from seer import Visitor, Builder, Callback, Builder2, SeerValidator
+from seer import Visitor, Callback, Builder2, SeerValidator, IndexerTransformFunction
 from seer._transpiler import Transpiler, SeerFunctions
 import lamb
 
@@ -23,7 +22,7 @@ def run_lamb(filename : str):
     fun = lamb.LambRunner()
     fun.run(ast)
 
-def run_seer_tests():
+def internal_run_tests(filename: str, should_transpile=True):
     delim = "="*64
     # PARSE SEER CONFIG
     starttime = time.perf_counter_ns()
@@ -32,7 +31,7 @@ def run_seer_tests():
     print(f"Parsed config in {(endtime-starttime)/1000000} ms")
 
     # READ FILE TO STR
-    with open("./src/seer/tests/test.rs", 'r') as f:
+    with open(filename, 'r') as f:
         txt = f.read()
     
     failure_count = 0
@@ -58,37 +57,38 @@ def run_seer_tests():
         ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
-        # print(ast)
+        print(ast)
         # print(f"| Output:\n")
         # print(ast)
         # print()
 
         starttime = time.perf_counter_ns()
         params = SeerValidator.init_params(config, ast, txt, SeerValidator)
-        mod = alpaca.validator.run(params)
+        mod = alpaca.validator.run(IndexerTransformFunction(), params)
         endtime = time.perf_counter_ns()
         print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
 
         if mod is None:
             exit()
-            
-        starttime = time.perf_counter_ns()
-        txt = Transpiler.run(config, ast, SeerFunctions(), mod)
-        endtime = time.perf_counter_ns()
-        print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
-        with open("build/test.c", 'w') as f:
-            f.write(txt)
 
-        # run tests
-        subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
-        x = subprocess.run(["./build/test"], capture_output=True)
-        got = x.stdout.decode("utf-8") 
-        is_expected = got == expected
-        if is_expected:
-            print(f"| Result: SUCCESS!")
-        else:
-            print(f"| Result: FAILED, expected {expected} but got {got}")
-            failure_count += 1
+        if should_transpile:
+            starttime = time.perf_counter_ns()
+            txt = Transpiler.run(config, ast, SeerFunctions(), mod)
+            endtime = time.perf_counter_ns()
+            print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
+            with open("build/test.c", 'w') as f:
+                f.write(txt)
+
+            # run tests
+            subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
+            x = subprocess.run(["./build/test"], capture_output=True)
+            got = x.stdout.decode("utf-8") 
+            is_expected = got == expected
+            if is_expected:
+                print(f"| Result: SUCCESS!")
+            else:
+                print(f"| Result: FAILED, expected {expected} but got {got}")
+                failure_count += 1
         
         test_count +=1
         
@@ -96,6 +96,11 @@ def run_seer_tests():
         print(delim, "\nSuccess! All tests passed\n")
     else:
         print(delim, f"\n{failure_count}/{test_count} test failed!")
+
+def run_seer_tests():
+    internal_run_tests("./src/seer/tests/validator_tests.rs", should_transpile=False)
+    input()
+    internal_run_tests("./src/seer/tests/test.rs")
 
 
 def run(file_name : str):
@@ -109,6 +114,7 @@ def run(file_name : str):
     # exit()
 
     run_seer_tests()
+    exit()
 
 
 

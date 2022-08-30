@@ -1,12 +1,11 @@
 from __future__ import annotations
-from re import A
 
 from error import Raise
 from alpaca.asts import AST, ASTNode, CLRList, CLRToken, CLRRawList
 from alpaca.parser.cyk._cykalgo import CYKAlgo
 from alpaca.parser.cyk._cykalgo2 import CYKAlgo2, DpTable, DpTableEntry
 from alpaca.parser._abstractbuilder import AbstractBuilder
-from alpaca.parser._commonbuilder import CommonBuilder
+from alpaca.parser._commonbuilder import CommonBuilder, Builder
 from alpaca.parser._commonbuilder2 import CommonBuilder2
 from alpaca.config import Config
 
@@ -55,8 +54,9 @@ class AstBuilder():
         return components
 
 class AstBuilder2:
-    def _contruct_build_map(self, builder : AbstractBuilder):
+    def _contruct_build_map(self, builder : Builder):
         common_build_map = CommonBuilder2.build_map
+        self.builder = builder
         builder_build_map = {} if builder is None else builder.build_map
         self.build_map = { **common_build_map, **builder_build_map }
 
@@ -99,5 +99,6 @@ class AstBuilder2:
                 Raise.code_error(f"build procedure {reversal_step.type} not found by ast_builder")
 
             components = build_procedure(self.config, components, reversal_step.value)
+            # components = self.builder.run(reversal_step.type, components)
 
         return components 

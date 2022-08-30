@@ -1,6 +1,5 @@
 from __future__ import annotations
 from functools import reduce
-from re import A
 from typing import Union, List
 
 from error import Raise

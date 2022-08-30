@@ -1,43 +1,28 @@
 from __future__ import annotations
+from curses import pair_content
 
 from alpaca.config import Config
 from alpaca.asts import CLRList
 from alpaca.validator._abstracts import AbstractModule
+from alpaca.utils._transform import _TransformFunction, PartialTransform, TransformFunction2
 
-class Indexer():
-    class _Procedure():
-        def __init__(self, f, for_types : list[str]):
-            self.f = f
-            self.for_types = for_types
-        
-        def handles(self, type_name : str):
-            return type_name in self.for_types
+class Indexer2(TransformFunction2):
+    def __init__(self):
+        super().__init__()
 
     @classmethod
     def for_these_types(cls, names : list[str] | str):
         if isinstance(names, str):
             names = [names]
         def decorator(f):
-            return Indexer._Procedure(f, names)
-        return decorator
+            predicate = lambda n: n in names
+            return PartialTransform(predicate, f)
+        return decorator 
 
-    @classmethod
-    def _get_matching_procedure(cls, type_name: str, params: Indexer.Params) -> Indexer._Procedure:
-        obj_containing_fns = params.fns
-        attrs = dir(obj_containing_fns)
-        fns = [getattr(obj_containing_fns, k) for k in attrs 
-            if isinstance(getattr(obj_containing_fns, k), Indexer._Procedure)]
-        matching_fn = [f for f in fns if f.handles(type_name)]
-
-        if len(matching_fn) == 0:
+    def apply(self, params):
+        try:
+            return self._apply(
+                match_args=[params.asl.type], 
+                fn_args=[params])
+        except:
             return None
-        if len(matching_fn) > 1:
-            raise Exception(f"Multiple procedures for'{type_name}'; only one expected")
-
-        return matching_fn[0] 
-
-    @classmethod
-    def index(cls, params : Indexer.Params) -> None:
-        proc = cls._get_matching_procedure(params.asl.type, params)
-        if proc:
-            proc.f(params)

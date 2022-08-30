@@ -1,4 +1,5 @@
 from __future__ import annotations
+from re import I
 from typing import Any, Callable
 
 class PartialTransform():
@@ -18,6 +19,9 @@ class PartialTransform():
         else:
             return self.predicate()
 
+    def __call__(self, *args, **kwargs):
+        return self.f(*args, **kwargs)
+
 class TransformFunction2():
     def __init__(self):
         attrs = dir(self)
@@ -27,7 +31,8 @@ class TransformFunction2():
     def _apply(self, match_args: list, fn_args: list):
         matching_transforms = [f for f in self.partial_transforms if f.covers(*match_args)]
         if not matching_transforms:
-            raise Exception(f"No transforms matching for {match_args}")
+            args = [str(arg) for arg in match_args]
+            raise Exception(f"No transforms matching for {args}")
         if len(matching_transforms) > 1:
             raise Exception(f"Multiple transforms matching for {match_args}")
 

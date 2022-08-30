@@ -1,44 +1,36 @@
 from __future__ import annotations
-from alpaca.parser import AbstractBuilder, CommonBuilder, CommonBuilder2
-from alpaca.asts import ASTNode, CLRRawList, CLRList, CLRToken
+from alpaca.parser import CommonBuilder
+from alpaca.asts import CLRRawList, CLRList
 from alpaca.config import Config
 from error import Raise
 
 
-class Builder2(AbstractBuilder):
-    build_map = {}
-
-    @classmethod
-    def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
-        return [c for c in components 
-            if  (isinstance(c, CLRToken) 
-                    and not config.type_hierachy.is_child_type(c.type, "keyword")
-                    and not config.type_hierachy.is_child_type(c.type, "symbol")
-                    and not config.type_hierachy.is_child_type(c.type, "operator"))
-                or isinstance(c, CLRList)]
-         
-    @AbstractBuilder.build_procedure(build_map, "filter_build")
+class Builder(CommonBuilder):
+    @CommonBuilder.for_procedure("filter_build")
     def filter_build_(
+            fn,
             config : Config,
             components : CLRRawList, 
-            *args) -> CLRRawList:
+            *args) -> CLRRawList: 
 
-        newCLRList = CommonBuilder2.build(config, components, *args)[0]
-        filtered_children = Builder2._filter(config, newCLRList)
+        newCLRList = Builder.build(fn, config, components, *args)[0]
+        filtered_children = Builder._filter(config, newCLRList)
 
         newCLRList[:] = filtered_children
         return [newCLRList]
 
-    @AbstractBuilder.build_procedure(build_map, "filter_pass")
+    @CommonBuilder.for_procedure("filter_pass")
     def filter_pass(
+            fn,
             config : Config,
             components : CLRRawList,
             *args) -> CLRRawList:
 
-        return Builder2._filter(config, components)
+        return Builder._filter(config, components)
         
-    @AbstractBuilder.build_procedure(build_map, "handle_call")
-    def filter_pass(
+    @CommonBuilder.for_procedure("handle_call")
+    def handle_call(
+            fn,
             config : Config,
             components : CLRRawList,
             *args) -> CLRRawList:
@@ -53,8 +45,9 @@ class Builder2(AbstractBuilder):
 
         return function_call
 
-    @AbstractBuilder.build_procedure(build_map, "promote")
+    @CommonBuilder.for_procedure("promote")
     def promote_(
+            fn,
             config : Config,
             components : CLRRawList, 
             type_name : str, 
@@ -68,13 +61,14 @@ class Builder2(AbstractBuilder):
         captain[:] = [x for x in components if x != captain]
         return [captain]
 
-    @AbstractBuilder.build_procedure(build_map, "merge")
+    @CommonBuilder.for_procedure("merge")
     def merge_(
+            fn,
             config : Config,
             components : CLRRawList, 
             *args) -> CLRRawList:
 
-        flattened_comps = CommonBuilder2.flatten_components(components)
+        flattened_comps = CommonBuilder.flatten_components(components)
 
         if len(flattened_comps) == 2:
             Raise.code_error("unimplemented unary ops")
@@ -87,28 +81,29 @@ class Builder2(AbstractBuilder):
         else:
             Raise.code_error("should not merge with more than 3 nodes")
 
-    @AbstractBuilder.build_procedure(build_map, "handle_op_pref")
+    @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(
+            fn,
             config : Config,
             components : CLRRawList,
             *args) -> CLRRawList:
 
-        flattened_comps = CommonBuilder2.flatten_components(components)
+        flattened_comps = CommonBuilder.flatten_components(components)
         if len(flattened_comps) != 2:
             Raise.error("expected size 2 for handle_op_pref")
 
         return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
 
+    # TODO: artifact from builder2
+    # @classmethod
+    # def postprocess(cls, node : ASTNode) -> None:
+    #     return
+    #     if node.match_with() == "let" and node.children[0].match_with() == ":":
+    #         # remove the ':' node underneath let
+    #         node.children = node.children[0].children
 
-    @classmethod
-    def postprocess(cls, node : ASTNode) -> None:
-        return
-        if node.match_with() == "let" and node.children[0].match_with() == ":":
-            # remove the ':' node underneath let
-            node.children = node.children[0].children
-
-        for child in node.children:
-            cls.postprocess(child) 
+    #     for child in node.children:
+    #         cls.postprocess(child) 
 
 
     # TODO:

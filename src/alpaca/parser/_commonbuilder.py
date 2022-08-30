@@ -1,47 +1,25 @@
 from __future__ import annotations
-from alpaca.parser._abstractbuilder import AbstractBuilder
-from alpaca.asts import ASTNode
-from alpaca.utils._transform import PartialTransform, _TransformFunction
+from alpaca.config._config import Config
+from alpaca.asts import CLRList, CLRToken, CLRRawList
+from alpaca.parser._builder import Builder
 
 from error import Raise
 
-class Builder():
-    @classmethod
-    def for_procedure(cls, matching_names: str):
-        def decorator(f):
-            predicate = lambda n: n == matching_names
-            return PartialTransform(predicate, f)
-
-        return decorator 
-
-    def run(self, type_name: str, components: list[ASTNode | list[ASTNode]]):
-        transform = _TransformFunction(self)
-        return transform.apply([type_name], [components])
-
-    class Params:
-        def __init__(self, components : list[ASTNode | list[ASTNode]]):
-            self.components = components
-
-        def but_with(self, *args, **kwargs):
-            pass
-
-
-class CommonBuilder(AbstractBuilder):
-    build_map = {}
-
-    def _build_procedure(build_map, name):
-        def _decorator(f):
-            def pure_f(*args, **kwargs):
-                return f(CommonBuilder, *args, **kwargs)
-                
-            build_map[name] = pure_f
-
-            return f
-
-        return _decorator
+class CommonBuilder(Builder):
+    def __init__(self):
+        super().__init__()
 
     @classmethod
-    def flatten_components(cls, components : list[ASTNode | list[ASTNode]]) -> list[ASTNode]:
+    def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
+        return [c for c in components 
+            if  (isinstance(c, CLRToken) 
+                    and not config.type_hierachy.is_child_type(c.type, "keyword")
+                    and not config.type_hierachy.is_child_type(c.type, "symbol")
+                    and not config.type_hierachy.is_child_type(c.type, "operator"))
+                or isinstance(c, CLRList)]
+
+    @classmethod
+    def flatten_components(cls, components : list[CLRToken | CLRList | CLRRawList]) -> CLRRawList:
         flattened_components = []
         for comp in components:
             if isinstance(comp, list):
@@ -51,49 +29,63 @@ class CommonBuilder(AbstractBuilder):
 
         return flattened_components
 
-    @classmethod
-    @_build_procedure(build_map, "build")
-    def build(cls, components : list[ASTNode], build_name : str, *args) -> list[ASTNode]:
+    @Builder.for_procedure("build")
+    def build(
+            fn,
+            config : Config,
+            components : CLRRawList, 
+            build_name : str, 
+            *args) -> CLRRawList:
+
         flattened_components = CommonBuilder.flatten_components(components)
         if not flattened_components:
             Raise.code_error("flattened_components must not be empty")
 
-        newnode = ASTNode(
-            type=build_name,
-            value="none",
-            match_with="type",
-            children=flattened_components)
+        newCLRList = CLRList(build_name, flattened_components, flattened_components[0].line_number)
+        return [newCLRList]
 
-        newnode.line_number = flattened_components[0].line_number
-        return [newnode]
+    @Builder.for_procedure("pool")
+    def pool_(
+            fn,
+            config : Config, 
+            components : CLRRawList, 
+            *args) -> CLRRawList:
 
-
-    @classmethod
-    @_build_procedure(build_map, "pool")
-    def pool_(cls, components : list[ASTNode], *args) -> list[ASTNode]:
         pass_up_list = []
         for component in components:
             if isinstance(component, list):
                 pass_up_list += component
-            elif isinstance(component, ASTNode):
+            elif isinstance(component, CLRToken) | isinstance(component, CLRList):
                 pass_up_list.append(component)
             else:
-                Raise.code_error("reverse engineering with pooling must be either list or ASTNode")
-
+                print(type(component))
+                Raise.code_error("reverse engineering with pooling must be either CLRRawList, CLRList, or CLRToken")
         return pass_up_list
 
 
-    @classmethod
-    @_build_procedure(build_map, "pass")
-    def pass_(cls, components : list[ASTNode], *args) -> list[ASTNode]:
+    @Builder.for_procedure("pass")
+    def pass_(
+            fn,
+            config : Config, 
+            components : CLRRawList, 
+            *args) -> CLRRawList:
+
         return components
 
 
-    @classmethod
-    @_build_procedure(build_map, "convert")
-    def convert_(cls, components : list[ASTNode], name : str, *args) -> list[ASTNode]:
+    @Builder.for_procedure("convert")
+    def convert_(
+            fn,
+            config : Config, 
+            components : CLRRawList, 
+            name : str, 
+            *args) -> CLRRawList:
+
         if len(components) != 1:
             Raise.code_error("expects size of 1")
 
-        components[0].type = name
+        if isinstance(components[0], CLRList):
+            components[0].set_type(name)
+        elif isinstance(components[0], CLRToken):
+            components = [CLRList(name, components, components[0].line_number)]
         return components

@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import alpaca
 from error import Raise
-from alpaca.parser import AbstractBuilder, CommonBuilder
+from alpaca.parser import CommonBuilder
 from alpaca.compiler import AbstractVisitor
 from alpaca.asts import ASTNode
 from alpaca import compiler
 
-class Builder(AbstractBuilder):
+class Builder(CommonBuilder):
     build_map = {}
 
-    @AbstractBuilder.build_procedure(build_map, "filter_build")
+    # TODO: broken by change in builder
+    @CommonBuilder.for_procedure("filter_build")
     def filter_build_(components : list[ASTNode], *args) -> list[ASTNode]:
+        # breaking upgrade to common builder3
         newnode = CommonBuilder.build(components, *args)[0]
         filtered_children = [c for c in newnode.children if
             (c.type != "keyword" and c.type != "symbol")]

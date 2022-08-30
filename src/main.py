@@ -4,7 +4,7 @@ import time
 import subprocess
 
 import alpaca
-from seer import Visitor, Callback, Builder2, SeerValidator, IndexerTransformFunction
+from seer import Visitor, Callback, Builder, ValidationTransformFunction, IndexerTransformFunction
 from seer._transpiler import Transpiler, SeerFunctions
 import lamb
 
@@ -54,7 +54,7 @@ def internal_run_tests(filename: str, should_transpile=True):
 
         # PARSE TO AST
         starttime = time.perf_counter_ns()
-        ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
+        ast = alpaca.parser.run(config, tokens, Builder(), algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
         print(ast)
@@ -63,8 +63,8 @@ def internal_run_tests(filename: str, should_transpile=True):
         # print()
 
         starttime = time.perf_counter_ns()
-        params = SeerValidator.init_params(config, ast, txt, SeerValidator)
-        mod = alpaca.validator.run(IndexerTransformFunction(), params)
+        params = ValidationTransformFunction.init_params(config, ast, txt)
+        mod = alpaca.validator.run(IndexerTransformFunction(), ValidationTransformFunction(), params)
         endtime = time.perf_counter_ns()
         print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
 

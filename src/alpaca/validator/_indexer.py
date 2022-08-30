@@ -1,12 +1,8 @@
 from __future__ import annotations
-from curses import pair_content
 
-from alpaca.config import Config
-from alpaca.asts import CLRList
-from alpaca.validator._abstracts import AbstractModule
-from alpaca.utils._transform import _TransformFunction, PartialTransform, TransformFunction2
+from alpaca.utils._transform import PartialTransform, TransformFunction2
 
-class Indexer2(TransformFunction2):
+class Indexer(TransformFunction2):
     def __init__(self):
         super().__init__()
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import traceback
+
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
 from alpaca.validator._abstracts import AbstractModule
@@ -26,7 +28,9 @@ class Validator(TransformFunction):
                 match_args=[params.asl.type], 
                 fn_args=[params])
         except Exception as e:
+            traceback.print_exc()
             print(e)
+            exit()
             return None
 
     class Params:

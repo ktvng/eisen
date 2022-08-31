@@ -24,8 +24,60 @@ def run_lamb(filename : str):
     # fun = lamb.LambRunner()
     # fun.run(ast)
 
-def run(filename: str):
-    run_lamb(filename)
+def run_seer(filename: str):
+    # PARSE SEER CONFIG
+    config = run_and_measure("config parsed",
+        alpaca.config.ConfigParser.run,
+        filename="./src/seer/grammar.gm")
+
+    # READ FILE TO STR
+    with open(filename, 'r') as f:
+        txt = f.read()
+    
+    # TOKENIZE
+    tokens = run_and_measure("tokenizer",
+        alpaca.lexer.run,
+        text=txt, config=config, callback=SeerCallback)
+
+    # print("====================")
+    # [print(t) for t in tokens]
+
+    # PARSE TO AST
+    asl = run_and_measure("parser",
+        alpaca.parser.run,
+        config=config, tokens=tokens, builder=SeerBuilder(), algo="cyk")
+
+    asl_str = [">    " + line for line in  str(asl).split("\n")]
+    print(*asl_str, sep="\n")
+
+    params = SeerValidator.init_params(config, asl, txt)
+    mod = run_and_measure("validator",
+        alpaca.validator.run,
+        indexer_function=SeerIndexer(), validation_function=SeerValidator(), params=params)
+
+    if mod is None:
+        raise Exception("Failed to validate and produce a module.")
+
+    code = run_and_measure("transpiler",
+        SeerTranspiler().run,
+        config=config, asl=asl, mod=mod)
+
+    with open("build/test.c", 'w') as f:
+        f.write(code)
+
+    # run tests
+    subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
+    x = subprocess.run(["./build/test"], capture_output=True)
+    got = x.stdout.decode("utf-8") 
+
+    got_str = [">    " + line for line in got.split("\n")]
+    print(*got_str, sep="\n")
+
+def run(lang: str, filename: str):
+    if lang == "lamb":
+        run_lamb(filename)
+    elif lang == "seer":
+        run_seer(filename)
 
 def internal_run_tests(filename: str, should_transpile=True):
     # PARSE SEER CONFIG
@@ -128,12 +180,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
+    parser.add_argument("-l", "--lang", 
+        action="store", 
+        type=str, 
+        choices=["seer", "lamb"],
+        default="seer")
+
     args = parser.parse_args()
 
     if args.test:
         run_seer_tests()
-    elif args.input:
-        run(args.input)
+    elif args.input and args.lang:
+        run(args.lang, args.input)
 
     print(delim)
     

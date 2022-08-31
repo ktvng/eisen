@@ -16,6 +16,20 @@ class LambBuilder(alpaca.parser.CommonBuilder):
         newCLRList[:] = filtered_children
         return [newCLRList]
 
+class LambInterpreter(alpaca.utils.TransformFunction):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        pass
+
+class LambRunner():
+    @classmethod
+    def run(cls, file_name: str):
+        pass
+
+
+
 # #####################################################
 # class AbstractContext():
 #     def __init__(self, params : dict = {}):

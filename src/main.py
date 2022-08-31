@@ -2,12 +2,15 @@ import re
 import sys
 import time
 import subprocess
+import argparse
 
 import alpaca
 from seer import SeerCallback, SeerBuilder, SeerValidator, SeerIndexer, SeerTranspiler
 import lamb
 
 from seer._listir import ListIRParser
+
+delim = "="*64
 
 def run_lamb(filename : str):
     with open(filename, 'r') as f:
@@ -17,18 +20,18 @@ def run_lamb(filename : str):
     tokens = alpaca.lexer.run(txt, config, None)
     ast = alpaca.parser.run(config, tokens, lamb.LambBuilder())
     print(ast)
-    input()
 
     # fun = lamb.LambRunner()
     # fun.run(ast)
 
+def run(filename: str):
+    run_lamb(filename)
+
 def internal_run_tests(filename: str, should_transpile=True):
-    delim = "="*64
     # PARSE SEER CONFIG
-    starttime = time.perf_counter_ns()
-    config = alpaca.config.ConfigParser.run("./src/seer/grammar.gm")
-    endtime = time.perf_counter_ns()
-    print(f"Parsed config in {(endtime-starttime)/1000000} ms")
+    config = run_and_measure("config parsed",
+        alpaca.config.ConfigParser.run,
+        filename="./src/seer/grammar.gm")
 
     # READ FILE TO STR
     with open(filename, 'r') as f:
@@ -44,38 +47,36 @@ def internal_run_tests(filename: str, should_transpile=True):
         chunk = txt_chunks[i+1]
 
         # TOKENIZE
-        starttime = time.perf_counter_ns()
-        tokens = alpaca.lexer.run(chunk, config, SeerCallback)
-        endtime = time.perf_counter_ns()
-        print(f"|  - Lexer finished in {(endtime-starttime)/1000000} ms")
+        tokens = run_and_measure("tokenizer",
+            alpaca.lexer.run,
+            text=chunk, config=config, callback=SeerCallback)
 
         # print("====================")
         # [print(t) for t in tokens]
 
         # PARSE TO AST
-        starttime = time.perf_counter_ns()
-        ast = alpaca.parser.run(config, tokens, SeerBuilder(), algo="cyk")
-        endtime = time.perf_counter_ns()
-        print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
-        ast_str = ["|    " + line for line in  str(ast).split("\n")]
-        print(*ast_str, sep="\n")
+        asl = run_and_measure("parser",
+            alpaca.parser.run,
+            config=config, tokens=tokens, builder=SeerBuilder(), algo="cyk")
 
-        starttime = time.perf_counter_ns()
-        params = SeerValidator.init_params(config, ast, txt)
-        mod = alpaca.validator.run(SeerIndexer(), SeerValidator(), params)
-        endtime = time.perf_counter_ns()
-        print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
+        asl_str = ["|    " + line for line in  str(asl).split("\n")]
+        print(*asl_str, sep="\n")
+
+        params = SeerValidator.init_params(config, asl, txt)
+        mod = run_and_measure("validator",
+            alpaca.validator.run,
+            indexer_function=SeerIndexer(), validation_function=SeerValidator(), params=params)
 
         if mod is None:
-            exit()
+            raise Exception("Failed to validate and produce a module.")
 
         if should_transpile:
-            starttime = time.perf_counter_ns()
-            txt = SeerTranspiler().run(config, ast, mod)
-            endtime = time.perf_counter_ns()
-            print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
+            code = run_and_measure("transpiler",
+                SeerTranspiler().run,
+                config=config, asl=asl, mod=mod)
+
             with open("build/test.c", 'w') as f:
-                f.write(txt)
+                f.write(code)
 
             # run tests
             subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
@@ -83,35 +84,28 @@ def internal_run_tests(filename: str, should_transpile=True):
             got = x.stdout.decode("utf-8") 
             is_expected = got == expected
             if is_expected:
-                print(f"| Result: SUCCESS!")
+                print(f"| SUCCESS")
             else:
-                print(f"| Result: FAILED, expected {expected} but got {got}")
+                print(f"| FAILED, expected {expected} but got {got}")
                 failure_count += 1
-        
         test_count +=1
         
     if failure_count == 0:
-        print(delim, "\nSuccess! All tests passed\n")
+        print(delim, f"\nSuccess! All tests passed ({test_count}/{test_count})")
     else:
         print(delim, f"\n{failure_count}/{test_count} test failed!")
+
+def run_and_measure(name: str, f, *args, **kwargs):
+    starttime = time.perf_counter_ns()
+    result = f(*args, **kwargs)
+    endtime = time.perf_counter_ns()
+    print(f"|  - {name} finished in {(endtime-starttime)/1000000} ms")
+    return result;
 
 def run_seer_tests():
     internal_run_tests("./src/seer/tests/validator_tests.rs", should_transpile=False)
     input()
     internal_run_tests("./src/seer/tests/test.rs")
-
-
-def run(file_name : str):
-    # print("="*80)
-    # config = alpaca.config.ConfigParser.run("types.gm")
-    # with open(file_name, 'r') as f:
-    #     txt = f.read()
-    # tokens = alpaca.lexer.run(txt, config, callback=None)
-    # ast = alpaca.parser.run(config, tokens, builder=Builder)
-    # # print(ast)
-    # exit()
-
-    exit()
 
 def make_runnable(txt : str):
     lines = txt.split("\n")
@@ -123,18 +117,23 @@ def make_runnable(txt : str):
         elif "target datalayout" in line:
             readable += 'target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"\n'
             continue
-        
         readable += line + "\n"
-
     return readable
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Error: expected filename as argument")
-        exit()
+    print(delim)
+    print("-"*28, "BEGINS", "-"*28)
+    print(delim)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--test", action="store_true")
+    parser.add_argument("-i", "--input", action="store", type=str)
+    args = parser.parse_args()
+
+    if args.test:
+        run_seer_tests()
+    elif args.input:
+        run(args.input)
+
+    print(delim)
     
-    run_seer_tests()
-    filename = sys.argv[1]
-    # run_lamb(filename)
-    # code = run(filename)

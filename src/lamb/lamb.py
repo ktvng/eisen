@@ -4,7 +4,6 @@ import alpaca
 from error import Raise
 from alpaca.parser import CommonBuilder
 from alpaca.asts import ASTNode
-from alpaca import compiler
 
 class Builder(CommonBuilder):
     build_map = {}

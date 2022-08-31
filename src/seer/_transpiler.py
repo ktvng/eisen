@@ -10,12 +10,18 @@ from seer._validator import Type, Object, ValidationTransformFunction
 from seer._validator import Params as VParams
 from seer._listir import ListIRParser
 
-class Transpiler(TransformFunction):
+class TranspilerTransformFunction(TransformFunction):
     base_prefix = ""
     def __init__(self):
         super().__init__()
 
-    def apply(self, params: Transpiler.Params):
+    def run(self, config: Config, asl: CLRList, mod: AbstractModule):
+        params = TranspilerTransformFunction.Params(config, asl, mod, SharedCounter(0), Flags(), None, None, [], True)
+        parts = self.apply(params)
+        code = self._postformat(parts, params)
+        return code
+
+    def apply(self, params: TranspilerTransformFunction.Params):
         return self._apply(
             match_args=[params.asl],
             fn_args=[params])
@@ -55,7 +61,7 @@ class Transpiler(TransformFunction):
                 use_guard: bool = None,
                 ):
 
-            params = Transpiler.Params(
+            params = TranspilerTransformFunction.Params(
                 self.config if config is None else config,
                 self.asl if asl is None else asl,
                 self.mod if mod is None else mod,
@@ -69,9 +75,8 @@ class Transpiler(TransformFunction):
 
             return params
 
-
     @classmethod
-    def _postformat(cls, parts: list[str], params: Transpiler.Params):
+    def _postformat(cls, parts: list[str], params: TranspilerTransformFunction.Params):
         txt = "".join(parts)
         indent = "  ";
         level = 0
@@ -89,7 +94,7 @@ class Transpiler(TransformFunction):
         return cls._add_includes() + cls._add_guard_code(params) + formatted_txt + cls._add_main_method(params)
 
     @classmethod
-    def _add_guard_code(cls, params: Transpiler.Params):
+    def _add_guard_code(cls, params: TranspilerTransformFunction.Params):
         if params.use_guard:
             with open("./guardv2.c", 'r') as f:
                 return f.read()
@@ -100,8 +105,8 @@ class Transpiler(TransformFunction):
         return "#include <stdio.h>\n#include <stdatomic.h>\n#include <stdbool.h>\n\n"
 
     @classmethod
-    def _add_main_method(cls, params: Transpiler.Params):
-        return "void main() {\n  " + Transpiler.base_prefix + "global_main();\n}\n"
+    def _add_main_method(cls, params: TranspilerTransformFunction.Params):
+        return "void main() {\n  " + TranspilerTransformFunction.base_prefix + "global_main();\n}\n"
 
     @classmethod
     def _get_all_function_in_module(cls, mod : AbstractModule):
@@ -124,7 +129,7 @@ class Transpiler(TransformFunction):
             prefix = mod.name + "_" + prefix
             mod = mod.parent
 
-        return Transpiler.base_prefix + prefix
+        return TranspilerTransformFunction.base_prefix + prefix
 
     @classmethod
     def contains_call(cls, asl: CLRList):
@@ -135,7 +140,7 @@ class Transpiler(TransformFunction):
         return any([cls.contains_call(child) for child in asl])
 
     @classmethod
-    def requires_pre_parts(cls, params: Transpiler.Params):
+    def requires_pre_parts(cls, params: TranspilerTransformFunction.Params):
         return params.pre_parts is None and cls.contains_call(params.asl)
 
     @classmethod
@@ -144,21 +149,21 @@ class Transpiler(TransformFunction):
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
-        return Transpiler.get_mod_prefix(mod) + name
+        return TranspilerTransformFunction.get_mod_prefix(mod) + name
 
     @TransformFunction.covers(lambda x: isinstance(x, CLRToken))
-    def token_(self, params: Transpiler.Params):
+    def token_(self, params: TranspilerTransformFunction.Params):
         return [params.asl.value]
 
     @TransformFunction.covers(lambda x: x.type == "start")
-    def pass_through_(self, params: Transpiler.Params):
+    def pass_through_(self, params: TranspilerTransformFunction.Params):
         parts = []
         for child in params.asl:
             parts += self.apply(params.but_with(asl=child))
         return parts
 
     @TransformFunction.covers(lambda x: x.type == ".")
-    def dot_(self, params: Transpiler.Params):
+    def dot_(self, params: TranspilerTransformFunction.Params):
         if params.asl.head().type == "ref":
             parts = self.apply(params.but_with(
                 asl=params.asl.head(),
@@ -169,7 +174,7 @@ class Transpiler(TransformFunction):
             [".", params.asl[1].value]
 
     @TransformFunction.covers(lambda x: x.type == "cond")
-    def cond_(self, params: Transpiler.Params):
+    def cond_(self, params: TranspilerTransformFunction.Params):
         return ([] 
             + ["("] 
             + self.apply(params.but_with(asl=params.asl[0]))
@@ -178,7 +183,7 @@ class Transpiler(TransformFunction):
             + ["}"])
 
     @TransformFunction.covers(lambda x: x.type == "if")
-    def if_(self, params: Transpiler.Params):
+    def if_(self, params: TranspilerTransformFunction.Params):
         parts = ["if "] + self.apply(params.but_with(asl=params.asl[0]))
         for child in params.asl[1:]:
             if child.type == "cond":
@@ -188,11 +193,11 @@ class Transpiler(TransformFunction):
         return parts
 
     @TransformFunction.covers(lambda x: x.type == "while")
-    def while_(self, params: Transpiler.Params):
+    def while_(self, params: TranspilerTransformFunction.Params):
         return ["while "] + self.apply(params.but_with(asl=params.asl[0]))
         
     @TransformFunction.covers(lambda x: x.type == "mod")
-    def mod_(self, params: Transpiler.Params):
+    def mod_(self, params: TranspilerTransformFunction.Params):
         parts = []
         # ignore the first entry in the list as it is the name token
         for child in params.asl[1:]:
@@ -201,7 +206,7 @@ class Transpiler(TransformFunction):
         return parts
 
     @TransformFunction.covers(lambda x: x.type == "struct")
-    def struct_(self, params: Transpiler.Params):
+    def struct_(self, params: TranspilerTransformFunction.Params):
         obj: Object = params.asl.data
         full_name = Helpers.global_name_for(obj)
 
@@ -216,7 +221,7 @@ class Transpiler(TransformFunction):
         return parts + post_parts
 
     @TransformFunction.covers(lambda x: x.type == ":")
-    def colon_(self, params: Transpiler.Params):
+    def colon_(self, params: TranspilerTransformFunction.Params):
         obj: Object = params.asl.data
         if Helpers.is_function_type(obj):
             return [Helpers.get_c_function_pointer(obj, params)]
@@ -225,15 +230,15 @@ class Transpiler(TransformFunction):
         return [f"{full_name}{ptr} {obj.name}"]
 
     @TransformFunction.covers(lambda x: x.type == "args")
-    def args_(self, params: Transpiler.Params):
+    def args_(self, params: TranspilerTransformFunction.Params):
         if len(params.asl) == 0:
             return []
         return self.apply(params.but_with(asl=params.asl.head()))
 
     @classmethod
-    def _write_function(cls, self, args: CLRList, rets: CLRList, seq: CLRList, params: Transpiler.Params):
+    def _write_function(cls, self, args: CLRList, rets: CLRList, seq: CLRList, params: TranspilerTransformFunction.Params):
         obj: Object = params.asl.data
-        parts = [f"void {Transpiler._global_name(obj.name, obj.mod)}("]
+        parts = [f"void {TranspilerTransformFunction._global_name(obj.name, obj.mod)}("]
         
         # args
         args_parts = self.apply(params.but_with(
@@ -269,34 +274,34 @@ class Transpiler(TransformFunction):
         return parts 
 
     @TransformFunction.covers(lambda x: x.type == "create")
-    def create_(self, params: Transpiler.Params):
+    def create_(self, params: TranspilerTransformFunction.Params):
         args = params.asl[0]
         rets = None if len(params.asl) == 2 else params.asl[1]
         seq = params.asl[-1]
-        params.post_parts += Transpiler._write_function(self, args, rets, seq, params)
+        params.post_parts += TranspilerTransformFunction._write_function(self, args, rets, seq, params)
         return []
 
     @TransformFunction.covers(lambda x: x.type == "def")
-    def def_(self, params: Transpiler.Params):
+    def def_(self, params: TranspilerTransformFunction.Params):
         args = params.asl[1]
         rets = None if len(params.asl) == 3 else params.asl[2]
         seq = params.asl[-1]
-        return Transpiler._write_function(self, args, rets, seq, params)
+        return TranspilerTransformFunction._write_function(self, args, rets, seq, params)
 
     @TransformFunction.covers(lambda x: x.type == "rets")
-    def rets_(self, params: Transpiler.Params):
+    def rets_(self, params: TranspilerTransformFunction.Params):
         parts = self.apply(params.but_with(asl=params.asl.head()))
         return parts
             
     @TransformFunction.covers(lambda x: x.type == "seq")
-    def seq_(self, params: Transpiler.Params):
+    def seq_(self, params: TranspilerTransformFunction.Params):
         parts = []
         for child in params.asl:
             parts += self.apply(params.but_with(asl=child)) + [";\n"]
         return parts
 
     @TransformFunction.covers(lambda x: x.type == "let")
-    def let_(self, params: Transpiler.Params):
+    def let_(self, params: TranspilerTransformFunction.Params):
         objs: list[Object] = params.asl.data
         # TODO: allow this to work with multiple objects
         obj = objs[0]
@@ -312,7 +317,7 @@ class Transpiler(TransformFunction):
         return [f"{type_name} {obj.name} = "] + self.apply(params.but_with(asl=params.asl[1]))
 
     @TransformFunction.covers(lambda x: x.type == "val")
-    def val_(self, params: Transpiler.Params):
+    def val_(self, params: TranspilerTransformFunction.Params):
         obj: Object = params.asl.data
         obj = obj[0]
 
@@ -326,7 +331,7 @@ class Transpiler(TransformFunction):
 
 
     @TransformFunction.covers(lambda x: x.type == "var")
-    def var_(self, params: Transpiler.Params):
+    def var_(self, params: TranspilerTransformFunction.Params):
         # TODO: Think about
         
         obj: Object = params.asl.data
@@ -341,11 +346,11 @@ class Transpiler(TransformFunction):
                 flags=params.flags.but_with(Flags.use_addr))))
 
     @TransformFunction.covers(lambda x: x.type == "return")
-    def return_(self, params: Transpiler.Params):
+    def return_(self, params: TranspilerTransformFunction.Params):
         return ["return"]
 
     @TransformFunction.covers(lambda x: x.type == "ref")
-    def ref_(self, params: Transpiler.Params):
+    def ref_(self, params: TranspilerTransformFunction.Params):
         obj: Object = params.asl.data
 
         if Helpers.is_function_type(obj):
@@ -370,7 +375,7 @@ class Transpiler(TransformFunction):
 
         return parts
 
-    def _single_equals_(self, l: CLRList, r: CLRList, params: Transpiler.Params):
+    def _single_equals_(self, l: CLRList, r: CLRList, params: TranspilerTransformFunction.Params):
         left_obj: Object = l.data
         # TODO: fix for multiple equals in let
         if isinstance(left_obj, list):
@@ -417,10 +422,10 @@ class Transpiler(TransformFunction):
         return parts  + post_parts
 
     @TransformFunction.covers(lambda x: x.type == "=")
-    def equals_(self, params: Transpiler.Params):
+    def equals_(self, params: TranspilerTransformFunction.Params):
         parts = []
         pre_parts = []
-        if Transpiler.requires_pre_parts(params):
+        if TranspilerTransformFunction.requires_pre_parts(params):
             use_params = params.but_with(pre_parts=pre_parts)
         else:
             use_params = params
@@ -440,9 +445,9 @@ class Transpiler(TransformFunction):
             return self._single_equals_(params.asl[0], params.asl[1], use_params)
 
     @TransformFunction.covers(lambda x: x.type == "<-")
-    def larrow_(self, params: Transpiler.Params):
+    def larrow_(self, params: TranspilerTransformFunction.Params):
         # TODO: consolidate this
-        def _binary_op(op: str, fn, l: CLRList, r: CLRList, params: Transpiler.Params):
+        def _binary_op(op: str, fn, l: CLRList, r: CLRList, params: TranspilerTransformFunction.Params):
             return (["("]
                     + fn.apply(params.but_with(asl=l))
                     + [f" {op} "]
@@ -450,7 +455,7 @@ class Transpiler(TransformFunction):
                     + [")"])
 
         def binary_op(op : str):
-            def op_fn(fn, params: Transpiler.Params):
+            def op_fn(fn, params: TranspilerTransformFunction.Params):
                 return _binary_op(op, fn, params.asl[0], params.asl[1], params)
             return op_fn
 
@@ -469,14 +474,14 @@ class Transpiler(TransformFunction):
             return fn(self, params)
 
     def binary_op(op : str):
-        def _binary_op(op: str, fn, l: CLRList, r: CLRList, params: Transpiler.Params):
+        def _binary_op(op: str, fn, l: CLRList, r: CLRList, params: TranspilerTransformFunction.Params):
             return (["("]
                 + fn.apply(params.but_with(asl=l))
                 + [f" {op} "]
                 + fn.apply(params.but_with(asl=r))
                 + [")"])
 
-        def op_fn(fn, params: Transpiler.Params):
+        def op_fn(fn, params: TranspilerTransformFunction.Params):
             return _binary_op(op, fn, params.asl[0], params.asl[1], params)
         return op_fn
 
@@ -495,7 +500,7 @@ class Transpiler(TransformFunction):
     and_ = PartialTransform(lambda x: x.type == "&&", binary_op("&&"))
 
     @TransformFunction.covers(lambda x: x.type == "prod_type")
-    def prod_type_(self, params: Transpiler.Params):
+    def prod_type_(self, params: TranspilerTransformFunction.Params):
         parts = self.apply(params.but_with(asl=params.asl.head()))
         for child in params.asl[1:]:
             parts += [", "] + self.apply(params.but_with(asl=child))
@@ -503,7 +508,7 @@ class Transpiler(TransformFunction):
         return parts
 
     @classmethod
-    def _define_variables_for_return(cls, ret_type: Type, params: Transpiler.Params):
+    def _define_variables_for_return(cls, ret_type: Type, params: TranspilerTransformFunction.Params):
         types = []
         if ret_type.classification == AbstractType.tuple_classification:
             types += ret_type.components
@@ -536,7 +541,7 @@ class Transpiler(TransformFunction):
         return var_names
 
     @TransformFunction.covers(lambda x: x.type == "call")
-    def call_(self, params: Transpiler.Params):
+    def call_(self, params: TranspilerTransformFunction.Params):
         # first check if the method is special
         if params.asl.head().type == "fn":
             name = params.asl.head().head_value()
@@ -547,7 +552,7 @@ class Transpiler(TransformFunction):
         obj: Object = params.asl.data
 
         # a function which is passed in as an argument/return value has no prefix
-        prefix = "" if obj.is_arg or obj.is_ret else Transpiler.get_mod_prefix(obj.mod)
+        prefix = "" if obj.is_arg or obj.is_ret else TranspilerTransformFunction.get_mod_prefix(obj.mod)
         full_name = prefix + obj.name 
 
         var_names = []
@@ -558,7 +563,7 @@ class Transpiler(TransformFunction):
                 ret_parts = [", " + var for var in var_names]
             else:
                 ret_type: Type = obj.type.ret
-                var_names = Transpiler._define_variables_for_return(ret_type, params)
+                var_names = TranspilerTransformFunction._define_variables_for_return(ret_type, params)
                 ret_parts = [", &" + var for var in var_names]
                 
 
@@ -600,18 +605,13 @@ class Transpiler(TransformFunction):
         return fn_call_parts
  
     @TransformFunction.covers(lambda x: x.type == "params")
-    def params_(self, params: Transpiler.Params):
+    def params_(self, params: TranspilerTransformFunction.Params):
         if len(params.asl) == 0:
             return []
         parts = self.apply(params.but_with(asl=params.asl.head()))
         for child in params.asl[1:]:
             parts += [", "] + self.apply(params.but_with(asl=child))
         return parts
-
-        
-
-class TranspilerFunctions:
-    pass
 
 class Flags:
     use_struct_ptr = "use_struct_ptr"
@@ -666,7 +666,7 @@ class Helpers:
 
     @classmethod
     def _global_name(cls, name : str, mod : AbstractModule):
-        return Transpiler.get_mod_prefix(mod) + name
+        return TranspilerTransformFunction.get_mod_prefix(mod) + name
 
     @classmethod
     def global_name_for(cls, obj: Object):
@@ -683,7 +683,7 @@ class Helpers:
             return "struct " + Helpers._global_name(obj.type.name(), obj.type.mod) + ptr
 
     @classmethod
-    def get_c_function_pointer(cls, obj: Object, params: Transpiler.Params) -> str:
+    def get_c_function_pointer(cls, obj: Object, params: TranspilerTransformFunction.Params) -> str:
         typ = obj.type
         if not Helpers.is_function_type(obj):
             raise Exception(f"required a function type; got {typ.classification} instead")
@@ -697,7 +697,7 @@ class Helpers:
         return f"void (*{obj.name})({args})" 
 
     @classmethod
-    def _to_function_pointer_arg(cls, typ: Type, params: Transpiler.Params, as_pointers: bool = False) -> str:
+    def _to_function_pointer_arg(cls, typ: Type, params: TranspilerTransformFunction.Params, as_pointers: bool = False) -> str:
         if typ is None:
             return ""
 
@@ -715,12 +715,12 @@ class Helpers:
             return Helpers._global_name_for_type(typ, params.mod)
 
     @classmethod
-    def type_is_pointer(cls, obj: Object, params: Transpiler.Params):
+    def type_is_pointer(cls, obj: Object, params: TranspilerTransformFunction.Params):
         return (Flags.use_ptr in params.flags and not Helpers.is_primitive_type(obj)
             or obj.is_ret)
 
     @classmethod
-    def should_deref(cls, obj: Object, params: Transpiler.Params):
+    def should_deref(cls, obj: Object, params: TranspilerTransformFunction.Params):
         return (obj.is_ret 
             or (obj.is_arg and not Helpers.is_primitive_type(obj))
             or (obj.is_ptr and Flags.keep_as_ptr not in params.flags)
@@ -728,18 +728,18 @@ class Helpers:
             )
 
     @classmethod
-    def should_keep_lhs_as_ptr(cls, l: Object, r: Object, params: Transpiler.Params):
+    def should_keep_lhs_as_ptr(cls, l: Object, r: Object, params: TranspilerTransformFunction.Params):
         return ((l.is_ptr and r.is_ptr)
         )
 
     @classmethod
-    def should_addrs(cls, obj: Object, params: Transpiler.Params):
+    def should_addrs(cls, obj: Object, params: TranspilerTransformFunction.Params):
         return ((Flags.use_struct_ptr in params.flags and not Helpers.is_primitive_type(obj))
             or (Flags.use_addr in params.flags and Helpers.is_primitive_type(obj))
             )
 
     @classmethod
-    def get_right_child_flags_for_assignment(cls, l: Object, r: Object, params: Transpiler.Params):
+    def get_right_child_flags_for_assignment(cls, l: Object, r: Object, params: TranspilerTransformFunction.Params):
         # ptr to ptr
         if l.is_ptr and r.is_ptr:
             return params.flags.but_with(Flags.keep_as_ptr)
@@ -749,7 +749,7 @@ class Helpers:
 
 
     @classmethod
-    def get_prefix(cls, obj: Object, params: Transpiler.Params):
+    def get_prefix(cls, obj: Object, params: TranspilerTransformFunction.Params):
         if Helpers.type_is_pointer(obj, params):
             return "*"
         elif Helpers.should_deref(obj, params):

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from re import I
 from typing import Any, Callable
 
 class PartialTransform():
@@ -37,3 +36,11 @@ class TransformFunction():
             raise Exception(f"Multiple transforms matching for {match_args}")
 
         return matching_transforms[0].invoke(*[self, *fn_args])
+
+    @classmethod
+    def covers(cls, predicate: Callable[[Any], bool]):
+        def decorator(f):
+            return PartialTransform(predicate, f)
+        return decorator 
+
+

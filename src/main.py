@@ -4,8 +4,9 @@ import time
 import subprocess
 
 import alpaca
-from seer import Callback, Builder, ValidationTransformFunction, IndexerTransformFunction
-from seer._transpiler import Transpiler, SeerFunctions
+from seer import Callback, Builder, ValidationTransformFunction, IndexerTransformFunction, Transpiler
+from seer._transpiler import SharedCounter
+from seer._validator import Flags
 import lamb
 
 from seer._listir import ListIRParser
@@ -73,7 +74,10 @@ def internal_run_tests(filename: str, should_transpile=True):
 
         if should_transpile:
             starttime = time.perf_counter_ns()
-            txt = Transpiler.run(config, ast, SeerFunctions(), mod)
+            # txt = Transpiler.run(config, ast, SeerFunctions(), mod)
+            params = Transpiler.Params(config, ast, mod, SharedCounter(0), Flags(), None, None, [], True)
+            parts = Transpiler().apply(params)
+            txt = Transpiler._postformat(parts, params)
             endtime = time.perf_counter_ns()
             print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
             with open("build/test.c", 'w') as f:

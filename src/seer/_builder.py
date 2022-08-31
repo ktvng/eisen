@@ -2,8 +2,6 @@ from __future__ import annotations
 from alpaca.parser import CommonBuilder
 from alpaca.asts import CLRRawList, CLRList
 from alpaca.config import Config
-from error import Raise
-
 
 class Builder(CommonBuilder):
     @CommonBuilder.for_procedure("filter_build")
@@ -38,7 +36,7 @@ class Builder(CommonBuilder):
         # EXPR . FUNCTION_CALL
         function_call = components[2]
         if not isinstance(function_call, CLRList):
-            Raise.error("function call should be CLRList")
+            raise Exception("function call should be CLRList")
 
         params = function_call[1]
         params[:] = [components[0], *params]
@@ -90,7 +88,7 @@ class Builder(CommonBuilder):
 
         flattened_comps = CommonBuilder.flatten_components(components)
         if len(flattened_comps) != 2:
-            Raise.error("expected size 2 for handle_op_pref")
+            raise Exception("expected size 2 for handle_op_pref")
 
         return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
 

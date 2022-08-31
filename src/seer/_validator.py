@@ -731,7 +731,6 @@ class SeerValidator(Validator):
                 is_var = "var" in params.asl.type,
                 is_ptr = "val" in params.asl.type or "var" in params.asl.type or typ.is_ptr)
 
-            print(new_obj)
             objs.append(new_obj)
             params.context.add_object(new_obj)
 

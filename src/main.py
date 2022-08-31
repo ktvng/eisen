@@ -56,10 +56,8 @@ def internal_run_tests(filename: str, should_transpile=True):
         ast = alpaca.parser.run(config, tokens, SeerBuilder(), algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
-        print(ast)
-        # print(f"| Output:\n")
-        # print(ast)
-        # print()
+        ast_str = ["|    " + line for line in  str(ast).split("\n")]
+        print(*ast_str, sep="\n")
 
         starttime = time.perf_counter_ns()
         params = SeerValidator.init_params(config, ast, txt)

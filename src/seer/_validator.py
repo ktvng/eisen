@@ -5,8 +5,6 @@ from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
 from alpaca.utils import AbstractFlags 
 
-from error import Raise
-
 class Object(AbstractObject):
     def __init__(self, 
             name : str, 

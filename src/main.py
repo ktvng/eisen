@@ -15,17 +15,18 @@ def run_lamb(filename : str):
 
     config = alpaca.config.ConfigParser.run("./src/lamb/grammar.gm")
     tokens = alpaca.lexer.run(txt, config, None)
-    ast = alpaca.parser.run(config, tokens, lamb.Builder)
-    # print(ast)
+    ast = alpaca.parser.run(config, tokens, lamb.LambBuilder())
+    print(ast)
+    input()
 
-    fun = lamb.LambRunner()
-    fun.run(ast)
+    # fun = lamb.LambRunner()
+    # fun.run(ast)
 
 def internal_run_tests(filename: str, should_transpile=True):
     delim = "="*64
     # PARSE SEER CONFIG
     starttime = time.perf_counter_ns()
-    config = alpaca.config.ConfigParser.run("grammar.gm")
+    config = alpaca.config.ConfigParser.run("./src/seer/grammar.gm")
     endtime = time.perf_counter_ns()
     print(f"Parsed config in {(endtime-starttime)/1000000} ms")
 
@@ -110,7 +111,6 @@ def run(file_name : str):
     # # print(ast)
     # exit()
 
-    run_seer_tests()
     exit()
 
 def make_runnable(txt : str):
@@ -134,10 +134,7 @@ if __name__ == "__main__":
         print("Error: expected filename as argument")
         exit()
     
+    run_seer_tests()
     filename = sys.argv[1]
-    code = run(filename)
     # run_lamb(filename)
-    runnable = make_runnable(code)
-
-    with open("./build/test.ll", 'w') as f:
-        f.write(runnable)
+    # code = run(filename)

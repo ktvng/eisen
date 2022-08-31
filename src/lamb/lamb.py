@@ -1,24 +1,20 @@
 from __future__ import annotations
 
 import alpaca
-from error import Raise
-from alpaca.parser import CommonBuilder
 
-# class Builder(CommonBuilder):
-#     build_map = {}
+class LambBuilder(alpaca.parser.CommonBuilder):
+    @alpaca.parser.CommonBuilder.for_procedure("filter_build")
+    def filter_build_(
+            fn,
+            config : alpaca.config.Config,
+            components : alpaca.asts.CLRRawList, 
+            *args) -> alpaca.asts.CLRRawList: 
 
-#     # TODO: broken by change in builder
-#     @CommonBuilder.for_procedure("filter_build")
-#     def filter_build_(components : list[ASTNode], *args) -> list[ASTNode]:
-#         # breaking upgrade to common builder3
-#         newnode = CommonBuilder.build(components, *args)[0]
-#         filtered_children = [c for c in newnode.children if
-#             (c.type != "keyword" and c.type != "symbol")]
+        newCLRList = LambBuilder.build(fn, config, components, *args)[0]
+        filtered_children = LambBuilder._filter(config, newCLRList)
 
-#         newnode.children = filtered_children
-#         newnode.children = filtered_children
-#         return [newnode]
-
+        newCLRList[:] = filtered_children
+        return [newCLRList]
 
 # #####################################################
 # class AbstractContext():

@@ -1,5 +1,5 @@
 SYMBOLICS
-    <type> <value>      ->  <regex>
+    <type>              ->  <regex>
     keyword LAMBDA      ->  \\
     keyword FUNC        ->  baa
 

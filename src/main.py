@@ -4,7 +4,7 @@ import time
 import subprocess
 
 import alpaca
-from seer import Visitor, Callback, Builder, ValidationTransformFunction, IndexerTransformFunction
+from seer import Callback, Builder, ValidationTransformFunction, IndexerTransformFunction
 from seer._transpiler import Transpiler, SeerFunctions
 import lamb
 
@@ -115,66 +115,6 @@ def run(file_name : str):
 
     run_seer_tests()
     exit()
-
-
-
-    # PARSE SEER CONFIG
-    starttime = time.perf_counter_ns()
-    config = alpaca.config.ConfigParser.run("grammar.gm")
-    endtime = time.perf_counter_ns()
-    print(f"Parsed config in {(endtime-starttime)/1000000} ms")
-
-    # READ FILE TO STR
-    with open(file_name, 'r') as f:
-        txt = f.read()
-
-    # TOKENIZE
-    starttime = time.perf_counter_ns()
-    tokens = alpaca.lexer.run(txt, config, Callback)
-    endtime = time.perf_counter_ns()
-    print(f"Lexer finished in {(endtime-starttime)/1000000} ms")
-
-    # print("====================")
-    # [print(t) for t in tokens]
-
-    # PARSE TO AST
-    starttime = time.perf_counter_ns()
-    ast = alpaca.parser.run(config, tokens, Builder2, algo="cyk")
-    endtime = time.perf_counter_ns()
-    print(f"Parser finished in {(endtime-starttime)/1000000} ms")
-    print(ast)
-
-    starttime = time.perf_counter_ns()
-    params = SeerValidator.init_params(config, ast, txt, SeerValidator)
-    mod = alpaca.validator.run(params)
-    endtime = time.perf_counter_ns()
-    print(f"Validator finished in {(endtime-starttime)/1000000} ms")
-
-    if mod is None:
-        exit()
-         
-    starttime = time.perf_counter_ns()
-    txt = Transpiler.run(config, ast, SeerFunctions(), mod)
-    endtime = time.perf_counter_ns()
-    print(f"Transpiler finished in {(endtime-starttime)/1000000} ms")
-    with open("test.c", 'w') as f:
-        f.write(txt)
-
-    exit()
-
-    # print("====================") 
-    # print(ast)
-
-    # COMPILE TO IR
-    starttime = time.perf_counter_ns()
-    code = alpaca.compiler.run(ast, txt, Visitor)
-    endtime = time.perf_counter_ns()
-    print(f"Compiler finished in {(endtime-starttime)/1000000} ms")
-
-    # print("====================")
-    # print(code)
-    
-    return code
 
 def make_runnable(txt : str):
     lines = txt.split("\n")

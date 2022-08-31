@@ -3,7 +3,6 @@ from __future__ import annotations
 import alpaca
 from error import Raise
 from alpaca.parser import CommonBuilder
-from alpaca.compiler import AbstractVisitor
 from alpaca.asts import ASTNode
 from alpaca import compiler
 
@@ -34,14 +33,6 @@ class AbstractContext():
     def get(self, key : str):
         return self.params.get(key, None)
 
-class AbstractVisitor2():
-    def visit(self, astnode : ASTNode, cx : AbstractContext):
-        pass
-
-
-
-
-
 
 def ts(astnode : ASTNode, closure={}):
     if astnode.match_with() == "lambda":
@@ -67,76 +58,76 @@ def obj_ts(obj):
 def visit(astnode : ASTNode, cx : AbstractContext):
     return astnode.visitor.visit(astnode, cx)
 
-class print_(AbstractVisitor2):
-    matches = ["print"]
+# class print_(AbstractVisitor2):
+#     matches = ["print"]
 
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        obj = visit(astnode.children[0], cx)
-        print(obj_ts(obj))
-        return obj
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         obj = visit(astnode.children[0], cx)
+#         print(obj_ts(obj))
+#         return obj
 
-class start_(AbstractVisitor2):
-    matches = ["start"]
+# class start_(AbstractVisitor2):
+#     matches = ["start"]
 
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        results = [visit(child, cx) for child in astnode.children]
-        return results
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         results = [visit(child, cx) for child in astnode.children]
+#         return results
 
-class lambda_(AbstractVisitor2):
-    matches = ["lambda"]
+# class lambda_(AbstractVisitor2):
+#     matches = ["lambda"]
 
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        name = visit(astnode.children[0], cx)
-        return {
-            "type": "lambda", 
-            "closure": { **cx.params["scope"] }, 
-            "binds": name, 
-            "body": astnode.children[1]}
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         name = visit(astnode.children[0], cx)
+#         return {
+#             "type": "lambda", 
+#             "closure": { **cx.params["scope"] }, 
+#             "binds": name, 
+#             "body": astnode.children[1]}
 
-class tag_(AbstractVisitor2):
-    matches = ["TAG"]
+# class tag_(AbstractVisitor2):
+#     matches = ["TAG"]
     
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        found_value = cx.params["scope"].get(astnode.value, None)
-        if found_value is not None:
-            return found_value
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         found_value = cx.params["scope"].get(astnode.value, None)
+#         if found_value is not None:
+#             return found_value
 
-        return {
-            "type": "tag", 
-            "name": astnode.value}
+#         return {
+#             "type": "tag", 
+#             "name": astnode.value}
     
-class def_(AbstractVisitor2):
-    matches = ["def"]
+# class def_(AbstractVisitor2):
+#     matches = ["def"]
 
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        name = visit(astnode.children[0], cx)["name"]
-        obj = {
-            "type": "def",
-            "body": astnode.children[1]}
-        cx.params["scope"][name] = obj
-        return obj
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         name = visit(astnode.children[0], cx)["name"]
+#         obj = {
+#             "type": "def",
+#             "body": astnode.children[1]}
+#         cx.params["scope"][name] = obj
+#         return obj
     
-class apply_(AbstractVisitor2):
-    matches = ['apply']
+# class apply_(AbstractVisitor2):
+#     matches = ['apply']
 
-    def visit(self, astnode: ASTNode, cx: AbstractContext):
-        fn = visit(astnode.children[0], cx)
-        arg = visit(astnode.children[1], cx)
+#     def visit(self, astnode: ASTNode, cx: AbstractContext):
+#         fn = visit(astnode.children[0], cx)
+#         arg = visit(astnode.children[1], cx)
 
-        if arg["type"] == "def":
-            arg = visit(arg["body"], cx)
-        if fn["type"] == "def":
-            fn = visit(fn["body"], cx)
+#         if arg["type"] == "def":
+#             arg = visit(arg["body"], cx)
+#         if fn["type"] == "def":
+#             fn = visit(fn["body"], cx)
 
-        if fn["type"] != "lambda":
-            Raise.error("apply expects function as first argument")
+#         if fn["type"] != "lambda":
+#             Raise.error("apply expects function as first argument")
 
-        bound_tag = fn["binds"]["name"]
-        fn["closure"][bound_tag] = arg
-        new_scope = { **cx.params["scope"], **fn["closure"] }
-        new_cx = AbstractContext({ "scope": new_scope })
+#         bound_tag = fn["binds"]["name"]
+#         fn["closure"][bound_tag] = arg
+#         new_scope = { **cx.params["scope"], **fn["closure"] }
+#         new_cx = AbstractContext({ "scope": new_scope })
 
-        return visit(fn["body"], new_cx)
+#         return visit(fn["body"], new_cx)
 
 #####################################################
 class LambRunner():
@@ -144,12 +135,12 @@ class LambRunner():
         self.build_map = {}
 
     visitors = [
-        start_,
-        lambda_,
-        tag_,
-        apply_,
-        def_,
-        print_,
+        # start_,
+        # lambda_,
+        # tag_,
+        # apply_,
+        # def_,
+        # print_,
     ]
 
     def run(self, ast : alpaca.asts.AST):

@@ -62,7 +62,7 @@ class CYKAlgo():
     def __init__(self, cfg : CFG):
         for rule in cfg.rules:
             if not CFGNormalizer.is_cnf_rule(cfg, rule):
-                Raise.error("grammar is not normalized")
+                raise Exception("grammar is not normalized")
 
         self.cfg = cfg
 
@@ -112,7 +112,7 @@ class CYKAlgo():
                 return
 
             if delta is None:
-                Raise.error("delta should only be None for the main diagonal (0)")
+                raise Exception("delta should only be None for the main diagonal (0)")
 
             self.is_main_diagonal = False 
             self.delta = delta
@@ -126,7 +126,7 @@ class CYKAlgo():
             matching_entries = [e for e in table_entries if e.name == self.lname]
 
             if len(matching_entries) == 0:
-                Raise.code_error("reached point in grammatical tree with no children")
+                raise Exception("reached point in grammatical tree with no children")
 
             if len(matching_entries) > 1:
                 Raise.notice("non-uniqueness, multiple possible production pathways")
@@ -140,7 +140,7 @@ class CYKAlgo():
             matching_entries = [e for e in table_entries if e.name == self.rname]
 
             if len(matching_entries) == 0:
-                Raise.code_error("reached point in grammatical tree with no children")
+                raise Exception("reached point in grammatical tree with no children")
 
             if len(matching_entries) > 1:
                 Raise.notice("non-uniqueness, multiple possible production pathways")

@@ -37,4 +37,4 @@ class ASTNode():
         elif self._match_with == "value":
             return self.value
         else:
-            Raise.code_error(f"unknown match with value {self._match_with}")
+            raise Exception(f"unknown match with value {self._match_with}")

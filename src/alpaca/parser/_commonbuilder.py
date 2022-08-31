@@ -39,7 +39,7 @@ class CommonBuilder(Builder):
 
         flattened_components = CommonBuilder.flatten_components(components)
         if not flattened_components:
-            Raise.code_error("flattened_components must not be empty")
+            raise Exception("flattened_components must not be empty")
 
         newCLRList = CLRList(build_name, flattened_components, flattened_components[0].line_number)
         return [newCLRList]
@@ -59,7 +59,7 @@ class CommonBuilder(Builder):
                 pass_up_list.append(component)
             else:
                 print(type(component))
-                Raise.code_error("reverse engineering with pooling must be either CLRRawList, CLRList, or CLRToken")
+                raise Exception("reverse engineering with pooling must be either CLRRawList, CLRList, or CLRToken")
         return pass_up_list
 
 
@@ -82,7 +82,7 @@ class CommonBuilder(Builder):
             *args) -> CLRRawList:
 
         if len(components) != 1:
-            Raise.code_error("expects size of 1")
+            raise Exception("expects size of 1")
 
         if isinstance(components[0], CLRList):
             components[0].set_type(name)

@@ -30,7 +30,7 @@ class Lexer():
 
             text = text[match_len :]
             if match_len == 0:
-                Raise.code_error(f"Error: no regex matches, head of input: {text[0:10]}")
+                raise Exception(f"Error: no regex matches, head of input: {text[0:10]}")
 
             if rule.type == "none":
                 continue 

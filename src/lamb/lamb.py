@@ -119,7 +119,7 @@ def visit(astnode : ASTNode, cx : AbstractContext):
 #             fn = visit(fn["body"], cx)
 
 #         if fn["type"] != "lambda":
-#             Raise.error("apply expects function as first argument")
+#             raise Exception("apply expects function as first argument")
 
 #         bound_tag = fn["binds"]["name"]
 #         fn["closure"][bound_tag] = arg
@@ -156,7 +156,7 @@ class LambRunner():
     def _add_visitors(self, astnode : ASTNode):
         visitor = self.build_map.get(astnode.match_with(), None)
         if visitor is None:
-            Raise.error(f"cannot find visitor matching {astnode.match_with()}")
+            raise Exception(f"cannot find visitor matching {astnode.match_with()}")
 
         astnode.visitor = visitor()
         for child in astnode.children:

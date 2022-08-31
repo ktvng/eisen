@@ -20,12 +20,12 @@ from alpaca.config import Config
 #         cls.build_map = { **common_build_map, **builder_build_map }
 
 #         if "START" not in map(lambda x: x.name, cls.dp_table[-1][0]):
-#             Raise.error("input is ungrammatical")
+#             raise Exception("input is ungrammatical")
 
 #         starting_entry = [x for x in cls.dp_table[-1][0] if x.name == "START"][0]
 #         ast_list = cls._recursive_descent(starting_entry)
 #         if len(ast_list) != 1:
-#             Raise.code_error("ast heads not parsed to single state")
+#             raise Exception("ast heads not parsed to single state")
         
 #         asthead = ast_list[0]
 #         if builder is not None:
@@ -46,7 +46,7 @@ from alpaca.config import Config
 #         for reversal_step in entry.rule.actions:
 #             build_procedure = cls.build_map.get(reversal_step.type, None)
 #             if build_procedure is None:
-#                 Raise.code_error(f"build procedure {reversal_step.type} not found by ast_builder")
+#                 raise Exception(f"build procedure {reversal_step.type} not found by ast_builder")
 
 #             components = build_procedure(components, reversal_step.value)
 
@@ -60,12 +60,12 @@ class AstBuilder2:
         self.builder = builder
 
         if "START" not in map(lambda x: x.name, dp_table[-1][0]):
-            Raise.error("'START' not found at top level: input is ungrammatical")
+            raise Exception("'START' not found at top level: input is ungrammatical")
 
         starting_entry = [x for x in dp_table[-1][0] if x.name == "START"][0]
         clrList = self._recursive_descent(starting_entry)
         if len(clrList) != 1:
-            Raise.code_error("ast heads not parsed to single state")
+            raise Exception("ast heads not parsed to single state")
         
         head = clrList[0]
         # if builder is not None:

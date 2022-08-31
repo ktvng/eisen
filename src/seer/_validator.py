@@ -5,8 +5,6 @@ from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
 from alpaca.utils import AbstractFlags 
 
-from seer._listir import ListIRParser
-
 from error import Raise
 
 class Object(AbstractObject):
@@ -130,7 +128,7 @@ class Type(AbstractType):
             rets_names = self.ret.cannonical_name() if self.ret is not None else "void"
             return f"({args_names}) -> {rets_names}"
         else:
-            Raise.error("cannoncial_name not implemented")
+            raise Exception("cannoncial_name not implemented")
 
     def __str__(self):
         if self._name is not None:
@@ -186,7 +184,7 @@ class Type(AbstractType):
             return found_type
 
         # Raise Exception here
-        Raise.error(f"Could not find type {type_str} _unpack_colon_operator")
+        raise Exception(f"Could not find type {type_str} _unpack_colon_operator")
 
     @classmethod
     def lookup_type_in_mod(cls, new_type: Type, mod: AbstractModule):
@@ -247,8 +245,8 @@ class Type(AbstractType):
             return Type._unpack_colon_operator(config, asl, mod)
 
         elif asl.type == "create" or asl.type == "def":
-            args = ValidationTransformFunction._get_args_from_function_asl(asl)
-            rets = ValidationTransformFunction._get_rets_from_function_asl(asl)
+            args = SeerValidator._get_args_from_function_asl(asl)
+            rets = SeerValidator._get_rets_from_function_asl(asl)
             new_type = cls._unpack_args_and_rets_to_fn_type(config, mod, args, rets)
 
         elif asl.type == "struct":
@@ -270,7 +268,7 @@ class Type(AbstractType):
             raise Exception(f"already defined a struct of name {found_type.name()}")
 
         else:
-            Raise.error(f"unknown type to index {asl.type}")
+            raise Exception(f"unknown type to index {asl.type}")
 
         return Type.lookup_type_in_mod(new_type, mod)
 
@@ -344,7 +342,7 @@ class SeerEnsure():
                 params.asl.line_number))
             return Abort()
 
-class IndexerTransformFunction(Indexer):
+class SeerIndexer(Indexer):
     @Indexer.for_these_types("start")
     def start_i(fn, params: Indexer.Params):
         for child in params.asl:
@@ -380,7 +378,7 @@ class IndexerTransformFunction(Indexer):
             mod = params.mod)
         params.mod.add_object(new_obj)
 
-class ValidationTransformFunction(Validator):
+class SeerValidator(Validator):
     class Flags:
         is_ret = "is_ret"
         is_arg = "is_arg"
@@ -490,7 +488,7 @@ class ValidationTransformFunction(Validator):
     # will be unwrapped in the "call" handler
     @Validator.for_these_types("::")
     def scope_(fn, params: Params):
-        return ValidationTransformFunction._resolve_type_in_module(params.asl, params)
+        return SeerValidator._resolve_type_in_module(params.asl, params)
 
     @Validator.for_these_types("tuple")
     def tuple_(fn, params: Params):
@@ -498,7 +496,7 @@ class ValidationTransformFunction(Validator):
         for child in params.asl:
             types.append(fn.apply(params.but_with(asl=child)))
             
-        if ValidationTransformFunction._any_exceptions(*types):
+        if SeerValidator._any_exceptions(*types):
             return Abort()
         params.asl.data = types
         new_type = Type.new_product_type(types)
@@ -552,9 +550,9 @@ class ValidationTransformFunction(Validator):
             # TODO: formalize
             if name == "print":
                 return Abort()
-            found_obj = ValidationTransformFunction.resolve_object_by(name, params)
+            found_obj = SeerValidator.resolve_object_by(name, params)
         elif params.asl.head().type == "::":
-            found_obj = ValidationTransformFunction._resolve_object_in_module(params.asl[0], params)
+            found_obj = SeerValidator._resolve_object_in_module(params.asl[0], params)
             if found_obj is None:
                 exit()
 
@@ -648,21 +646,21 @@ class ValidationTransformFunction(Validator):
     @Validator.for_these_types("create")
     def create_(fn, params:Params):
         # context name will be the name of the struct
-        return ValidationTransformFunction._validate_function_object(
+        return SeerValidator._validate_function_object(
             fn=fn,
             name="create_" + params.context.name,
-            args=ValidationTransformFunction._get_args_from_function_asl(params.asl),
-            rets=ValidationTransformFunction._get_rets_from_function_asl(params.asl),
+            args=SeerValidator._get_args_from_function_asl(params.asl),
+            rets=SeerValidator._get_rets_from_function_asl(params.asl),
             seq=params.asl[-1], 
             params=params)
     
     @Validator.for_these_types("def")
     def fn(fn, params: Params):
-        return ValidationTransformFunction._validate_function_object(
+        return SeerValidator._validate_function_object(
             fn=fn,
             name=params.asl.head_value(),
-            args=ValidationTransformFunction._get_args_from_function_asl(params.asl),
-            rets=ValidationTransformFunction._get_rets_from_function_asl(params.asl), 
+            args=SeerValidator._get_args_from_function_asl(params.asl),
+            rets=SeerValidator._get_rets_from_function_asl(params.asl), 
             seq=params.asl[-1], 
             params=params)
 
@@ -675,7 +673,7 @@ class ValidationTransformFunction(Validator):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
 
-        if ValidationTransformFunction._any_exceptions(left_type, right_type):
+        if SeerValidator._any_exceptions(left_type, right_type):
             return Abort()
 
         if left_type != right_type:
@@ -718,7 +716,7 @@ class ValidationTransformFunction(Validator):
         
         objs = []
         for name, typ in zip(names, types):
-            if ValidationTransformFunction.resolve_object_by(name, params) is not None:
+            if SeerValidator.resolve_object_by(name, params) is not None:
                 params.report_exception(
                     Exceptions.RedefinedIdentifier(
                     f"'{name}' is already in use",
@@ -762,7 +760,7 @@ class ValidationTransformFunction(Validator):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
         
-        if ValidationTransformFunction._any_exceptions(left_type, right_type):
+        if SeerValidator._any_exceptions(left_type, right_type):
             return Abort()
 
         # if left_type != right_type:
@@ -779,7 +777,7 @@ class ValidationTransformFunction(Validator):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
 
-        if ValidationTransformFunction._any_exceptions(left_type, right_type):
+        if SeerValidator._any_exceptions(left_type, right_type):
             return Abort()
 
         return left_type
@@ -787,7 +785,7 @@ class ValidationTransformFunction(Validator):
     @Validator.for_these_types("ref")
     def ref(fn, params:Params):
         name = params.asl.head_value()
-        found_obj = ValidationTransformFunction.resolve_object_by(name, params)
+        found_obj = SeerValidator.resolve_object_by(name, params)
         if found_obj is None:
             params.report_exception(
                 Exceptions.UndefinedVariable(

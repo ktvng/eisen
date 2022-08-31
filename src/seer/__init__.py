@@ -1,6 +1,4 @@
-from seer._seer import Seer
-from seer._definitions import Definitions
-from seer._builder import Builder
-from seer._callback import Callback
-from seer._validator import ValidationTransformFunction, IndexerTransformFunction
-from seer._transpiler import TranspilerTransformFunction
+from seer._builder import SeerBuilder
+from seer._callback import SeerCallback
+from seer._validator import SeerValidator, SeerIndexer
+from seer._transpiler import SeerTranspiler

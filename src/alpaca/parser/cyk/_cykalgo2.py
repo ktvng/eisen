@@ -39,7 +39,7 @@ class DpTableEntry():
         matching_entries = [e for e in entries if e.name == self.lname]
 
         if not matching_entries:
-            Raise.error("reached point in gramatical tree with no children??")
+            raise Exception("reached point in gramatical tree with no children??")
         if len(matching_entries) > 2:
             Raise.notice("non-uniqueness, multiple production pathways (picked first)")
 
@@ -52,7 +52,7 @@ class DpTableEntry():
         matching_entries = [e for e in entries if e.name == self.rname]
 
         if not matching_entries:
-            Raise.error("reached point in gramatical tree with no children??")
+            raise Exception("reached point in gramatical tree with no children??")
         if len(matching_entries) > 2:
             Raise.notice("non-uniqueness, multiple production pathways (picked first)")
     
@@ -64,7 +64,7 @@ class CYKAlgo2:
     def __init__(self, cfg : CFG):
         for rule in cfg.rules:
             if not CFGNormalizer.is_cnf_rule(cfg, rule):
-                Raise.error("grammar is not normalized")
+                raise Exception("grammar is not normalized")
 
         self.cfg = cfg
 

@@ -81,7 +81,7 @@ class ConfigParser():
                     continue
                 
                 if current_symbolics_mask is None:
-                    Raise.code_error("Error: symbolics header not yet defined.")
+                    raise Exception("Error: symbolics header not yet defined.")
 
                 regex, type, parent_types  = current_symbolics_mask.apply(line)
                 hierarchy.add_parent_types(type, parent_types)

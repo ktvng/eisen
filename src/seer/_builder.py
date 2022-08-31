@@ -3,7 +3,7 @@ from alpaca.parser import CommonBuilder
 from alpaca.asts import CLRRawList, CLRList
 from alpaca.config import Config
 
-class Builder(CommonBuilder):
+class SeerBuilder(CommonBuilder):
     @CommonBuilder.for_procedure("filter_build")
     def filter_build_(
             fn,
@@ -11,8 +11,8 @@ class Builder(CommonBuilder):
             components : CLRRawList, 
             *args) -> CLRRawList: 
 
-        newCLRList = Builder.build(fn, config, components, *args)[0]
-        filtered_children = Builder._filter(config, newCLRList)
+        newCLRList = SeerBuilder.build(fn, config, components, *args)[0]
+        filtered_children = SeerBuilder._filter(config, newCLRList)
 
         newCLRList[:] = filtered_children
         return [newCLRList]
@@ -24,7 +24,7 @@ class Builder(CommonBuilder):
             components : CLRRawList,
             *args) -> CLRRawList:
 
-        return Builder._filter(config, components)
+        return SeerBuilder._filter(config, components)
         
     @CommonBuilder.for_procedure("handle_call")
     def handle_call(
@@ -53,7 +53,7 @@ class Builder(CommonBuilder):
 
         matches = [x for x in components if x.type[-1] == type_name]
         if len(matches) != 1:
-            Raise.code_error("multiple matches during promote_")
+            raise Exception("multiple matches during promote_")
         
         captain = matches[0]
         captain[:] = [x for x in components if x != captain]
@@ -69,7 +69,7 @@ class Builder(CommonBuilder):
         flattened_comps = CommonBuilder.flatten_components(components)
 
         if len(flattened_comps) == 2:
-            Raise.code_error("unimplemented unary ops")
+            raise Exception("unimplemented unary ops")
         elif len(flattened_comps) == 3:
             newCLRList = CLRList(
                 flattened_comps[1].value, 
@@ -77,7 +77,7 @@ class Builder(CommonBuilder):
                 flattened_comps[1].line_number)
             return [newCLRList]
         else:
-            Raise.code_error("should not merge with more than 3 nodes")
+            raise Exception("should not merge with more than 3 nodes")
 
     @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(

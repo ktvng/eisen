@@ -4,7 +4,7 @@ import time
 import subprocess
 
 import alpaca
-from seer import Callback, Builder, ValidationTransformFunction, IndexerTransformFunction, TranspilerTransformFunction
+from seer import SeerCallback, SeerBuilder, SeerValidator, SeerIndexer, SeerTranspiler
 import lamb
 
 from seer._listir import ListIRParser
@@ -44,7 +44,7 @@ def internal_run_tests(filename: str, should_transpile=True):
 
         # TOKENIZE
         starttime = time.perf_counter_ns()
-        tokens = alpaca.lexer.run(chunk, config, Callback)
+        tokens = alpaca.lexer.run(chunk, config, SeerCallback)
         endtime = time.perf_counter_ns()
         print(f"|  - Lexer finished in {(endtime-starttime)/1000000} ms")
 
@@ -53,7 +53,7 @@ def internal_run_tests(filename: str, should_transpile=True):
 
         # PARSE TO AST
         starttime = time.perf_counter_ns()
-        ast = alpaca.parser.run(config, tokens, Builder(), algo="cyk")
+        ast = alpaca.parser.run(config, tokens, SeerBuilder(), algo="cyk")
         endtime = time.perf_counter_ns()
         print(f"|  - Parser finished in {(endtime-starttime)/1000000} ms")
         print(ast)
@@ -62,8 +62,8 @@ def internal_run_tests(filename: str, should_transpile=True):
         # print()
 
         starttime = time.perf_counter_ns()
-        params = ValidationTransformFunction.init_params(config, ast, txt)
-        mod = alpaca.validator.run(IndexerTransformFunction(), ValidationTransformFunction(), params)
+        params = SeerValidator.init_params(config, ast, txt)
+        mod = alpaca.validator.run(SeerIndexer(), SeerValidator(), params)
         endtime = time.perf_counter_ns()
         print(f"|  - Validator finished in {(endtime-starttime)/1000000} ms")
 
@@ -72,7 +72,7 @@ def internal_run_tests(filename: str, should_transpile=True):
 
         if should_transpile:
             starttime = time.perf_counter_ns()
-            txt = TranspilerTransformFunction().run(config, ast, mod)
+            txt = SeerTranspiler().run(config, ast, mod)
             endtime = time.perf_counter_ns()
             print(f"|  - Transpiler finished in {(endtime-starttime)/1000000} ms")
             with open("build/test.c", 'w') as f:

@@ -13,4 +13,4 @@ def run(config: Config, tokens: list, builder: Builder, algo: str="cyk") -> AST:
     if algo == "cyk":
         return CYKParser(config, tokens, builder)
     else:
-        Raise.code_error("Error: unknown parser algo")
+        raise Exception("Error: unknown parser algo")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
-from alpaca.validator import Indexer, Validator, Validator2, AbstractModule, AbstractType, AbstractObject, AbstractException
+from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
 from alpaca.utils import AbstractFlags 
 
 from seer._listir import ListIRParser
@@ -288,7 +288,8 @@ class Params(Validator.Params):
             mod: AbstractModule,
             context: AbstractModule,
             flags: Flags,
-            struct_name: str
+            struct_name: str,
+            exceptions: list[AbstractException]
             ):
 
         self.config = config
@@ -298,6 +299,7 @@ class Params(Validator.Params):
         self.context = context
         self.flags = flags
         self.struct_name = struct_name
+        self.exceptions = exceptions
 
     def but_with(self,
             config : Config = None,
@@ -307,6 +309,7 @@ class Params(Validator.Params):
             context : AbstractModule = None,
             flags : Flags = None,
             struct_name: str = None,
+            exceptions: list[AbstractException] = None
             ):
 
         params = Params(
@@ -317,9 +320,13 @@ class Params(Validator.Params):
             context = self.context if context is None else context,
             flags = self.flags if flags is None else flags,
             struct_name = self.struct_name if struct_name is None else struct_name,
+            exceptions = self.exceptions if exceptions is None else exceptions,
             )
 
         return params
+
+    def report_exception(self, e: AbstractException):
+        self.exceptions.append(e)
 
 class Abort():
     def __init__(self):
@@ -331,7 +338,7 @@ class SeerEnsure():
     def struct_has_unique_names(cls, params: Params):
         names = [member[0].value for member in params.asl[1:]]
         if len(names) != len(set(names)):
-            Validator.report_exception(
+            params.report_exception(
                 Exceptions.RedefinedIdentifier(
                 "some identifier was defined multiple times",
                 params.asl.line_number))
@@ -373,8 +380,7 @@ class IndexerTransformFunction(Indexer):
             mod = params.mod)
         params.mod.add_object(new_obj)
 
-
-class ValidationTransformFunction(Validator2):
+class ValidationTransformFunction(Validator):
     class Flags:
         is_ret = "is_ret"
         is_arg = "is_arg"
@@ -454,7 +460,8 @@ class ValidationTransformFunction(Validator2):
             mod=global_mod,
             context=global_mod,
             flags=Flags(),
-            struct_name=None)
+            struct_name=None,
+            exceptions=[])
 
     # terminal types are . :: ref fn
     # handled in call are fn, args, rets
@@ -462,16 +469,16 @@ class ValidationTransformFunction(Validator2):
 
     unimpl = ['arr_type']
     no_action = ["start", "prod_type", "return", "seq", "params"]
-    @Validator2.for_these_types(no_action + unimpl)
+    @Validator.for_these_types(no_action + unimpl)
     def ignore(fn, params:  Params):
         for child in params.asl:
             fn.apply(params.but_with(asl=child)) 
 
-    @Validator2.for_these_types("fn_type")
+    @Validator.for_these_types("fn_type")
     def fn_type_(fn, params: Params):
         return Type.get_type_of(params.config, params.asl, params.mod)
 
-    @Validator2.for_these_types(".")
+    @Validator.for_these_types(".")
     def dot_(fn, params: Params):
         type: Type = fn.apply(params.but_with(asl=params.asl.head()))
         attr_name = params.asl[1].value
@@ -481,11 +488,11 @@ class ValidationTransformFunction(Validator2):
 
     # this handle the case for a::b but not for a::b() as that is a call and 
     # will be unwrapped in the "call" handler
-    @Validator2.for_these_types("::")
+    @Validator.for_these_types("::")
     def scope_(fn, params: Params):
         return ValidationTransformFunction._resolve_type_in_module(params.asl, params)
 
-    @Validator2.for_these_types("tuple")
+    @Validator.for_these_types("tuple")
     def tuple_(fn, params: Params):
         types = []
         for child in params.asl:
@@ -500,25 +507,25 @@ class ValidationTransformFunction(Validator2):
             return found_type
         return new_type
 
-    @Validator2.for_these_types("cond")
+    @Validator.for_these_types("cond")
     def cond_(fn, params: Params):
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
-    @Validator2.for_these_types("if")
+    @Validator.for_these_types("if")
     def if_(fn, params: Params):
         for child in params.asl:
             fn.apply(params.but_with(
                 asl=child, 
                 context=AbstractModule(parent=params.context)))
 
-    @Validator2.for_these_types("while")
+    @Validator.for_these_types("while")
     def while_(fn, params: Params):
         fn.apply(params.but_with(
             asl=params.asl.head(),
             context=AbstractModule(parent=params.context)))
 
-    @Validator2.for_these_types(":")
+    @Validator.for_these_types(":")
     def colon_(fn, params: Params):
         typ = fn.apply(params.but_with(asl=params.asl[1]))
         new_obj = Object(
@@ -534,7 +541,7 @@ class ValidationTransformFunction(Validator2):
         
         return new_obj.type
 
-    @Validator2.for_these_types("call")
+    @Validator.for_these_types("call")
     def call(fn, params: Params):
         # always validate the function params
         fn.apply(params.but_with(asl=params.asl[1]))
@@ -552,7 +559,7 @@ class ValidationTransformFunction(Validator2):
                 exit()
 
         if found_obj is None:
-            Validator.report_exception(
+            params.report_exception(
                 Exceptions.UndefinedVariable(
                 f"'{name}' was never defined",
                 params.asl.line_number))
@@ -561,7 +568,7 @@ class ValidationTransformFunction(Validator2):
         params.asl.data = found_obj
         return found_obj.type.ret
          
-    @Validator2.for_these_types("struct")
+    @Validator.for_these_types("struct")
     def struct(fn, params: Params):
         name = params.asl.head_value()
         params.asl.data = Object(
@@ -573,7 +580,7 @@ class ValidationTransformFunction(Validator2):
         for child in params.asl[1:]:
             fn.apply(params.but_with(asl=child, context=AbstractModule(name=name)))
 
-    @Validator2.for_these_types("mod")
+    @Validator.for_these_types("mod")
     def mod(fn, params: Params):
         name = params.asl[0].value
         child_mod = params.mod.get_child_module(name)
@@ -638,7 +645,7 @@ class ValidationTransformFunction(Validator2):
         return obj.type
 
 
-    @Validator2.for_these_types("create")
+    @Validator.for_these_types("create")
     def create_(fn, params:Params):
         # context name will be the name of the struct
         return ValidationTransformFunction._validate_function_object(
@@ -649,7 +656,7 @@ class ValidationTransformFunction(Validator2):
             seq=params.asl[-1], 
             params=params)
     
-    @Validator2.for_these_types("def")
+    @Validator.for_these_types("def")
     def fn(fn, params: Params):
         return ValidationTransformFunction._validate_function_object(
             fn=fn,
@@ -663,7 +670,7 @@ class ValidationTransformFunction(Validator2):
     ################################################################################################
     
     binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
-    @Validator2.for_these_types(binary_ops)
+    @Validator.for_these_types(binary_ops)
     def binary_ops(fn, params: Params):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -672,7 +679,7 @@ class ValidationTransformFunction(Validator2):
             return Abort()
 
         if left_type != right_type:
-            Validator.report_exception(
+            params.report_exception(
                 Exceptions.TypeMismatch(
                 f"operator '{params.asl.type}' used with '{left_type.name()}' and '{right_type.name()}'",
                 params.asl.line_number))
@@ -693,7 +700,7 @@ class ValidationTransformFunction(Validator2):
     # - multiple inference
     #       let x, y = 4, 4
     #       (let (tags x y ) (tuple 4 4))
-    @Validator2.for_these_types(['val', 'var', 'mut_val', 'mut_var', 'let'])
+    @Validator.for_these_types(['val', 'var', 'mut_val', 'mut_var', 'let'])
     def decls(fn, params:Params):
         if isinstance(params.asl[0], CLRList):
             if params.asl[0].type == ":":
@@ -712,7 +719,7 @@ class ValidationTransformFunction(Validator2):
         objs = []
         for name, typ in zip(names, types):
             if ValidationTransformFunction.resolve_object_by(name, params) is not None:
-                Validator.report_exception(
+                params.report_exception(
                     Exceptions.RedefinedIdentifier(
                     f"'{name}' is already in use",
                     params.asl.line_number))
@@ -735,22 +742,22 @@ class ValidationTransformFunction(Validator2):
         params.asl.data = objs
         return new_obj.type
 
-    @Validator2.for_these_types("type") 
+    @Validator.for_these_types("type") 
     def _type1(fn, params: Params):
         name = params.asl.head_value()
         return params.mod.resolve_type_by(name)
 
-    @Validator2.for_these_types("type?") 
+    @Validator.for_these_types("type?") 
     def _type2(fn, params: Params):
         name = params.asl.head_value() + "?"
         return params.mod.resolve_type_by(name)
 
-    @Validator2.for_these_types("type*") 
+    @Validator.for_these_types("type*") 
     def _type3(fn, params: Params):
         name = params.asl.head_value() + "*"
         return params.mod.resolve_type_by(name)
 
-    @Validator2.for_these_types("=")
+    @Validator.for_these_types("=")
     def assigns(fn, params: Params):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -759,7 +766,7 @@ class ValidationTransformFunction(Validator2):
             return Abort()
 
         # if left_type != right_type:
-        #     Validator.report_exception(
+        #     params.report_exception(
         #         Exceptions.TypeMismatch(
         #             msg = f"expected {left_type} but got {right_type}",
         #             line_number=params.asl.line_number))
@@ -767,7 +774,7 @@ class ValidationTransformFunction(Validator2):
 
         return left_type 
 
-    @Validator2.for_these_types("<-")
+    @Validator.for_these_types("<-")
     def larrow_(fn, params:Params):
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -777,12 +784,12 @@ class ValidationTransformFunction(Validator2):
 
         return left_type
 
-    @Validator2.for_these_types("ref")
+    @Validator.for_these_types("ref")
     def ref(fn, params:Params):
         name = params.asl.head_value()
         found_obj = ValidationTransformFunction.resolve_object_by(name, params)
         if found_obj is None:
-            Validator.report_exception(
+            params.report_exception(
                 Exceptions.UndefinedVariable(
                     f"'{name}' was never defined",
                     params.asl.line_number))

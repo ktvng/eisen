@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from alpaca.utils._transform import PartialTransform, TransformFunction2
+from alpaca.utils._transform import PartialTransform, TransformFunction
 
-class Indexer(TransformFunction2):
+class Indexer(TransformFunction):
     def __init__(self):
         super().__init__()
 

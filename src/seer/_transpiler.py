@@ -1,12 +1,11 @@
 from __future__ import annotations
 import re
-import struct
 
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
-from alpaca.validator import AbstractModule, AbstractType
+from alpaca.validator import AbstractModule, AbstractType, Validator
 
-from seer._validator import Type, Object, Validator, ValidationTransformFunction 
+from seer._validator import Type, Object, ValidationTransformFunction 
 from seer._validator import Params as VParams
 from seer._listir import ListIRParser
 
@@ -689,8 +688,8 @@ class SeerFunctions(TranspilerFunctions):
                 context = AbstractModule(),
                 flags = None,
                 struct_name = None)
-            
-            Validator.validate(vparams)
+
+            ValidationTransformFunction().apply(vparams)
 
             params.pre_parts += Transpiler.transpile(params.but_with(asl=clrlist))
             params.pre_parts.append(";\n")

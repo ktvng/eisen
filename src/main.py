@@ -140,6 +140,7 @@ def internal_run_tests(filename: str, should_transpile=True):
             else:
                 print(f"| FAILED, expected {expected} but got {got}")
                 failure_count += 1
+
         test_count +=1
         
     if failure_count == 0:

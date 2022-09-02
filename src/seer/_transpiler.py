@@ -6,7 +6,7 @@ from alpaca.asts import CLRList, CLRToken
 from alpaca.validator import AbstractModule, AbstractType
 from alpaca.utils import TransformFunction, PartialTransform
 
-from seer._validator import Type, Object, SeerValidator 
+from seer._validator import OldType, Object, SeerValidator 
 from seer._validator import Params as VParams
 from seer._listir import ListIRParser
 
@@ -144,7 +144,7 @@ class SeerTranspiler(TransformFunction):
         return params.pre_parts is None and cls.contains_call(params.asl)
 
     @classmethod
-    def is_primitive_type(cls, type : Type):
+    def is_primitive_type(cls, type : OldType):
         return type.classification == AbstractType.base_classification
 
     @classmethod
@@ -508,7 +508,7 @@ class SeerTranspiler(TransformFunction):
         return parts
 
     @classmethod
-    def _define_variables_for_return(cls, ret_type: Type, params: SeerTranspiler.Params):
+    def _define_variables_for_return(cls, ret_type: OldType, params: SeerTranspiler.Params):
         types = []
         if ret_type.classification == AbstractType.tuple_classification:
             types += ret_type.components
@@ -562,7 +562,7 @@ class SeerTranspiler(TransformFunction):
                 var_names = params.name_of_rets
                 ret_parts = [", " + var for var in var_names]
             else:
-                ret_type: Type = obj.type.ret
+                ret_type: OldType = obj.type.ret
                 var_names = SeerTranspiler._define_variables_for_return(ret_type, params)
                 ret_parts = [", &" + var for var in var_names]
                 
@@ -697,7 +697,7 @@ class Helpers:
         return f"void (*{obj.name})({args})" 
 
     @classmethod
-    def _to_function_pointer_arg(cls, typ: Type, params: SeerTranspiler.Params, as_pointers: bool = False) -> str:
+    def _to_function_pointer_arg(cls, typ: OldType, params: SeerTranspiler.Params, as_pointers: bool = False) -> str:
         if typ is None:
             return ""
 
@@ -711,7 +711,7 @@ class Helpers:
             suffix = "*" if as_pointers else ""
             return ", ".join(
                 [cls._to_function_pointer_arg(x, params) + suffix for x in typ.components])
-        elif typ.classification == Type.named_product_type_name:
+        elif typ.classification == OldType.named_product_type_name:
             return Helpers._global_name_for_type(typ, params.mod)
 
     @classmethod

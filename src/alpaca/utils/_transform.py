@@ -31,7 +31,7 @@ class TransformFunction():
         matching_transforms = [f for f in self.partial_transforms if f.covers(*match_args)]
         if not matching_transforms:
             args = [str(arg) for arg in match_args]
-            raise Exception(f"No transforms matching for {args}")
+            raise Exception(f"{type(self)}: No transforms matching for {args}")
         if len(matching_transforms) > 1:
             raise Exception(f"Multiple transforms matching for {match_args}")
 

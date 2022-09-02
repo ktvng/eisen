@@ -3,12 +3,23 @@ from __future__ import annotations
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
-from alpaca.utils import AbstractFlags 
+from alpaca.utils import AbstractFlags, TransformFunction
+from alpaca.validator import Type, Module, TypeFactory
 
+def asl_of_type(name: str):
+    def predicate(params: Params2):
+        return params.asl.type == name
+    return predicate
+
+def asls_of_type(names: list[str]):
+    def predicate(params: Params2):
+        return params.asl.type in names
+    return predicate
+ 
 class Object(AbstractObject):
     def __init__(self, 
             name : str, 
-            type : Type, 
+            type : OldType, 
             mod: AbstractModule,
             is_let : bool = False, 
             is_mut : bool = False, 
@@ -80,7 +91,7 @@ class Exceptions():
         def __init__(self, msg : str, line_number : int):
             super().__init__(msg, line_number)
 
-class Type(AbstractType):
+class OldType(AbstractType):
     classifications = ["function", "product", "named_product", "or", "base"]
     base_type_name = "base"
     function_type_name = "function"
@@ -92,10 +103,10 @@ class Type(AbstractType):
         self._name = None
         self.classification = type
         self.mod = None
-        self.components: list[Type] = []
+        self.components: list[OldType] = []
         self.component_names : list[str] = []
-        self.arg: Type = None
-        self.ret: Type = None
+        self.arg: OldType = None
+        self.ret: OldType = None
         self.nullable = False
         self.is_ptr = False
 
@@ -134,30 +145,30 @@ class Type(AbstractType):
         return self.name()
             
     @classmethod
-    def new_base_type(cls, name: str, nullable=False, is_ptr=False) -> Type:
-        type = Type(AbstractType.base_classification)
+    def new_base_type(cls, name: str, nullable=False, is_ptr=False) -> OldType:
+        type = OldType(AbstractType.base_classification)
         type._name = name
         type.nullable = nullable
         type.is_ptr = is_ptr
         return type
 
     @classmethod
-    def new_function_type(cls, arg: Type, ret: Type, name: str=None) -> Type:
-        type = Type(AbstractType.function_classification)
+    def new_function_type(cls, arg: OldType, ret: OldType, name: str=None) -> OldType:
+        type = OldType(AbstractType.function_classification)
         type.arg = arg
         type.ret = ret
         type._name = name
         return type
 
     @classmethod
-    def new_product_type(cls, components: list[Type]) -> Type:
-        type = Type(AbstractType.tuple_classification)
+    def new_product_type(cls, components: list[OldType]) -> OldType:
+        type = OldType(AbstractType.tuple_classification)
         type.components = components
         return type
 
     @classmethod
-    def new_named_product_type(cls, components: list[Type], component_names : list[str], name : str=None, mod: AbstractModule = None) -> Type:
-        type = Type(AbstractType.struct_classification)
+    def new_named_product_type(cls, components: list[OldType], component_names : list[str], name : str=None, mod: AbstractModule = None) -> OldType:
+        type = OldType(AbstractType.struct_classification)
         type.components = components
         type.component_names = component_names
         type._name = name
@@ -165,7 +176,7 @@ class Type(AbstractType):
         return type
 
     @classmethod
-    def _unpack_colon_operator(cls, config: Config, asl: CLRList, mod: AbstractModule) -> Type:
+    def _unpack_colon_operator(cls, config: Config, asl: CLRList, mod: AbstractModule) -> OldType:
         type_asl = asl[1]
         if type_asl.type == "fn_type":
             return cls.get_type_of(config, type_asl, mod)
@@ -185,7 +196,7 @@ class Type(AbstractType):
         raise Exception(f"Could not find type {type_str} _unpack_colon_operator")
 
     @classmethod
-    def lookup_type_in_mod(cls, new_type: Type, mod: AbstractModule):
+    def lookup_type_in_mod(cls, new_type: OldType, mod: AbstractModule):
         found_type = mod.resolve_type_by(new_type.name())
         if found_type is None:
             mod.add_type(new_type)
@@ -193,7 +204,7 @@ class Type(AbstractType):
         return found_type
 
     @classmethod
-    def _unpack_types_tuple(cls, asl: CLRList, mod: AbstractModule) -> list[Type]:
+    def _unpack_types_tuple(cls, asl: CLRList, mod: AbstractModule) -> list[OldType]:
         if asl.type != "types" and asl.type != "type":
             raise Exception(f"expected asl to be of type 'types' or 'type'; got '{asl.type}' instead")
 
@@ -204,7 +215,7 @@ class Type(AbstractType):
             components = [asl]
 
         types = [mod.resolve_type_by(t.head_value()) for t in components]
-        return Type.new_product_type(types)
+        return OldType.new_product_type(types)
 
     @classmethod
     def _unpack_args_and_rets_to_fn_type(cls, 
@@ -213,34 +224,34 @@ class Type(AbstractType):
             args: CLRList = [], 
             rets: CLRList = []):
 
-        arg_type = None if len(args) == 0 else Type.get_type_of(config, args[0], mod)
-        ret_type = None if len(rets) == 0 else Type.get_type_of(config, rets[0], mod)
-        return Type.new_function_type(arg_type, ret_type) 
+        arg_type = None if len(args) == 0 else OldType.get_type_of(config, args[0], mod)
+        ret_type = None if len(rets) == 0 else OldType.get_type_of(config, rets[0], mod)
+        return OldType.new_function_type(arg_type, ret_type) 
 
 
     @classmethod
     def get_type_of(cls, config: Config, asl: CLRList, mod: AbstractModule):
         if asl.type == "prod_type":
-            components = [Type._unpack_colon_operator(config, child, mod) for child in asl]
-            new_type = Type.new_product_type(components)
+            components = [OldType._unpack_colon_operator(config, child, mod) for child in asl]
+            new_type = OldType.new_product_type(components)
 
         elif asl.type == "fn_type":
-            arg_type = Type.get_type_of(config, asl[0], mod)
-            ret_type = Type.get_type_of(config, asl[1], mod)
-            new_type = Type.new_function_type(arg_type, ret_type)
+            arg_type = OldType.get_type_of(config, asl[0], mod)
+            ret_type = OldType.get_type_of(config, asl[1], mod)
+            new_type = OldType.new_function_type(arg_type, ret_type)
     
         elif asl.type == "fn_type_out": 
             if isinstance(asl[0], CLRList) and asl[0].head_value() == "void":
                 return None
-            new_type = Type._unpack_types_tuple(asl[0], mod)
+            new_type = OldType._unpack_types_tuple(asl[0], mod)
 
         elif asl.type == "fn_type_in":
             if len(asl) == 0:
                 return None
-            new_type = Type._unpack_types_tuple(asl[0], mod)
+            new_type = OldType._unpack_types_tuple(asl[0], mod)
 
         elif asl.type == ":":
-            return Type._unpack_colon_operator(config, asl, mod)
+            return OldType._unpack_colon_operator(config, asl, mod)
 
         elif asl.type == "create" or asl.type == "def":
             args = SeerValidator._get_args_from_function_asl(asl)
@@ -251,8 +262,8 @@ class Type(AbstractType):
             components = asl[1:]
 
             # need to filter by ":" to avoid "create" and "destroy" children
-            new_type = Type.new_named_product_type(
-                components = [Type.get_type_of(config, comp, mod) for comp in components if comp.type == ":"],
+            new_type = OldType.new_named_product_type(
+                components = [OldType.get_type_of(config, comp, mod) for comp in components if comp.type == ":"],
                 component_names = [comp.head_value() for comp in components if comp.type == ":"],
                 name = asl.head_value(),
                 mod = mod)
@@ -268,7 +279,7 @@ class Type(AbstractType):
         else:
             raise Exception(f"unknown type to index {asl.type}")
 
-        return Type.lookup_type_in_mod(new_type, mod)
+        return OldType.lookup_type_in_mod(new_type, mod)
 
 class Flags(AbstractFlags):
     is_ret = "is_ret"
@@ -324,6 +335,61 @@ class Params(Validator.Params):
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
 
+
+class Params2(Validator.Params):
+    attrs = ["config", "asl", "validator", "exceptions", "mod", "context", "flags"]
+
+    def __init__(self, 
+            config: Config, 
+            asl: CLRList, 
+            txt: str,
+            mod: Module,
+            context: Module,
+            flags: Flags,
+            struct_name: str,
+            exceptions: list[AbstractException]
+            ):
+
+        self.config = config
+        self.asl = asl
+        self.txt = txt
+        self.mod = mod
+        self.context = context
+        self.flags = flags
+        self.struct_name = struct_name
+        self.exceptions = exceptions
+
+    def but_with(self,
+            config : Config = None,
+            asl : CLRList = None,
+            txt: str = None,
+            mod : Module = None,
+            context : Module = None,
+            flags : Flags = None,
+            struct_name: str = None,
+            exceptions: list[AbstractException] = None
+            ):
+
+        params = Params2(
+            config = self.config if config is None else config,
+            asl = self.asl if asl is None else asl,
+            txt = self.txt if txt is None else txt,
+            mod = self.mod if mod is None else mod,
+            context = self.context if context is None else context,
+            flags = self.flags if flags is None else flags,
+            struct_name = self.struct_name if struct_name is None else struct_name,
+            exceptions = self.exceptions if exceptions is None else exceptions,
+            )
+
+        return params
+
+    def report_exception(self, e: AbstractException):
+        self.exceptions.append(e)
+
+    def __str__(self) -> str:
+        return self.asl.type
+
+
 class Abort():
     def __init__(self):
         return
@@ -340,6 +406,206 @@ class SeerEnsure():
                 params.asl.line_number))
             return Abort()
 
+# generate a type within a module
+class TypeTransducer(TransformFunction):
+    def apply(self, params: Params2) -> Type:
+        print(params.asl)
+        print("------------")
+        return self._apply([params], [params])
+
+    @classmethod
+    def _get_component_names(cls, components: list[CLRList]) -> list[str]:
+        if any([component.type != ":" for component in components]):
+            raise Exception("expected all components to have type ':'")
+
+        return [component.first().value for component in components]
+
+    @classmethod
+    def _asl_has_return_clause(cls, asl: CLRList):
+        return len(asl) == 4
+
+    @TransformFunction.covers(asl_of_type("type"))
+    def type_(fn, params: Params2) -> Type:
+        # eg. (type int)
+        token: CLRToken = params.asl.head()
+        if token.type != "TAG":
+            raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_novel_type(token.value));
+
+    @TransformFunction.covers(asl_of_type(":"))
+    def colon_(fn, params: Params2) -> Type:
+        # eg. (: name (type int))
+        return fn.apply(params.but_with(asl=params.asl.second()))
+
+    @TransformFunction.covers(asl_of_type("prod_type"))
+    def prod_type_(fn, params: Params2) -> Type:
+        # eg.  (prod_type
+        #           (: name1 (type int))
+        #           (: name2 (type str)))
+        component_types = [fn.apply(params.but_with(asl=component)) for component in params.asl]
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_tuple_type(components=component_types))
+
+    @TransformFunction.covers(asl_of_type("types"))
+    def types_(fn, params: Params2) -> Type:
+        # eg. (types (type int) (type str))
+        component_types = [fn.apply(params.but_with(asl=component)) for component in params.asl]
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_tuple_type(components=component_types))
+
+    @TransformFunction.covers(asl_of_type("fn_type_in"))
+    def fn_type_in_(fn, params: Params2) -> Type:
+        # eg. (fn_type_in (type(s) ...))
+        if len(params.asl) == 0:
+            return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
+        return params.mod.resolve_type(
+            type=fn.apply(params.but_with(als=params.asl.first())))
+
+    # TODO: covers with multiple predicates should be supported
+    @TransformFunction.covers(asl_of_type("fn_type_out"))
+    def fn_type_out(fn, params: Params2) -> Type:
+        # eg. (fn_type_out (type(s) ...))
+        if len(params.asl) == 0:
+            return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
+        return params.mod.resolve_type(
+            type=fn.apply(params.but_with(asl=params.asl.first())))
+
+    @TransformFunction.covers(asl_of_type("fn_type")) 
+    def fn_type_(fn, params: Params2) -> Type:
+        # eg. (fn_type (fn_type_in ...) (fn_type_out ...))
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_function_type(
+                arg=fn.apply(params.but_with(asl=params.asl.first())),
+                ret=fn.apply(params.but_with(asl=params.asl.second()))))
+
+    @TransformFunction.covers(asls_of_type(["args", "rets"]))
+    def args_(fn, params: Params2) -> Type:
+        # eg. (args (type ...))
+        if params.asl:
+            return fn.apply(params.but_with(asl=params.asl.first()))
+        return TypeFactory.produce_novel_type("void")
+
+    @TransformFunction.covers(asl_of_type("create"))
+    def create_(fn, params: Params2) -> Type:
+        # eg. (create (args ...) (rets ...) (seq ...))
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_function_type(
+                arg=fn.apply(params.but_with(asl=params.asl.first())),
+                ret=fn.apply(params.but_with(asl=params.asl.second()))))
+
+    @TransformFunction.covers(asl_of_type("def"))
+    def def_(fn, params: Params2) -> Type:
+        # eg. (def name (args ...) (rets ...) (seq ...))
+        if TypeTransducer._asl_has_return_clause(params.asl):
+            return params.mod.resolve_type(
+                type=TypeFactory.produce_function_type(
+                    name=params.asl.first().value,
+                    arg=fn.apply(params.but_with(asl=params.asl.second())),
+                    ret=fn.apply(params.but_with(asl=params.asl.third()))))
+        else:
+            return params.mod.resolve_type(
+                type=TypeFactory.produce_function_type(
+                    name=params.asl.first().value,
+                    arg=fn.apply(params.but_with(asl=params.asl.second())),
+                    ret=TypeFactory.produce_novel_type("void")))
+
+    @TransformFunction.covers(asl_of_type("struct"))
+    def struct_(fn, params: Params2) -> Type:
+        # eg. (struct name (: ...) (: ...) ... (create ...))
+        attributes = [component for component in params.asl if component.type == ":"]
+        return params.mod.resolve_type(
+            type=TypeFactory.produce_struct_type(
+                name=params.asl.first().value,
+                components=[fn.apply(params.but_with(asl=component)) for component in attributes],
+                component_names=TypeTransducer._get_component_names(attributes)))
+
+
+
+# generate the module structure and add types to the respective modules
+class ModuleTransducer(TransformFunction):
+    def apply(self, params):
+        return self._apply([params], [params])
+
+    @classmethod
+    def init_params(cls, config: Config, asl: CLRList, txt: str):
+        global_mod = Module("global")
+        global_mod.add_type(TypeFactory.produce_novel_type("int"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
+
+        return Params2(
+            config=config, 
+            asl=asl,
+            txt=txt,
+            mod=global_mod,
+            context=global_mod,
+            flags=Flags(),
+            struct_name=None,
+            exceptions=[])
+
+    @classmethod
+    def parse_type(cls, params: Params2) -> Type:
+        return TypeTransducer().apply(params)
+    
+    @TransformFunction.covers(asl_of_type("start"))
+    def start_i(fn, params: Params2):
+        params.asl.module = params.mod
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child))
+
+    @TransformFunction.covers(asl_of_type("struct"))
+    def struct_i(fn, params: Params2):
+        params.mod.add_type(ModuleTransducer.parse_type(params))
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child, struct_name=params.asl.first().value))
+
+    @TransformFunction.covers(asl_of_type("mod"))
+    def mod_i(fn, params: Params2):
+        child_mod = Module(
+            name=params.asl.first().value, 
+            parent=params.mod)
+
+        for child in params.asl:
+            fn.apply(params.but_with(
+                asl=child, 
+                mod=child_mod))
+
+    @TransformFunction.covers(asl_of_type("def"))
+    def def_i(fn, params: Params2):
+        new_type = ModuleTransducer.parse_type(params)
+        params.mod.add_type(new_type)
+        params.mod.add_instance(
+            name=params.asl.first().value,
+            type=new_type)
+
+    @TransformFunction.covers(asl_of_type("create"))
+    def create_i(fn, params: Params2):
+        new_type = ModuleTransducer.parse_type(params)
+        params.mod.add_type(new_type)
+        params.mod.add_instance(
+            name="create_" + params.struct_name,
+            type=new_type)
+
+    @TransformFunction.covers(asls_of_type(["TAG", ":"]))
+    def TAG_i(fn, params: Params2):
+        return
+
+
+
+
+
+
+
 class SeerIndexer(Indexer):
     @Indexer.for_these_types("start")
     def start_i(fn, params: Indexer.Params):
@@ -348,7 +614,7 @@ class SeerIndexer(Indexer):
 
     @Indexer.for_these_types("struct")
     def struct_i(fn, params: Indexer.Params):
-        Type.get_type_of(params.config, params.asl, params.mod)
+        OldType.get_type_of(params.config, params.asl, params.mod)
         for child in params.asl:
             fn.apply(params.but_with(asl=child, struct_name=params.asl.head_value()))
 
@@ -364,7 +630,7 @@ class SeerIndexer(Indexer):
     def def_i(fn, params: Indexer.Params):
         new_obj = Object(
             name = params.asl.head_value(),
-            type = Type.get_type_of(params.config, params.asl, params.mod),
+            type = OldType.get_type_of(params.config, params.asl, params.mod),
             mod = params.mod)
         params.mod.add_object(new_obj)
 
@@ -372,7 +638,7 @@ class SeerIndexer(Indexer):
     def create_i(fn, params: Indexer.Params):
         new_obj = Object(
             name = "create_" + params.struct_name, 
-            type = Type.get_type_of(params.config, params.asl, params.mod),
+            type = OldType.get_type_of(params.config, params.asl, params.mod),
             mod = params.mod)
         params.mod.add_object(new_obj)
 
@@ -407,7 +673,7 @@ class SeerValidator(Validator):
         return found_obj
 
     @classmethod
-    def _resolve_type_in_module(cls, asl: CLRList, params: Params) -> Type:
+    def _resolve_type_in_module(cls, asl: CLRList, params: Params) -> OldType:
         # if the resolution chain is 1 deep (special case)
         if isinstance(asl[0], CLRToken):
             mod = params.mod.get_child_module(asl[0].value)
@@ -436,18 +702,18 @@ class SeerValidator(Validator):
     @classmethod
     def init_params(cls, config: Config, asl: CLRList, txt: str):
         global_mod = AbstractModule("global")
-        global_mod.add_type(Type.new_base_type("int"))
-        global_mod.add_type(Type.new_base_type("str"))
-        global_mod.add_type(Type.new_base_type("flt"))
-        global_mod.add_type(Type.new_base_type("bool"))
-        global_mod.add_type(Type.new_base_type("int*", is_ptr=True))
-        global_mod.add_type(Type.new_base_type("str*", is_ptr=True))
-        global_mod.add_type(Type.new_base_type("flt*", is_ptr=True))
-        global_mod.add_type(Type.new_base_type("bool*", is_ptr=True))
-        global_mod.add_type(Type.new_base_type("int?", is_ptr=True, nullable=True))
-        global_mod.add_type(Type.new_base_type("str?", is_ptr=True, nullable=True))
-        global_mod.add_type(Type.new_base_type("flt?", is_ptr=True, nullable=True))
-        global_mod.add_type(Type.new_base_type("bool?", is_ptr=True, nullable=True)) 
+        global_mod.add_type(OldType.new_base_type("int"))
+        global_mod.add_type(OldType.new_base_type("str"))
+        global_mod.add_type(OldType.new_base_type("flt"))
+        global_mod.add_type(OldType.new_base_type("bool"))
+        global_mod.add_type(OldType.new_base_type("int*", is_ptr=True))
+        global_mod.add_type(OldType.new_base_type("str*", is_ptr=True))
+        global_mod.add_type(OldType.new_base_type("flt*", is_ptr=True))
+        global_mod.add_type(OldType.new_base_type("bool*", is_ptr=True))
+        global_mod.add_type(OldType.new_base_type("int?", is_ptr=True, nullable=True))
+        global_mod.add_type(OldType.new_base_type("str?", is_ptr=True, nullable=True))
+        global_mod.add_type(OldType.new_base_type("flt?", is_ptr=True, nullable=True))
+        global_mod.add_type(OldType.new_base_type("bool?", is_ptr=True, nullable=True)) 
 
         return Params(
             config=config, 
@@ -472,11 +738,11 @@ class SeerValidator(Validator):
 
     @Validator.for_these_types("fn_type")
     def fn_type_(fn, params: Params):
-        return Type.get_type_of(params.config, params.asl, params.mod)
+        return OldType.get_type_of(params.config, params.asl, params.mod)
 
     @Validator.for_these_types(".")
     def dot_(fn, params: Params):
-        type: Type = fn.apply(params.but_with(asl=params.asl.head()))
+        type: OldType = fn.apply(params.but_with(asl=params.asl.head()))
         attr_name = params.asl[1].value
         attr_type = type.get_member_attribute_named(attr_name)
         params.asl.data = Object(attr_name, type, params.mod)
@@ -497,7 +763,7 @@ class SeerValidator(Validator):
         if SeerValidator._any_exceptions(*types):
             return Abort()
         params.asl.data = types
-        new_type = Type.new_product_type(types)
+        new_type = OldType.new_product_type(types)
         found_type = params.mod.resolve_type_by(new_type.name())
         if found_type:
             return found_type
@@ -702,15 +968,15 @@ class SeerValidator(Validator):
             if params.asl[0].type == ":":
                 asl_to_instr = params.asl[0]
                 names = [params.asl[0][0].value]
-                types: list[Type] = [fn.apply(params.but_with(asl=params.asl[0][1]))]
+                types: list[OldType] = [fn.apply(params.but_with(asl=params.asl[0][1]))]
             elif params.asl[0].type == "tags":
                 asl_to_instr = params.asl
                 names = [t.value for t in params.asl[0]]
-                types: list[Type] = fn.apply(params.but_with(asl=params.asl[1])).components
+                types: list[OldType] = fn.apply(params.but_with(asl=params.asl[1])).components
         else:
             asl_to_instr = params.asl
             names = [params.asl.head_value()]
-            types: list[Type] = [fn.apply(params.but_with(asl=params.asl[1]))]
+            types: list[OldType] = [fn.apply(params.but_with(asl=params.asl[1]))]
         
         objs = []
         for name, typ in zip(names, types):
@@ -792,4 +1058,3 @@ class SeerValidator(Validator):
 
         params.asl.data = found_obj
         return found_obj.type
-            

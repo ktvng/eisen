@@ -17,7 +17,7 @@ class CLRToken:
         elif self.type == "str":
             return f'{self.value}'
         else:
-            return self.type
+            return + self.type
 
 class CLRList:
     def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0):
@@ -25,6 +25,26 @@ class CLRList:
         self._list = lst
         self.line_number = line_number
         self.data = None
+        self.module = None
+        self.returns_type = None
+
+    def first(self) -> CLRList | CLRToken:
+        if not self._list:
+            raise Exception("list is empty; first does not exist")
+
+        return self._list[0]
+
+    def second(self) -> CLRList | CLRToken:
+        if len(self._list) < 2:
+            raise Exception("list is less than size 2; second does not exist")
+
+        return self._list[1]
+
+    def third(self) -> CLRList | CLRToken:
+        if len(self._list) < 3:
+            raise Exception("list is less than size 3; second does not exist")
+
+        return self._list[2]
 
     def head(self) -> CLRList | CLRToken:
         if not self._list:

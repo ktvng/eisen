@@ -7,6 +7,7 @@ import argparse
 import alpaca
 from seer import SeerCallback, SeerBuilder, SeerValidator, SeerIndexer, SeerTranspiler
 import lamb
+import seer
 
 from seer._listir import ListIRParser
 
@@ -49,6 +50,11 @@ def run_seer(filename: str):
 
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
+
+    # KXT testing
+    params = seer.ModuleTransducer.init_params(config, asl, txt)
+    seer.ModuleTransducer().apply(params)
+    print("SUCCESS")
 
     params = SeerValidator.init_params(config, asl, txt)
     mod = run_and_measure("validator",

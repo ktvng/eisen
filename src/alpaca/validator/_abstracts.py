@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import In
 from typing import Literal, Any
 from functools import wraps
 
@@ -125,7 +126,7 @@ class TypeContainer:
     def __init__(self):
         self._types: list[Type] = []
 
-    def obtain(self, type: Type):
+    def obtain(self, type: Type) -> Type:
         if type in self._types:
             pos = self._types.index(type)
             return self._types[pos]
@@ -142,6 +143,11 @@ class TypeContainer:
             new_container._types.append(type)
         return new_container
 
+class Instance():
+    def __init__(self, name: str, type: Type):
+        self.name = name
+        self.type = type
+
 class Module(RecursiveContainer):
     def __init__(self, name: str, parent: Module = None, types: TypeContainer = None):
         self.name = name
@@ -152,11 +158,18 @@ class Module(RecursiveContainer):
 
         self.children = []
         self.parent = parent
+        self.instances: dict[str, Instance] = {}
         if parent:
             parent._add_child(self)
 
     def _add_child(self, child: Module):
         self.children.append(child)
+
+    def resolve_instance(self, name: str) -> Instance:
+        return self.instances.get(name, None)
+
+    def add_instance(self, name: str, type: Type):
+        self.instances[name] = Instance(name, type)
 
     def resolve_type(self, type: Type) -> Type:
         return self.types.obtain(type)

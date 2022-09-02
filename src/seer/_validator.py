@@ -1,10 +1,11 @@
 from __future__ import annotations
+from ast import Param
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
 from alpaca.utils import AbstractFlags, TransformFunction
-from alpaca.validator import Type, Module, TypeFactory
+from alpaca.validator import Type, Module, TypeFactory, Instance
 
 def asl_of_type(name: str):
     def predicate(params: Params2):
@@ -335,7 +336,6 @@ class Params(Validator.Params):
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
 
-
 class Params2(Validator.Params):
     attrs = ["config", "asl", "validator", "exceptions", "mod", "context", "flags"]
 
@@ -344,7 +344,6 @@ class Params2(Validator.Params):
             asl: CLRList, 
             txt: str,
             mod: Module,
-            context: Module,
             flags: Flags,
             struct_name: str,
             exceptions: list[AbstractException]
@@ -354,7 +353,6 @@ class Params2(Validator.Params):
         self.asl = asl
         self.txt = txt
         self.mod = mod
-        self.context = context
         self.flags = flags
         self.struct_name = struct_name
         self.exceptions = exceptions
@@ -364,7 +362,6 @@ class Params2(Validator.Params):
             asl : CLRList = None,
             txt: str = None,
             mod : Module = None,
-            context : Module = None,
             flags : Flags = None,
             struct_name: str = None,
             exceptions: list[AbstractException] = None
@@ -375,7 +372,6 @@ class Params2(Validator.Params):
             asl = self.asl if asl is None else asl,
             txt = self.txt if txt is None else txt,
             mod = self.mod if mod is None else mod,
-            context = self.context if context is None else context,
             flags = self.flags if flags is None else flags,
             struct_name = self.struct_name if struct_name is None else struct_name,
             exceptions = self.exceptions if exceptions is None else exceptions,
@@ -409,8 +405,6 @@ class SeerEnsure():
 # generate a type within a module
 class TypeTransducer(TransformFunction):
     def apply(self, params: Params2) -> Type:
-        print(params.asl)
-        print("------------")
         return self._apply([params], [params])
 
     @classmethod
@@ -430,6 +424,10 @@ class TypeTransducer(TransformFunction):
         token: CLRToken = params.asl.head()
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
+        predefined_type = params.mod.get_type_by_name(token.value)
+        if predefined_type:
+            return predefined_type
+
         return params.mod.resolve_type(
             type=TypeFactory.produce_novel_type(token.value));
 
@@ -454,18 +452,9 @@ class TypeTransducer(TransformFunction):
         return params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(components=component_types))
 
-    @TransformFunction.covers(asl_of_type("fn_type_in"))
-    def fn_type_in_(fn, params: Params2) -> Type:
-        # eg. (fn_type_in (type(s) ...))
-        if len(params.asl) == 0:
-            return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
-        return params.mod.resolve_type(
-            type=fn.apply(params.but_with(als=params.asl.first())))
-
-    # TODO: covers with multiple predicates should be supported
-    @TransformFunction.covers(asl_of_type("fn_type_out"))
+    @TransformFunction.covers(asls_of_type(["fn_type_in", "fn_type_out"]))
     def fn_type_out(fn, params: Params2) -> Type:
-        # eg. (fn_type_out (type(s) ...))
+        # eg. (fn_type_in/out (type(s) ...))
         if len(params.asl) == 0:
             return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
         return params.mod.resolve_type(
@@ -500,13 +489,11 @@ class TypeTransducer(TransformFunction):
         if TypeTransducer._asl_has_return_clause(params.asl):
             return params.mod.resolve_type(
                 type=TypeFactory.produce_function_type(
-                    name=params.asl.first().value,
                     arg=fn.apply(params.but_with(asl=params.asl.second())),
                     ret=fn.apply(params.but_with(asl=params.asl.third()))))
         else:
             return params.mod.resolve_type(
                 type=TypeFactory.produce_function_type(
-                    name=params.asl.first().value,
                     arg=fn.apply(params.but_with(asl=params.asl.second())),
                     ret=TypeFactory.produce_novel_type("void")))
 
@@ -520,11 +507,9 @@ class TypeTransducer(TransformFunction):
                 components=[fn.apply(params.but_with(asl=component)) for component in attributes],
                 component_names=TypeTransducer._get_component_names(attributes)))
 
-
-
 # generate the module structure and add types to the respective modules
 class ModuleTransducer(TransformFunction):
-    def apply(self, params):
+    def apply(self, params: Params2):
         return self._apply([params], [params])
 
     @classmethod
@@ -548,7 +533,6 @@ class ModuleTransducer(TransformFunction):
             asl=asl,
             txt=txt,
             mod=global_mod,
-            context=global_mod,
             flags=Flags(),
             struct_name=None,
             exceptions=[])
@@ -565,7 +549,7 @@ class ModuleTransducer(TransformFunction):
 
     @TransformFunction.covers(asl_of_type("struct"))
     def struct_i(fn, params: Params2):
-        params.mod.add_type(ModuleTransducer.parse_type(params))
+        params.mod.resolve_type(ModuleTransducer.parse_type(params))
         for child in params.asl:
             fn.apply(params.but_with(asl=child, struct_name=params.asl.first().value))
 
@@ -583,7 +567,7 @@ class ModuleTransducer(TransformFunction):
     @TransformFunction.covers(asl_of_type("def"))
     def def_i(fn, params: Params2):
         new_type = ModuleTransducer.parse_type(params)
-        params.mod.add_type(new_type)
+        params.mod.resolve_type(new_type)
         params.mod.add_instance(
             name=params.asl.first().value,
             type=new_type)
@@ -591,7 +575,7 @@ class ModuleTransducer(TransformFunction):
     @TransformFunction.covers(asl_of_type("create"))
     def create_i(fn, params: Params2):
         new_type = ModuleTransducer.parse_type(params)
-        params.mod.add_type(new_type)
+        params.mod.resolve_type(new_type)
         params.mod.add_instance(
             name="create_" + params.struct_name,
             type=new_type)
@@ -599,6 +583,302 @@ class ModuleTransducer(TransformFunction):
     @TransformFunction.covers(asls_of_type(["TAG", ":"]))
     def TAG_i(fn, params: Params2):
         return
+
+class TypeFlowTransducer(TransformFunction):
+    def apply(self, params: Params2) -> Type:
+        return self._apply([params], [params])
+
+    @classmethod
+    def void_type(cls, params: Params2):
+        return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
+
+    @TransformFunction.covers(asls_of_type(["fn_type"]))
+    def fn_type_(fn, params: Params2) -> Type:
+        type = TypeTransducer().apply(params)
+        params.asl.returns_type = type
+        return type
+
+    no_action = ["start", "return", "seq", "prod_type"]
+    @TransformFunction.covers(asls_of_type(no_action))
+    def no_action_(fn, params: Params2) -> Type:
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("."))
+    def dot_(fn, params: Params2) -> Type:
+        parent_type = fn.apply(params.but_with(asl=params.asl.head()))
+        attr_name = params.asl[1].value
+        attr_type = parent_type.get_member_attribute_by_name(attr_name)
+        params.asl.returns_type = attr_type
+
+        return params.asl.returns_type
+
+    # TODO
+    # this handle the case for a::b but not for a::b() as that is a call and 
+    # will be unwrapped in the "call" handler
+    @Validator.for_these_types("::")
+    def scope_(fn, params: Params):
+        return SeerValidator._resolve_type_in_module(params.asl, params)
+
+    @TransformFunction.covers(asl_of_type("tuple"))
+    def tuple_(fn, params: Params2) -> Type:
+        components = [fn.apply(params.but_with(asl=child)) for child in params.asl]
+        params.asl.returns_type = params.mod.resolve_type(
+            type=TypeFactory.produce_tuple_type(components))
+
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("cond"))
+    def cond_(fn, params: Params2) -> Type:
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("if"))
+    def if_(fn, params: Params2) -> Type:
+        for child in params.asl:
+            fn.apply(params.but_with(
+                asl=child, 
+                mod=Module(name="", parent=params.mod)))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("while"))
+    def while_(fn, params: Params2) -> Type:
+        fn.apply(params.but_with(
+            asl=params.asl.first(),
+            mod=Module(name="", parent=params.mod)))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type(":"))
+    def colon_(fn, params: Params2) -> Type:
+        params.asl.returns_type = fn.apply(params.but_with(asl=params.asl[1]))
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("fn"))
+    def fn_(fn, params: Params2) -> Type:
+        name = params.asl.first().value
+        # special case. TODO: fix this
+        if name == "print":
+            params.asl.returns_type = params.mod.resolve_type(
+                type=TypeFactory.produce_function_type(
+                    arg=TypeFlowTransducer.void_type(params),
+                    ret=TypeFlowTransducer.void_type(params)))
+            return params.asl.returns_type
+        instance: Instance = params.mod.get_instance_by_name(name=name)
+        params.asl.returns_type = instance.type
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("params"))
+    def params_(fn, params: Params2) -> Type:
+        component_types = [fn.apply(params.but_with(asl=child)) for child in params.asl]
+        params.asl.returns_type = params.mod.resolve_type(
+            type=TypeFactory.produce_tuple_type(component_types))
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("call"))
+    def call(fn, params: Params2) -> Type:
+        fn_type = fn.apply(params.but_with(asl=params.asl.first()))
+        params.asl.returns_type = fn_type.get_return_type()
+
+        # still need to type flow through the params passed to the function
+        fn.apply(params.but_with(asl=params.asl.second()))
+        return params.asl.returns_type
+         
+    @TransformFunction.covers(asl_of_type("struct"))
+    def struct(fn, params: Params2) -> Type:
+        name = params.asl.first().value
+        # SeerEnsure.struct_has_unique_names(params)
+        # pass struct name into context so the create method knows where it is defined
+        # TODO: shouldn't add members to module
+        for child in params.asl[1:]:
+            fn.apply(params.but_with(asl=child))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("mod"))
+    def mod(fn, params: Params2) -> Type:
+        name = params.asl.first().value
+        child_mod = params.mod.get_child_module_by_name(name)
+        for child in params.asl[1:]:
+            fn.apply(params.but_with(asl=child, mod=child_mod))
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+ 
+    @TransformFunction.covers(asl_of_type("create"))
+    def create_(fn, params:Params):
+        local_mod = Module("", parent=params.mod)
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child, mod=local_mod))
+
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+    
+    @TransformFunction.covers(asl_of_type("def"))
+    def fn(fn, params: Params2) -> Type:
+        local_mod = Module("", parent=params.mod)
+        for child in params.asl[1:]:
+            fn.apply(params.but_with(asl=child, mod=local_mod))
+
+        params.asl.returns_type = TypeFlowTransducer.void_type(params)
+        return params.asl.returns_type
+
+    binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
+    @TransformFunction.covers(asls_of_type(binary_ops))
+    def binary_ops(fn, params: Params2) -> Type:
+        left_type = fn.apply(params.but_with(asl=params.asl[0]))
+        right_type = fn.apply(params.but_with(asl=params.asl[1]))
+
+        if left_type != right_type:
+            raise Exception("TODO: gracefully handle exception")
+
+        params.asl.returns_type = left_type 
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type(":"))
+    def colon_(fn, params: Params2) -> Type:
+        if isinstance(params.asl.first(), CLRToken):
+            names = [params.asl.first().value]
+        else:
+            if params.asl.first().type != "tags":
+                raise Exception(f"Expected tags but got {params.asl.first().type}")
+            names = [token.value for token in params.asl.first()]
+         
+        type = fn.apply(params.but_with(asl=params.asl.second()))
+        for name in names:
+            params.mod.add_instance(name, type)
+
+        params.asl.returns_type = type
+        return type
+
+    @TransformFunction.covers(lambda params: isinstance(params.asl, CLRToken))
+    def token_(fn, params: Params2) -> Type:
+        # TODO: make this nicer
+        if params.asl.type in ["str", "int", "bool"]:
+            return params.mod.resolve_type(
+                type=TypeFactory.produce_novel_type(name=params.asl.type))
+        else:
+            raise Exception(f"unexpected token type of {params.asl.type}")
+
+    # cases for let:
+    # - standard
+    #       let x: int
+    #       (let (: x (type int)))
+    # - interence
+    #       let x = 4
+    #       (let x 4)
+    # - multiple standard
+    #       let x, y: int
+    #       (let (: (tags x y) (type int)))
+    # - multiple inference
+    #       let x, y = 4, 4
+    #       (let (tags x y ) (tuple 4 4))
+    @TransformFunction.covers(asls_of_type(['val', 'var', 'mut_val', 'mut_var', 'let']))
+    def decls_(fn, params: Params2):
+        if isinstance(params.asl.first(), CLRToken) and isinstance(params.asl.second(), CLRToken):
+            name = params.asl.first().value
+            type = params.mod.resolve_type(
+                type=TypeFactory.produce_novel_type(params.asl.second().type))
+
+            params.mod.add_instance(name, type)
+            params.asl.returns_type = type
+            return type
+        elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
+            names = [token.value for token in params.asl.first()]
+            types = [fn.apply(params.but_with(asl=child)) for child in params.asl.second()]
+
+            for name, type in zip(name, types):
+                params.mod.add_instance(name, type)
+
+            params.asl.returns_type = TypeFlowTransducer.void_type(params)
+            return params.asl.returns_type
+        elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == ":":
+            params.asl.returns_type = fn.apply(params.but_with(asl=params.asl.first()))
+            return params.asl.returns_type
+
+        else:
+            raise Exception(f"Unexpected format: {params.asl}")
+
+    @TransformFunction.covers(asls_of_type(["type", "type?", "type*"]))
+    def _type1(fn, params: Params2) -> Type:
+        params.asl.returns_type = params.mod.get_type_by_name(
+            name=params.asl.first().value)
+        return params.asl.returns_type
+
+    @TransformFunction.covers(asl_of_type("="))
+    def assigns(fn, params: Params2) -> Type:
+        left_type = fn.apply(params.but_with(asl=params.asl[0]))
+        right_type = fn.apply(params.but_with(asl=params.asl[1]))
+        
+        # TODO: validations
+
+        # if left_type != right_type:
+        #     params.report_exception(
+        #         Exceptions.TypeMismatch(
+        #             msg = f"expected {left_type} but got {right_type}",
+        #             line_number=params.asl.line_number))
+
+        return left_type 
+
+    @TransformFunction.covers(asl_of_type("<-"))
+    def larrow_(fn, params: Params2) -> Type:
+        left_type = fn.apply(params.but_with(asl=params.asl[0]))
+        right_type = fn.apply(params.but_with(asl=params.asl[1]))
+
+        # TODO: validations
+
+        return left_type
+
+    @TransformFunction.covers(asl_of_type("ref"))
+    def ref_(fn, params: Params2) -> Type:
+        name = params.asl.first().value
+        instance = params.mod.get_instance_by_name(name)
+        if not instance:
+            raise Exception("TODO: gracefully handle instance not being found")
+
+        params.asl.returns_type = instance.type 
+        return instance.type
+
+    @TransformFunction.covers(asls_of_type(["args", "rets"]))
+    def args_(fn, params: Params2) -> Type:
+        if not params.asl:
+            return TypeFlowTransducer.void_type(params)
+        type = fn.apply(params.but_with(asl=params.asl.first()))
+        params.asl.returns_type = type
+        return type
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

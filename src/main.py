@@ -54,7 +54,15 @@ def run_seer(filename: str):
     # KXT testing
     params = seer.ModuleTransducer.init_params(config, asl, txt)
     seer.ModuleTransducer().apply(params)
+    mod = params.mod
+    print(mod)
+    try:
+        seer.TypeFlowTransducer().apply(params)
+    except Exception as e:
+        print(params.mod)
+        raise e
     print("SUCCESS")
+    print(mod)
 
     params = SeerValidator.init_params(config, asl, txt)
     mod = run_and_measure("validator",

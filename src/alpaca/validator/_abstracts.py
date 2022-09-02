@@ -81,23 +81,29 @@ class Type():
         else:
             member_strs = [member._get_unique_string_id() for member in self.components] 
 
-        return f"{self}[{', '.join(member_strs)}]"
+        return f"{self.construction}({', '.join(member_strs)})"
 
     def __hash__(self) -> int:
         return hash(self._get_unique_string_id())
         
     def __str__(self) -> str:
-        return f"<{self.name}({self.construction})>"
+        return f"<{self.name}({self._get_unique_string_id()})>"
 
     def get_member_attribute_by_name(self, name: str) -> Type:
         if self.construction != _struct:
-            raise Exception(f"Can only get_member_attribute_by_name on struct types, got {self}")
+            raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
             raise Exception(f"Type {self} does not have member attribute named '{name}'")
 
         pos = self.component_names.index(name)
         return self.components[pos]
+
+    def get_return_type(self) -> Type:
+        if self.construction != _function:
+            raise Exception(f"Can only get_return_type on function constructions, got {self}")
+        
+        return self.components[1]
 
 class TypeFactory:
     @classmethod
@@ -116,45 +122,24 @@ class TypeFactory:
     # values being the two components, respectively
     @classmethod
     def produce_function_type(cls, arg: Type, ret: Type, name: str = ""):
-        return Type(name, _function, [arg, ret])
+        return Type(name, _function, [arg, ret], ["arg", "ret"])
 
     @classmethod
     def produce_maybe_type(cls, components: list[Type], name: str = ""):
         return Type(name, _maybe, components)
-
-class TypeContainer:
-    def __init__(self):
-        self._types: list[Type] = []
-
-    def obtain(self, type: Type) -> Type:
-        if type in self._types:
-            pos = self._types.index(type)
-            return self._types[pos]
-
-        return None
-
-    def add(self, type: Type):
-        if type not in self._types:
-            self._types.append(type)
-
-    def copy(self) -> TypeContainer:
-        new_container = TypeContainer()
-        for type in self._types:
-            new_container._types.append(type)
-        return new_container
 
 class Instance():
     def __init__(self, name: str, type: Type):
         self.name = name
         self.type = type
 
-class Module(RecursiveContainer):
-    def __init__(self, name: str, parent: Module = None, types: TypeContainer = None):
+    def __str__(self) -> str:
+        return f"{self.name}{self.type}"
+
+class Module():
+    def __init__(self, name: str, parent: Module = None):
         self.name = name
-        if types:
-            self.types = types.copy()
-        else:
-            self.types = TypeContainer()
+        self.types: list[Type] = []
 
         self.children = []
         self.parent = parent
@@ -165,17 +150,56 @@ class Module(RecursiveContainer):
     def _add_child(self, child: Module):
         self.children.append(child)
 
-    def resolve_instance(self, name: str) -> Instance:
-        return self.instances.get(name, None)
+    def _find_instance(self, name: str) -> Instance | None:
+        if name in self.instances:
+            return self.instances[name]
+        if self.parent:
+            return self.parent._find_instance(name)
+        return None
 
-    def add_instance(self, name: str, type: Type):
-        self.instances[name] = Instance(name, type)
+    def resolve_instance(self, name: str, type: Type) -> Instance:
+        found_instance = self._find_instance(name)
+        if found_instance:
+            return found_instance
+
+        return self.add_instance(name, type)
+
+    def get_instance_by_name(self, name: str) -> Instance | None:
+        return self._find_instance(name)
+
+    def add_instance(self, name: str, type: Type) -> Instance:
+        new_instance = Instance(name, type)
+        self.instances[name] = new_instance
+        return new_instance
+
+    def _find_type(self, type: Type) -> Type | None:
+        if type in self.types:
+            return type
+        if self.parent:        
+            return self.parent._find_type(type)
+        return None
 
     def resolve_type(self, type: Type) -> Type:
-        return self.types.obtain(type)
+        found_type = self._find_type(type)
+        if found_type:
+            return found_type
+
+        self.add_type(type)
+        return type
+
+    def get_type_by_name(self, name: str) -> Type | None:
+        type_names = [type.name for type in self.types]
+        if name in type_names:
+            pos = type_names.index(name)
+            return self.types[pos]
+
+        if self.parent:
+            return self.parent.get_type_by_name(name)
+        return None        
+
 
     def add_type(self, type: Type):
-        self.types.add(type)
+        self.types.append(type)
 
     def get_child_module_by_name(self, name: str) -> Module:
         child_module_names = [m.name for m in self.children]
@@ -184,6 +208,19 @@ class Module(RecursiveContainer):
             return self.children[pos]
 
         raise Exception(f"Wnable to resolve module named {name} inside module {self.name}")
+
+    def __str__(self) -> str:
+        sub_module_lines = [str(child) for child in self.children]
+        object_lines = [str(instance) for instance in self.instances.values()]
+        types_lines = [str(type) for type in self.types]
+        sub_text = ("\n".join(object_lines) 
+            + "\n" 
+            + "\n".join(sub_module_lines) 
+            + "\ntypes:\n" 
+            + "\n".join(types_lines))
+        sub_text_lines = sub_text.split("\n")
+        indented_subtext = "\n".join(["  " + line for line in sub_text_lines])
+        return f"mod {self.name}\n{indented_subtext}"
 
 
 

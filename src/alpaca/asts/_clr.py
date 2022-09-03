@@ -1,8 +1,7 @@
 from __future__ import annotations
+from ast import In
 from functools import reduce
 from typing import Union, List
-
-from error import Raise
 
 class CLRToken:
     def __init__(self, type : str, value : str, line_number : int):
@@ -27,6 +26,7 @@ class CLRList:
         self.data = None
         self.module = None
         self.returns_type = None
+        self.instances = None
 
     def first(self) -> CLRList | CLRToken:
         if not self._list:
@@ -70,7 +70,7 @@ class CLRList:
     def __delitem__(self, key : int):
         self._list.__delitem__[key]
 
-    def __getslice__(self, i : int, j : int):
+    def __getslice__(self, i : int, j : int) -> list[CLRList | CLRToken]:
         return self._list[i, j]
 
     def __setslice__(self, *args, **kwargs):

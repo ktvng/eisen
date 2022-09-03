@@ -1,5 +1,4 @@
 from __future__ import annotations
-from ast import In
 from typing import Literal, Any
 from functools import wraps
 
@@ -105,6 +104,15 @@ class Type():
         
         return self.components[1]
 
+    def is_function(self) -> bool:
+        return self.construction == _function
+
+    def is_struct(self) -> bool:
+        return self.construction == _struct
+
+    def is_novel(self) -> bool:
+        return self.construction == _novel
+
 class TypeFactory:
     @classmethod
     def produce_novel_type(cls, name: str) -> Type:
@@ -129,16 +137,18 @@ class TypeFactory:
         return Type(name, _maybe, components)
 
 class Instance():
-    def __init__(self, name: str, type: Type):
+    def __init__(self, name: str, type: Type, context: Context):
         self.name = name
         self.type = type
+        self.context = context
 
     def __str__(self) -> str:
         return f"{self.name}{self.type}"
 
-class Module():
-    def __init__(self, name: str, parent: Module = None):
+class Context():
+    def __init__(self, name: str, type: str, parent: Context = None):
         self.name = name
+        self.type = type
         self.types: list[Type] = []
 
         self.children = []
@@ -147,7 +157,7 @@ class Module():
         if parent:
             parent._add_child(self)
 
-    def _add_child(self, child: Module):
+    def _add_child(self, child: Context):
         self.children.append(child)
 
     def _find_instance(self, name: str) -> Instance | None:
@@ -167,8 +177,8 @@ class Module():
     def get_instance_by_name(self, name: str) -> Instance | None:
         return self._find_instance(name)
 
-    def add_instance(self, name: str, type: Type) -> Instance:
-        new_instance = Instance(name, type)
+    def add_instance(self, name: str, type: Type, context: Context) -> Instance:
+        new_instance = Instance(name, type, context)
         self.instances[name] = new_instance
         return new_instance
 
@@ -201,7 +211,7 @@ class Module():
     def add_type(self, type: Type):
         self.types.append(type)
 
-    def get_child_module_by_name(self, name: str) -> Module:
+    def get_child_module_by_name(self, name: str) -> Context:
         child_module_names = [m.name for m in self.children]
         if name in child_module_names:
             pos = child_module_names.index(name)
@@ -210,20 +220,25 @@ class Module():
         raise Exception(f"Wnable to resolve module named {name} inside module {self.name}")
 
     def __str__(self) -> str:
-        sub_module_lines = [str(child) for child in self.children]
+        sub_module_lines = []
+        for child in self.children:
+            sub_module_lines.extend(str(child).split("\n"))
         object_lines = [str(instance) for instance in self.instances.values()]
         types_lines = [str(type) for type in self.types]
-        sub_text = ("\n".join(object_lines) 
-            + "\n" 
-            + "\n".join(sub_module_lines) 
-            + "\ntypes:\n" 
-            + "\n".join(types_lines))
-        sub_text_lines = sub_text.split("\n")
-        indented_subtext = "\n".join(["  " + line for line in sub_text_lines])
-        return f"mod {self.name}\n{indented_subtext}"
+        sub_text_lines = types_lines + object_lines + sub_module_lines
+        indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
+        return f"{self.type} {self.name}\n{indented_subtext}"
 
+class AbstractParams:
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            self.__setattr__(key, val)
 
-
+    def _but_with(self, **kwargs) -> AbstractParams:
+        filtered_kwargs = dict({(k, v) for k, v in kwargs.items() if v is not None})
+        updated_attrs = { **self.__dict__, **filtered_kwargs}
+        return type(self)(**updated_attrs)
+                
 
 
 

@@ -1,3 +1,4 @@
+from pdb import runcall
 import re
 import sys
 import time
@@ -8,6 +9,7 @@ import alpaca
 from seer import SeerCallback, SeerBuilder, SeerValidator, SeerIndexer, SeerTranspiler
 import lamb
 import seer
+import c
 
 from seer._listir import ListIRParser
 
@@ -24,6 +26,38 @@ def run_lamb(filename : str):
 
     # fun = lamb.LambRunner()
     # fun.run(ast)
+
+def run_c(filename: str):
+    # PARSE SEER CONFIG
+    config = run_and_measure("config parsed",
+        alpaca.config.ConfigParser.run,
+        filename="./src/c/grammar.gm")
+
+    # READ FILE TO STR
+    with open(filename, 'r') as f:
+        txt = f.read()
+    
+    # TOKENIZE
+    tokens = run_and_measure("tokenizer",
+        alpaca.lexer.run,
+        text=txt, config=config, callback=SeerCallback)
+
+    # print("====================")
+    # [print(t) for t in tokens]
+
+    # PARSE TO AST
+    asl = run_and_measure("parser",
+        alpaca.parser.run,
+        config=config, tokens=tokens, builder=c.Builder(), algo="cyk")
+
+    asl_str = [">    " + line for line in  str(asl).split("\n")]
+    print(*asl_str, sep="\n")
+    parts = c.Writer().apply(asl)
+    print(parts)
+    txt = "".join(parts)
+    txt = alpaca.utils.indent(txt)
+    print(txt)
+    exit()
 
 def run_seer(filename: str):
     # PARSE SEER CONFIG
@@ -52,6 +86,9 @@ def run_seer(filename: str):
     print(*asl_str, sep="\n")
 
     # KXT testing
+    txt = seer.SeerWriter().run(asl)
+    print(txt)
+    exit()
     params = seer.ModuleTransducer.init_params(config, asl, txt)
     seer.ModuleTransducer().apply(params)
     mod = params.mod
@@ -93,6 +130,8 @@ def run(lang: str, filename: str):
         run_lamb(filename)
     elif lang == "seer":
         run_seer(filename)
+    elif lang == "c":
+        run_c(filename)
 
 def internal_run_tests(filename: str, should_transpile=True):
     # PARSE SEER CONFIG
@@ -199,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--lang", 
         action="store", 
         type=str, 
-        choices=["seer", "lamb"],
+        choices=["seer", "lamb", "c"],
         default="seer")
 
     args = parser.parse_args()

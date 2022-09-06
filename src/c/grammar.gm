@@ -1,0 +1,310 @@
+# ========================================================
+#
+# GrammarMaster (.gm) 
+#
+# ========================================================
+#
+# TODO: Need to fix parsing of A-B as A and -B
+SYMBOLICS
+    <type>              ->  <regex>
+    keyword void        ->  void
+    keyword struct      ->  struct
+    keyword if          ->  if
+    keyword else        ->  else
+    keyword while       ->  while
+    keyword for         ->  for
+    keyword return      ->  return
+    keyword break       ->  break 
+    keyword continue    ->  continue 
+
+    symbol ,            ->  ,
+    symbol {            ->  \s*{\s* 
+    symbol }            ->  }\s* 
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol ;            ->  ;
+
+    operator =          ->  =      
+    operator +=         ->  \+=    
+    operator -=         ->  -=     
+    operator *=         ->  \*=    
+    operator /=         ->  /=     
+    operator ?          ->  \?     
+    operator ==         ->  ==     
+    operator !=         ->  !=     
+    operator +          ->  \+     
+    operator -          ->  -      
+    operator /          ->  /      
+    operator *          ->  \*     
+    operator &          ->  &
+    operator and        ->  &&     
+    operator or         ->  \|\|   
+    operator !          ->  !      
+    operator %          ->  %      
+    operator |          ->  \|     
+    operator <          ->  <      
+    operator >          ->  >      
+    operator <=         ->  <=     
+    operator >=         ->  >=     
+    operator .          ->  \.     
+    operator ->         ->  ->     
+
+    str                 ->  (["])(?:(?=(\\?))\2.)*?\1
+    char                ->  '.'
+    int                 ->  -?[0-9]+  
+    
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t\n]*
+    none                ->  [ \t]*\/\/.*?\n+
+    none                ->  [ \t]*\/\/[^\n]*
+
+    
+STRUCTURE
+    @action filter_build start
+    START -> CONTEXTS
+    
+    ############################################################################
+    # Aliases
+
+    @action pass 
+    OP_BIN ->
+        |   +
+        |   -
+        |   /
+        |   <
+        |   >
+        |   <=
+        |   >=
+        |   ==
+        |   !=
+        |   +=
+        |   -=
+        |   *=
+        |   /=
+        |   or
+        |   and
+        |   ->
+
+    @action pass
+    OP_PREF ->
+        |   !
+
+    @action pass
+    LITERAL ->
+        |   int
+        |   char 
+        |   str 
+
+    @action convert ref
+    REF ->
+        |   TAG
+
+    @action convert fn
+    FN  -> 
+        |   TAG
+
+
+    ############################################################################
+    # Contexts
+   
+    @action pool
+    CONTEXTS -> 
+        |   CONTEXT
+        |   CONTEXT CONTEXTS
+
+    @action pass
+    CONTEXT -> 
+        |   FUNCTION_CONTEXT
+        |   STRUCT_CONTEXT
+
+    
+    ############################################################################
+    # Declaration
+
+    @action build type
+    TYPE -> TYPE_
+
+    TYPE_ ->
+        @action pass
+        |   TAG
+        @action filter_build ptr
+        |   TYPE_ *
+        @action pass
+        |   void
+
+    DECLARATION ->
+        @action pass
+        |   STRUCT_DECLARATION
+        @action filter_build decl
+        |   TYPE TAG
+
+    @action filter_build struct_decl
+    STRUCT_DECLARATION -> struct TYPE TAG
+    
+
+    @action pool
+    DECLARATIONS ->
+        |   DECLARATION
+        |   DECLARATION , DECLARATIONS
+
+    ############################################################################
+    # Structs
+
+    @action filter_build struct
+    STRUCT_CONTEXT -> STRUCT_HEADER STRUCT_BODY
+
+    @action pool
+    STRUCT_HEADER -> struct TAG
+    STRUCT_BODY -> { STRUCT_ELEMENTS } ;
+    STRUCT_ELEMENTS -> 
+        |   DECLARATION ;
+        |   DECLARATION ; STRUCT_ELEMENTS
+
+    ############################################################################
+    # Functions 
+
+    @action filter_build def
+    FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+    @action pool
+    FUNCTION_HEADER -> TYPE TAG ARGS_DECL
+
+    @action filter_build args
+    ARGS_DECL ->
+        |   ( DECLARATIONS )
+        |   ( )
+
+    ############################################################################
+    # Control flow
+ 
+    @action filter_build seq
+    CODE_BLOCK -> { BLOCKS }
+
+    @action pool
+    BLOCKS ->
+        |   BLOCK
+        |   BLOCK BLOCKS
+
+    @action pass
+    BLOCK ->
+        |   CONTROL
+        |   ACTION ; 
+
+    CONTROL ->
+        |   IF_STATEMENT
+        |   WHILE_STATEMENT
+
+    @action filter_build if
+    IF_STATEMENT -> IF_CONTEXT
+
+    @action pool
+    IF_CONTEXT ->
+        |   if CONDITIONAL_BRANCH
+        |   if CONDITIONAL_BRANCH ELSE_STATEMENT
+
+    @action pool
+    ELSE_STATEMENT ->
+        |   else CODE_BLOCK
+        |   else if CONDITIONAL_BRANCH
+        |   else if CONDITIONAL_BRANCH ELSE_STATEMENT
+
+    @action filter_build while
+    WHILE_STATEMENT -> while CONDITIONAL_BRANCH
+
+    @action filter_build cond
+    CONDITIONAL_BRANCH -> ( EXPR ) CODE_BLOCK
+
+
+    ############################################################################
+    # Assignment 
+
+    @action merge
+    ASSIGNMENT -> 
+        |   DECLARATION = RVALUE
+        |   REF = RVALUE
+        |   SCOPED_REF = RVALUE
+
+    @action pass
+    RVALUE ->
+        |   EXPR
+
+    @action merge
+    SCOPED_REF ->
+        |   EXPR . TAG
+        |   SCOPED_REF . TAG
+
+
+    ############################################################################
+    # Actions/Expressions
+    
+    ACTION -> 
+        @action pass
+        |   LINE_EXPR
+        |   ASSIGNMENT
+        |   DECLARATION
+        
+        @action filter_build return
+        |   return 
+        |   return EXPR
+
+    LINE_EXPR -> 
+        @action merge
+        |   EXPR OP_BIN EXPR
+
+        @action filter_build addr
+        |   & REF
+
+        @action filter_build deref
+        |   * EXPR
+
+        @action handle_op_pref
+        |   OP_PREF EXPR
+
+        @action handle_call
+        |   EXPR . FUNCTION_CALL
+
+        @action handle_call
+        |   SCOPED_REF . FUNCTION_CALL
+
+        @action pass
+        |   FUNCTION_CALL
+        |   SCOPED_REF
+        |   REF
+        |   LITERAL
+
+        @action filter_pass
+        |   ( EXPR )
+
+    # Required to resolve ambiguity between of the line
+    #       T* x;
+    # as this statement could be either (1) a declaration of a pointer to type 
+    # T, or the multiplication of two instances T and x. In this version of C,
+    # we force this expression to mean the former, and disallow writing 
+    # statements of the latter.
+    EXPR ->
+        @action pass
+        |   LINE_EXPR
+
+        @action merge
+        |   EXPR * EXPR
+
+    @action filter_build call
+    FUNCTION_CALL -> FN PARAMS
+
+    @action filter_build params
+    PARAMS ->
+        |   ( )
+        |   ( EXPR )
+        |   ( TUPLE_BUILDER )
+
+    @action pool
+    TUPLE_BUILDER ->
+        |   EXPR , EXPR
+        |   EXPR , TUPLE_BUILDER
+
+    ############################################################################
+    # TESTING
+
+    START -> EXPR

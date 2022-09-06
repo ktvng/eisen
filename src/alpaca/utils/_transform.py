@@ -56,7 +56,8 @@ class TransformFunction():
             args = [str(arg) for arg in match_args]
             raise Exception(f"{type(self)}: No transforms matching for {args}")
         if len(matching_transforms) > 1:
-            raise Exception(f"Multiple transforms matching for {match_args}")
+            args = [str(arg) for arg in match_args]
+            raise Exception(f"Multiple transforms matching for {args}")
 
         return matching_transforms[0].invoke(*[self, *fn_args])
 

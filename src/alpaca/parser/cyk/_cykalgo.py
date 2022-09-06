@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List
 import itertools
+import random
 from alpaca.grammar import CFGRule, CFG, CFGNormalizer
 from error import Raise
 from alpaca.lexer import Token
@@ -30,31 +31,50 @@ class DpTableEntry():
         self.lname = lname
         self.rname = rname
 
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y}: {self.rule} <{self.lname}, {self.rname}>)"
+
+    def _get_unique_rules(self, entries: list[DpTableEntry]):
+        unique_entries = []
+        for entry in entries:
+            if entry.rule not in [e.rule for e in unique_entries]:
+                unique_entries.append(entry) 
+
+        return unique_entries
+
     def get_left_child(self, dp_table : DpTable):
         # left_child_x, left_child_y
         lcx, lcy = CYKAlgo.get_left_child_point(self.x, self.y, self.delta)
         entries = dp_table[lcx][lcy]
         matching_entries = [e for e in entries if e.name == self.lname]
-
-        if not matching_entries:
+        unique_entries = self._get_unique_rules(matching_entries)
+        
+        if not unique_entries:
             raise Exception("reached point in gramatical tree with no children??")
-        if len(matching_entries) > 2:
+        if len(unique_entries) > 1:
             Raise.notice("non-uniqueness, multiple production pathways (picked first)")
+            random.shuffle(unique_entries)
+            for entry in unique_entries:
+                print(entry)
 
-        return matching_entries[0]
+        return unique_entries[0]
 
     def get_right_child(self, dp_table : DpTable):
         # right_child_x, right_child_y
         rcx, rcy = CYKAlgo.get_right_child_point(self.x, self.y, self.delta)
         entries = dp_table[rcx][rcy]
         matching_entries = [e for e in entries if e.name == self.rname]
+        unique_entries = self._get_unique_rules(matching_entries)
 
-        if not matching_entries:
+        if not unique_entries:
             raise Exception("reached point in gramatical tree with no children??")
-        if len(matching_entries) > 2:
+        if len(unique_entries) > 1:
             Raise.notice("non-uniqueness, multiple production pathways (picked first)")
+            random.shuffle(unique_entries)
+            print(self.rname)
+            print(self.name)
     
-        return matching_entries[0]
+        return unique_entries[0]
 
 DpTable = List[List[List[DpTableEntry]]]
 

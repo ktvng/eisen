@@ -16,7 +16,7 @@ class CLRToken:
         elif self.type == "str":
             return f'{self.value}'
         else:
-            return + self.type
+            return self.type
 
 class CLRList:
     def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0):

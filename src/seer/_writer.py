@@ -120,11 +120,13 @@ class SeerWriter(TransformFunction):
             *fn.apply(asl.first()),
             ") -> ",
             *fn.apply(asl.second())]
- 
+    
+    @TransformFunction.covers(asls_of_type("ilet"))
+    def ilet(fn, asl: CLRList):
+        return ["let ", *fn.apply(asl.first()), " = ", *fn.apply(asl.second())]
+
     @TransformFunction.covers(asls_of_type("let"))
     def let_(fn, asl: CLRList):
-        if isinstance(asl.first(), CLRToken):
-            return ["let ", *fn.apply(asl.first()), " = ", *fn.apply(asl.second())]
         return ["let ", *fn.apply(asl.first())]
  
     @TransformFunction.covers(asls_of_type("while"))
@@ -158,4 +160,8 @@ class SeerWriter(TransformFunction):
     @TransformFunction.covers(asls_of_type("if"))
     def if_(fn, asl: CLRList):
         return ["if ", *fn.apply(asl.first())]
- 
+
+    @TransformFunction.covers(asls_of_type("return"))
+    def return_(fn, asl: CLRList):
+        return ["return"]
+  

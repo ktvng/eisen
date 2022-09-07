@@ -61,6 +61,9 @@ class CLRList:
         
         return self._list[0].value
 
+    def items(self) -> list[CLRList | CLRToken]:
+        return self._list
+
     def __getitem__(self, key : int) -> CLRList | CLRToken:
         return self._list[key]
 

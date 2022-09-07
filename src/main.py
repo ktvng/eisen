@@ -1,3 +1,4 @@
+from hmac import trans_36
 from pdb import runcall
 import re
 import sys
@@ -53,11 +54,9 @@ def run_c(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
     parts = c.Writer().apply(asl)
-    print(parts)
     txt = "".join(parts)
     txt = alpaca.utils.indent(txt)
     print(txt)
-    exit()
 
 def run_seer(filename: str):
     # PARSE SEER CONFIG
@@ -85,10 +84,6 @@ def run_seer(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    # KXT testing
-    txt = seer.SeerWriter().run(asl)
-    print(txt)
-    exit()
     params = seer.ModuleTransducer.init_params(config, asl, txt)
     seer.ModuleTransducer().apply(params)
     mod = params.mod
@@ -98,9 +93,21 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
+    transmuted = seer.CTransmutation().run(asl)
+    print(transmuted)
+
+    c_config = run_and_measure("config parsed",
+        alpaca.config.ConfigParser.run,
+        filename="./src/c/grammar.gm")
+    c_asl = ListIRParser.run(c_config, transmuted)
+    print(c_asl)
+    print(c.Writer().run(c_asl))
+    exit()
+
     print("SUCCESS")
     bits = seer.CodeTransducer().apply(params)
     print("".join(bits))
+    # end
 
     params = SeerValidator.init_params(config, asl, txt)
     mod = run_and_measure("validator",

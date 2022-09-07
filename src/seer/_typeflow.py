@@ -91,10 +91,13 @@ class TypeTransducer(TransformFunction):
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
         predefined_type = params.mod.get_type_by_name(token.value)
         if predefined_type:
+            params.asl.returns_type = predefined_type
             return predefined_type
 
-        return params.mod.resolve_type(
+        params.asl.returns_type = params.mod.resolve_type(
             type=TypeFactory.produce_novel_type(token.value));
+        
+        return params.asl.returns_type
 
     @TransformFunction.covers(asl_of_type(":"))
     def colon_(fn, params: Params) -> Type:
@@ -183,7 +186,7 @@ class ScopeResolutionTransducer(TransformFunction):
             # base case
             starting_mod = params.starting_mod.get_child_module_by_name(params.asl.first().value)
         else:
-            starting_mod = params.starting_mod
+            starting_mod = fn.apply(params.but_with(asl=params.asl.first()))
         return starting_mod.get_child_module_by_name(params.asl.second().value)
 
 # generate the module structure and add types to the respective modules
@@ -315,7 +318,12 @@ class TypeFlowTransducer(TransformFunction):
 
     # TODO: will this work for a::b()?
     @TransformFunction.covers(asl_of_type("::"))
-    def scope_(fn, params: Params) ->Type:
+    def scope_(fn, params: Params) -> Type:
+        return fn.apply(params.but_with(
+            asl=params.asl.second(),
+            starting_mod=params.starting_mod.get_child_module_by_name(params.asl.first().value)))
+
+
         if isinstance(params.asl.first(), CLRToken):
             # mod1::type_name
             # (:: mod1 type_name)
@@ -323,9 +331,15 @@ class TypeFlowTransducer(TransformFunction):
         else:
             # mod1::mod2::type_name
             # eg. (:: (:: mod1 mod2) type_name))))))
-            look_in_mod = ScopeResolutionTransducer().apply(params)
-        type = look_in_mod.get_type_by_name(params.asl.second().value)
-        params.asl.returns_type = type
+            look_in_mod = ScopeResolutionTransducer().apply(
+                params.but_with(asl=params.asl.first()))
+            print(look_in_mod)
+
+        type = fn.apply(params.but_with(
+            asl=params.asl.second(),
+            mod=look_in_mod))
+        print(type)
+        exit()
         return type
 
     @TransformFunction.covers(asl_of_type("tuple"))
@@ -378,7 +392,8 @@ class TypeFlowTransducer(TransformFunction):
                     arg=TypeFlowTransducer.void_type(params),
                     ret=TypeFlowTransducer.void_type(params)))
             return params.asl.returns_type
-        instance: Instance = params.mod.get_instance_by_name(name=name)
+        instance: Instance = params.starting_mod.get_instance_by_name(name=name)
+        params.asl.instances = [instance]
         params.asl.returns_type = instance.type
         return params.asl.returns_type
 
@@ -462,7 +477,7 @@ class TypeFlowTransducer(TransformFunction):
             if params.asl.first().type != "tags":
                 raise Exception(f"Expected tags but got {params.asl.first().type}")
             names = [token.value for token in params.asl.first()]
-         
+
         type = fn.apply(params.but_with(asl=params.asl.second()))
         params.asl.instances = []
         for name in names:
@@ -481,13 +496,24 @@ class TypeFlowTransducer(TransformFunction):
         else:
             raise Exception(f"unexpected token type of {params.asl.type}")
 
+    # cases for ilet:
+    # - inference
+    #       let x = 4
+    #       (let x 4)
+    @TransformFunction.covers(asl_of_type("ilet"))
+    def idecls_(fn, params: Params):
+        name = params.asl.first().value
+        type = params.mod.resolve_type(
+            type=TypeFactory.produce_novel_type(params.asl.second().type))
+
+        params.asl.instances = [params.mod.add_instance(name, type, params.mod)]
+        params.asl.returns_type = type
+        return type
+        
     # cases for let:
     # - standard
     #       let x: int
     #       (let (: x (type int)))
-    # - interence
-    #       let x = 4
-    #       (let x 4)
     # - multiple standard
     #       let x, y: int
     #       (let (: (tags x y) (type int)))
@@ -496,15 +522,7 @@ class TypeFlowTransducer(TransformFunction):
     #       (let (tags x y ) (tuple 4 4))
     @TransformFunction.covers(asls_of_type(['val', 'var', 'mut_val', 'mut_var', 'let']))
     def decls_(fn, params: Params):
-        if isinstance(params.asl.first(), CLRToken) and isinstance(params.asl.second(), CLRToken):
-            name = params.asl.first().value
-            type = params.mod.resolve_type(
-                type=TypeFactory.produce_novel_type(params.asl.second().type))
-
-            params.asl.instances = [params.mod.add_instance(name, type, params.mod)]
-            params.asl.returns_type = type
-            return type
-        elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
+        if isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
             names = [token.value for token in params.asl.first()]
             types = [fn.apply(params.but_with(asl=child)) for child in params.asl.second()]
 
@@ -571,9 +589,6 @@ class TypeFlowTransducer(TransformFunction):
         type = fn.apply(params.but_with(asl=params.asl.first()))
         params.asl.returns_type = type
         return type
-
-class InstanceTransducer(TransformFunction):
-    pass
 
 
 

@@ -13,10 +13,11 @@ class ListIRParser():
                 objs.append(ListIRParser.run(config, elem))
             else:
                 for rule in config.regex_rules:
-                    match_str, match_len, rule = rule.match(elem)
+                    match_str, _, rule = rule.match(elem)
                     if match_str:
                         objs.append(CLRToken(rule.type, match_str, 0))
-
+                        # TODO: handle duplicate rules better
+                        break
         return CLRList(lst[0], objs)
 
     @classmethod

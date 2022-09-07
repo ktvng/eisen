@@ -169,8 +169,8 @@ STRUCTURE
     FN  -> 
         @action convert fn
         |   TAG
-        @action pass
-        |   MODULE_LOOKUP
+        @action filter_build ::
+        |   MODULE :: FN
 
     @action pass
     ENDLS ->
@@ -383,9 +383,10 @@ STRUCTURE
     ############################################################################
     # Declaration
 
-    @action filter_build let
     LET_DECL -> 
+        @action filter_build let
         |   let TYPING
+        @action filter_build ilet
         |   let DECL_ASSIGNMENT
 
     VAR_DECL -> 
@@ -438,11 +439,11 @@ STRUCTURE
         |   EXPR . TAG
         |   SCOPED_VAR . TAG
 
-    @action merge
-    MODULE_LOOKUP ->
-        |   TAG :: TAG
-        |   MODULE_LOOKUP :: TAG
-
+    MODULE ->
+        @action pass
+        |   TAG
+        @action merge
+        |   MODULE :: TAG
 
     ############################################################################
     # Actions/Expressions

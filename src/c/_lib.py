@@ -6,6 +6,7 @@ from alpaca.utils import TransformFunction
 from alpaca.parser import CommonBuilder
 from alpaca.asts import CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
+from alpaca.utils import indent
 
 class Builder(CommonBuilder):
     @CommonBuilder.for_procedure("filter_build")
@@ -81,6 +82,13 @@ class Builder(CommonBuilder):
         return [CLRList(flattened_comps[0], [flattened_comps[1]], flattened_comps[0].line_number)]
 
 class Writer(TransformFunction):
+    def run(self, asl: CLRList) -> str:
+        parts = Writer().apply(asl)
+        txt = "".join(parts)
+        txt = indent(txt)
+        return txt
+        
+
     def apply(self, asl: CLRList) -> list[str]:
         return self._apply([asl], [asl])
 

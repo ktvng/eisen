@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
-from alpaca.utils import AbstractFlags, TransformFunction
+from alpaca.utils import AbstractFlags, Wrangler
 from alpaca.validator import Type, Context, TypeFactory, Instance
  
 class Object(AbstractObject):

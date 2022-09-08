@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from alpaca.asts import CLRList, CLRToken
-from alpaca.utils import TransformFunction
+from alpaca.utils import Wrangler
 from alpaca.validator import AbstractParams, Context, Type, Instance
 
 class SharedCounter():
@@ -135,7 +135,7 @@ class Formatter:
         # remove the "\n" at the beginning
         return formatted_clr[1:]
 
-class CTransmutation(TransformFunction):
+class CTransmutation(Wrangler):
     global_prefix = ""
     def run(self, asl: CLRList) -> str:
         txt = Formatter.format_clr(self.apply(Params(asl, asl.module, asl.module, False, SharedCounter(0))))
@@ -150,7 +150,7 @@ class CTransmutation(TransformFunction):
         return predicate
 
     # TESTING
-    @TransformFunction.default
+    @Wrangler.default
     def default_(fn, params: Params) -> str:
         return f".{params.asl.type}"
 
@@ -186,19 +186,19 @@ class CTransmutation(TransformFunction):
         return " ".join([fn.apply(params.but_with(asl=asl)) for asl in asls])
 
     # TODO: need to make this struct name by modules
-    @TransformFunction.covers(lambda params: isinstance(params.asl, CLRToken))
+    @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
     def token_(fn, params: Params) -> str:
         return params.asl.value
 
-    @TransformFunction.covers(asls_of_type("start"))
+    @Wrangler.covers(asls_of_type("start"))
     def partial_1(fn, params: Params) -> str:
         return f"(start {fn.transmute(params.asl.items(), params)})"
 
-    @TransformFunction.covers(asls_of_type("mod"))
+    @Wrangler.covers(asls_of_type("mod"))
     def partial_2(fn, params: Params) -> str:
         return f"{fn.transmute(params.asl.items()[1:], params)}"
 
-    @TransformFunction.covers(asls_of_type("struct"))
+    @Wrangler.covers(asls_of_type("struct"))
     def partial_3(fn, params: Params) -> str:
         full_name = CTransmutation.get_struct_name(params.asl.first().value, params.asl.module)
         attributes = [child for child in params.asl[1:] if child.type == ":"]
@@ -210,32 +210,32 @@ class CTransmutation(TransformFunction):
         code = f"(struct {full_name} {attribute_strs}) {method_strs}"
         return code
 
-    @TransformFunction.covers(asls_of_type(
+    @Wrangler.covers(asls_of_type(
         "args", "seq", "+", "-", "*", "/", "<", ">", "<=", ">=", "==", "!=",
         "+=", "-=", "*=", "/=",
         "call", "params", "if", "while", "cond", "return"))
     def partial_4(fn, params: Params) -> str:
         return f"({params.asl.type} {fn.transmute(params.asl.items(), params)})"
 
-    @TransformFunction.covers(asls_of_type(":"))
+    @Wrangler.covers(asls_of_type(":"))
     def partial_5(fn, params: Params) -> str:
         name = fn.apply(params.but_with(asl=params.asl.first()))
         type = fn.apply(params.but_with(asl=params.asl.second()))
         return f"(decl {type} {name})"
 
     # TODO make real type
-    @TransformFunction.covers(asls_of_type("type"))
+    @Wrangler.covers(asls_of_type("type"))
     def partial_6(fn, params: Params) -> str:
         type: Type = params.asl.returns_type
         if params.as_ptr:
             return f"(type (ptr {CTransmutation.get_name_of_type(type)}))"
         return f"(type {CTransmutation.get_name_of_type(type)})"
 
-    @TransformFunction.covers(asls_of_type("prod_type"))
+    @Wrangler.covers(asls_of_type("prod_type"))
     def partial_7(fn, params: Params) -> str:
         return fn.transmute(params.asl.items(), params)
 
-    @TransformFunction.covers(asls_of_type("def"))
+    @Wrangler.covers(asls_of_type("def"))
     def partial_8(fn, params: Params) -> str:
         name = CTransmutation.get_full_name(params.asl.instances[0])
         args = fn.apply(params.but_with(asl=params.asl.second()))
@@ -244,47 +244,47 @@ class CTransmutation(TransformFunction):
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
-    @TransformFunction.covers(asls_of_type("let"))
+    @Wrangler.covers(asls_of_type("let"))
     def partial_9(fn, params: Params) -> str:
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @TransformFunction.covers(asls_of_type("ilet"))
+    @Wrangler.covers(asls_of_type("ilet"))
     def partial_(fn, params: Params) -> str:
         pass 
 
-    @TransformFunction.covers(asls_of_type("::"))
+    @Wrangler.covers(asls_of_type("::"))
     def partial_11(fn, params: Params) -> str:
         return fn.apply(params.but_with(asl=params.asl.second()))
 
-    @TransformFunction.covers(asls_of_type("fn"))
+    @Wrangler.covers(asls_of_type("fn"))
     def partial_12(fn, params: Params) -> str:
         if (params.asl.first().value == "print"):
             return f"(fn print)"
         return f"({params.asl.type} {CTransmutation.get_full_name(params.asl.instances[0])})"
 
-    @TransformFunction.covers(asls_of_type("rets"))
+    @Wrangler.covers(asls_of_type("rets"))
     def partial_13(fn, params: Params) -> str:
         if not params.asl:
             return ""
         return fn.apply(params.but_with(asl=params.asl.first(), as_ptr=True))
 
-    @TransformFunction.covers(asls_of_type("ref"))
+    @Wrangler.covers(asls_of_type("ref"))
     def partial_14(fn, params: Params) -> str:
         if params.asl.instances[0].is_ptr:
             return f"({params.asl.type} (deref {fn.apply(params.but_with(asl=params.asl.first()))}))"
         return f"({params.asl.type} {fn.apply(params.but_with(asl=params.asl.first()))})"
 
-    @TransformFunction.covers(asls_of_type("="))
+    @Wrangler.covers(asls_of_type("="))
     def partial_15(fn, params: Params) -> str:
         if params.asl.second().type == "call":
             raise Exception("Not implemented in case of call")
 
         return f"(= {fn.transmute(params.asl.items(), params)})"
 
-    @TransformFunction.covers(asls_of_type(""))
+    @Wrangler.covers(asls_of_type(""))
     def partial_(fn, params: Params) -> str:
         pass
 
-    @TransformFunction.covers(asls_of_type(""))
+    @Wrangler.covers(asls_of_type(""))
     def partial_(fn, params: Params) -> str:
         pass

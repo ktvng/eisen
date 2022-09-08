@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from alpaca.asts import CLRList, CLRToken
-from alpaca.utils import TransformFunction
+from alpaca.utils import Wrangler
 
-class SeerWriter(TransformFunction):
+class SeerWriter(Wrangler):
     def run(self, asl: CLRList) -> str:
         parts = self.apply(asl)
         raw_text = "".join(parts)
@@ -36,25 +36,25 @@ class SeerWriter(TransformFunction):
             return False
         return predicate
 
-    @TransformFunction.covers(lambda x: isinstance(x, CLRToken))
+    @Wrangler.covers(lambda x: isinstance(x, CLRToken))
     def token_(fn, asl: CLRToken):
         return [asl.value]
 
-    @TransformFunction.covers(asls_of_type(["start"]))
+    @Wrangler.covers(asls_of_type(["start"]))
     def start_(fn, asl: CLRList):
         parts = []
         for child in asl:
             parts += fn.apply(child) + ["\n"]
         return parts
 
-    @TransformFunction.covers(asls_of_type(["struct"]))
+    @Wrangler.covers(asls_of_type(["struct"]))
     def struct_(fn, asl: CLRList):
         parts = ["struct ", *fn.apply(asl.first()), " {\n"]
         for child in asl[1:]:
             parts += fn.apply(child) + ["\n"]
         return parts + ["}\n"]
 
-    @TransformFunction.covers(asls_of_type("mod"))
+    @Wrangler.covers(asls_of_type("mod"))
     def mod_(fn, asl: CLRList):
         parts = ["mod ",
             *fn.apply(asl.first()),
@@ -64,13 +64,13 @@ class SeerWriter(TransformFunction):
         parts += ["}\n"]
         return parts
  
-    @TransformFunction.covers(asls_of_type(":"))
+    @Wrangler.covers(asls_of_type(":"))
     def colon_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), 
             ": ",
             *fn.apply(asl.second())]
  
-    @TransformFunction.covers(asls_of_type("create"))
+    @Wrangler.covers(asls_of_type("create"))
     def create_(fn, asl: CLRList):
         return ["create(",
             *fn.apply(asl.first()),
@@ -78,13 +78,13 @@ class SeerWriter(TransformFunction):
             *fn.apply(asl.second()),
             *fn.apply(asl.third())]
 
-    @TransformFunction.covers(asls_of_type(["type", "fn_type_in", "args", "rets", "fn_type_out", "ref", "fn"]))
+    @Wrangler.covers(asls_of_type(["type", "fn_type_in", "args", "rets", "fn_type_out", "ref", "fn"]))
     def pass_(fn, asl: CLRList):
         if not asl:
             return []
         return fn.apply(asl.first())
  
-    @TransformFunction.covers(asls_of_type(["prod_type", "params"]))
+    @Wrangler.covers(asls_of_type(["prod_type", "params"]))
     def prod_type(fn, asl: CLRList):
         parts = []
         if asl:
@@ -93,7 +93,7 @@ class SeerWriter(TransformFunction):
             parts += [", ", *fn.apply(child)]
         return parts
  
-    @TransformFunction.covers(asls_of_type("def"))
+    @Wrangler.covers(asls_of_type("def"))
     def def_(fn, asl: CLRList):
         if len(asl) == 4:
             return ["fn ",
@@ -112,37 +112,37 @@ class SeerWriter(TransformFunction):
                 ") ",
                 *fn.apply(asl.third())]
     
-    @TransformFunction.covers(asls_of_type("fn_type"))
+    @Wrangler.covers(asls_of_type("fn_type"))
     def fn_type_(fn, asl: CLRList):
         return ["(",
             *fn.apply(asl.first()),
             ") -> ",
             *fn.apply(asl.second())]
     
-    @TransformFunction.covers(asls_of_type("ilet"))
+    @Wrangler.covers(asls_of_type("ilet"))
     def ilet(fn, asl: CLRList):
         return ["let ", *fn.apply(asl.first()), " = ", *fn.apply(asl.second())]
 
-    @TransformFunction.covers(asls_of_type("let"))
+    @Wrangler.covers(asls_of_type("let"))
     def let_(fn, asl: CLRList):
         return ["let ", *fn.apply(asl.first())]
  
-    @TransformFunction.covers(asls_of_type("while"))
+    @Wrangler.covers(asls_of_type("while"))
     def while_(fn, asl: CLRList):
         return ["while ", *fn.apply(asl.first())]
  
-    @TransformFunction.covers(asls_of_type("seq"))
+    @Wrangler.covers(asls_of_type("seq"))
     def seq_(fn, asl: CLRList):
         parts = []
         for child in asl:
             parts += fn.apply(child) + ["\n"]
         return ["{\n", *parts, "}\n"]
  
-    @TransformFunction.covers(asls_of_type("cond"))
+    @Wrangler.covers(asls_of_type("cond"))
     def cond_(fn, asl: CLRList):
         return ["(", *fn.apply(asl.first()), ") ", *fn.apply(asl.second())]
       
-    @TransformFunction.covers(asls_of_type(["<", ">", "<=", ">=", "+", "-", "/", "*", "+=", "=", "==", ".", "::"]))
+    @Wrangler.covers(asls_of_type(["<", ">", "<=", ">=", "+", "-", "/", "*", "+=", "=", "==", ".", "::"]))
     def bin_op_(fn, asl: CLRList):
         if asl.type in [".", "::"]:
             operator = asl.type
@@ -150,16 +150,16 @@ class SeerWriter(TransformFunction):
             operator = f" {asl.type} "
         return [*fn.apply(asl.first()), operator, *fn.apply(asl.second())]
  
-    @TransformFunction.covers(asls_of_type("call"))
+    @Wrangler.covers(asls_of_type("call"))
     def call_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), "(", *fn.apply(asl.second()), ")"]
     
     # TODO: need to work with elseif
-    @TransformFunction.covers(asls_of_type("if"))
+    @Wrangler.covers(asls_of_type("if"))
     def if_(fn, asl: CLRList):
         return ["if ", *fn.apply(asl.first())]
 
-    @TransformFunction.covers(asls_of_type("return"))
+    @Wrangler.covers(asls_of_type("return"))
     def return_(fn, asl: CLRList):
         return ["return"]
   

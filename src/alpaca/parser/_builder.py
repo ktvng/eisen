@@ -1,7 +1,7 @@
 from __future__ import annotations
-from alpaca.utils._transform import PartialTransform, TransformFunction
+from alpaca.utils._transform import PartialTransform, Wrangler
 
-class Builder(TransformFunction):
+class Builder(Wrangler):
     def __init__(self):
         super().__init__()
 

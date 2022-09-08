@@ -1,10 +1,9 @@
 from __future__ import annotations
-import re
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.validator import AbstractException
-from alpaca.utils import AbstractFlags, TransformFunction
+from alpaca.utils import AbstractFlags, Wrangler
 from alpaca.validator import Type, Context, TypeFactory, Instance, AbstractParams
 
 class ContextTypes:
@@ -76,7 +75,7 @@ def asls_of_type(names: list[str]):
     return predicate
 
 # generate a type within a module
-class TypeTransducer(TransformFunction):
+class TypeTransducer(Wrangler):
     def apply(self, params: Params) -> Type:
         return self._apply([params], [params])
 
@@ -91,7 +90,7 @@ class TypeTransducer(TransformFunction):
     def _asl_has_return_clause(cls, asl: CLRList):
         return len(asl) == 4
 
-    @TransformFunction.covers(asl_of_type("type"))
+    @Wrangler.covers(asl_of_type("type"))
     def type_(fn, params: Params) -> Type:
         # eg. (type int)
         token: CLRToken = params.asl.head()
@@ -107,12 +106,12 @@ class TypeTransducer(TransformFunction):
         
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type(":"))
+    @Wrangler.covers(asl_of_type(":"))
     def colon_(fn, params: Params) -> Type:
         # eg. (: name (type int))
         return fn.apply(params.but_with(asl=params.asl.second()))
 
-    @TransformFunction.covers(asl_of_type("prod_type"))
+    @Wrangler.covers(asl_of_type("prod_type"))
     def prod_type_(fn, params: Params) -> Type:
         # eg.  (prod_type
         #           (: name1 (type int))
@@ -121,14 +120,14 @@ class TypeTransducer(TransformFunction):
         return params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(components=component_types))
 
-    @TransformFunction.covers(asl_of_type("types"))
+    @Wrangler.covers(asl_of_type("types"))
     def types_(fn, params: Params) -> Type:
         # eg. (types (type int) (type str))
         component_types = [fn.apply(params.but_with(asl=component)) for component in params.asl]
         return params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(components=component_types))
 
-    @TransformFunction.covers(asls_of_type(["fn_type_in", "fn_type_out"]))
+    @Wrangler.covers(asls_of_type(["fn_type_in", "fn_type_out"]))
     def fn_type_out(fn, params: Params) -> Type:
         # eg. (fn_type_in/out (type(s) ...))
         if len(params.asl) == 0:
@@ -136,7 +135,7 @@ class TypeTransducer(TransformFunction):
         return params.mod.resolve_type(
             type=fn.apply(params.but_with(asl=params.asl.first())))
 
-    @TransformFunction.covers(asl_of_type("fn_type")) 
+    @Wrangler.covers(asl_of_type("fn_type")) 
     def fn_type_(fn, params: Params) -> Type:
         # eg. (fn_type (fn_type_in ...) (fn_type_out ...))
         return params.mod.resolve_type(
@@ -144,14 +143,14 @@ class TypeTransducer(TransformFunction):
                 arg=fn.apply(params.but_with(asl=params.asl.first())),
                 ret=fn.apply(params.but_with(asl=params.asl.second()))))
 
-    @TransformFunction.covers(asls_of_type(["args", "rets"]))
+    @Wrangler.covers(asls_of_type(["args", "rets"]))
     def args_(fn, params: Params) -> Type:
         # eg. (args (type ...))
         if params.asl:
             return fn.apply(params.but_with(asl=params.asl.first()))
         return TypeFactory.produce_novel_type("void")
 
-    @TransformFunction.covers(asl_of_type("create"))
+    @Wrangler.covers(asl_of_type("create"))
     def create_(fn, params: Params) -> Type:
         # eg. (create (args ...) (rets ...) (seq ...))
         return params.mod.resolve_type(
@@ -159,7 +158,7 @@ class TypeTransducer(TransformFunction):
                 arg=fn.apply(params.but_with(asl=params.asl.first())),
                 ret=fn.apply(params.but_with(asl=params.asl.second()))))
 
-    @TransformFunction.covers(asl_of_type("def"))
+    @Wrangler.covers(asl_of_type("def"))
     def def_(fn, params: Params) -> Type:
         # eg. (def name (args ...) (rets ...) (seq ...))
         if TypeTransducer._asl_has_return_clause(params.asl):
@@ -173,7 +172,7 @@ class TypeTransducer(TransformFunction):
                     arg=fn.apply(params.but_with(asl=params.asl.second())),
                     ret=TypeFactory.produce_novel_type("void")))
 
-    @TransformFunction.covers(asl_of_type("struct"))
+    @Wrangler.covers(asl_of_type("struct"))
     def struct_(fn, params: Params) -> Type:
         # eg. (struct name (: ...) (: ...) ... (create ...))
         attributes = [component for component in params.asl if component.type == ":"]
@@ -184,7 +183,7 @@ class TypeTransducer(TransformFunction):
                 component_names=TypeTransducer._get_component_names(attributes)))
 
 # generate the module structure and add types to the respective modules
-class ModuleTransducer(TransformFunction):
+class ModuleTransducer(Wrangler):
     def apply(self, params: Params):
         return self._apply([params], [params])
 
@@ -219,20 +218,20 @@ class ModuleTransducer(TransformFunction):
     def parse_type(cls, params: Params) -> Type:
         return TypeTransducer().apply(params)
     
-    @TransformFunction.covers(asl_of_type("start"))
+    @Wrangler.covers(asl_of_type("start"))
     def start_i(fn, params: Params):
         params.asl.module = params.mod
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
-    @TransformFunction.covers(asl_of_type("struct"))
+    @Wrangler.covers(asl_of_type("struct"))
     def struct_i(fn, params: Params):
         params.asl.module = params.mod
         params.mod.resolve_type(ModuleTransducer.parse_type(params))
         for child in params.asl:
             fn.apply(params.but_with(asl=child, struct_name=params.asl.first().value))
 
-    @TransformFunction.covers(asl_of_type("mod"))
+    @Wrangler.covers(asl_of_type("mod"))
     def mod_i(fn, params: Params):
         params.asl.module = params.mod
         child_mod = Context(
@@ -245,7 +244,7 @@ class ModuleTransducer(TransformFunction):
                 asl=child, 
                 mod=child_mod))
 
-    @TransformFunction.covers(asl_of_type("def"))
+    @Wrangler.covers(asl_of_type("def"))
     def def_i(fn, params: Params):
         params.asl.module = params.mod
         new_type = ModuleTransducer.parse_type(params)
@@ -256,7 +255,7 @@ class ModuleTransducer(TransformFunction):
                 type=new_type,
                 context=params.mod))]
 
-    @TransformFunction.covers(asl_of_type("create"))
+    @Wrangler.covers(asl_of_type("create"))
     def create_i(fn, params: Params):
         params.asl.module = params.mod
         new_type = ModuleTransducer.parse_type(params)
@@ -267,15 +266,15 @@ class ModuleTransducer(TransformFunction):
                 type=new_type,
                 context=params.mod))]
 
-    @TransformFunction.covers(asls_of_type(["TAG", ":"]))
+    @Wrangler.covers(asls_of_type(["TAG", ":"]))
     def TAG_i(fn, params: Params):
         return
 
-    @TransformFunction.default
+    @Wrangler.default
     def default_(fn, params: Params):
         params.asl.module = params.mod
 
-class TypeFlowTransducer(TransformFunction):
+class TypeFlowTransducer(Wrangler):
     def apply(self, params: Params) -> Type:
         return self._apply([params], [params])
 
@@ -283,21 +282,21 @@ class TypeFlowTransducer(TransformFunction):
     def void_type(cls, params: Params):
         return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
 
-    @TransformFunction.covers(asls_of_type(["fn_type"]))
+    @Wrangler.covers(asls_of_type(["fn_type"]))
     def fn_type_(fn, params: Params) -> Type:
         type = TypeTransducer().apply(params)
         params.asl.returns_type = type
         return type
 
     no_action = ["start", "return", "seq", "prod_type"]
-    @TransformFunction.covers(asls_of_type(no_action))
+    @Wrangler.covers(asls_of_type(no_action))
     def no_action_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("."))
+    @Wrangler.covers(asl_of_type("."))
     def dot_(fn, params: Params) -> Type:
         parent_type = fn.apply(params.but_with(asl=params.asl.head()))
         attr_name = params.asl[1].value
@@ -314,13 +313,13 @@ class TypeFlowTransducer(TransformFunction):
         return params.mod
 
     # TODO: will this work for a::b()?
-    @TransformFunction.covers(asl_of_type("::"))
+    @Wrangler.covers(asl_of_type("::"))
     def scope_(fn, params: Params) -> Type:
         return fn.apply(params.but_with(
             asl=params.asl.second(),
             starting_mod=params.starting_mod.get_child_module_by_name(params.asl.first().value)))
 
-    @TransformFunction.covers(asl_of_type("tuple"))
+    @Wrangler.covers(asl_of_type("tuple"))
     def tuple_(fn, params: Params) -> Type:
         components = [fn.apply(params.but_with(asl=child)) for child in params.asl]
         params.asl.returns_type = params.mod.resolve_type(
@@ -328,14 +327,14 @@ class TypeFlowTransducer(TransformFunction):
 
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("cond"))
+    @Wrangler.covers(asl_of_type("cond"))
     def cond_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("if"))
+    @Wrangler.covers(asl_of_type("if"))
     def if_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(
@@ -347,7 +346,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("while"))
+    @Wrangler.covers(asl_of_type("while"))
     def while_(fn, params: Params) -> Type:
         fn.apply(params.but_with(
             asl=params.asl.first(),
@@ -355,12 +354,12 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type(":"))
+    @Wrangler.covers(asl_of_type(":"))
     def colon_(fn, params: Params) -> Type:
         params.asl.returns_type = fn.apply(params.but_with(asl=params.asl[1]))
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("fn"))
+    @Wrangler.covers(asl_of_type("fn"))
     def fn_(fn, params: Params) -> Type:
         name = params.asl.first().value
         # special case. TODO: fix this
@@ -375,14 +374,14 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = instance.type
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("params"))
+    @Wrangler.covers(asl_of_type("params"))
     def params_(fn, params: Params) -> Type:
         component_types = [fn.apply(params.but_with(asl=child)) for child in params.asl]
         params.asl.returns_type = params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(component_types))
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("call"))
+    @Wrangler.covers(asl_of_type("call"))
     def call(fn, params: Params) -> Type:
         fn_type = fn.apply(params.but_with(asl=params.asl.first()))
         params.asl.returns_type = fn_type.get_return_type()
@@ -391,7 +390,7 @@ class TypeFlowTransducer(TransformFunction):
         fn.apply(params.but_with(asl=params.asl.second()))
         return params.asl.returns_type
          
-    @TransformFunction.covers(asl_of_type("struct"))
+    @Wrangler.covers(asl_of_type("struct"))
     def struct(fn, params: Params) -> Type:
         name = params.asl.first().value
         # SeerEnsure.struct_has_unique_names(params)
@@ -402,7 +401,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("mod"))
+    @Wrangler.covers(asl_of_type("mod"))
     def mod(fn, params: Params) -> Type:
         name = params.asl.first().value
         child_mod = params.mod.get_child_module_by_name(name)
@@ -411,7 +410,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
  
-    @TransformFunction.covers(asl_of_type("create"))
+    @Wrangler.covers(asl_of_type("create"))
     def create_(fn, params: Params):
         local_mod = Context(
             name="create",
@@ -423,7 +422,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = TypeFlowTransducer.void_type(params)
         return params.asl.returns_type
     
-    @TransformFunction.covers(asl_of_type("def"))
+    @Wrangler.covers(asl_of_type("def"))
     def fn(fn, params: Params) -> Type:
         local_mod = Context(
             name=params.asl.first().value,
@@ -436,7 +435,7 @@ class TypeFlowTransducer(TransformFunction):
         return params.asl.returns_type
 
     binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
-    @TransformFunction.covers(asls_of_type(binary_ops))
+    @Wrangler.covers(asls_of_type(binary_ops))
     def binary_ops(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -447,7 +446,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = left_type 
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type(":"))
+    @Wrangler.covers(asl_of_type(":"))
     def colon_(fn, params: Params) -> Type:
         if isinstance(params.asl.first(), CLRToken):
             names = [params.asl.first().value]
@@ -466,7 +465,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = type
         return type
 
-    @TransformFunction.covers(lambda params: isinstance(params.asl, CLRToken))
+    @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
     def token_(fn, params: Params) -> Type:
         # TODO: make this nicer
         if params.asl.type in ["str", "int", "bool"]:
@@ -479,7 +478,7 @@ class TypeFlowTransducer(TransformFunction):
     # - inference
     #       let x = 4
     #       (let x 4)
-    @TransformFunction.covers(asl_of_type("ilet"))
+    @Wrangler.covers(asl_of_type("ilet"))
     def idecls_(fn, params: Params):
         name = params.asl.first().value
         type = params.mod.resolve_type(
@@ -499,7 +498,7 @@ class TypeFlowTransducer(TransformFunction):
     # - multiple inference
     #       let x, y = 4, 4
     #       (let (tags x y ) (tuple 4 4))
-    @TransformFunction.covers(asls_of_type(['val', 'var', 'mut_val', 'mut_var', 'let']))
+    @Wrangler.covers(asls_of_type(['val', 'var', 'mut_val', 'mut_var', 'let']))
     def decls_(fn, params: Params):
         if isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
             names = [token.value for token in params.asl.first()]
@@ -522,13 +521,13 @@ class TypeFlowTransducer(TransformFunction):
         else:
             raise Exception(f"Unexpected format: {params.asl}")
 
-    @TransformFunction.covers(asls_of_type(["type", "type?", "type*"]))
+    @Wrangler.covers(asls_of_type(["type", "type?", "type*"]))
     def _type1(fn, params: Params) -> Type:
         params.asl.returns_type = params.mod.get_type_by_name(
             name=params.asl.first().value)
         return params.asl.returns_type
 
-    @TransformFunction.covers(asl_of_type("="))
+    @Wrangler.covers(asl_of_type("="))
     def assigns(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -543,7 +542,7 @@ class TypeFlowTransducer(TransformFunction):
 
         return left_type 
 
-    @TransformFunction.covers(asl_of_type("<-"))
+    @Wrangler.covers(asl_of_type("<-"))
     def larrow_(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
         right_type = fn.apply(params.but_with(asl=params.asl[1]))
@@ -552,7 +551,7 @@ class TypeFlowTransducer(TransformFunction):
 
         return left_type
 
-    @TransformFunction.covers(asl_of_type("ref"))
+    @Wrangler.covers(asl_of_type("ref"))
     def ref_(fn, params: Params) -> Type:
         name = params.asl.first().value
         instance = params.mod.get_instance_by_name(name)
@@ -563,7 +562,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = instance.type 
         return instance.type
 
-    @TransformFunction.covers(asl_of_type("args"))
+    @Wrangler.covers(asl_of_type("args"))
     def args_(fn, params: Params) -> Type:
         if not params.asl:
             return TypeFlowTransducer.void_type(params)
@@ -571,7 +570,7 @@ class TypeFlowTransducer(TransformFunction):
         params.asl.returns_type = type
         return type
 
-    @TransformFunction.covers(asl_of_type("rets"))
+    @Wrangler.covers(asl_of_type("rets"))
     def rets_(fn, params: Params) -> Type:
         if not params.asl:
             return TypeFlowTransducer.void_type(params)

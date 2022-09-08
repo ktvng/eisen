@@ -4,13 +4,13 @@ import re
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
 from alpaca.validator import AbstractModule, AbstractType
-from alpaca.utils import TransformFunction, PartialTransform
+from alpaca.utils import Wrangler, PartialTransform
 
 from seer._validator import OldType, Object, SeerValidator 
 from seer._validator import Params as VParams
 from seer._listir import ListIRParser
 
-class SeerTranspiler(TransformFunction):
+class SeerTranspiler(Wrangler):
     base_prefix = ""
     def __init__(self):
         super().__init__()
@@ -151,18 +151,18 @@ class SeerTranspiler(TransformFunction):
     def _global_name(cls, name : str, mod : AbstractModule):
         return SeerTranspiler.get_mod_prefix(mod) + name
 
-    @TransformFunction.covers(lambda x: isinstance(x, CLRToken))
+    @Wrangler.covers(lambda x: isinstance(x, CLRToken))
     def token_(self, params: SeerTranspiler.Params):
         return [params.asl.value]
 
-    @TransformFunction.covers(lambda x: x.type == "start")
+    @Wrangler.covers(lambda x: x.type == "start")
     def pass_through_(self, params: SeerTranspiler.Params):
         parts = []
         for child in params.asl:
             parts += self.apply(params.but_with(asl=child))
         return parts
 
-    @TransformFunction.covers(lambda x: x.type == ".")
+    @Wrangler.covers(lambda x: x.type == ".")
     def dot_(self, params: SeerTranspiler.Params):
         if params.asl.head().type == "ref":
             parts = self.apply(params.but_with(
@@ -173,7 +173,7 @@ class SeerTranspiler(TransformFunction):
         return self.apply(params.but_with(asl=params.asl.head())) + \
             [".", params.asl[1].value]
 
-    @TransformFunction.covers(lambda x: x.type == "cond")
+    @Wrangler.covers(lambda x: x.type == "cond")
     def cond_(self, params: SeerTranspiler.Params):
         return ([] 
             + ["("] 
@@ -182,7 +182,7 @@ class SeerTranspiler(TransformFunction):
             + self.apply(params.but_with(asl=params.asl[1]))
             + ["}"])
 
-    @TransformFunction.covers(lambda x: x.type == "if")
+    @Wrangler.covers(lambda x: x.type == "if")
     def if_(self, params: SeerTranspiler.Params):
         parts = ["if "] + self.apply(params.but_with(asl=params.asl[0]))
         for child in params.asl[1:]:
@@ -192,11 +192,11 @@ class SeerTranspiler(TransformFunction):
                 parts += [" else {\n"] + self.apply(params.but_with(asl=child)) + ["}"]
         return parts
 
-    @TransformFunction.covers(lambda x: x.type == "while")
+    @Wrangler.covers(lambda x: x.type == "while")
     def while_(self, params: SeerTranspiler.Params):
         return ["while "] + self.apply(params.but_with(asl=params.asl[0]))
         
-    @TransformFunction.covers(lambda x: x.type == "mod")
+    @Wrangler.covers(lambda x: x.type == "mod")
     def mod_(self, params: SeerTranspiler.Params):
         parts = []
         # ignore the first entry in the list as it is the name token
@@ -205,7 +205,7 @@ class SeerTranspiler(TransformFunction):
 
         return parts
 
-    @TransformFunction.covers(lambda x: x.type == "struct")
+    @Wrangler.covers(lambda x: x.type == "struct")
     def struct_(self, params: SeerTranspiler.Params):
         obj: Object = params.asl.data
         full_name = Helpers.global_name_for(obj)
@@ -220,7 +220,7 @@ class SeerTranspiler(TransformFunction):
         parts.append("};\n\n")
         return parts + post_parts
 
-    @TransformFunction.covers(lambda x: x.type == ":")
+    @Wrangler.covers(lambda x: x.type == ":")
     def colon_(self, params: SeerTranspiler.Params):
         obj: Object = params.asl.data
         if Helpers.is_function_type(obj):
@@ -229,7 +229,7 @@ class SeerTranspiler(TransformFunction):
         ptr = "*" if Helpers.type_is_pointer(obj, params) else ""
         return [f"{full_name}{ptr} {obj.name}"]
 
-    @TransformFunction.covers(lambda x: x.type == "args")
+    @Wrangler.covers(lambda x: x.type == "args")
     def args_(self, params: SeerTranspiler.Params):
         if len(params.asl) == 0:
             return []
@@ -273,7 +273,7 @@ class SeerTranspiler(TransformFunction):
         parts.append("}\n\n")
         return parts 
 
-    @TransformFunction.covers(lambda x: x.type == "create")
+    @Wrangler.covers(lambda x: x.type == "create")
     def create_(self, params: SeerTranspiler.Params):
         args = params.asl[0]
         rets = None if len(params.asl) == 2 else params.asl[1]
@@ -281,26 +281,26 @@ class SeerTranspiler(TransformFunction):
         params.post_parts += SeerTranspiler._write_function(self, args, rets, seq, params)
         return []
 
-    @TransformFunction.covers(lambda x: x.type == "def")
+    @Wrangler.covers(lambda x: x.type == "def")
     def def_(self, params: SeerTranspiler.Params):
         args = params.asl[1]
         rets = None if len(params.asl) == 3 else params.asl[2]
         seq = params.asl[-1]
         return SeerTranspiler._write_function(self, args, rets, seq, params)
 
-    @TransformFunction.covers(lambda x: x.type == "rets")
+    @Wrangler.covers(lambda x: x.type == "rets")
     def rets_(self, params: SeerTranspiler.Params):
         parts = self.apply(params.but_with(asl=params.asl.head()))
         return parts
             
-    @TransformFunction.covers(lambda x: x.type == "seq")
+    @Wrangler.covers(lambda x: x.type == "seq")
     def seq_(self, params: SeerTranspiler.Params):
         parts = []
         for child in params.asl:
             parts += self.apply(params.but_with(asl=child)) + [";\n"]
         return parts
 
-    @TransformFunction.covers(lambda x: x.type == "let")
+    @Wrangler.covers(lambda x: x.type == "let")
     def let_(self, params: SeerTranspiler.Params):
         objs: list[Object] = params.asl.data
         # TODO: allow this to work with multiple objects
@@ -316,7 +316,7 @@ class SeerTranspiler(TransformFunction):
 
         return [f"{type_name} {obj.name} = "] + self.apply(params.but_with(asl=params.asl[1]))
 
-    @TransformFunction.covers(lambda x: x.type == "val")
+    @Wrangler.covers(lambda x: x.type == "val")
     def val_(self, params: SeerTranspiler.Params):
         obj: Object = params.asl.data
         obj = obj[0]
@@ -330,7 +330,7 @@ class SeerTranspiler(TransformFunction):
             flags=params.flags.but_with(Flags.use_addr)))
 
 
-    @TransformFunction.covers(lambda x: x.type == "var")
+    @Wrangler.covers(lambda x: x.type == "var")
     def var_(self, params: SeerTranspiler.Params):
         # TODO: Think about
         
@@ -345,11 +345,11 @@ class SeerTranspiler(TransformFunction):
                 asl=params.asl[1],
                 flags=params.flags.but_with(Flags.use_addr))))
 
-    @TransformFunction.covers(lambda x: x.type == "return")
+    @Wrangler.covers(lambda x: x.type == "return")
     def return_(self, params: SeerTranspiler.Params):
         return ["return"]
 
-    @TransformFunction.covers(lambda x: x.type == "ref")
+    @Wrangler.covers(lambda x: x.type == "ref")
     def ref_(self, params: SeerTranspiler.Params):
         obj: Object = params.asl.data
 
@@ -421,7 +421,7 @@ class SeerTranspiler(TransformFunction):
         
         return parts  + post_parts
 
-    @TransformFunction.covers(lambda x: x.type == "=")
+    @Wrangler.covers(lambda x: x.type == "=")
     def equals_(self, params: SeerTranspiler.Params):
         parts = []
         pre_parts = []
@@ -444,7 +444,7 @@ class SeerTranspiler(TransformFunction):
         else:
             return self._single_equals_(params.asl[0], params.asl[1], use_params)
 
-    @TransformFunction.covers(lambda x: x.type == "<-")
+    @Wrangler.covers(lambda x: x.type == "<-")
     def larrow_(self, params: SeerTranspiler.Params):
         # TODO: consolidate this
         def _binary_op(op: str, fn, l: CLRList, r: CLRList, params: SeerTranspiler.Params):
@@ -499,7 +499,7 @@ class SeerTranspiler(TransformFunction):
     or_ = PartialTransform(lambda x: x.type == "||", binary_op("||"))
     and_ = PartialTransform(lambda x: x.type == "&&", binary_op("&&"))
 
-    @TransformFunction.covers(lambda x: x.type == "prod_type")
+    @Wrangler.covers(lambda x: x.type == "prod_type")
     def prod_type_(self, params: SeerTranspiler.Params):
         parts = self.apply(params.but_with(asl=params.asl.head()))
         for child in params.asl[1:]:
@@ -540,7 +540,7 @@ class SeerTranspiler(TransformFunction):
 
         return var_names
 
-    @TransformFunction.covers(lambda x: x.type == "call")
+    @Wrangler.covers(lambda x: x.type == "call")
     def call_(self, params: SeerTranspiler.Params):
         # first check if the method is special
         if params.asl.head().type == "fn":
@@ -604,7 +604,7 @@ class SeerTranspiler(TransformFunction):
 
         return fn_call_parts
  
-    @TransformFunction.covers(lambda x: x.type == "params")
+    @Wrangler.covers(lambda x: x.type == "params")
     def params_(self, params: SeerTranspiler.Params):
         if len(params.asl) == 0:
             return []

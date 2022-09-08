@@ -34,7 +34,7 @@ class DefaultTransform():
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs) 
 
-class TransformFunction():
+class Wrangler():
     def __init__(self):
         attrs = dir(self)
         self.partial_transforms: list[PartialTransform] = [getattr(self, k) for k in attrs

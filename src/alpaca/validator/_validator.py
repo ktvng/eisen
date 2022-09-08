@@ -5,9 +5,9 @@ import traceback
 from alpaca.config import Config
 from alpaca.asts import CLRList, CLRToken
 from alpaca.validator._abstracts import AbstractModule
-from alpaca.utils._transform import PartialTransform, TransformFunction
+from alpaca.utils._transform import PartialTransform, Wrangler
 
-class Validator(TransformFunction):
+class Validator(Wrangler):
     def __init__(self):
         super().__init__()
 

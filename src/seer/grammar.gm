@@ -232,7 +232,7 @@ STRUCTURE
     ############################################################################
     # Functions 
 
-    @action filter_build def
+    @action build_def
     FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
 
     @action pool

@@ -43,6 +43,21 @@ class SeerBuilder(CommonBuilder):
 
         return function_call
 
+    # instead of having cases of (def ...) that may have a different number of children
+    # due to the absence/presence of a (ret ...) child, we homogenize all (def ...) nodes
+    # so all with have args, rets, and seq.
+    @CommonBuilder.for_procedure("build_def")
+    def handle_def(
+            fn,
+            config : Config,
+            components : CLRRawList,
+            *args) -> CLRRawList:
+        
+        newCLRList = SeerBuilder.filter_build_(fn, config, components, "def")[0]
+        if len(newCLRList) == 3:
+            newCLRList._list.insert(2, CLRList(type="rets", lst=[]))
+        return [newCLRList]
+
     @CommonBuilder.for_procedure("promote")
     def promote_(
             fn,
@@ -91,18 +106,6 @@ class SeerBuilder(CommonBuilder):
             raise Exception("expected size 2 for handle_op_pref")
 
         return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
-
-    # TODO: artifact from builder2
-    # @classmethod
-    # def postprocess(cls, node : ASTNode) -> None:
-    #     return
-    #     if node.match_with() == "let" and node.children[0].match_with() == ":":
-    #         # remove the ':' node underneath let
-    #         node.children = node.children[0].children
-
-    #     for child in node.children:
-    #         cls.postprocess(child) 
-
 
     # TODO:
     # merge to be replaced with consume

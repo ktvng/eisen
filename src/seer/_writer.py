@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from alpaca.asts import CLRList, CLRToken
 from alpaca.utils import TransformFunction
-import re
-
 
 class SeerWriter(TransformFunction):
     def run(self, asl: CLRList) -> str:

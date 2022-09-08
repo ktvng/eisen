@@ -94,6 +94,7 @@ def run_seer(filename: str):
         raise e
 
     transmuted = seer.CTransmutation().run(asl)
+    print("############ TRANSMUATION ###############")
     print(transmuted)
 
     c_config = run_and_measure("config parsed",

@@ -177,10 +177,9 @@ class Context():
     def get_instance_by_name(self, name: str) -> Instance | None:
         return self._find_instance(name)
 
-    def add_instance(self, name: str, type: Type, context: Context) -> Instance:
-        new_instance = Instance(name, type, context)
-        self.instances[name] = new_instance
-        return new_instance
+    def add_instance(self, instance: Instance) -> Instance:
+        self.instances[instance.name] = instance
+        return instance
 
     def _find_type(self, type: Type) -> Type | None:
         if type in self.types:

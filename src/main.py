@@ -84,11 +84,11 @@ def run_seer(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    params = seer.ModuleTransducer.init_params(config, asl, txt)
-    seer.ModuleTransducer().apply(params)
+    params = seer.ModuleWrangler.init_params(config, asl, txt)
+    seer.ModuleWrangler().apply(params)
     mod = params.mod
     try:
-        seer.TypeFlowTransducer().apply(params)
+        seer.TypeFlowWrangler().apply(params)
     except Exception as e:
         print(params.mod)
         raise e

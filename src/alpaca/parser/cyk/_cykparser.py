@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from alpaca.config import Config
 from alpaca.parser._builder import Builder 
-from alpaca.asts import AST
+from alpaca.asts._clr import CLRList
 from alpaca.parser.cyk._cykalgo import CYKAlgo
 from alpaca.parser.cyk._astbuilder import AstBuilder
 from alpaca.grammar import CFGNormalizer
 from alpaca.lexer import Token
 
 class CYKParser():
-    def __new__(cls, config : Config, tokens : list[Token], builder : Builder) -> AST:
+    def __new__(cls, config : Config, tokens : list[Token], builder : Builder) -> CLRList:
         normer = CFGNormalizer()
         cfg = normer.run(config.cfg)
         algo = CYKAlgo(cfg)

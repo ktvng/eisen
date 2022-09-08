@@ -4,7 +4,7 @@ from alpaca.asts import CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.validator import Indexer, Validator, AbstractModule, AbstractType, AbstractObject, AbstractException
 from alpaca.utils import AbstractFlags, Wrangler
-from alpaca.validator import Type, Context, TypeFactory, Instance
+from alpaca.concepts import Context, TypeFactory, Instance
  
 class Object(AbstractObject):
     def __init__(self, 

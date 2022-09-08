@@ -1,5 +1,4 @@
 from __future__ import annotations
-from ast import In
 from functools import reduce
 from typing import Union, List
 
@@ -19,6 +18,8 @@ class CLRToken:
             return self.type
 
 class CLRList:
+    indent = "  "
+
     def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0):
         self.type = type
         self._list = lst
@@ -30,28 +31,27 @@ class CLRList:
 
     def first(self) -> CLRList | CLRToken:
         if not self._list:
-            raise Exception("list is empty; first does not exist")
-
+            raise Exception(f"CLRList: first does not exist; len={len(self._list)}; self={self.type}")
         return self._list[0]
 
     def second(self) -> CLRList | CLRToken:
         if len(self._list) < 2:
-            raise Exception("list is less than size 2; second does not exist")
-
+            raise Exception(f"CLRList: second does not exist; len={len(self._list)}; self={self.type}")
         return self._list[1]
 
     def third(self) -> CLRList | CLRToken:
         if len(self._list) < 3:
-            raise Exception("list is less than size 3; second does not exist")
-
+            raise Exception(f"CLRList: third does not exist; len={len(self._list)}; self={self.type}")
         return self._list[2]
 
+    # TODO: deprecate
     def head(self) -> CLRList | CLRToken:
         if not self._list:
             raise Exception("list is empty; head does not exist")
 
         return self._list[0]
 
+    # TODO: deprecate
     # The head of a CLRList is the first element; if that element is a token, then
     # head_value will return the value of that CLRToken
     def head_value(self) -> str:
@@ -115,8 +115,5 @@ class CLRList:
     def __iter__(self):
         return self._list.__iter__()
 
-    indent = "  "
 
-        
-    
 CLRRawList = List[Union[CLRList, CLRToken]]

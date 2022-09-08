@@ -9,21 +9,21 @@ from seer._typewrangler import TypeWrangler
 from seer._common import asls_of_type, ContextTypes, SeerInstance
 
 class TypeFlowWrangler(Wrangler):
+    def __init__(self):
+        super().__init__()
+        self.void_type = TypeFactory.produce_novel_type("void")
+
     def apply(self, params: Params) -> Type:
         return self._apply([params], [params])
 
+    # assign the type return by 'f' to the 'returns_type' attribute of the abstract
+    # syntax list stored in params.asl
     def assigns_type(f):
         def decorator(fn, params: Params):
             result: Type = f(fn, params)
             params.asl.returns_type = result
             return result
         return decorator
-
-        
-
-    @classmethod
-    def void_type(cls, params: Params):
-        return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
 
     @Wrangler.covers(asls_of_type("fn_type"))
     @assigns_type
@@ -37,7 +37,7 @@ class TypeFlowWrangler(Wrangler):
     def no_action_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     @Wrangler.covers(asls_of_type("."))
     @assigns_type
@@ -67,7 +67,7 @@ class TypeFlowWrangler(Wrangler):
     def cond_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     @Wrangler.covers(asls_of_type("if"))
     @assigns_type
@@ -79,7 +79,7 @@ class TypeFlowWrangler(Wrangler):
                     name="if",
                     type=ContextTypes.block,
                     parent=params.mod)))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     @Wrangler.covers(asls_of_type("while"))
     @assigns_type
@@ -87,7 +87,7 @@ class TypeFlowWrangler(Wrangler):
         fn.apply(params.but_with(
             asl=params.asl.first(),
             mod=Context(name="while", type=ContextTypes.block, parent=params.mod)))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     @Wrangler.covers(asls_of_type(":"))
     @assigns_type
@@ -102,8 +102,8 @@ class TypeFlowWrangler(Wrangler):
         if name == "print":
             return params.mod.resolve_type(
                 type=TypeFactory.produce_function_type(
-                    arg=TypeFlowWrangler.void_type(params),
-                    ret=TypeFlowWrangler.void_type(params)))
+                    arg=fn.void_type,
+                    ret=fn.void_type))
         instance: Instance = params.starting_mod.get_instance_by_name(name=name)
         params.asl.instances = [instance]
         return instance.type
@@ -133,7 +133,7 @@ class TypeFlowWrangler(Wrangler):
         # TODO: shouldn't add members to module
         for child in params.asl[1:]:
             fn.apply(params.but_with(asl=child))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     @Wrangler.covers(asls_of_type("mod"))
     @assigns_type
@@ -142,7 +142,7 @@ class TypeFlowWrangler(Wrangler):
         child_mod = params.mod.get_child_module_by_name(name)
         for child in params.asl[1:]:
             fn.apply(params.but_with(asl=child, mod=child_mod))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
  
     @Wrangler.covers(asls_of_type("create"))
     @assigns_type
@@ -153,7 +153,7 @@ class TypeFlowWrangler(Wrangler):
             parent=params.mod)
         for child in params.asl:
             fn.apply(params.but_with(asl=child, mod=local_mod))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
     
     @Wrangler.covers(asls_of_type("def"))
     @assigns_type
@@ -164,7 +164,7 @@ class TypeFlowWrangler(Wrangler):
             parent=params.mod)
         for child in params.asl[1:]:
             fn.apply(params.but_with(asl=child, mod=local_mod))
-        return TypeFlowWrangler.void_type(params)
+        return fn.void_type
 
     binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
     @Wrangler.covers(asls_of_type(*binary_ops))
@@ -242,7 +242,7 @@ class TypeFlowWrangler(Wrangler):
             for name, type in zip(names, types):
                 params.asl.instances.append(
                     params.mod.add_instance(SeerInstance(name, type, params.mod)))
-            return TypeFlowWrangler.void_type(params)
+            return fn.void_type
 
         elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == ":":
             type = fn.apply(params.but_with(asl=params.asl.first()))
@@ -300,7 +300,7 @@ class TypeFlowWrangler(Wrangler):
     @assigns_type
     def args_(fn, params: Params) -> Type:
         if not params.asl:
-            return TypeFlowWrangler.void_type(params)
+            return fn.void_type
         type = fn.apply(params.but_with(asl=params.asl.first(), is_ptr=False))
         return type
 
@@ -308,6 +308,6 @@ class TypeFlowWrangler(Wrangler):
     @assigns_type
     def rets_(fn, params: Params) -> Type:
         if not params.asl:
-            return TypeFlowWrangler.void_type(params)
+            return fn.void_type
         type = fn.apply(params.but_with(asl=params.asl.first(), is_ptr=True))
         return type

@@ -3,6 +3,8 @@ from __future__ import annotations
 from alpaca.asts import CLRList, CLRToken
 from alpaca.utils import Wrangler
 
+from seer._common import asls_of_type
+
 class SeerWriter(Wrangler):
     def run(self, asl: CLRList) -> str:
         parts = self.apply(asl)
@@ -27,27 +29,18 @@ class SeerWriter(Wrangler):
     def apply(self, asl: CLRList) -> list[str]:
         return self._apply([asl], [asl])
 
-    def asls_of_type(target_type: str | list):
-        if isinstance(target_type, str):
-            target_type = [target_type]
-        def predicate(asl: CLRList) -> bool:
-            if isinstance(asl, CLRList):
-                return asl.type in target_type
-            return False
-        return predicate
-
     @Wrangler.covers(lambda x: isinstance(x, CLRToken))
     def token_(fn, asl: CLRToken):
         return [asl.value]
 
-    @Wrangler.covers(asls_of_type(["start"]))
+    @Wrangler.covers(asls_of_type("start"))
     def start_(fn, asl: CLRList):
         parts = []
         for child in asl:
             parts += fn.apply(child) + ["\n"]
         return parts
 
-    @Wrangler.covers(asls_of_type(["struct"]))
+    @Wrangler.covers(asls_of_type("struct"))
     def struct_(fn, asl: CLRList):
         parts = ["struct ", *fn.apply(asl.first()), " {\n"]
         for child in asl[1:]:
@@ -78,13 +71,13 @@ class SeerWriter(Wrangler):
             *fn.apply(asl.second()),
             *fn.apply(asl.third())]
 
-    @Wrangler.covers(asls_of_type(["type", "fn_type_in", "args", "rets", "fn_type_out", "ref", "fn"]))
+    @Wrangler.covers(asls_of_type("type", "fn_type_in", "args", "rets", "fn_type_out", "ref", "fn"))
     def pass_(fn, asl: CLRList):
         if not asl:
             return []
         return fn.apply(asl.first())
  
-    @Wrangler.covers(asls_of_type(["prod_type", "params"]))
+    @Wrangler.covers(asls_of_type("prod_type", "params"))
     def prod_type(fn, asl: CLRList):
         parts = []
         if asl:
@@ -95,22 +88,13 @@ class SeerWriter(Wrangler):
  
     @Wrangler.covers(asls_of_type("def"))
     def def_(fn, asl: CLRList):
-        if len(asl) == 4:
-            return ["fn ",
-                *fn.apply(asl.first()),
-                "("
-                *fn.apply(asl.second()),
-                ") -> ",
-                *fn.apply(asl.third()),
-                *fn.apply(asl[-1])]
-        # case for no return
-        elif len(asl) == 3:
-            return ["fn ",
-                *fn.apply(asl.first()),
-                "(",
-                *fn.apply(asl.second()),
-                ") ",
-                *fn.apply(asl.third())]
+        return ["fn ",
+            *fn.apply(asl.first()),
+            "("
+            *fn.apply(asl.second()),
+            ") -> ",
+            *fn.apply(asl.third()),
+            *fn.apply(asl[-1])]
     
     @Wrangler.covers(asls_of_type("fn_type"))
     def fn_type_(fn, asl: CLRList):

@@ -1,6 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from seer._params import Params
+if TYPE_CHECKING:
+    from seer._params import Params
 from alpaca.concepts import Type, Instance, Context
 
 class ContextTypes:

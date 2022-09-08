@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Context
+from alpaca.concepts import Context, TypeFactory
 from alpaca.config import Config
 from alpaca.asts import CLRList
+
+from seer._common import ContextTypes
 
 class Params(AbstractParams):
     def __init__(self, 
@@ -45,3 +47,29 @@ class Params(AbstractParams):
 
     def __str__(self) -> str:
         return self.asl.type
+
+    @classmethod
+    def create_initial(cls, config: Config, asl: CLRList, txt: str) -> Params:
+        global_mod = Context("global", type=ContextTypes.mod)
+        global_mod.add_type(TypeFactory.produce_novel_type("int"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool*"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
+
+        return Params(
+            config=config, 
+            asl=asl,
+            txt=txt,
+            mod=global_mod,
+            starting_mod=global_mod,
+            struct_name=None,
+            exceptions=[],
+            is_ptr=False)

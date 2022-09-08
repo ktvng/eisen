@@ -84,7 +84,7 @@ def run_seer(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    params = seer.ModuleWrangler.init_params(config, asl, txt)
+    params = seer.Params.create_initial(config, asl, txt)
     seer.ModuleWrangler().apply(params)
     mod = params.mod
     try:

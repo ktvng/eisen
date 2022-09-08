@@ -16,32 +16,6 @@ class ModuleWrangler(Wrangler):
         return self._apply([params], [params])
 
     @classmethod
-    def init_params(cls, config: Config, asl: CLRList, txt: str):
-        global_mod = Context("global", type=ContextTypes.mod)
-        global_mod.add_type(TypeFactory.produce_novel_type("int"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
-        global_mod.add_type(TypeFactory.produce_novel_type("int*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("int?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
-
-        return Params(
-            config=config, 
-            asl=asl,
-            txt=txt,
-            mod=global_mod,
-            starting_mod=global_mod,
-            struct_name=None,
-            exceptions=[],
-            is_ptr=False)
-
-    @classmethod
     def parse_type(cls, params: Params) -> Type:
         return TypeWrangler().apply(params)
     

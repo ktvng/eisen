@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.asts import CLRList, CLRToken
+from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Wrangler, Formatter
 from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams

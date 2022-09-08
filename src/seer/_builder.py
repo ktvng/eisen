@@ -1,6 +1,6 @@
 from __future__ import annotations
 from alpaca.parser import CommonBuilder
-from alpaca.asts import CLRRawList, CLRList
+from alpaca.clr import CLRRawList, CLRList
 from alpaca.config import Config
 
 class SeerBuilder(CommonBuilder):

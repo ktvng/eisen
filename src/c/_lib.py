@@ -4,7 +4,7 @@ import itertools
 
 from alpaca.utils import Wrangler
 from alpaca.parser import CommonBuilder
-from alpaca.asts import CLRRawList, CLRList, CLRToken
+from alpaca.clr import CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
 from alpaca.utils import indent
 

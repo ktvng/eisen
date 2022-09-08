@@ -1,4 +1,4 @@
-from alpaca.asts import ASTNode
+from alpaca.clr import ASTNode
 from alpaca.lexer._token import Token
 
 def tokens_to_astnode(token : Token) -> ASTNode:

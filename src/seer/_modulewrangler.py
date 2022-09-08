@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.config import Config
 from alpaca.utils import Wrangler
 from alpaca.concepts import Type, TypeFactory, Context
-from alpaca.asts import CLRList
+from alpaca.clr import CLRList
 
 from seer._params import Params
 from seer._typewrangler import TypeWrangler

@@ -5,7 +5,7 @@ import random
 from alpaca.grammar import CFGRule, CFG, CFGNormalizer
 from error import Raise
 from alpaca.lexer import Token
-from alpaca.asts import CLRToken
+from alpaca.clr import CLRToken
 
 class DpTableEntry():
     def __init__(self, 

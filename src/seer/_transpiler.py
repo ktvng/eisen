@@ -1,14 +1,14 @@
 from __future__ import annotations
 import re
 
+import alpaca
 from alpaca.config import Config
-from alpaca.asts import CLRList, CLRToken
+from alpaca.clr import CLRList, CLRToken
 from alpaca.validator import AbstractModule, AbstractType
 from alpaca.utils import Wrangler, PartialTransform
 
 from seer._validator import OldType, Object, SeerValidator 
 from seer._validator import Params as VParams
-from seer._listir import ListIRParser
 
 class SeerTranspiler(Wrangler):
     base_prefix = ""
@@ -520,7 +520,7 @@ class SeerTranspiler(Wrangler):
             tmp_name = f"__{params.n_hidden_vars}__"
             params.n_hidden_vars += 1
             listir_code = f"(let (: {tmp_name} (type {type.name()})))"
-            clrlist = ListIRParser.run(params.config, listir_code)
+            clrlist = alpaca.clr.CLRParser.run(params.config, listir_code)
             # use none as these fields will not be used
             vparams = VParams(
                 config = params.config,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.asts import CLRList, CLRToken
+from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Wrangler
 
 from seer._common import asls_of_type

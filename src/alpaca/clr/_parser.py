@@ -1,16 +1,18 @@
 from __future__ import annotations
-import re
-from alpaca.asts import CLRList, CLRToken
-from alpaca.config import Config
 
-class ListIRParser():
+import re
+
+from alpaca.config._config import Config
+from alpaca.clr._clr import CLRList, CLRToken
+
+class CLRParser():
     @classmethod
     def run(cls, config: Config, txt: str) -> CLRList | CLRToken:
         lst = cls.unpack_single_layer(txt)
         objs = []
         for elem in lst[1:]:
             if cls.is_list_itself(elem):
-                objs.append(ListIRParser.run(config, elem))
+                objs.append(CLRParser.run(config, elem))
             else:
                 for rule in config.regex_rules:
                     match_str, _, rule = rule.match(elem)

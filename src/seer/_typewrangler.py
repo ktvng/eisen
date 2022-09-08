@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.utils import Wrangler
-from alpaca.asts import CLRList, CLRToken
+from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import Type, TypeFactory
 
 from seer._params import Params

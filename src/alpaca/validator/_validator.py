@@ -3,7 +3,7 @@ from __future__ import annotations
 import traceback
 
 from alpaca.config import Config
-from alpaca.asts import CLRList, CLRToken
+from alpaca.clr import CLRList, CLRToken
 from alpaca.validator._abstracts import AbstractModule
 from alpaca.utils._transform import PartialTransform, Wrangler
 

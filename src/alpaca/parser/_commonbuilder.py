@@ -1,6 +1,6 @@
 from __future__ import annotations
 from alpaca.config._config import Config
-from alpaca.asts import CLRList, CLRToken, CLRRawList
+from alpaca.clr import CLRList, CLRToken, CLRRawList
 from alpaca.parser._builder import Builder
 
 from error import Raise

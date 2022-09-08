@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.asts import CLRList, CLRToken, CLRRawList
+from alpaca.clr import CLRList, CLRToken, CLRRawList
 from alpaca.parser.cyk._cykalgo import DpTable, DpTableEntry
 from alpaca.parser._builder import Builder
 from alpaca.config import Config

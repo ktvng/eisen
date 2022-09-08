@@ -12,8 +12,6 @@ import lamb
 import seer
 import c
 
-from seer._listir import ListIRParser
-
 delim = "="*64
 
 def run_lamb(filename : str):
@@ -100,7 +98,7 @@ def run_seer(filename: str):
     c_config = run_and_measure("config parsed",
         alpaca.config.ConfigParser.run,
         filename="./src/c/grammar.gm")
-    c_asl = ListIRParser.run(c_config, transmuted)
+    c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
     print(c_asl)
     print(c.Writer().run(c_asl))
     exit()

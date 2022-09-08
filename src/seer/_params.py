@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.validator import AbstractParams, AbstractException
 from alpaca.concepts import Context, TypeFactory
 from alpaca.config import Config
-from alpaca.asts import CLRList
+from alpaca.clr import CLRList
 
 from seer._common import ContextTypes
 

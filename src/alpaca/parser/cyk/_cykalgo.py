@@ -3,7 +3,6 @@ from typing import List
 import itertools
 import random
 from alpaca.grammar import CFGRule, CFG, CFGNormalizer
-from error import Raise
 from alpaca.lexer import Token
 from alpaca.clr import CLRToken
 
@@ -52,7 +51,7 @@ class DpTableEntry():
         if not unique_entries:
             raise Exception("reached point in gramatical tree with no children??")
         if len(unique_entries) > 1:
-            Raise.notice("non-uniqueness, multiple production pathways (picked first)")
+            print("non-uniqueness, multiple production pathways (picked first)")
             random.shuffle(unique_entries)
             for entry in unique_entries:
                 print(entry)
@@ -69,7 +68,7 @@ class DpTableEntry():
         if not unique_entries:
             raise Exception("reached point in gramatical tree with no children??")
         if len(unique_entries) > 1:
-            Raise.notice("non-uniqueness, multiple production pathways (picked first)")
+            print("non-uniqueness, multiple production pathways (picked first)")
             random.shuffle(unique_entries)
             print(self.rname)
             print(self.name)

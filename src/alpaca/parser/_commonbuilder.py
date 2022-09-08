@@ -3,8 +3,6 @@ from alpaca.config._config import Config
 from alpaca.clr import CLRList, CLRToken, CLRRawList
 from alpaca.parser._builder import Builder
 
-from error import Raise
-
 class CommonBuilder(Builder):
     def __init__(self):
         super().__init__()

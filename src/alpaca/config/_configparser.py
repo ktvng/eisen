@@ -5,7 +5,6 @@ from alpaca.config._config import Config
 from alpaca.config._regextokenrule import RegexTokenRule
 
 from alpaca.grammar import CFGRule, Action
-from error import Raise
 
 class ConfigParser():
     class SymbolicMask():

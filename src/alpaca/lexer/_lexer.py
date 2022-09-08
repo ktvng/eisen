@@ -4,7 +4,6 @@ import re
 from functools import reduce
 
 from alpaca.config import Config
-from error import Raise
 
 from alpaca.lexer._token import Token
 from alpaca.lexer._abstractcallback import AbstractCallback

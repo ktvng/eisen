@@ -77,8 +77,8 @@ def run_seer(filename: str):
         alpaca.parser.run,
         config=config, tokens=tokens, builder=SeerBuilder(), algo="cyk")
 
-    asl_str = [">    " + line for line in  str(asl).split("\n")]
-    print(*asl_str, sep="\n")
+    # asl_str = [">    " + line for line in  str(asl).split("\n")]
+    # print(*asl_str, sep="\n")
 
     params = seer.Params.create_initial(config, asl, txt)
     seer.ModuleWrangler(debug=False).apply(params)
@@ -89,7 +89,7 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
-    transmuted = seer.CTransmutation(debug=True).run(asl)
+    transmuted = seer.CTransmutation(debug=False).run(asl)
     print("############ TRANSMUATION ###############")
     print(transmuted)
 
@@ -97,7 +97,8 @@ def run_seer(filename: str):
         alpaca.config.ConfigParser.run,
         filename="./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
-    print(c_asl)
+
+    print("############ C_OUTPUT ###############")
     print(c.Writer().run(c_asl))
     exit()
 

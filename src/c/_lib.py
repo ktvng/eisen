@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import itertools
+import re
 
 from alpaca.utils import Wrangler
 from alpaca.parser import CommonBuilder
 from alpaca.clr import CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
-from alpaca.utils import indent
+import alpaca.utils
 
 class Builder(CommonBuilder):
     @CommonBuilder.for_procedure("filter_build")
@@ -85,9 +86,24 @@ class Writer(Wrangler):
     def run(self, asl: CLRList) -> str:
         parts = Writer().apply(asl)
         txt = "".join(parts)
-        txt = indent(txt)
-        return txt
-        
+        txt = alpaca.utils.indent(txt)
+        return Writer.filter_extraneous_newlines(txt)
+
+    @classmethod
+    def filter_extraneous_newlines(self, txt: str) -> str:
+        prev_line_empty = False
+
+        filtered_txt = "" 
+        for line in txt.split("\n"):
+            if not line.strip():
+                prev_line_empty = True
+                continue
+            if prev_line_empty:
+                if not re.match(r" *} *$", line):
+                    filtered_txt += "\n"
+                prev_line_empty = False
+            filtered_txt += line + "\n"
+        return filtered_txt
 
     def apply(self, asl: CLRList) -> list[str]:
         return self._apply([asl], [asl])
@@ -110,7 +126,11 @@ class Writer(Wrangler):
 
     @Wrangler.covers(asls_of_type("start"))
     def start_(fn, asl: CLRList) -> list[str]:
-        return list(itertools.chain(*[fn.apply(child) + ["\n"] for child in asl]))
+        lists_for_components = [fn.apply(child) for child in asl]
+
+        # filter out empty lists and add new lines
+        lists_for_components = [l + ["\n"] for l in lists_for_components if l]
+        return list(itertools.chain(*lists_for_components))
 
     @Wrangler.covers(asls_of_type("decl"))
     def decl_(fn, asl: CLRList) -> list[str]:

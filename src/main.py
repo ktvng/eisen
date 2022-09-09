@@ -1,5 +1,3 @@
-from hmac import trans_36
-from pdb import runcall
 import re
 import sys
 import time
@@ -83,15 +81,15 @@ def run_seer(filename: str):
     print(*asl_str, sep="\n")
 
     params = seer.Params.create_initial(config, asl, txt)
-    seer.ModuleWrangler().apply(params)
+    seer.ModuleWrangler(debug=False).apply(params)
     mod = params.mod
     try:
-        seer.TypeFlowWrangler().apply(params)
+        seer.TypeFlowWrangler(debug=False).apply(params)
     except Exception as e:
         print(params.mod)
         raise e
 
-    transmuted = seer.CTransmutation().run(asl)
+    transmuted = seer.CTransmutation(debug=True).run(asl)
     print("############ TRANSMUATION ###############")
     print(transmuted)
 

@@ -44,6 +44,40 @@ class Params(AbstractParams):
 
         return self._but_with(asl=asl, mod=mod, global_mod=global_mod, as_ptr=as_ptr, counter=counter)
 
+    def inspect(self) -> str:
+        if isinstance(self.asl, CLRList):
+            instance_strs = ("N/A" if self.asl.instances is None 
+                else ", ".join([str(i) for i in self.asl.instances]))
+
+            children_strs = []
+            for child in self.asl:
+                if isinstance(child, CLRList):
+                    children_strs.append(f"({child.type} )")
+                else:
+                    children_strs.append(str(child))
+            asl_info_str = f"({self.asl.type} {' '.join(children_strs)})"
+            if len(asl_info_str) > 64:
+                asl_info_str = asl_info_str[:64] + "..."
+
+            return f"""
+INSPECT ==================================================
+----------------------------------------------------------
+ASL: {asl_info_str}
+{self.asl}
+
+----------------------------------------------------------
+Module: {self.mod.name} {self.mod.type}
+{self.mod}
+
+Type: {self.asl.returns_type}
+Instances: {instance_strs}
+"""
+        else:
+            return f"""
+INSPECT ==================================================
+Token: {self.asl}
+"""
+
 class CTransmutation(Wrangler):
     global_prefix = ""
     def run(self, asl: CLRList) -> str:
@@ -51,6 +85,11 @@ class CTransmutation(Wrangler):
         return txt
 
     def apply(self, params: Params) -> str:
+        if self.debug and isinstance(params.asl, CLRList):
+            print("\n"*64)
+            print(params.inspect())
+            print("\n"*4)
+            input()
         return self._apply([params], [params])
 
     def asls_of_type(type: str, *args):

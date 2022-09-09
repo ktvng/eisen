@@ -4,9 +4,6 @@ from alpaca.clr import CLRList, CLRToken, CLRRawList
 from alpaca.parser._builder import Builder
 
 class CommonBuilder(Builder):
-    def __init__(self):
-        super().__init__()
-
     @classmethod
     def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
         return [c for c in components 

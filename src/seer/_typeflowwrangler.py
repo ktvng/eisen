@@ -9,11 +9,16 @@ from seer._typewrangler import TypeWrangler
 from seer._common import asls_of_type, ContextTypes, SeerInstance
 
 class TypeFlowWrangler(Wrangler):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, debug: bool = False):
+        super().__init__(debug=debug)
         self.void_type = TypeFactory.produce_novel_type("void")
 
     def apply(self, params: Params) -> Type:
+        if self.debug and isinstance(params.asl, CLRList):
+            print("\n"*64)
+            print(params.inspect())
+            print("\n"*4)
+            input()
         return self._apply([params], [params])
 
     # assign the type return by 'f' to the 'returns_type' attribute of the abstract

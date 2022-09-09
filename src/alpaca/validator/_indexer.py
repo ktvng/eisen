@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.utils._transform import PartialTransform, Wrangler
+from alpaca.utils._wrangler import PartialTransform, Wrangler
 
 class Indexer(Wrangler):
     def __init__(self):

@@ -1,10 +1,7 @@
 from __future__ import annotations
-from alpaca.utils._transform import PartialTransform, Wrangler
+from alpaca.utils._wrangler import PartialTransform, Wrangler
 
 class Builder(Wrangler):
-    def __init__(self):
-        super().__init__()
-
     @classmethod
     def for_procedure(cls, matching_name: str):
         def decorator(f):

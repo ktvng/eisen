@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from alpaca.config import Config
 from alpaca.utils import Wrangler
-from alpaca.concepts import Type, TypeFactory, Context
+from alpaca.concepts import Type, Context
 from alpaca.clr import CLRList
 
 from seer._params import Params
@@ -13,6 +12,11 @@ from seer._common import ContextTypes, asls_of_type, SeerInstance
 # generate the module structure and add types to the respective modules
 class ModuleWrangler(Wrangler):
     def apply(self, params: Params):
+        if self.debug and isinstance(params.asl, CLRList):
+            print("\n"*64)
+            print(params.inspect())
+            print("\n"*4)
+            input()
         return self._apply([params], [params])
 
     @classmethod

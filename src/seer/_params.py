@@ -48,6 +48,40 @@ class Params(AbstractParams):
     def __str__(self) -> str:
         return self.asl.type
 
+    def inspect(self) -> str:
+        if isinstance(self.asl, CLRList):
+            instance_strs = ("N/A" if self.asl.instances is None 
+                else ", ".join([str(i) for i in self.asl.instances]))
+
+            children_strs = []
+            for child in self.asl:
+                if isinstance(child, CLRList):
+                    children_strs.append(f"({child.type} )")
+                else:
+                    children_strs.append(str(child))
+            asl_info_str = f"({self.asl.type} {' '.join(children_strs)})"
+            if len(asl_info_str) > 64:
+                asl_info_str = asl_info_str[:64] + "..."
+
+            return f"""
+INSPECT ==================================================
+----------------------------------------------------------
+ASL: {asl_info_str}
+{self.asl}
+
+----------------------------------------------------------
+Module: {self.mod.name} {self.mod.type}
+{self.mod}
+
+Type: {self.asl.returns_type}
+Instances: {instance_strs}
+"""
+        else:
+            return f"""
+INSPECT ==================================================
+Token: {self.asl}
+"""
+
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> Params:
         global_mod = Context("global", type=ContextTypes.mod)

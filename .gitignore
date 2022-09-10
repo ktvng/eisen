@@ -5,6 +5,7 @@ sandbox.py
 test.txt
 test.rs
 test.c
+test.lisp
 tmp
 idea.txt
 __pycache__

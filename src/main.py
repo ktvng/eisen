@@ -137,6 +137,15 @@ def run(lang: str, filename: str):
         run_seer(filename)
     elif lang == "c":
         run_c(filename)
+    elif lang == "types":
+        run_types(filename)
+
+def run_types(filename: str):
+    with open(filename, 'r') as f:
+        txt = f.read()
+    
+    asl = alpaca.types.parser.run(txt)
+    print(asl)
 
 def internal_run_tests(filename: str, should_transpile=True):
     # PARSE SEER CONFIG
@@ -243,7 +252,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--lang", 
         action="store", 
         type=str, 
-        choices=["seer", "lamb", "c"],
+        choices=["seer", "lamb", "c", "types"],
         default="seer")
 
     args = parser.parse_args()

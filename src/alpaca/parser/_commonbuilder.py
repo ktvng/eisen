@@ -24,6 +24,19 @@ class CommonBuilder(Builder):
 
         return flattened_components
 
+    @Builder.for_procedure("filter_build")
+    def filter_build_(
+            fn,
+            config : Config,
+            components : CLRRawList, 
+            *args) -> CLRRawList: 
+
+        newCLRList = CommonBuilder.build(fn, config, components, *args)[0]
+        filtered_children = CommonBuilder._filter(config, newCLRList)
+
+        newCLRList[:] = filtered_children
+        return [newCLRList]
+
     @Builder.for_procedure("build")
     def build(
             fn,

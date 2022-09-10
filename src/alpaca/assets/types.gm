@@ -1,0 +1,65 @@
+SYMBOLICS
+    <type>              ->  <regex>
+    keyword :func       ->  :func
+    keyword :tupl       ->  :tupl
+    keyword :mayb       ->  :mayb
+    keyword :novl       ->  :novl
+    keyword :struct     ->  :struct
+    symbol :            ->  :
+    symbol ,            ->  ,
+    symbol |            ->  \|
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol <            ->  <
+    symbol >            ->  >    
+    symbol #            ->  #
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol ->           ->  ->
+    symbol :=           ->  :=
+    
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t\n]*
+
+STRUCTURE
+    @action pass
+    START -> TYPE
+
+    @action pass
+    TYPE ->
+        |   FUNC_TYPE
+        |   TUPL_TYPE 
+        |   MAYB_TYPE
+        |   NOVL_TYPE
+        |   STRUCT_TYPE
+        
+    @action filter_build :func 
+    FUNC_TYPE -> ( :func TYPE TYPE )
+
+    @action filter_build :tupl
+    TUPL_TYPE -> ( :tupl TYPES )
+
+    @action pool
+    TYPES -> 
+        |   TYPE TYPE
+        |   TYPE TYPES
+
+    @action filter_build :
+    TERM -> ( : TAG TYPE )
+
+    @action pool
+    TERMS -> 
+        |   TERM TERM
+        |   TERM TERMS
+
+    @action filter_build :struct
+    STRUCT_TYPE -> 
+        |   ( :struct TERM )
+        |   ( :struct TERMS )
+
+    @action filter_build :novl
+    NOVL_TYPE -> ( :novl TAG )
+
+    @action filter_build :mayb
+    MAYB_TYPE -> 
+        |   ( :mayb TYPES )

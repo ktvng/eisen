@@ -1,11 +1,13 @@
 from __future__ import annotations
 from typing import Literal, Any
 
-_novel = "novel"
-_tuple = "tuple"
-_struct = "struct"
-_function = "function"
-_maybe = "maybe"
+class type_constructions:
+    novel = "novel"
+    tuple = "tuple"
+    struct = "struct"
+    function = "function"
+    maybe = "maybe"
+
 TypeConstruction = Literal["novel", "tuple", "struct", "function", "maybe"]
 
 class Type():
@@ -33,13 +35,13 @@ class Type():
         # TODO: can we return hash == hash here?
         if not isinstance(o, Type):
             return False
-        if self.construction == _novel and o.construction == _novel:
+        if self.construction == type_constructions.novel and o.construction == type_constructions.novel:
             return self.name == o.name
         return (self._equiv(self.components, o.components)
             and self._equiv(self.component_names, o.component_names))
 
     def _get_unique_string_id(self) -> str:
-        if self.construction == _novel:
+        if self.construction == type_constructions.novel:
             return self.name
 
         if self.component_names:
@@ -57,7 +59,7 @@ class Type():
         return f"<{self.name}({self._get_unique_string_id()})>"
 
     def get_member_attribute_by_name(self, name: str) -> Type:
-        if self.construction != _struct:
+        if self.construction != type_constructions.struct:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
@@ -67,39 +69,39 @@ class Type():
         return self.components[pos]
 
     def get_return_type(self) -> Type:
-        if self.construction != _function:
+        if self.construction != type_constructions.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
         
         return self.components[1]
 
     def is_function(self) -> bool:
-        return self.construction == _function
+        return self.construction == type_constructions.function
 
     def is_struct(self) -> bool:
-        return self.construction == _struct
+        return self.construction == type_constructions.struct
 
     def is_novel(self) -> bool:
-        return self.construction == _novel
+        return self.construction == type_constructions.novel
 
 class TypeFactory:
     @classmethod
     def produce_novel_type(cls, name: str) -> Type:
-        return Type(name, _novel)
+        return Type(name, type_constructions.novel)
 
     @classmethod
     def produce_tuple_type(cls, components: list[Type], name: str = "") -> Type:
-        return Type(name, _tuple, components)
+        return Type(name, type_constructions.tuple, components)
 
     @classmethod
     def produce_struct_type(cls, name: str, components: list[Type], component_names: list[str]) -> Type:
-        return Type(name, _struct, components, component_names)
+        return Type(name, type_constructions.strruct, components, component_names)
 
     # a function is represented as a "function" classification with argument and return 
     # values being the two components, respectively
     @classmethod
     def produce_function_type(cls, arg: Type, ret: Type, name: str = ""):
-        return Type(name, _function, [arg, ret], ["arg", "ret"])
+        return Type(name, type_constructions.function, [arg, ret], ["arg", "ret"])
 
     @classmethod
     def produce_maybe_type(cls, components: list[Type], name: str = ""):
-        return Type(name, _maybe, components)
+        return Type(name, type_constructions.maybe, components)

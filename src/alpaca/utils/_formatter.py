@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import re
 
-class Formatter:
+class formatter:
     # max number of characters which can appear on a line (not including the indent 
     # at the beginning of the line, or any closing parentheses from earlier statements)
     max_line_size = 64
 
     # string to use for the indent at the beginning of a line
-    indent = "  "
+    indent_str = "  "
 
     # matches strings
     str_regex = re.compile(r"([\"'])(?:(?=(\\?))\2.)*?\1")
@@ -63,7 +63,7 @@ class Formatter:
         return chunk, clr
 
     @classmethod
-    def count_net_parens_depth(cls, s: str) -> int:
+    def _count_net_parens_depth(cls, s: str) -> int:
         return s.count("(") - s.count(")")
 
     @classmethod
@@ -85,20 +85,34 @@ class Formatter:
             if match:
                 content = match.group(0)
                 formatted_clr += content
-                level += cls.count_net_parens_depth(content)
+                level += cls._count_net_parens_depth(content)
                 clr = clr[len(content): ]
                 continue
 
             # try to get the next well formatted chunk
             chunk, rest = cls._chunk_with_balanced_parens(clr)
             if len(chunk) > cls.max_line_size:
-                formatted_clr += "\n" + cls.indent * level + "("
+                formatted_clr += "\n" + cls.indent_str * level + "("
                 level += 1
                 clr = clr[1:]
                 continue
             else:
-                formatted_clr += "\n" + cls.indent * level + chunk
+                formatted_clr += "\n" + cls.indent_str * level + chunk
                 clr = rest 
             
         # remove the "\n" at the beginning
         return formatted_clr[1:]
+
+    @classmethod
+    def indent(cls, txt: str) -> str:
+        indent = "    ";
+        level = 0
+
+        parts = txt.split("\n")
+        formatted_txt = ""
+        for part in parts:
+            level -= part.count('}')
+            formatted_txt += indent*level + part + "\n"
+            level += part.count('{')
+
+        return formatted_txt

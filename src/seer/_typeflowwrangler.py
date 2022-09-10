@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Wrangler
 from alpaca.concepts import Context, TypeFactory, Instance, Type
@@ -36,7 +37,13 @@ class TypeFlowWrangler(Wrangler):
         type = TypeWrangler().apply(params)
         return type
 
-    no_action = ["start", "return", "seq", "prod_type"]
+    @Wrangler.covers(asls_of_type("prod_type"))
+    @assigns_type
+    def _prod_type(fn, params: Params) -> Type:
+        types = [fn.apply(params.but_with(asl=child)) for child in params.asl]
+        return params.mod.resolve_type(TypeFactory.produce_tuple_type(types))
+
+    no_action = ["start", "return", "seq"] 
     @Wrangler.covers(asls_of_type(*no_action))
     @assigns_type
     def no_action_(fn, params: Params) -> Type:
@@ -56,9 +63,11 @@ class TypeFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("::"))
     @assigns_type
     def scope_(fn, params: Params) -> Type:
+        next_mod = params.starting_mod.get_child_module_by_name(params.asl.first().value)
         return fn.apply(params.but_with(
             asl=params.asl.second(),
-            starting_mod=params.starting_mod.get_child_module_by_name(params.asl.first().value)))
+            starting_mod=next_mod,
+            mod=next_mod))
 
     @Wrangler.covers(asls_of_type("tuple"))
     @assigns_type
@@ -97,7 +106,11 @@ class TypeFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type(":"))
     @assigns_type
     def colon_(fn, params: Params) -> Type:
-        return fn.apply(params.but_with(asl=params.asl[1]))
+        name = params.asl.first().value
+        type = fn.apply(params.but_with(asl=params.asl.second()))
+        instance = params.mod.add_instance(SeerInstance(name, type, params.mod))
+        params.asl.instances = [instance]
+        return type
 
     @Wrangler.covers(asls_of_type("fn"))
     @assigns_type
@@ -109,7 +122,7 @@ class TypeFlowWrangler(Wrangler):
                 type=TypeFactory.produce_function_type(
                     arg=fn.void_type,
                     ret=fn.void_type))
-        instance: Instance = params.starting_mod.get_instance_by_name(name=name)
+        instance: Instance = params.mod.get_instance_by_name(name=name)
         params.asl.instances = [instance]
         return instance.type
 
@@ -251,9 +264,7 @@ class TypeFlowWrangler(Wrangler):
 
         elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == ":":
             type = fn.apply(params.but_with(asl=params.asl.first()))
-            name = params.asl.first().instances[0].name
-            params.asl.instances = [params.mod.add_instance(
-                SeerInstance(name, type, params.mod))]
+            params.asl.instances = params.asl.first().instances
             return type
 
         else:

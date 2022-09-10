@@ -1,30 +1,16 @@
 from __future__ import annotations
 
+import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Wrangler
 
 from seer._common import asls_of_type
 
-class SeerWriter(Wrangler):
+class Writer(Wrangler):
     def run(self, asl: CLRList) -> str:
         parts = self.apply(asl)
         raw_text = "".join(parts)
-        return SeerWriter.indent(raw_text)
-
-    @classmethod
-    def indent(cls, txt: str) -> str:
-        indent = "    ";
-        level = 0
-
-        parts = txt.split("\n")
-        formatted_txt = ""
-        for part in parts:
-            level -= part.count('}')
-            formatted_txt += indent*level + part + "\n"
-            level += part.count('{')
-
-        return formatted_txt
-
+        return alpaca.utils.formatter.indent(raw_text)
 
     def apply(self, asl: CLRList) -> list[str]:
         return self._apply([asl], [asl])

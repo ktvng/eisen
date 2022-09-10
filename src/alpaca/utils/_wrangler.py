@@ -9,16 +9,10 @@ class PartialTransform():
         self.predicate = predicate
 
     def invoke(self, *args):
-        if args:
-            return self.f(*args)
-        else:
-            return self.f()
+        return self.f(*args)
 
     def covers(self, *args):
-        if args:
-            return self.predicate(*args)
-        else:
-            return self.predicate()
+        return self.predicate(*args)
 
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs)
@@ -28,10 +22,7 @@ class DefaultTransform():
         self.f = f
 
     def invoke(self, *args):
-        if args:
-            return self.f(*args)
-        else:
-            return self.f()
+        return self.f(*args)
 
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs) 
@@ -78,6 +69,8 @@ class Wrangler():
 
         if len(matching_transforms) > 1:
             msg = f"Multiple matching transforms for provided match_args: '{args_str}'"
+            transform_names = ", ".join([x.f.__name__ for x in matching_transforms])
+            self.logger.log_error(f"Matched transform names: [{transform_names}]")
             self.logger.raise_exception(msg)
 
         if self.debug and self._depth > self.max_depth:

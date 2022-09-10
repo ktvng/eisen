@@ -5,9 +5,8 @@ import subprocess
 import argparse
 
 import alpaca
-from seer import SeerCallback, SeerBuilder, SeerValidator, SeerIndexer, SeerTranspiler
-import lamb
 import seer
+import lamb
 import c
 
 delim = "="*64
@@ -37,7 +36,7 @@ def run_c(filename: str):
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
-        text=txt, config=config, callback=SeerCallback)
+        text=txt, config=config, callback=seer.SeerCallback)
 
     # print("====================")
     # [print(t) for t in tokens]
@@ -51,7 +50,7 @@ def run_c(filename: str):
     print(*asl_str, sep="\n")
     parts = c.Writer().apply(asl)
     txt = "".join(parts)
-    txt = alpaca.utils.indent(txt)
+    txt = alpaca.utils.formatter.indent(txt)
     print(txt)
 
 def run_seer(filename: str):
@@ -67,7 +66,7 @@ def run_seer(filename: str):
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
-        text=txt, config=config, callback=SeerCallback)
+        text=txt, config=config, callback=seer.SeerCallback)
 
     # print("====================")
     # [print(t) for t in tokens]
@@ -75,11 +74,12 @@ def run_seer(filename: str):
     # PARSE TO AST
     asl = run_and_measure("parser",
         alpaca.parser.run,
-        config=config, tokens=tokens, builder=SeerBuilder(), algo="cyk")
+        config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
 
-    # asl_str = [">    " + line for line in  str(asl).split("\n")]
-    # print(*asl_str, sep="\n")
+    asl_str = [">    " + line for line in  str(asl).split("\n")]
+    print(*asl_str, sep="\n")
 
+    print("############ STANZA ###############")
     params = seer.Params.create_initial(config, asl, txt)
     seer.ModuleWrangler(debug=False).apply(params)
     mod = params.mod

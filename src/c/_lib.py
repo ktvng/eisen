@@ -86,7 +86,7 @@ class Writer(Wrangler):
     def run(self, asl: CLRList) -> str:
         parts = Writer().apply(asl)
         txt = "".join(parts)
-        txt = alpaca.utils.indent(txt)
+        txt = alpaca.utils.formatter.indent(txt)
         return Writer.filter_extraneous_newlines(txt)
 
     @classmethod
@@ -222,12 +222,3 @@ class Writer(Wrangler):
     @Wrangler.covers(asls_of_type("deref"))
     def deref_(fn, asl: CLRList) -> list[str]:
         return ["*"] + fn.delegate(asl)
-
-
-
-    
-
-
-    
-
-

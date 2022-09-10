@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import alpaca
 from alpaca.clr import CLRList, CLRToken
-from alpaca.utils import Wrangler, Formatter
+from alpaca.utils import Wrangler
 from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
@@ -81,7 +82,7 @@ Token: {self.asl}
 class CTransmutation(Wrangler):
     global_prefix = ""
     def run(self, asl: CLRList) -> str:
-        txt = Formatter.format_clr(self.apply(Params(asl, asl.module, asl.module, False, SharedCounter(0))))
+        txt = alpaca.utils.formatter.format_clr(self.apply(Params(asl, asl.module, asl.module, False, SharedCounter(0))))
         return txt
 
     def apply(self, params: Params) -> str:

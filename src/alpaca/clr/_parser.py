@@ -17,7 +17,7 @@ class CLRParser():
                 for rule in config.regex_rules:
                     match_str, _, rule = rule.match(elem)
                     if match_str:
-                        objs.append(CLRToken(rule.type, match_str, 0))
+                        objs.append(CLRToken(rule.type_chain, match_str, 0))
                         # TODO: handle duplicate rules better
                         break
         return CLRList(lst[0], objs)

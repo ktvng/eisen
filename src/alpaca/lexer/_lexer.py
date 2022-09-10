@@ -36,7 +36,7 @@ class Lexer():
 
             # apply a processing function based on the rule.type
             if callback is not None:
-                matching_types = [rule.type, *config.type_hierachy.parent_types_for(rule.type)]
+                matching_types = rule.type_chain
                 for type in matching_types:
                     if hasattr(callback, type):
                         f = getattr(callback, type)

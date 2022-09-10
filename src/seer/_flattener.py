@@ -24,12 +24,12 @@ class Flattener(Wrangler):
     @classmethod
     def _produce_decl_for_var(self, var_name: str, type: str) -> str:
         clr = f"(let (: {var_name} (type {type})))"
-        config = alpaca.config.ConfigParser.run("./src/seer/grammar.gm")
+        config = alpaca.config.parser.run("./src/seer/grammar.gm")
         return alpaca.clr.CLRParser.run(config, clr)
 
     @Wrangler.covers(lambda x: isinstance(x, CLRToken))
     def leaf_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:
-        return CLRToken(params.asl.type, params.asl.value, params.asl.line_number), []
+        return CLRToken(params.asl.type_chain, params.asl.value, params.asl.line_number), []
 
     @Wrangler.default
     def default_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:

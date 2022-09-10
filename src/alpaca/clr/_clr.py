@@ -3,10 +3,14 @@ from functools import reduce
 from typing import Union, List
 
 class CLRToken:
-    def __init__(self, type : str, value : str, line_number : int):
-        self.type = type
+    def __init__(self, type_chain : list[str], value : str, line_number : int):
+        self.type = type_chain[0]
+        self.type_chain = type_chain
         self.value = value
         self.line_number = line_number
+
+    def is_classified_as(self, type: str) -> bool:
+        return type in self.type_chain
 
     def __str__(self):
         # TODO: formalize this hack

@@ -87,7 +87,7 @@ class CYKAlgo:
 
     @classmethod
     def tokens_to_clrtoken(cls, tokens : list[Token]) -> list[CLRToken]:
-        return [CLRToken(t.type, t.value, t.line_number) for t in tokens]
+        return [CLRToken(t.rule.type_chain, t.value, t.line_number) for t in tokens]
     
     
     def parse(self, tokens : list[Token]):

@@ -1,3 +1,3 @@
 from alpaca.config._config import Config
-from alpaca.config._configparser import ConfigParser
-from alpaca.config._regextokenrule import RegexTokenRule
+from alpaca.config._parser import parser 
+from alpaca.config._tokenrule import TokenRule

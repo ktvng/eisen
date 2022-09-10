@@ -1,8 +1,7 @@
-from re import A
-from alpaca.config import RegexTokenRule
+from alpaca.config import TokenRule
 
 class Token():
-    def __init__(self, type : str, value : str, line_number : int, rule : RegexTokenRule):
+    def __init__(self, type : str, value : str, line_number : int, rule : TokenRule):
         self.type = type
         self.value = value
         self.line_number = line_number

@@ -8,9 +8,9 @@ class CommonBuilder(Builder):
     def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
         return [c for c in components 
             if  (isinstance(c, CLRToken) 
-                    and not config.type_hierachy.is_child_type(c.type, "keyword")
-                    and not config.type_hierachy.is_child_type(c.type, "symbol")
-                    and not config.type_hierachy.is_child_type(c.type, "operator"))
+                    and not c.is_classified_as("keyword")
+                    and not c.is_classified_as("symbol")
+                    and not c.is_classified_as("operator"))
                 or isinstance(c, CLRList)]
 
     @classmethod

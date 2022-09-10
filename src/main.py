@@ -15,7 +15,7 @@ def run_lamb(filename : str):
     with open(filename, 'r') as f:
         txt = f.read()
 
-    config = alpaca.config.ConfigParser.run("./src/lamb/grammar.gm")
+    config = alpaca.config.parser.run("./src/lamb/grammar.gm")
     tokens = alpaca.lexer.run(txt, config, None)
     ast = alpaca.parser.run(config, tokens, lamb.LambBuilder())
     print(ast)
@@ -26,7 +26,7 @@ def run_lamb(filename : str):
 def run_c(filename: str):
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
-        alpaca.config.ConfigParser.run,
+        alpaca.config.parser.run,
         filename="./src/c/grammar.gm")
 
     # READ FILE TO STR
@@ -56,7 +56,7 @@ def run_c(filename: str):
 def run_seer(filename: str):
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
-        alpaca.config.ConfigParser.run,
+        alpaca.config.parser.run,
         filename="./src/seer/grammar.gm")
 
     # READ FILE TO STR
@@ -94,7 +94,7 @@ def run_seer(filename: str):
     print(transmuted)
 
     c_config = run_and_measure("config parsed",
-        alpaca.config.ConfigParser.run,
+        alpaca.config.parser.run,
         filename="./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
 
@@ -150,7 +150,7 @@ def run_types(filename: str):
 def internal_run_tests(filename: str, should_transpile=True):
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
-        alpaca.config.ConfigParser.run,
+        alpaca.config.parser.run,
         filename="./src/seer/grammar.gm")
 
     # READ FILE TO STR

@@ -435,9 +435,7 @@ STRUCTURE
         |   TUPLE
 
     @action merge
-    SCOPED_VAR ->
-        |   EXPR . TAG
-        |   SCOPED_VAR . TAG
+    SCOPED_VAR -> EXPR . TAG
 
     MODULE ->
         @action pass

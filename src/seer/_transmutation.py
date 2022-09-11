@@ -6,6 +6,8 @@ from alpaca.utils import Wrangler
 from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
+from seer._common import asls_of_type
+
 class SharedCounter():
     def __init__(self, n: int):
         self.value = n
@@ -93,15 +95,10 @@ class CTransmutation(Wrangler):
             input()
         return self._apply([params], [params])
 
-    def asls_of_type(type: str, *args):
-        def predicate(params: Params):
-            return params.asl.type in list(args) + [type]
-        return predicate
-
     # TESTING
     @Wrangler.default
     def default_(fn, params: Params) -> str:
-        return f".{params.asl.type}"
+        return f"#{params.asl.type}"
 
     @classmethod
     def get_full_name(cls, instance: Instance) -> str:
@@ -170,6 +167,8 @@ class CTransmutation(Wrangler):
     def partial_5(fn, params: Params) -> str:
         name = fn.apply(params.but_with(asl=params.asl.first()))
         type = fn.apply(params.but_with(asl=params.asl.second()))
+        if params.asl.second().returns_type.is_struct():
+            return f"(struct_decl {type} {name})"
         return f"(decl {type} {name})"
 
     # TODO make real type
@@ -230,10 +229,6 @@ class CTransmutation(Wrangler):
 
         return f"(= {fn.transmute(params.asl.items(), params)})"
 
-    @Wrangler.covers(asls_of_type(""))
+    @Wrangler.covers(asls_of_type("."))
     def partial_(fn, params: Params) -> str:
-        pass
-
-    @Wrangler.covers(asls_of_type(""))
-    def partial_(fn, params: Params) -> str:
-        pass
+        return f"(. {fn.transmute(params.asl.items(), params)})"

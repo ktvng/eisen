@@ -94,7 +94,7 @@ class TypeFactory:
 
     @classmethod
     def produce_struct_type(cls, name: str, components: list[Type], component_names: list[str]) -> Type:
-        return Type(name, type_constructions.strruct, components, component_names)
+        return Type(name, type_constructions.struct, components, component_names)
 
     # a function is represented as a "function" classification with argument and return 
     # values being the two components, respectively

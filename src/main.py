@@ -89,6 +89,7 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
+
     transmuted = seer.CTransmutation(debug=False).run(asl)
     print("############ TRANSMUATION ###############")
     print(transmuted)
@@ -97,6 +98,9 @@ def run_seer(filename: str):
         alpaca.config.parser.run,
         filename="./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
+
+    # print("############ C_ASL ###############")
+    # print(c_asl)
 
     print("############ C_OUTPUT ###############")
     print(c.Writer().run(c_asl))

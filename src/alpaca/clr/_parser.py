@@ -14,12 +14,12 @@ class CLRParser():
             if cls.is_list_itself(elem):
                 objs.append(CLRParser.run(config, elem))
             else:
+                longest_match, longest_len, longest_rule = None, 0, None
                 for rule in config.regex_rules:
-                    match_str, _, rule = rule.match(elem)
-                    if match_str:
-                        objs.append(CLRToken(rule.type_chain, match_str, 0))
-                        # TODO: handle duplicate rules better
-                        break
+                    match_str, len, rule = rule.match(elem)
+                    if match_str and len > longest_len:
+                        longest_match, longest_len, longest_rule = match_str, len, rule
+                objs.append(CLRToken(longest_rule.type_chain, longest_match, 0))
         return CLRList(lst[0], objs)
 
     @classmethod

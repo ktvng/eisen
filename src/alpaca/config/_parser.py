@@ -12,8 +12,7 @@ class parser():
     def run(cls, filename: str) -> Config:
         with open(filename, 'r') as f:
             txt = f.read()
-        config1 = StateMachine().run(txt) 
-        return config1
+        return StateMachine().run(txt) 
 
 # a symbolics mask encapsulates line headers of the following sort:
 #       <type>              ->  <regex>

@@ -89,6 +89,7 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
+    seer.Inspector().apply(params)
 
     transmuted = seer.CTransmutation(debug=False).run(asl)
     print("############ TRANSMUATION ###############")

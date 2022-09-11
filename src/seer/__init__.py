@@ -6,6 +6,7 @@ from seer._writer import Writer
 from seer._transmutation import CTransmutation
 from seer._params import Params
 from seer._flattener import Flattener
+from seer._inspect import Inspector
 
 # deprecated
 from seer._validator import SeerValidator, SeerIndexer

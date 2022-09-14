@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Wrangler
 from seer._params import Params
 
@@ -13,5 +14,6 @@ class Inspector(Wrangler):
         print(params.inspect())
         input()
         for child in params.asl:
-            fn.apply(params.but_with(asl=child))
+            if isinstance(child, CLRList):
+                fn.apply(params.but_with(asl=child, mod=params.oracle.get_module(child)))
     

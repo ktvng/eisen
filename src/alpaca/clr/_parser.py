@@ -19,6 +19,9 @@ class CLRParser():
                     match_str, len, rule = rule.match(elem)
                     if match_str and len > longest_len:
                         longest_match, longest_len, longest_rule = match_str, len, rule
+
+                if longest_match is None:
+                    raise Exception(f"no match for {elem}")
                 objs.append(CLRToken(longest_rule.type_chain, longest_match, 0))
         return CLRList(lst[0], objs)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from functools import reduce
 from typing import Union, List
+import uuid
 
 class CLRToken:
     def __init__(self, type_chain : list[str], value : str, line_number : int):
@@ -24,14 +25,15 @@ class CLRToken:
 class CLRList:
     indent = "  "
 
-    def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0):
+    def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0, guid: uuid.UUID = None):
         self.type = type
         self._list = lst
         self.line_number = line_number
         self.data = None
-        self.module = None
-        self.returns_type = None
-        self.instances = None
+        if guid is None:
+            self.guid = uuid.uuid4()
+        else:
+            self.guid = guid
 
     def first(self) -> CLRList | CLRToken:
         if not self._list:

@@ -68,6 +68,15 @@ class Context():
             return self.parent.get_type_by_name(name)
         return None        
 
+    def get_module_of_type(self, name: str) -> Context | None:
+        type_names = [type.name for type in self.types]
+        if name in type_names:
+            return self
+
+        if self.parent:
+            return self.parent.get_module_of_type(name)
+        return None        
+
 
     def add_type(self, type: Type):
         self.types.append(type)

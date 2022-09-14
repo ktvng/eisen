@@ -89,9 +89,12 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
-    seer.Inspector().apply(params)
+    asl = seer.Flattener().run(params)
+    print(asl)
+    # exit()
+    # seer.Inspector().apply(params)
 
-    transmuted = seer.CTransmutation(debug=False).run(asl)
+    transmuted = seer.CTransmutation(debug=False).run(asl, params)
     print("############ TRANSMUATION ###############")
     print(transmuted)
 

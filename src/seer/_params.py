@@ -6,6 +6,7 @@ from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from seer._common import ContextTypes
+from seer._oracle import Oracle
 
 class Params(AbstractParams):
     def __init__(self, 
@@ -17,6 +18,7 @@ class Params(AbstractParams):
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
+            oracle: Oracle,
             ):
 
         self.config = config
@@ -27,6 +29,7 @@ class Params(AbstractParams):
         self.starting_mod = starting_mod
         self.exceptions = exceptions
         self.is_ptr = is_ptr
+        self.oracle = oracle
 
     def but_with(self,
             config: Config = None,
@@ -37,10 +40,11 @@ class Params(AbstractParams):
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
+            oracle: Oracle = None,
             ):
 
         return self._but_with(config=config, asl=asl, txt=txt, mod=mod, starting_mod=starting_mod,
-            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr)
+            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -50,8 +54,9 @@ class Params(AbstractParams):
 
     def inspect(self) -> str:
         if isinstance(self.asl, CLRList):
-            instance_strs = ("N/A" if self.asl.instances is None 
-                else ", ".join([str(i) for i in self.asl.instances]))
+            instances = self.oracle.get_instances(self.asl)
+            instance_strs = ("N/A" if instances is None 
+                else ", ".join([str(i) for i in instances]))
 
             children_strs = []
             for child in self.asl:
@@ -73,7 +78,7 @@ ASL: {asl_info_str}
 Module: {self.mod.name} {self.mod.type}
 {self.mod}
 
-Type: {self.asl.returns_type}
+Type: {self.oracle.get_propagated_type(self.asl)}
 Instances: {instance_strs}
 """
         else:
@@ -106,4 +111,5 @@ Token: {self.asl}
             starting_mod=global_mod,
             struct_name=None,
             exceptions=[],
-            is_ptr=False)
+            is_ptr=False,
+            oracle=Oracle())

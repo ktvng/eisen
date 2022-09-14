@@ -22,12 +22,12 @@ class TypeFlowWrangler(Wrangler):
             input()
         return self._apply([params], [params])
 
-    # assign the type return by 'f' to the 'returns_type' attribute of the abstract
+    # assign the type return by 'f' to the 'propagated_type' attribute of the abstract
     # syntax list stored in params.asl
     def assigns_type(f):
         def decorator(fn, params: Params):
             result: Type = f(fn, params)
-            params.asl.returns_type = result
+            params.oracle.add_propagated_type(params.asl, result)
             return result
         return decorator
 
@@ -108,8 +108,8 @@ class TypeFlowWrangler(Wrangler):
     def colon_(fn, params: Params) -> Type:
         name = params.asl.first().value
         type = fn.apply(params.but_with(asl=params.asl.second()))
-        instance = params.mod.add_instance(SeerInstance(name, type, params.mod))
-        params.asl.instances = [instance]
+        instance = params.mod.add_instance(SeerInstance(name, type, params.mod, params.asl))
+        params.oracle.add_instances(params.asl, instance)
         return type
 
     @Wrangler.covers(asls_of_type("fn"))
@@ -123,7 +123,7 @@ class TypeFlowWrangler(Wrangler):
                     arg=fn.void_type,
                     ret=fn.void_type))
         instance: Instance = params.mod.get_instance_by_name(name=name)
-        params.asl.instances = [instance]
+        params.oracle.add_instances(params.asl, instance)
         return instance.type
 
     @Wrangler.covers(asls_of_type("params"))
@@ -207,11 +207,12 @@ class TypeFlowWrangler(Wrangler):
             names = [token.value for token in params.asl.first()]
 
         type = fn.apply(params.but_with(asl=params.asl.second()))
-        params.asl.instances = []
+        instances = []
         for name in names:
-            params.asl.instances.append(
+            instances.append(
                 params.mod.add_instance(
-                    SeerInstance(name, type, params.mod, is_ptr=params.is_ptr)))
+                    SeerInstance(name, type, params.mod, params.asl, is_ptr=params.is_ptr)))
+        params.oracle.add_instances(params.asl, instances)
 
         return type
 
@@ -236,7 +237,9 @@ class TypeFlowWrangler(Wrangler):
         type = params.mod.resolve_type(
             type=TypeFactory.produce_novel_type(params.asl.second().type))
 
-        params.asl.instances = [params.mod.add_instance(SeerInstance(name, type, params.mod))]
+        params.oracle.add_instances(
+            asl=params.asl, 
+            instances=[params.mod.add_instance(SeerInstance(name, type, params.mod, params.asl))])
         return type
         
     # cases for let:
@@ -256,15 +259,18 @@ class TypeFlowWrangler(Wrangler):
             names = [token.value for token in params.asl.first()]
             types = [fn.apply(params.but_with(asl=child)) for child in params.asl.second()]
 
-            params.asl.instances = []
+            instances = []
             for name, type in zip(names, types):
-                params.asl.instances.append(
-                    params.mod.add_instance(SeerInstance(name, type, params.mod)))
+                instances.append(
+                    params.mod.add_instance(SeerInstance(name, type, params.mod, params.asl)))
+            params.oracle.add_instances(params.asl, instances)
             return fn.void_type
 
         elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == ":":
             type = fn.apply(params.but_with(asl=params.asl.first()))
-            params.asl.instances = params.asl.first().instances
+            params.oracle.add_instances(
+                asl=params.asl,
+                instances=params.oracle.get_instances(params.asl.first()))
             return type
 
         else:
@@ -273,7 +279,12 @@ class TypeFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("type", "type?", "type*"))
     @assigns_type
     def _type1(fn, params: Params) -> Type:
-        return params.mod.get_type_by_name(name=params.asl.first().value)
+        type = params.mod.get_type_by_name(name=params.asl.first().value)
+        mod = params.mod.get_module_of_type(name=params.asl.first().value)
+        
+        # TODO: handle if type not found
+        params.oracle.add_module_of_propagated_type(params.asl, mod)
+        return type
 
     @Wrangler.covers(asls_of_type("="))
     @assigns_type
@@ -309,7 +320,7 @@ class TypeFlowWrangler(Wrangler):
         if not instance:
             raise Exception("TODO: gracefully handle instance not being found")
 
-        params.asl.instances = [instance]
+        params.oracle.add_instances(params.asl, instance)
         return instance.type
 
     @Wrangler.covers(asls_of_type("args"))

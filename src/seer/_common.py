@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from seer._params import Params
 from alpaca.concepts import Type, Instance, Context
+from alpaca.clr import CLRList
 
 class ContextTypes:
     mod = "module"
@@ -16,6 +17,6 @@ def asls_of_type(type: str, *args):
     return predicate
     
 class SeerInstance(Instance):
-    def __init__(self, name: str, type: Type, context: Context, is_ptr=False):
-        super().__init__(name, type, context)
+    def __init__(self, name: str, type: Type, context: Context, asl: CLRList, is_ptr=False):
+        super().__init__(name, type, context, asl)
         self.is_ptr = is_ptr

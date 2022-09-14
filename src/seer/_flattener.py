@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.utils import Wrangler
-from alpaca.concepts import Type, Context
 from alpaca.clr import CLRList, CLRToken
 
 from seer._params import Params
-from seer._common import asls_of_type, SeerInstance
+from seer._common import asls_of_type
 from seer._transmutation import CTransmutation
-from seer._typeflowwrangler import TypeFlowWrangler
 
 # flatten the function calls out of an expression
 class Flattener(Wrangler):
@@ -45,7 +43,7 @@ class Flattener(Wrangler):
                 # special case, need to unpack call
                 decls, refs = fn.apply(params.but_with(asl=child))
 
-                # need to pack the refs into a new tuple 
+                # need to pack the refs into a new tuple
                 fn_call_components.extend(decls)
                 core_components.append(CLRList(
                     type="tuple",
@@ -97,39 +95,45 @@ class Flattener(Wrangler):
 
         # we need to drop into the original CLR which defines the original function
         # in order to get the return types.
-        fn_asl = params.oracle.get_instances(params.asl.first())[0]
+
+        if params.asl.first().type == "fn":
+            fn_type_asl = params.asl.first()
+            fn_asl = params.oracle.get_instances(params.asl.first())[0]
+        else:
+            fn_type_asl = params.asl.first()
+            while fn_type_asl.type != "fn":
+                fn_type_asl = fn_type_asl.second()
+            fn_asl = params.oracle.get_instances(fn_type_asl)[0]
+
         rets_asl = fn_asl.asl[2]
 
         if not rets_asl:
-            return [], []
-
-        if rets_asl.first().type == "prod_type":
-            decls, refs = fn._unpack_prod_type(params.but_with(asl=rets_asl.first()))
-            print(params.asl.first(), refs)
+            decls = []
+            refs = []
         else:
-            decls, refs = fn._unpack_type(params.but_with(asl=rets_asl.first()))
-            print(params.asl.first(), refs)
+            if rets_asl.first().type == "prod_type":
+                decls, refs = fn._unpack_prod_type(params.but_with(asl=rets_asl.first()))
+            else:
+                decls, refs = fn._unpack_type(params.but_with(asl=rets_asl.first()))
 
+        decls = [CLRToken(type_chain=["code"], value=txt) for txt in decls]
+        refs = [CLRToken(type_chain=["code"], value=txt) for txt in refs]
 
-        decls = [alpaca.clr.CLRParser.run(fn.config, txt) for txt in decls]
-        refs = [alpaca.clr.CLRParser.run(fn.config, txt) for txt in refs]
+        # add flattened parts as code tokens
+        for ref in refs:
+            new_params._list.append(CLRToken(type_chain=["code"], value=f"(addr {ref.value})"))
 
-
-        new_call = CLRList(
-            type="call",
-            lst=[params.asl.first(), new_params],
-            line_number=params.asl.line_number,
-            guid=params.asl.guid) 
-
-        decls.append(new_call)
-
-        for node in decls + refs:
-            TypeFlowWrangler().apply(params.but_with(asl=node))
+        fn_name = CTransmutation.get_full_name(params.oracle.get_instances(fn_type_asl)[0])
+        decls.append(CLRToken(
+            type_chain=["code"],
+            value=f"(call (fn {fn_name})"))
+        decls.append(new_params)
+        decls.append(CLRToken(type_chain=["code"], value=")"))
 
         decls = prior_decls + decls
         return decls, refs
-        
-    
+
+
     @Wrangler.covers(asls_of_type("seq"))
     def seq_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:
         components = []
@@ -140,7 +144,7 @@ class Flattener(Wrangler):
             else:
                 core, fn_calls = fn.apply(params.but_with(asl=child))
                 components += fn_calls + [core]
-        
+
         return CLRList(
             type=params.asl.type,
             lst=components,
@@ -159,7 +163,7 @@ class Flattener(Wrangler):
             type_name = CTransmutation.get_name_of_type(type=type)
 
         var_name = self._produce_var_name()
-        return [f"(let (: {var_name} (type {type_name})))"], [f"(ref {var_name})"]
+        return [f"(decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]
 
     def _unpack_prod_type(self, params: Params) -> tuple[list[str], list[str]]:
         all_decls, all_refs = [], []

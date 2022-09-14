@@ -4,7 +4,7 @@ from typing import Union, List
 import uuid
 
 class CLRToken:
-    def __init__(self, type_chain : list[str], value : str, line_number : int):
+    def __init__(self, type_chain: list[str], value: str, line_number: int = 0):
         self.type = type_chain[0]
         self.type_chain = type_chain
         self.value = value
@@ -15,7 +15,7 @@ class CLRToken:
 
     def __str__(self):
         # TODO: formalize this hack
-        if self.type == "TAG" or self.type == "int" or self.type == "bool":
+        if self.type == "TAG" or self.type == "int" or self.type == "bool" or self.type == "code":
             return self.value
         elif self.type == "str":
             return f'{self.value}'

@@ -200,13 +200,17 @@ class CTransmutation(Wrangler):
         for name in names:
             if params.oracle.get_propagated_type(asl=params.asl.second()).is_struct():
                 strs.append(f"(struct_decl {type} {name})")
-            strs.append(f"(decl {type} {name})")
+            else:
+                strs.append(f"(decl {type} {name})")
         return " ".join(strs)
 
     # TODO make real type
     @Wrangler.covers(asls_of_type("type"))
     def partial_6(fn, params: Params) -> str:
         type: Type = params.oracle.get_propagated_type(params.asl)
+        mod: Context = params.oracle.get_module_of_propagated_type(params.asl)
+        if type.is_struct():
+            return f"(type {CTransmutation.get_full_name_of_struct_type(type.name, mod)})" 
         if params.as_ptr:
             return f"(type (ptr {CTransmutation.get_name_of_type(type)}))"
         return f"(type {CTransmutation.get_name_of_type(type)})"

@@ -107,7 +107,17 @@ def run_seer(filename: str):
     # print(c_asl)
 
     print("############ C_OUTPUT ###############")
-    print(c.Writer().run(c_asl))
+    code = c.Writer().run(c_asl)
+    with open("build/test.c", 'w') as f:
+        f.write(code)
+
+    # run tests
+    subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
+    x = subprocess.run(["./build/test"], capture_output=True)
+    got = x.stdout.decode("utf-8") 
+
+    print("############ PROGRAM OUTPUT ###############")
+    print(got)
     exit()
 
     print("SUCCESS")
@@ -177,7 +187,7 @@ def internal_run_tests(filename: str, should_transpile=True):
         # TOKENIZE
         tokens = run_and_measure("tokenizer",
             alpaca.lexer.run,
-            text=chunk, config=config, callback=SeerCallback)
+            text=chunk, config=config, callback=seer.SeerCallback())
 
         # print("====================")
         # [print(t) for t in tokens]
@@ -185,24 +195,24 @@ def internal_run_tests(filename: str, should_transpile=True):
         # PARSE TO AST
         asl = run_and_measure("parser",
             alpaca.parser.run,
-            config=config, tokens=tokens, builder=SeerBuilder(), algo="cyk")
+            config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
 
         asl_str = ["|    " + line for line in  str(asl).split("\n")]
         print(*asl_str, sep="\n")
 
-        params = SeerValidator.init_params(config, asl, txt)
-        mod = run_and_measure("validator",
-            alpaca.validator.run,
-            indexer_function=SeerIndexer(), validation_function=SeerValidator(), params=params)
-
-        if mod is None:
-            raise Exception("Failed to validate and produce a module.")
+        params = seer.Params.create_initial(config, asl, txt)
+        seer.ModuleWrangler(debug=False).apply(params)
+        seer.TypeFlowWrangler(debug=False).apply(params)
 
         if should_transpile:
-            code = run_and_measure("transpiler",
-                SeerTranspiler().run,
-                config=config, asl=asl, mod=mod)
+            asl = seer.Flattener().run(params)
+            transmuted = seer.CTransmutation(debug=False).run(asl, params)
 
+            c_config = run_and_measure("config parsed",
+                alpaca.config.parser.run,
+                filename="./src/c/grammar.gm")
+            c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
+            code = c.Writer().run(c_asl)
             with open("build/test.c", 'w') as f:
                 f.write(code)
 
@@ -216,6 +226,34 @@ def internal_run_tests(filename: str, should_transpile=True):
             else:
                 print(f"| FAILED, expected {expected} but got {got}")
                 failure_count += 1
+
+
+        # params = SeerValidator.init_params(config, asl, txt)
+        # mod = run_and_measure("validator",
+        #     alpaca.validator.run,
+        #     indexer_function=SeerIndexer(), validation_function=SeerValidator(), params=params)
+
+        # if mod is None:
+        #     raise Exception("Failed to validate and produce a module.")
+
+        # if should_transpile:
+        #     code = run_and_measure("transpiler",
+        #         SeerTranspiler().run,
+        #         config=config, asl=asl, mod=mod)
+
+        #     with open("build/test.c", 'w') as f:
+        #         f.write(code)
+
+        #     # run tests
+        #     subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
+        #     x = subprocess.run(["./build/test"], capture_output=True)
+        #     got = x.stdout.decode("utf-8") 
+        #     is_expected = got == expected
+        #     if is_expected:
+        #         print(f"| SUCCESS")
+        #     else:
+        #         print(f"| FAILED, expected {expected} but got {got}")
+        #         failure_count += 1
 
         test_count +=1
         

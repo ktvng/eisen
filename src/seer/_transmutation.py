@@ -112,6 +112,10 @@ class CTransmutation(Wrangler):
         return f"#{params.asl.type}"
 
     @classmethod
+    def _main_method(cls) -> str:
+        return "(def (type void) main (args ) (seq (call (fn global_main) (params ))))"
+
+    @classmethod
     def get_full_name_of_struct_type(cls, name: str, context: Context):
         prefix = ""
         current_context = context
@@ -159,7 +163,7 @@ class CTransmutation(Wrangler):
 
     @Wrangler.covers(asls_of_type("start"))
     def partial_1(fn, params: Params) -> str:
-        return f"(start {fn.transmute(params.asl.items(), params)})"
+        return f"(start {fn.transmute(params.asl.items(), params)} {fn._main_method()})"
 
     @Wrangler.covers(asls_of_type("mod"))
     def partial_2(fn, params: Params) -> str:

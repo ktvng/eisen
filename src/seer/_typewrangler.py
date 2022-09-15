@@ -102,7 +102,7 @@ class TypeWrangler(Wrangler):
         # eg. (def name (args ...) (rets ...) (seq ...))
         return TypeFactory.produce_function_type(
             arg=fn.apply(params.but_with(asl=params.asl.second())),
-            ret=TypeFactory.produce_novel_type("void"))
+            ret=fn.apply(params.but_with(asl=params.asl.third())))
 
     @Wrangler.covers(asls_of_type("struct"))
     @resolves_type

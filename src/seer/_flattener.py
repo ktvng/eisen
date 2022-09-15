@@ -11,7 +11,7 @@ from seer._transmutation import CTransmutation
 # date structure which contains the information obtain from flattening. 
 class FlatteningPacket:
     def __init__(self, asl: CLRList, auxillary: list[CLRList | CLRToken]):
-        # the actual node.
+        # the actual asl propagated up.
         self.asl = asl
 
         # any auxillary lists/tokens which need to be merged in with the first
@@ -27,8 +27,7 @@ class Flattener(Wrangler):
         self.counter = 0
 
     def run(self, params: Params) -> CLRList:
-        packet = self.apply(params.but_with(params.asl))
-        return packet.asl
+        return self.apply(params.but_with(params.asl)).asl
 
     def apply(self, params: Params) -> FlatteningPacket:
         return self._apply([params], [params])
@@ -44,131 +43,136 @@ class Flattener(Wrangler):
 
     @Wrangler.default
     def default_(fn, params: Params) -> FlatteningPacket:
-        core_components = []
-        fn_call_components = []
+        children = []
+        auxillary = []
         for child in params.asl:
             if isinstance(child, CLRToken):
-                core_components.append(child)
+                children.append(child)
                 continue
 
             if child.type == "call":
                 # special case, need to unpack call
-                # decls, refs = fn.call_(fn, params.but_with(asl=child))
-                decls, refs = fn.apply(params.but_with(asl=child))
+                decls_and_call, refs = fn._flatten_call(params.but_with(asl=child))
 
-                # need to pack the refs into a new tuple
-                fn_call_components.extend(decls)
-                core_components.append(CLRList(
-                    type="tuple",
-                    lst=refs,
-                    line_number=params.asl.line_number,
-                    guid=params.asl.guid))
+                # add the necessary variable declarations to the list of auxillaries, as these
+                # will be added to the seq before the function is call
+                auxillary.extend(decls_and_call)
 
+                # add the return variables of the function as children of the parent asl, if
+                # multiple keep them as a tuple.
+                if len(refs) > 1:
+                    children.append(CLRList(
+                        type="tuple",
+                        lst=refs,
+                        line_number=params.asl.line_number,
+                        guid=params.asl.guid))
+                elif len(refs) == 1:
+                    children.append(refs[0])
+                # if no refs, then nothing to add.
             else:
                 packet = fn.apply(params.but_with(asl=child))
-                core_components.append(packet.asl)
-                fn_call_components += packet.aux
+                children.append(packet.asl)
+                auxillary += packet.aux
 
         return FlatteningPacket(
             asl=CLRList(
                 type=params.asl.type,
-                lst=core_components,
+                lst=children,
                 line_number=params.asl.line_number,
                 guid=params.asl.guid),
-            auxillary=fn_call_components)
-
-    @Wrangler.covers(asls_of_type("params"))
-    def params(fn, params: Params):
-        core_components = []
-        fn_call_components = []
-        for child in params.asl:
-            if isinstance(child, CLRToken):
-                core_components.append(child)
-                continue
-
-            if child.type == "call":
-                # special case, need to unpack call
-                decls, refs = fn.apply(params.but_with(asl=child))
-                fn_call_components.extend(decls)
-                core_components.extend(refs)
-            else:
-                packet = fn.apply(params.but_with(asl=child))
-                core_components.append(packet.asl)
-                fn_call_components += packet.aux
-
-        return FlatteningPacket(
-            asl=CLRList(
-                type=params.asl.type,
-                lst=core_components,
-                line_number=params.asl.line_number,
-                guid=params.asl.guid), 
-            auxillary=fn_call_components)
+            auxillary=auxillary)
 
     @Wrangler.covers(asls_of_type("seq"))
     def seq_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:
-        components = []
+        children = []
         for child in params.asl:
             if child.type == "call":
-                decls, refs = fn.apply(params.but_with(asl=child))
-                components += decls
+                decls_and_call, _ = fn._flatten_call(params.but_with(asl=child))
+                children += decls_and_call
             else:
                 packet =  fn.apply(params.but_with(asl=child))
-                components += packet.aux + [packet.asl]
+
+                # add the auxillary asls/tokens first (these include necessary temporary
+                # variable declarations). Only then add the propagated asl.
+                children += packet.aux + [packet.asl]
 
         return FlatteningPacket(
             asl=CLRList(
                 type=params.asl.type,
-                lst=components,
+                lst=children,
                 line_number=params.asl.line_number,
                 guid=params.asl.guid),
             auxillary=[])
 
-
-    @Wrangler.covers(asls_of_type("call"))
-    def call_(fn, params: Params) -> tuple[list[CLRList], list[CLRList]]:
-        # apply the function to the params of the call
+    # note, we do not need the wrangler to cover asls_of_type "call" because
+    # all (call ...) lists should be caught and handled in their containing list
+    def _flatten_call(fn, params: Params) -> tuple[list[CLRList], list[CLRList]]:
+        # this will flatten the (params ...) component of the (call ...) list.
         packet = fn.apply(params.but_with(asl=params.asl.second()))
+
+        # get the asl of type (fn <name>)
+        fn_asl = fn._unravel_scoping(params.asl.first())
 
         # we need to drop into the original CLR which defines the original function
         # in order to get the return types.
+        fn_instance = params.oracle.get_instances(fn_asl)[0]
+        asl_defining_the_function = fn_instance.asl
 
-        if params.asl.first().type == "fn":
-            fn_type_asl = params.asl.first()
-            fn_asl = params.oracle.get_instances(params.asl.first())[0]
-        else:
-            fn_type_asl = params.asl.first()
-            while fn_type_asl.type != "fn":
-                fn_type_asl = fn_type_asl.second()
-            fn_asl = params.oracle.get_instances(fn_type_asl)[0]
+        # the third child is (rets ...)
+        asl_defining_the_function_return_type = asl_defining_the_function.third()
 
-        rets_asl = fn_asl.asl[2]
-
-        if not rets_asl:
+        if not asl_defining_the_function_return_type:
             decls = []
             refs = []
         else:
-            if rets_asl.first().type == "prod_type":
-                decls, refs = fn._unpack_prod_type(params.but_with(asl=rets_asl.first()))
-            else:
-                decls, refs = fn._unpack_type(params.but_with(asl=rets_asl.first()))
+            decls, refs = fn._unpack_function_return_type(params.but_with(
+                asl=asl_defining_the_function_return_type))
 
-        decls = [CLRToken(type_chain=["code"], value=txt) for txt in decls]
-        refs = [CLRToken(type_chain=["code"], value=txt) for txt in refs]
+        decls = [Flattener._make_code_token_for(txt) for txt in decls]
+        decls = [Flattener._make_code_token_for(txt) for txt in refs]
 
         # add flattened parts as code tokens
         for ref in refs:
-            packet.asl._list.append(CLRToken(type_chain=["code"], value=f"(addr {ref.value})"))
+            packet.asl._list.append(Flattener._make_code_token_for(f"(addr {ref.value})"))
 
-        fn_name = CTransmutation.get_full_name(params.oracle.get_instances(fn_type_asl)[0])
-        decls.append(CLRToken(
-            type_chain=["code"],
-            value=f"(call (fn {fn_name})"))
+        fn_name = CTransmutation.get_full_name(params.oracle.get_instances(fn_asl)[0])
+
+        # missing a close paren as we need to add the (params ...) which is added as
+        # an asl, not a token, because we don't yet have the ability to transmute it.
+        decls.append(CLRToken(Flattener._make_code_token_for(f"(call (fn {fn_name})")))
         decls.append(packet.asl)
-        decls.append(CLRToken(type_chain=["code"], value=")"))
+        decls.append(CLRToken(Flattener._make_code_token_for(")")))
 
+        # finally, add any declarations from flattening the (params ...) component of 
+        # this call list before the declarations for this call list. this order is 
+        # important as auxillary statements from flattening (params ...) are hard 
+        # dependencies for this call list.
         decls = packet.aux + decls
         return decls, refs
 
+    @classmethod
+    def _make_code_token_for(cls, txt: str) -> CLRToken:
+        return CLRToken(type_chain=["code"], value=txt)
+
+    def _unravel_scoping(self, asl: CLRList) -> CLRList:
+        if asl.type != "::" and asl.type != "fn":
+            raise Exception(f"unexpected asl type of {asl.type}")
+        
+        if asl.type == "fn":
+            return asl
+        return self._unravel_scoping(asl=asl.second())
+
+    # return a tuple of two lists. the first list contains the code for the declaration
+    # of any temporary variables. the second list contains the code for the return 
+    # variables of the function
+    def _unpack_function_return_type(self, params: Params) -> tuple[list[str], list[str]]:
+        if params.asl.first().type == "prod_type":
+            decls, refs = self._unpack_prod_type(params.but_with(asl=params.asl.first()))
+        else:
+            decls, refs = self._unpack_type(params.but_with(asl=params.asl.first()))
+        return decls, refs
+
+    # TODO: fix get_name_of_type
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: Params) -> tuple[list[str], list[str]]:
         params = params.but_with(asl=params.asl.second())

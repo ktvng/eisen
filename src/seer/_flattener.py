@@ -5,8 +5,7 @@ from alpaca.utils import Wrangler
 from alpaca.clr import CLRList, CLRToken
 
 from seer._params import Params
-from seer._common import asls_of_type
-from seer._transmutation import CTransmutation
+from seer._common import asls_of_type, Utils
 
 # date structure which contains the information obtain from flattening. 
 class FlatteningPacket:
@@ -129,19 +128,19 @@ class Flattener(Wrangler):
                 asl=asl_defining_the_function_return_type))
 
         decls = [Flattener._make_code_token_for(txt) for txt in decls]
-        decls = [Flattener._make_code_token_for(txt) for txt in refs]
+        refs = [Flattener._make_code_token_for(txt) for txt in refs]
 
         # add flattened parts as code tokens
         for ref in refs:
             packet.asl._list.append(Flattener._make_code_token_for(f"(addr {ref.value})"))
 
-        fn_name = CTransmutation.get_full_name(params.oracle.get_instances(fn_asl)[0])
+        fn_name = Utils.get_full_name_of_function(params.oracle.get_instances(fn_asl)[0])
 
         # missing a close paren as we need to add the (params ...) which is added as
         # an asl, not a token, because we don't yet have the ability to transmute it.
-        decls.append(CLRToken(Flattener._make_code_token_for(f"(call (fn {fn_name})")))
+        decls.append(Flattener._make_code_token_for(f"(call (fn {fn_name})"))
         decls.append(packet.asl)
-        decls.append(CLRToken(Flattener._make_code_token_for(")")))
+        decls.append(Flattener._make_code_token_for(")"))
 
         # finally, add any declarations from flattening the (params ...) component of 
         # this call list before the declarations for this call list. this order is 
@@ -172,17 +171,12 @@ class Flattener(Wrangler):
             decls, refs = self._unpack_type(params.but_with(asl=params.asl.first()))
         return decls, refs
 
-    # TODO: fix get_name_of_type
+    # TODO: fix 
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: Params) -> tuple[list[str], list[str]]:
-        params = params.but_with(asl=params.asl.second())
-        type = params.oracle.get_propagated_type(params.asl)
-        if type.is_struct():
-            type_name = CTransmutation.get_full_name_of_struct_type(
-                name=type.name,
-                context=params.oracle.get_module_of_propagated_type(params.asl))
-        else:
-            type_name = CTransmutation.get_name_of_type(type=type)
+        type_name = Utils.get_name_of_type(
+            type=params.oracle.get_propagated_type(params.asl.second()),
+            mod=params.oracle.get_module_of_propagated_type(params.asl.second()))
 
         var_name = self._produce_var_name()
         return [f"(decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]

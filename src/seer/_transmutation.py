@@ -6,7 +6,7 @@ from alpaca.utils import Wrangler
 from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
-from seer._common import asls_of_type
+from seer._common import asls_of_type, Utils
 from seer._oracle import Oracle
 from seer._params import Params as Params0
 
@@ -115,44 +115,6 @@ class CTransmutation(Wrangler):
     def _main_method(cls) -> str:
         return "(def (type void) main (args ) (seq (call (fn global_main) (params ))))"
 
-    @classmethod
-    def get_full_name_of_struct_type(cls, name: str, context: Context):
-        prefix = ""
-        current_context = context
-        while current_context:
-            prefix = f"{current_context.name}_" + prefix
-            current_context = current_context.parent
-
-        return f"{CTransmutation.global_prefix}{prefix}{name}"     
-
-    @classmethod
-    def get_full_name(cls, instance: Instance) -> str:
-        prefix = ""
-        current_context = instance.context
-        while current_context:
-            prefix = f"{current_context.name}_" + prefix
-            current_context = current_context.parent
-
-        return f"{CTransmutation.global_prefix}{prefix}{instance.name}"        
-
-    @classmethod
-    def get_struct_name(cls, name: str, current_context: Context) -> str:
-        prefix = ""
-        while current_context:
-            prefix = f"{current_context.name}_" + prefix
-            current_context = current_context.parent
-
-        return f"{CTransmutation.global_prefix}{prefix}{name}"        
-    
-    @classmethod
-    def get_name_of_type(cls, type: Type) -> str:
-        if type.is_novel():
-            return type.name
-        elif type.is_struct():
-            return "struct_name"
-        else:
-            raise Exception(f"Unimplemented {type}")
-
     def transmute(fn, asls: list[CLRList], params: Params) -> str:
         return " ".join([fn.apply(params.but_with(asl=asl)) for asl in asls])
 
@@ -171,9 +133,9 @@ class CTransmutation(Wrangler):
 
     @Wrangler.covers(asls_of_type("struct"))
     def partial_3(fn, params: Params) -> str:
-        full_name = CTransmutation.get_struct_name(
+        full_name = Utils.get_full_name_of_struct(
             name=params.asl.first().value, 
-            current_context=params.oracle.get_module(params.asl))
+            context=params.oracle.get_module(params.asl))
         attributes = [child for child in params.asl[1:] if child.type == ":"]
         attribute_strs = " ".join([fn.apply(params.but_with(asl=attr)) for attr in attributes])
         
@@ -213,11 +175,9 @@ class CTransmutation(Wrangler):
     def partial_6(fn, params: Params) -> str:
         type: Type = params.oracle.get_propagated_type(params.asl)
         mod: Context = params.oracle.get_module_of_propagated_type(params.asl)
-        if type.is_struct():
-            return f"(type {CTransmutation.get_full_name_of_struct_type(type.name, mod)})" 
         if params.as_ptr:
-            return f"(type (ptr {CTransmutation.get_name_of_type(type)}))"
-        return f"(type {CTransmutation.get_name_of_type(type)})"
+            return f"(type (ptr {Utils.get_name_of_type(type, mod)}))"
+        return f"(type {Utils.get_name_of_type(type, mod)})"
 
     @Wrangler.covers(asls_of_type("prod_type"))
     def partial_7(fn, params: Params) -> str:
@@ -226,7 +186,7 @@ class CTransmutation(Wrangler):
     @Wrangler.covers(asls_of_type("def"))
     def partial_8(fn, params: Params) -> str:
         instances = params.oracle.get_instances(params.asl)
-        name = CTransmutation.get_full_name(instances[0])
+        name = Utils.get_full_name_of_function(instances[0])
         args = fn.apply(params.but_with(asl=params.asl.second()))
         rets = fn.apply(params.but_with(asl=params.asl.third()))
         seq = fn.apply(params.but_with(asl=params.asl[-1]))
@@ -250,7 +210,7 @@ class CTransmutation(Wrangler):
         if (params.asl.first().value == "print"):
             return f"(fn print)"
         instances = params.oracle.get_instances(params.asl)
-        return f"({params.asl.type} {CTransmutation.get_full_name(instances[0])})"
+        return f"({params.asl.type} {Utils.get_full_name_of_function(instances[0])})"
 
     @Wrangler.covers(asls_of_type("rets"))
     def partial_13(fn, params: Params) -> str:

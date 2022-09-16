@@ -138,7 +138,8 @@ class Flattener(Wrangler):
 
         # missing a close paren as we need to add the (params ...) which is added as
         # an asl, not a token, because we don't yet have the ability to transmute it.
-        decls.append(Flattener._make_code_token_for(f"(call (fn {fn_name})"))
+        suffix = "_constructor" if fn_instance.is_constructor else ""
+        decls.append(Flattener._make_code_token_for(f"(call (fn {fn_name}{suffix})"))
         decls.append(packet.asl)
         decls.append(Flattener._make_code_token_for(")"))
 
@@ -174,12 +175,14 @@ class Flattener(Wrangler):
     # TODO: fix 
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: Params) -> tuple[list[str], list[str]]:
+        type=params.oracle.get_propagated_type(params.asl.second())
+        prefix = "struct_" if type.is_struct() else ""
         type_name = Utils.get_name_of_type(
-            type=params.oracle.get_propagated_type(params.asl.second()),
+            type=type,
             mod=params.oracle.get_module_of_propagated_type(params.asl.second()))
 
         var_name = self._produce_var_name()
-        return [f"(decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]
+        return [f"({prefix}decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]
 
     def _unpack_prod_type(self, params: Params) -> tuple[list[str], list[str]]:
         all_decls, all_refs = [], []

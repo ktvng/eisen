@@ -39,7 +39,7 @@ class CommonBuilder(Builder):
         operator = operators[0]
         children = [elem for elem in flattened_comps if elem != operator]
         return [CLRList(
-            type=operator.type,
+            type=operator.value,
             lst=children,
             line_number=operator.line_number)]
 
@@ -63,7 +63,7 @@ class CommonBuilder(Builder):
             components : CLRRawList,
             *args) -> CLRRawList:
 
-        return Builder._filter(config, components)
+        return CommonBuilder._filter(config, components)
 
     @Builder.for_procedure("build")
     def build(

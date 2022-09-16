@@ -88,15 +88,7 @@ class TypeWrangler(Wrangler):
             return fn.apply(params.but_with(asl=params.asl.first()))
         return TypeFactory.produce_novel_type("void")
 
-    @Wrangler.covers(asls_of_type("create"))
-    @resolves_type
-    def create_(fn, params: Params) -> Type:
-        # eg. (create (args ...) (rets ...) (seq ...))
-        return TypeFactory.produce_function_type(
-            arg=fn.apply(params.but_with(asl=params.asl.first())),
-            ret=fn.apply(params.but_with(asl=params.asl.second())))
-
-    @Wrangler.covers(asls_of_type("def"))
+    @Wrangler.covers(asls_of_type("def", "create"))
     @resolves_type
     def def_(fn, params: Params) -> Type:
         # eg. (def name (args ...) (rets ...) (seq ...))

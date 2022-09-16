@@ -58,7 +58,10 @@ class Params(AbstractParams):
 
     def inspect(self) -> str:
         if isinstance(self.asl, CLRList):
-            instances = self.oracle.get_instances(self.asl)
+            try: 
+                instances = self.oracle.get_instances(self.asl)
+            except:
+                instances = None
             instance_strs = ("N/A" if instances is None 
                 else ", ".join([str(i) for i in instances]))
 
@@ -193,13 +196,34 @@ class CTransmutation(Wrangler):
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
+    @Wrangler.covers(asls_of_type("create"))
+    def partial_17(fn, params: Params) -> str:
+        instances = params.oracle.get_instances(params.asl)
+        # get the type returned by the create object, as this is the type of the struct.
+        type = instances[0].type.get_return_type()
+        mod = params.oracle.get_module_of_propagated_type(params.asl)
+
+        name = Utils.get_full_name_of_struct(type.name, mod) + "_constructor"
+        args = fn.apply(params.but_with(asl=params.asl.second()))
+        rets = fn.apply(params.but_with(asl=params.asl.third()))
+        seq = fn.apply(params.but_with(asl=params.asl[-1]))
+        signature = args[:-1] + rets + ")"
+        return f"(def (type void) {name} {signature} {seq})"
+
     @Wrangler.covers(asls_of_type("let"))
     def partial_9(fn, params: Params) -> str:
         return fn.apply(params.but_with(asl=params.asl.first()))
 
     @Wrangler.covers(asls_of_type("ilet"))
     def partial_(fn, params: Params) -> str:
-        pass 
+        instance = params.oracle.get_instances(params.asl)[0]
+        mod = params.oracle.get_module_of_propagated_type(params.asl)
+        type_name = Utils.get_name_of_type(instance.type, mod)
+        name = params.asl.first().value
+        value = fn.apply(params.but_with(asl=params.asl.second()))
+        if instance.type.is_struct():
+            return f"(struct_decl (type {type_name}) {name}) (= {name} {value})"
+        return f"(decl (type {type_name}) {name}) (= {name} {value})"
 
     @Wrangler.covers(asls_of_type("::"))
     def partial_11(fn, params: Params) -> str:
@@ -222,8 +246,8 @@ class CTransmutation(Wrangler):
     def partial_14(fn, params: Params) -> str:
         instances = params.oracle.get_instances(params.asl)
         if instances[0].is_ptr:
-            return f"({params.asl.type} (deref {fn.apply(params.but_with(asl=params.asl.first()))}))"
-        return f"({params.asl.type} {fn.apply(params.but_with(asl=params.asl.first()))})"
+            return f"(deref (ref {fn.apply(params.but_with(asl=params.asl.first()))}))"
+        return f"(ref {fn.apply(params.but_with(asl=params.asl.first()))})"
 
     @Wrangler.covers(asls_of_type("="))
     def partial_15(fn, params: Params) -> str:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Wrangler
 from alpaca.concepts import Type, Context
-from alpaca.clr import CLRList
+from alpaca.clr import CLRList, CLRToken
 
 from seer._params import Params
 from seer._typewrangler import TypeWrangler
@@ -67,6 +67,8 @@ class ModuleWrangler(Wrangler):
 
     @Wrangler.covers(asls_of_type("create"))
     def create_i(fn, params: Params):
+        # add the struct name as the first parameter
+        params.asl._list.insert(0, CLRToken(type_chain=["TAG"], value=params.struct_name))
         params.oracle.add_module(params.asl, params.mod)
         new_type = ModuleWrangler.parse_type(params)
         params.mod.resolve_type(new_type)
@@ -74,10 +76,11 @@ class ModuleWrangler(Wrangler):
             asl=params.asl,
             instances=[params.mod.add_instance(
                 SeerInstance(
-                    name="create_" + params.struct_name,
+                    name=params.struct_name,
                     type=new_type,
                     context=params.mod,
-                    asl=params.asl))])
+                    asl=params.asl,
+                    is_constructor=True))])
 
     @Wrangler.covers(asls_of_type("TAG", ":"))
     def TAG_i(fn, params: Params):

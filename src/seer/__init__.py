@@ -8,3 +8,4 @@ from seer._params import Params
 from seer._flattener import Flattener
 from seer._inspect import Inspector
 from seer._deepcopy import DeepCopy
+from seer._dot_deref_filter import DotDerefFilter

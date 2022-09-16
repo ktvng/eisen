@@ -162,20 +162,10 @@ class TypeFlowWrangler(Wrangler):
             fn.apply(params.but_with(asl=child, mod=child_mod))
         return fn.void_type
  
-    @Wrangler.covers(asls_of_type("create"))
-    @assigns_type
-    def create_(fn, params: Params):
-        local_mod = Context(
-            name="create",
-            type=ContextTypes.fn,
-            parent=params.mod)
-        for child in params.asl:
-            fn.apply(params.but_with(asl=child, mod=local_mod))
-        return fn.void_type
-    
-    @Wrangler.covers(asls_of_type("def"))
+    @Wrangler.covers(asls_of_type("def", "create"))
     @assigns_type
     def fn(fn, params: Params) -> Type:
+        params.oracle.add_module_of_propagated_type(params.asl, params.mod)
         local_mod = Context(
             name=params.asl.first().value,
             type=ContextTypes.fn,
@@ -234,8 +224,17 @@ class TypeFlowWrangler(Wrangler):
     @assigns_type
     def idecls_(fn, params: Params):
         name = params.asl.first().value
-        type = params.mod.resolve_type(
-            type=TypeFactory.produce_novel_type(params.asl.second().type))
+
+        if isinstance(params.asl.second(), CLRToken):
+            type = params.mod.resolve_type(
+                type=TypeFactory.produce_novel_type(params.asl.second().type))
+        else:
+            type = fn.apply(params.but_with(asl=params.asl.second()))
+            try:
+                print(params.asl.second())
+                mod = params.oracle.get_module_of_propagated_type(params.asl.second())
+            except:
+                pass
 
         params.oracle.add_instances(
             asl=params.asl, 

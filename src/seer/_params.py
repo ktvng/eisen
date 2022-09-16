@@ -54,7 +54,12 @@ class Params(AbstractParams):
 
     def inspect(self) -> str:
         if isinstance(self.asl, CLRList):
-            instances = self.oracle.get_instances(self.asl)
+            instances = None
+            try:
+                instances = self.oracle.get_instances(self.asl)
+            except:
+                pass
+            
             instance_strs = ("N/A" if instances is None 
                 else ", ".join([str(i) for i in instances]))
 
@@ -68,6 +73,12 @@ class Params(AbstractParams):
             if len(asl_info_str) > 64:
                 asl_info_str = asl_info_str[:64] + "..."
 
+            type = "N/A"
+            try:
+                type = self.oracle.get_propagated_type(self.asl)
+            except:
+                pass
+
             return f"""
 INSPECT ==================================================
 ----------------------------------------------------------
@@ -78,7 +89,7 @@ ASL: {asl_info_str}
 Module: {self.mod.name} {self.mod.type}
 {self.mod}
 
-Type: {self.oracle.get_propagated_type(self.asl)}
+Type: {type}
 Instances: {instance_strs}
 """
         else:

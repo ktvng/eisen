@@ -17,9 +17,10 @@ def asls_of_type(type: str, *args):
     return predicate
     
 class SeerInstance(Instance):
-    def __init__(self, name: str, type: Type, context: Context, asl: CLRList, is_ptr=False):
+    def __init__(self, name: str, type: Type, context: Context, asl: CLRList, is_ptr=False, is_constructor=False):
         super().__init__(name, type, context, asl)
         self.is_ptr = is_ptr
+        self.is_constructor = is_constructor
 
 class Utils:
     global_prefix = ""

@@ -10,28 +10,6 @@ from alpaca.config import Config
 import alpaca.utils
 
 class Builder(CommonBuilder):
-    @CommonBuilder.for_procedure("filter_build")
-    def filter_build_(
-            fn,
-            config : Config,
-            components : CLRRawList, 
-            *args) -> CLRRawList: 
-
-        newCLRList = Builder.build(fn, config, components, *args)[0]
-        filtered_children = Builder._filter(config, newCLRList)
-
-        newCLRList[:] = filtered_children
-        return [newCLRList]
-
-    @CommonBuilder.for_procedure("filter_pass")
-    def filter_pass(
-            fn,
-            config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
-
-        return Builder._filter(config, components)
-        
     @CommonBuilder.for_procedure("handle_call")
     def handle_call(
             fn,
@@ -48,26 +26,6 @@ class Builder(CommonBuilder):
         params[:] = [components[0], *params]
 
         return function_call
-
-    @CommonBuilder.for_procedure("merge")
-    def merge_(
-            fn,
-            config : Config,
-            components : CLRRawList, 
-            *args) -> CLRRawList:
-
-        flattened_comps = CommonBuilder.flatten_components(components)
-
-        if len(flattened_comps) == 2:
-            raise Exception("unimplemented unary ops")
-        elif len(flattened_comps) == 3:
-            newCLRList = CLRList(
-                flattened_comps[1].value, 
-                [flattened_comps[0], flattened_comps[2]], 
-                flattened_comps[1].line_number)
-            return [newCLRList]
-        else:
-            raise Exception("should not merge with more than 3 nodes")
 
     @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(

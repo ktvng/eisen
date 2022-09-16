@@ -5,7 +5,7 @@ from alpaca.parser._builder import Builder
 
 class CommonBuilder(Builder):
     @classmethod
-    def _filter(cls, config : Config, components : CLRRawList) -> CLRRawList:
+    def _filter(cls, config: Config, components: CLRRawList) -> CLRRawList:
         return [c for c in components 
             if  (isinstance(c, CLRToken) 
                     and not c.is_classified_as("keyword")
@@ -14,7 +14,7 @@ class CommonBuilder(Builder):
                 or isinstance(c, CLRList)]
 
     @classmethod
-    def flatten_components(cls, components : list[CLRToken | CLRList | CLRRawList]) -> CLRRawList:
+    def flatten_components(cls, components: list[CLRToken | CLRList | CLRRawList]) -> CLRRawList:
         flattened_components = []
         for comp in components:
             if isinstance(comp, list):
@@ -24,11 +24,30 @@ class CommonBuilder(Builder):
 
         return flattened_components
 
+    @Builder.for_procedure("build_operator")
+    def _build_operator(
+            fn,
+            config: Config,
+            components: CLRRawList,
+            *args) -> CLRRawList:
+
+        flattened_comps = CommonBuilder.flatten_components(components)
+        operators = [elem for elem in flattened_comps if isinstance(elem, CLRToken) and elem.is_classified_as("operator")]
+        if len(operators) != 1:
+            raise Exception("There should be only one operator in the build_operator procedure")
+
+        operator = operators[0]
+        children = [elem for elem in flattened_comps if elem != operator]
+        return [CLRList(
+            type=operator.type,
+            lst=children,
+            line_number=operator.line_number)]
+
     @Builder.for_procedure("filter_build")
     def filter_build_(
             fn,
-            config : Config,
-            components : CLRRawList, 
+            config: Config,
+            components: CLRRawList, 
             *args) -> CLRRawList: 
 
         newCLRList = CommonBuilder.build(fn, config, components, *args)[0]
@@ -37,12 +56,21 @@ class CommonBuilder(Builder):
         newCLRList[:] = filtered_children
         return [newCLRList]
 
+    @Builder.for_procedure("filter_pass")
+    def filter_pass(
+            fn,
+            config : Config,
+            components : CLRRawList,
+            *args) -> CLRRawList:
+
+        return Builder._filter(config, components)
+
     @Builder.for_procedure("build")
     def build(
             fn,
-            config : Config,
-            components : CLRRawList, 
-            build_name : str, 
+            config: Config,
+            components: CLRRawList, 
+            build_name: str, 
             *args) -> CLRRawList:
 
         flattened_components = CommonBuilder.flatten_components(components)
@@ -55,8 +83,8 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("pool")
     def pool_(
             fn,
-            config : Config, 
-            components : CLRRawList, 
+            config: Config, 
+            components: CLRRawList, 
             *args) -> CLRRawList:
 
         pass_up_list = []
@@ -74,8 +102,8 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("pass")
     def pass_(
             fn,
-            config : Config, 
-            components : CLRRawList, 
+            config: Config, 
+            components: CLRRawList, 
             *args) -> CLRRawList:
 
         return components
@@ -84,9 +112,9 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("convert")
     def convert_(
             fn,
-            config : Config, 
-            components : CLRRawList, 
-            name : str, 
+            config: Config, 
+            components: CLRRawList, 
+            name: str, 
             *args) -> CLRRawList:
 
         if len(components) != 1:

@@ -225,7 +225,7 @@ STRUCTURE
     STRUCT_LINE ->
         @action pass
         |   TYPING 
-        @action merge
+        @action build_operator
         |   TYPING OP_ASSIGN EXPR
 
 
@@ -324,7 +324,7 @@ STRUCTURE
     ############################################################################
     # Typing
 
-    @action merge
+    @action build_operator
     TYPING -> 
         |   TAGS : TYPE
         |   TAG : TYPE
@@ -416,7 +416,7 @@ STRUCTURE
     ############################################################################
     # Assignment 
 
-    @action merge
+    @action build_operator
     ASSIGNMENT -> 
         |   DECL OP_ASSIGN RVALUE
         |   VAR OP_ASSIGN RVALUE
@@ -434,13 +434,13 @@ STRUCTURE
         |   EXPR
         |   TUPLE
 
-    @action merge
+    @action build_operator
     SCOPED_VAR -> EXPR . TAG
 
     MODULE ->
         @action pass
         |   TAG
-        @action merge
+        @action build_operator
         |   MODULE :: TAG
 
     ############################################################################
@@ -457,7 +457,7 @@ STRUCTURE
         |   return EXPR
 
     EXPR -> 
-        @action merge
+        @action build_operator
         |   EXPR OP_BIN EXPR
 
         @action handle_op_pref

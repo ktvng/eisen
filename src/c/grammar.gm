@@ -220,7 +220,7 @@ STRUCTURE
     ############################################################################
     # Assignment 
 
-    @action merge
+    @action build_operator
     ASSIGNMENT -> 
         |   DECLARATION = RVALUE
         |   REF = RVALUE
@@ -230,7 +230,7 @@ STRUCTURE
     RVALUE ->
         |   EXPR
 
-    @action merge
+    @action build_operator
     SCOPED_REF ->
         |   EXPR . TAG
         |   SCOPED_REF . TAG
@@ -250,7 +250,7 @@ STRUCTURE
         |   return EXPR
 
     LINE_EXPR -> 
-        @action merge
+        @action build_operator
         |   EXPR OP_BIN EXPR
 
         @action filter_build addr
@@ -287,7 +287,7 @@ STRUCTURE
         @action pass
         |   LINE_EXPR
 
-        @action merge
+        @action build_operator
         |   EXPR * EXPR
 
     @action filter_build call

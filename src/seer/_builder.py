@@ -4,28 +4,6 @@ from alpaca.clr import CLRRawList, CLRList
 from alpaca.config import Config
 
 class SeerBuilder(CommonBuilder):
-    @CommonBuilder.for_procedure("filter_build")
-    def filter_build_(
-            fn,
-            config : Config,
-            components : CLRRawList, 
-            *args) -> CLRRawList: 
-
-        newCLRList = SeerBuilder.build(fn, config, components, *args)[0]
-        filtered_children = SeerBuilder._filter(config, newCLRList)
-
-        newCLRList[:] = filtered_children
-        return [newCLRList]
-
-    @CommonBuilder.for_procedure("filter_pass")
-    def filter_pass(
-            fn,
-            config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
-
-        return SeerBuilder._filter(config, components)
-        
     @CommonBuilder.for_procedure("handle_call")
     def handle_call(
             fn,
@@ -74,26 +52,6 @@ class SeerBuilder(CommonBuilder):
         captain[:] = [x for x in components if x != captain]
         return [captain]
 
-    @CommonBuilder.for_procedure("merge")
-    def merge_(
-            fn,
-            config : Config,
-            components : CLRRawList, 
-            *args) -> CLRRawList:
-
-        flattened_comps = CommonBuilder.flatten_components(components)
-
-        if len(flattened_comps) == 2:
-            raise Exception("unimplemented unary ops")
-        elif len(flattened_comps) == 3:
-            newCLRList = CLRList(
-                flattened_comps[1].value, 
-                [flattened_comps[0], flattened_comps[2]], 
-                flattened_comps[1].line_number)
-            return [newCLRList]
-        else:
-            raise Exception("should not merge with more than 3 nodes")
-
     @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(
             fn,
@@ -106,28 +64,3 @@ class SeerBuilder(CommonBuilder):
             raise Exception("expected size 2 for handle_op_pref")
 
         return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
-
-    # TODO:
-    # merge to be replaced with consume
-    #
-    # @action consume B
-    # X -> A B C
-    # build would have (1) fix build to do this, takes no arguments
-    #            X 
-    #         /  |  \
-    #        A   B   C
-    # 
-    # but consume would have
-    #            B
-    #           / \
-    #          A   C
-    #
-    # and
-    # @action consume C
-    # X -> A B C
-    # yields
-    #            C
-    #           / \
-    #          A   B
-    #
-    #

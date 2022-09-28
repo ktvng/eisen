@@ -79,6 +79,7 @@ def run_seer(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
+
     print("############ STANZA ###############")
     params = seer.Params.create_initial(config, asl, txt)
     seer.ModuleWrangler(debug=False).apply(params)
@@ -89,6 +90,9 @@ def run_seer(filename: str):
         print(params.mod)
         raise e
 
+    print("############ STANZA ###############")
+    print(params.asl)
+    
     c_config = run_and_measure("interpreter ran",
         seer.AstInterpreter().apply,
         params=params)

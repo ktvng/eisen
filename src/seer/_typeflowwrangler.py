@@ -7,6 +7,7 @@ from alpaca.concepts import Context, TypeFactory, Instance, Type
 
 from seer._params import Params
 from seer._typewrangler import TypeWrangler
+from seer._callconfigurer import CallConfigurer
 from seer._common import asls_of_type, ContextTypes, SeerInstance
 
 class TypeFlowWrangler(Wrangler):
@@ -115,15 +116,21 @@ class TypeFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("fn"))
     @assigns_type
     def fn_(fn, params: Params) -> Type:
-        name = params.asl.first().value
-        # special case. TODO: fix this
-        if name == "print":
-            return params.mod.resolve_type(
-                type=TypeFactory.produce_function_type(
-                    arg=fn.void_type,
-                    ret=fn.void_type))
-        instance: Instance = params.mod.get_instance_by_name(name=name)
-        params.oracle.add_instances(params.asl, instance)
+        if isinstance(params.asl.first(), CLRToken):
+            name = params.asl.first().value
+            # special case. TODO: fix this
+            if name == "print":
+                return params.mod.resolve_type(
+                    type=TypeFactory.produce_function_type(
+                        arg=fn.void_type,
+                        ret=fn.void_type))
+            instance: Instance = params.mod.get_instance_by_name(name=name)
+            params.oracle.add_instances(params.asl, instance)
+        else:
+            type = fn.apply(params.but_with(asl=params.asl.first()))
+            return type
+
+
         return instance.type
 
     @Wrangler.covers(asls_of_type("params"))
@@ -135,7 +142,17 @@ class TypeFlowWrangler(Wrangler):
 
     @Wrangler.covers(asls_of_type("call"))
     @assigns_type
-    def call(fn, params: Params) -> Type:
+    def call_(fn, params: Params) -> Type:
+        fn_type = fn.apply(params.but_with(asl=params.asl.first()))
+
+        # still need to type flow through the params passed to the function
+        fn.apply(params.but_with(asl=params.asl.second()))
+        return fn_type.get_return_type()
+
+    @Wrangler.covers(asls_of_type("raw_call"))
+    @assigns_type
+    def raw_call(fn, params: Params) -> Type:
+        CallConfigurer.process(params)
         fn_type = fn.apply(params.but_with(asl=params.asl.first()))
 
         # still need to type flow through the params passed to the function
@@ -231,7 +248,6 @@ class TypeFlowWrangler(Wrangler):
         else:
             type = fn.apply(params.but_with(asl=params.asl.second()))
             try:
-                print(params.asl.second())
                 mod = params.oracle.get_module_of_propagated_type(params.asl.second())
             except:
                 pass

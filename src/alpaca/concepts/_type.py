@@ -58,6 +58,9 @@ class Type():
     def __str__(self) -> str:
         return f"<{self.name}({self._get_unique_string_id()})>"
 
+    def has_member_attribute_with_name(self, name: str) -> bool:
+        return name in self.component_names
+
     def get_member_attribute_by_name(self, name: str) -> Type:
         if self.construction != type_constructions.struct:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")

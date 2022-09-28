@@ -50,6 +50,10 @@ class CLRList:
             raise Exception(f"CLRList: third does not exist; len={len(self._list)}; self={self.type}")
         return self._list[2]
 
+    def update(self, type: str, lst: list[CLRList | CLRToken]):
+        self.type = type
+        self._list = lst
+
     # TODO: deprecate
     def head(self) -> CLRList | CLRToken:
         if not self._list:

@@ -233,6 +233,7 @@ class CTransmutation(Wrangler):
     def partial_12(fn, params: Params) -> str:
         if (params.asl.first().value == "print"):
             return f"(fn print)"
+        # TODO: will have to change this
         instances = params.oracle.get_instances(params.asl)
         return f"({params.asl.type} {Utils.get_full_name_of_function(instances[0])})"
 

@@ -81,6 +81,7 @@ class InterpreterObject:
 
 class AstInterpreter(Wrangler):
     def apply(self, params: Params) -> list[InterpreterObject]:
+        # print(params.asl)
         return self._apply([params], [params])
 
     @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
@@ -170,20 +171,28 @@ class AstInterpreter(Wrangler):
         # get the asl of type (fn <name>)
         fn_asl = fn._unravel_scoping(params.asl.first())
 
-        if fn_asl.first().value == "print":
+
+
+        if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
             args = [fn.apply(params.but_with(asl=asl))[0] for asl in params.asl.second()]
             PrintFunction.emulate(*args)
             
             return []
-        
-        found_fn = params.objs.get(fn_asl.first().value, None)
-        if found_fn:
-            fn_instance = found_fn.value
+
+        # this case is if we are looking pu the function inside a struct
+        if fn_asl.first().type == ".":
+            obj = fn.apply(params.but_with(asl=fn_asl.first()))[0]
+            fn_instance = obj.value
+        # this case is if we are looking up a local function or a function in the closure
         else:
-            # we need to drop into the original CLR which defines the original function
-            # in order to get the return types.
-            fn_instance = params.oracle.get_instances(fn_asl)[0]
-            
+            found_fn = params.objs.get(fn_asl.first().value, None)
+            if found_fn:
+                fn_instance = found_fn.value
+            else:
+                # we need to drop into the original CLR which defines the original function
+                # in order to get the return types.
+                fn_instance = params.oracle.get_instances(fn_asl)[0]
+
         asl_defining_the_function = fn_instance.asl
 
         # enter a new object context

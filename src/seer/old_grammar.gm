@@ -67,9 +67,6 @@ SYMBOLICS
     keyword val         ->  val
     keyword mut         ->  mut
     keyword null        ->  null
-    keyword interface   ->  interface
-    keyword is          ->  is
-    keyword some        ->  some
 
     symbol ,            ->  ,
     symbol {            ->  \s*{\s* 
@@ -193,29 +190,12 @@ STRUCTURE
         |   FUNCTION_CONTEXT
         |   STRUCT_CONTEXT
         |   MODULE_CONTEXT
-        |   INTERFACE_CONTEXT
 
     @action filter_build mod
     MODULE_CONTEXT -> 
         |   module TAG { CONTEXTS }
         |   module TAG { ENDLS CONTEXTS }
 
-    ############################################################################
-    # Interfaces
-
-    @action filter_build interface
-    INTERFACE_CONTEXT -> INTERFACE_HEADER INTERFACE_BODY
-
-    @action pool
-    INTERFACE_HEADER -> interface TAG
-    INTERFACE_BODY -> { INTERFACE_ELEMENTS }
-    INTERFACE_ELEMENTS ->
-        |   INTERFACE_ELEMENT   
-        |   INTERFACE_ELEMENT INTERFACE_ELEMENTS
-
-    INTERFACE_ELEMENT ->
-        @action pass
-        |   TYPING ENDLS
 
     ############################################################################
     # Structs
@@ -224,26 +204,17 @@ STRUCTURE
     STRUCT_CONTEXT -> STRUCT_HEADER STRUCT_BODY
 
     @action pool
-    STRUCT_HEADER -> 
-        |   struct TAG
-        |   struct TAG IMPLEMENTATIONS
-
+    STRUCT_HEADER -> struct TAG
     STRUCT_BODY -> { STRUCT_ELEMENTS }
     STRUCT_ELEMENTS -> 
         |   STRUCT_ELEMENT
         |   STRUCT_ELEMENT STRUCT_ELEMENTS
-
-    @action filter_build impls
-    IMPLEMENTATIONS -> 
-        |   is TAGS_TUPLE_BUILDER
-        |   is TAG
 
     @action pass
     STRUCT_ELEMENT -> 
         |   STRUCT_LINE ENDLS
         |   STRUCT_CONSTRUCTOR
         |   STRUCT_DESTRUCTOR
-        |   STRUCT_DECLARATION
 
     @action filter_build create 
     STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
@@ -256,11 +227,6 @@ STRUCTURE
         |   TYPING 
         @action build_operator
         |   TYPING OP_ASSIGN EXPR
-
-    @action build_operator
-    STRUCT_DECLARATION ->
-        |   TAG := ARGS_DECL CODE_BLOCK
-        |   TAG := ARGS_DECL RETURN_DECL CODE_BLOCK
 
 
     ############################################################################
@@ -372,8 +338,6 @@ STRUCTURE
         |   TAG ?
         @action filter_build type*
         |   TAG *
-        @action filter_build some_type
-        |   some TAG
         @action pass
         |   FN_TYPE
         |   ARR_TYPE
@@ -499,15 +463,14 @@ STRUCTURE
         @action handle_op_pref
         |   OP_PREF EXPR
 
-        @action filter_build raw_call
+        @action handle_call
         |   EXPR . FUNCTION_CALL
-        @action filter_build call
-        |   FUNCTION_CALL
 
         @action handle_call
         |   SCOPED_VAR . FUNCTION_CALL
 
         @action pass
+        |   FUNCTION_CALL
         |   SCOPED_VAR
         |   VAR
         |   LITERAL
@@ -515,7 +478,7 @@ STRUCTURE
         @action filter_pass
         |   ( EXPR )
 
-    @action pass
+    @action filter_build call
     FUNCTION_CALL -> FN PARAMS
 
     @action filter_build params

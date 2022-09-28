@@ -29,7 +29,7 @@ class ModuleWrangler(Wrangler):
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
-    @Wrangler.covers(asls_of_type("struct"))
+    @Wrangler.covers(asls_of_type("struct", "interface"))
     def struct_i(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)
         params.mod.resolve_type(ModuleWrangler.parse_type(params))

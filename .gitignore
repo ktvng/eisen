@@ -3,8 +3,6 @@ ccode.*
 sample.txt
 sandbox.py
 test.txt
-test.rs
-test.c
 test.lisp
 tmp
 idea.txt
@@ -17,3 +15,4 @@ __pycache__
 *.c
 notes.txt
 *.log
+*.rs

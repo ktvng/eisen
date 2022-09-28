@@ -88,6 +88,18 @@ def run_seer(filename: str):
     except Exception as e:
         print(params.mod)
         raise e
+
+    c_config = run_and_measure("interpreter ran",
+        seer.AstInterpreter().apply,
+        params=params)
+    exit()
+
+
+
+
+
+
+
     asl = seer.Flattener().run(params)
     print(asl)
     # exit()

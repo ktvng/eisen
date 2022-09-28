@@ -34,12 +34,12 @@ class TypeWrangler(Wrangler):
         token: CLRToken = params.asl.head()
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
-        
+
         found_type = params.mod.get_type_by_name(token.value)
         if found_type:
             return found_type
 
-        raise Exception("unknown type!")
+        raise Exception(f"unknown type! {token.value}")
         return TypeFactory.produce_novel_type(token.value)
 
     @Wrangler.covers(asls_of_type(":"))

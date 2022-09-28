@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
 from alpaca.concepts import Context, TypeFactory
@@ -7,6 +8,9 @@ from alpaca.clr import CLRList
 
 from seer._common import ContextTypes
 from seer._oracle import Oracle
+
+if TYPE_CHECKING:
+    from seer._ast_interpreter import InterpreterObject
 
 class Params(AbstractParams):
     def __init__(self, 
@@ -19,6 +23,9 @@ class Params(AbstractParams):
             exceptions: list[AbstractException],
             is_ptr: bool,
             oracle: Oracle,
+            
+            # used for interpreter
+            objs: dict[str, InterpreterObject] = {},
             ):
 
         self.config = config
@@ -31,6 +38,8 @@ class Params(AbstractParams):
         self.is_ptr = is_ptr
         self.oracle = oracle
 
+        self.objs = objs
+
     def but_with(self,
             config: Config = None,
             asl: CLRList = None,
@@ -41,10 +50,14 @@ class Params(AbstractParams):
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
             oracle: Oracle = None,
+
+            # used for interpreter
+            objs: dict[str, InterpreterObject] = None,
             ):
 
         return self._but_with(config=config, asl=asl, txt=txt, mod=mod, starting_mod=starting_mod,
-            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle)
+            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle,
+            objs=objs)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -113,6 +126,7 @@ Token: {self.asl}
         global_mod.add_type(TypeFactory.produce_novel_type("str?"))
         global_mod.add_type(TypeFactory.produce_novel_type("flt?"))
         global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
+        global_mod.add_type(TypeFactory.produce_novel_type("void"))
 
         return Params(
             config=config, 

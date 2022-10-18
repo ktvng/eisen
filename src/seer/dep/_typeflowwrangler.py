@@ -1,3 +1,5 @@
+# DEPRECATED
+
 from __future__ import annotations
 
 import alpaca
@@ -6,7 +8,7 @@ from alpaca.utils import Wrangler
 from alpaca.concepts import Context, TypeFactory, Instance, Type
 
 from seer._params import Params
-from seer._typewrangler import TypeWrangler
+from seer.dep._typewrangler import TypeWrangler
 from seer._callconfigurer import CallConfigurer
 from seer._common import asls_of_type, ContextTypes, SeerInstance
 

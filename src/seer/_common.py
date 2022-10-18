@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from seer._params import Params
-from alpaca.concepts import Type, Instance, Context, TypeClass
+from alpaca.concepts import Type, Instance, Context
 from alpaca.clr import CLRList
 
 class ContextTypes:

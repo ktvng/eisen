@@ -5,7 +5,7 @@ from alpaca.concepts import Type, Context
 from alpaca.clr import CLRList, CLRToken
 
 from seer._params import Params
-from seer._typewrangler import TypeWrangler
+from seer.dep._typewrangler import TypeWrangler
 from seer._common import ContextTypes, asls_of_type, SeerInstance
 
 

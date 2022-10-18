@@ -1,3 +1,5 @@
+# DEPRECATED
+
 from __future__ import annotations
 
 from alpaca.utils import Wrangler

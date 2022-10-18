@@ -3,7 +3,7 @@ import glob
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Context, TypeFactory, TypeClassFactory, TypeClass2
+from alpaca.concepts import Context, TypeFactory, TypeClassFactory, TypeClass
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
@@ -21,11 +21,12 @@ class Params(AbstractParams):
             mod: Context,
             starting_mod: Context,
             global_mod: Context,
-            void_type: TypeClass2,
+            void_type: TypeClass,
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
             oracle: Oracle,
+            critical_exception: bool = False,
             
             # used for interpreter
             objs: dict[str, InterpreterObject] = {},
@@ -42,6 +43,7 @@ class Params(AbstractParams):
         self.exceptions = exceptions
         self.is_ptr = is_ptr
         self.oracle = oracle
+        self.critical_exception = critical_exception
 
         self.objs = objs
 
@@ -63,7 +65,10 @@ class Params(AbstractParams):
 
         return self._but_with(config=config, asl=asl, txt=txt, mod=mod, starting_mod=starting_mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle,
-            objs=objs, global_mod=global_mod, void_type=self.void_type)
+            objs=objs, global_mod=global_mod, 
+
+            # these cannot be changed by input params 
+            void_type=self.void_type, critical_exception=self.critical_exception)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -138,14 +143,14 @@ Token: {self.asl}
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int*", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str*", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt*", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool*", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int?", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str?", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt?", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool?", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int*", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str*", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt*", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool*", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int?", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str?", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt?", global_mod=global_mod))
+        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool?", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
 
         void_type = TypeClassFactory.produce_novel_type("void", global_mod=global_mod)
@@ -177,5 +182,5 @@ Token: {self.asl}
     def asl_get_mod(self) -> Context:
         return self.oracle.get_module(self.asl)
 
-    def asl_get_typeclass(self) -> TypeClass2:
+    def asl_get_typeclass(self) -> TypeClass:
         return self.oracle.get_typeclass(self.asl)

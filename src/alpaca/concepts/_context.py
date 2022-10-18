@@ -5,7 +5,7 @@ import uuid
 
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
-    from alpaca.concepts._typeclass import TypeClass2
+    from alpaca.concepts._typeclass import TypeClass
 
 from alpaca.concepts._type import Type
 
@@ -16,7 +16,7 @@ class Context():
         self.name = name
         self.type = type
         self.types: list[Type] = []
-        self.typeclasses: list[TypeClass2] = []
+        self.typeclasses: list[TypeClass] = []
 
         self.children = []
         self.parent = parent
@@ -83,11 +83,11 @@ class Context():
             return self.parent.get_module_of_type(name)
         return None        
 
-    def add_typeclass(self, typeclass: TypeClass2):
+    def add_typeclass(self, typeclass: TypeClass):
         if typeclass not in self.typeclasses:
             self.typeclasses.append(typeclass)
 
-    def get_typeclass_by_name(self, name: str) -> TypeClass2:
+    def get_typeclass_by_name(self, name: str) -> TypeClass:
         found_typeclass = [tc for tc in self.typeclasses if tc.name == name]
         if len(found_typeclass) == 1:
             return found_typeclass[0]

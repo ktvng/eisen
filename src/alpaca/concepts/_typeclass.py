@@ -6,7 +6,7 @@ import uuid
 from alpaca.concepts._type import Type
 from alpaca.concepts._context import Context
 
-class TypeClass2():
+class TypeClass():
     class classifications:
         novel = "novel"
         tuple = "tuple"
@@ -37,10 +37,10 @@ class TypeClass2():
             self.classification != TypeClass.classifications.proto_struct):
             raise Exception("can only finalize a proto* TypeClass")
 
-        if self.classification == TypeClass2.classifications.proto_interface:
-            self.classification = TypeClass2.classifications.interface
-        elif self.classification == TypeClass2.classifications.proto_struct:
-            self.classification = TypeClass2.classifications.struct
+        if self.classification == TypeClass.classifications.proto_interface:
+            self.classification = TypeClass.classifications.interface
+        elif self.classification == TypeClass.classifications.proto_struct:
+            self.classification = TypeClass.classifications.struct
 
         self.components = components 
         self.component_names = component_names
@@ -48,7 +48,7 @@ class TypeClass2():
 
     def _get_uuid_str(self) -> str:
         mod_str = self.mod.get_full_name() if self.mod else ""
-        if self.classification == TypeClass2.classifications.novel:
+        if self.classification == TypeClass.classifications.novel:
             return mod_str + "::" + self.name
 
         name_str = self.name if self.name else ""
@@ -61,10 +61,12 @@ class TypeClass2():
 
         return mod_str + "::" + f"{name_str}={self.classification}({', '.join(member_strs)})" 
 
+    # note: we omit the global module for brevity. thus global::int => int
     def _get_printable_str(self, shorten: bool = False) -> str:
         mod_str = self.mod.get_full_name() if self.mod else ""
-        if self.classification == TypeClass2.classifications.novel:
-            return mod_str + "::" + self.name
+        mod_str = mod_str + "::" if mod_str else ""
+        if self.classification == TypeClass.classifications.novel:
+            return mod_str + self.name
 
         if shorten and self.name:
             return self.name
@@ -77,7 +79,7 @@ class TypeClass2():
         else:
             member_strs = [member._get_printable_str(shorten=True) for member in self.components] 
 
-        return mod_str + "::" + f"{name_str}{self.classification}({', '.join(member_strs)})" 
+        return mod_str + f"{name_str}{self.classification}({', '.join(member_strs)})" 
 
     def _equiv(self, u : list, v : list) -> bool:
         return (u is not None 
@@ -98,7 +100,7 @@ class TypeClass2():
         return name in self.component_names
 
     def get_member_attribute_by_name(self, name: str) -> Type:
-        if self.classification != TypeClass2.classifications.struct and self.classification != TypeClass2.classifications.interface:
+        if self.classification != TypeClass.classifications.struct and self.classification != TypeClass.classifications.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
@@ -108,26 +110,26 @@ class TypeClass2():
         return self.components[pos]
 
     def get_return_type(self) -> Type:
-        if self.classification != TypeClass2.classifications.function:
+        if self.classification != TypeClass.classifications.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
         
         return self.components[1]
 
     def is_function(self) -> bool:
-        return self.classification == TypeClass2.classifications.function
+        return self.classification == TypeClass.classifications.function
 
     def is_struct(self) -> bool:
-        return self.classification == TypeClass2.classifications.struct
+        return self.classification == TypeClass.classifications.struct
 
     def is_novel(self) -> bool:
-        return self.classification == TypeClass2.classifications.novel 
+        return self.classification == TypeClass.classifications.novel 
 
 
 class TypeClassFactory():
     @classmethod
-    def produce_novel_type(cls, name: str, global_mod: Context) -> TypeClass2:
-        return TypeClass2(
-            classification=TypeClass2.classifications.novel, 
+    def produce_novel_type(cls, name: str, global_mod: Context) -> TypeClass:
+        return TypeClass(
+            classification=TypeClass.classifications.novel, 
             name=name, 
             mod=global_mod, 
             components=[], 
@@ -135,9 +137,9 @@ class TypeClassFactory():
             inherits=[])
 
     @classmethod
-    def produce_tuple_type(cls, components: list[TypeClass], global_mod: Context) -> TypeClass2:
-        return TypeClass2(
-            classification=TypeClass2.classifications.tuple, 
+    def produce_tuple_type(cls, components: list[TypeClass], global_mod: Context) -> TypeClass:
+        return TypeClass(
+            classification=TypeClass.classifications.tuple, 
             name="",
             mod=global_mod, 
             components=components, 
@@ -145,9 +147,9 @@ class TypeClassFactory():
             inherits=[])
 
     @classmethod
-    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Context, name: str = "") -> TypeClass2:
-        return TypeClass2(
-            classification=TypeClass2.classifications.function, 
+    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Context, name: str = "") -> TypeClass:
+        return TypeClass(
+            classification=TypeClass.classifications.function, 
             name=name, 
             mod=mod, 
             components=[arg, ret], 
@@ -155,9 +157,9 @@ class TypeClassFactory():
             inherits=[])
 
     @classmethod
-    def produce_proto_struct_type(cls, name: str, mod: Context) -> TypeClass2:
-        return TypeClass2(
-            classification=TypeClass2.classifications.proto_struct,
+    def produce_proto_struct_type(cls, name: str, mod: Context) -> TypeClass:
+        return TypeClass(
+            classification=TypeClass.classifications.proto_struct,
             name=name, 
             mod=mod, 
             components=[], 
@@ -165,76 +167,11 @@ class TypeClassFactory():
             inherits=[])
 
     @classmethod
-    def produce_proto_interface_type(cls, name: str, mod: Context) -> TypeClass2:
-        return TypeClass2(
-            classification=TypeClass2.classifications.proto_interface, 
+    def produce_proto_interface_type(cls, name: str, mod: Context) -> TypeClass:
+        return TypeClass(
+            classification=TypeClass.classifications.proto_interface, 
             name=name, 
             mod=mod, 
             components=[], 
             component_names=[], 
             inherits=[])
-
-class TypeClass():
-    class classifications:
-        novel = "novel"
-        tuple = "tuple"
-        function = "function"
-        struct = "struct"
-        interface = "interface"
-        proto_struct = "proto_struct"
-        proto_interface = "proto_interface"
-
-    def __init__(self, 
-            classification: str, 
-            name: str, 
-            type: Type, 
-            context: Context, 
-            inherits: list[TypeClass] = []) -> None:
-
-        self.name = name
-        self.classification = classification
-        self.type = type 
-        self.context = context
-        self.inherits = inherits
-
-        self.guid = uuid.uuid4()
-
-    @classmethod
-    def create_general(cls, type: Type) -> TypeClass:
-        return TypeClass(TypeClass.classifications.general, None, type, None, None)
-
-    @classmethod
-    def create_proto_struct(cls, name: str, mod: Context) -> TypeClass:
-        return TypeClass(TypeClass.classifications.proto_struct, name, None, mod, None)
-
-    @classmethod
-    def create_proto_interface(cls, name: str, mod: Context) -> TypeClass:
-        return TypeClass(TypeClass.classifications.proto_interface, name, None, mod, None)
-
-    @classmethod
-    def create_struct(cls, name: str, type: Type, context: Context, inherits: list[TypeClass] = []) -> TypeClass:
-        return TypeClass(TypeClass.classifications.struct, name, type, context, inherits)
-
-    @classmethod
-    def create_interface(cls, name: str, type: Type, context: Context) -> TypeClass:
-        return TypeClass(TypeClass.classifications.interface, name, type, context)
-
-    def finalize(self, type: Type, inherits: list[TypeClass] = []):
-        if (self.classification != TypeClass.classifications.proto_interface and
-            self.classification != TypeClass.classifications.proto_struct):
-            raise Exception("can only finalize a proto* TypeClass")
-
-        self.type = type
-        self.inherits = inherits
-
-    def __hash__(self) -> int:
-        return self.guid.int
-
-    def __str__(self) -> str:
-        s = str(self.type)
-        if self.inherits:
-            s += ":: " + ", ".join(s.name for s in self.inherits)
-        if self.context:
-            s += " in " + self.context.name
-
-        return s

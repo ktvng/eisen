@@ -1,12 +1,9 @@
 from __future__ import annotations
-from os import link
 
-import alpaca
-from alpaca.clr import CLRList, CLRToken
-from alpaca.concepts import Context, TypeFactory, Instance, Type
+from alpaca.clr import CLRList
+from alpaca.concepts import Instance
 
 from seer._params import Params
-from seer._common import asls_of_type, ContextTypes, SeerInstance
 
 class CallConfigurer():
     @classmethod
@@ -42,7 +39,6 @@ class CallConfigurer():
             
     @classmethod
     def process(cls, params: Params):
-        print(params.asl)
         if params.asl.type == "basic_call":
             cls._handle_basic_call(params)
         if cls._should_unravel(params):
@@ -51,13 +47,12 @@ class CallConfigurer():
             cls._construct_standard_call(params)
 
     # case is (raw_call (ref x) (fn run) (params )))))
+    # note that (ref x) could also be an expression
     @classmethod
     def _should_unravel(cls, params: Params) -> bool:
-        primary_name = params.asl.first().first().value
+        typeclass = params.but_with(asl=params.asl.first()).asl_get_typeclass()
         secondary_name = params.asl.second().first().value
-
-        instance: Instance = params.mod.get_instance_by_name(primary_name)
-        if instance.type.is_struct() and instance.type.has_member_attribute_with_name(secondary_name):
+        if typeclass.is_struct() and typeclass.has_member_attribute_with_name(secondary_name):
             return False
-        
+
         return True

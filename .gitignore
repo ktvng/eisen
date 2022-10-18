@@ -2,8 +2,7 @@ build/*
 ccode.*
 sample.txt
 sandbox.py
-test.txt
-test.lisp
+test.*
 tmp
 idea.txt
 __pycache__

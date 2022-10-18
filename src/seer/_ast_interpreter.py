@@ -141,7 +141,7 @@ class AstInterpreter(Wrangler):
         params.objs[name].value = new_obj.value
         return []
 
-    @Wrangler.covers(asls_of_type("mod", "struct"))
+    @Wrangler.covers(asls_of_type("mod", "struct", "interface", "return"))
     def skip_(fn, params: Params):
         return
 
@@ -166,12 +166,14 @@ class AstInterpreter(Wrangler):
         params.objs[name] = value
         return [value]
 
+    @Wrangler.covers(asls_of_type("cast"))
+    def cast_(fn, params: Params):
+        return fn.apply(params.but_with(asl=params.asl.first()))
+
     @Wrangler.covers(asls_of_type("call"))
     def call_(fn, params: Params):
         # get the asl of type (fn <name>)
         fn_asl = fn._unravel_scoping(params.asl.first())
-
-
 
         if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
             args = [fn.apply(params.but_with(asl=asl))[0] for asl in params.asl.second()]

@@ -170,6 +170,30 @@ class TypeFlowWrangler(Wrangler):
             fn.apply(params.but_with(asl=child))
         return fn.void_type
 
+    @Wrangler.covers(asls_of_type("interface"))
+    @assigns_type
+    def interface(fn, params: Params) -> Type:
+        for child in params.asl[1:]:
+            fn.apply(params.but_with(asl=child))
+        return fn.void_type 
+
+    @Wrangler.covers(asls_of_type("cast"))
+    @assigns_type
+    def cast(fn, params: Params) -> Type:
+        # (cast (ref name) (type into))
+        left_type = fn.apply(params.but_with(asl=params.asl.first()))
+        right_type = fn.apply(params.but_with(asl=params.asl.second()))
+
+        if left_type == right_type:
+            return left_type
+
+        raise Exception(f"TODO handle cast error {left_type} != {right_type}")
+
+    @Wrangler.covers(asls_of_type("impls"))
+    @assigns_type
+    def impls(fn, params: Params) -> Type:
+        return fn.void_type
+
     @Wrangler.covers(asls_of_type("mod"))
     @assigns_type
     def mod(fn, params: Params) -> Type:
@@ -195,8 +219,8 @@ class TypeFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type(*binary_ops))
     @assigns_type
     def binary_ops(fn, params: Params) -> Type:
-        left_type = fn.apply(params.but_with(asl=params.asl[0]))
-        right_type = fn.apply(params.but_with(asl=params.asl[1]))
+        left_type = fn.apply(params.but_with(asl=params.asl.first()))
+        right_type = fn.apply(params.but_with(asl=params.asl.second()))
 
         if left_type != right_type:
             raise Exception("TODO: gracefully handle exception")

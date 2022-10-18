@@ -1,8 +1,9 @@
 from __future__ import annotations
+import glob
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Context, TypeFactory
+from alpaca.concepts import Context, TypeFactory, TypeClassFactory, TypeClass2
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
@@ -19,6 +20,8 @@ class Params(AbstractParams):
             txt: str,
             mod: Context,
             starting_mod: Context,
+            global_mod: Context,
+            void_type: TypeClass2,
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
@@ -34,6 +37,8 @@ class Params(AbstractParams):
         self.mod = mod
         self.struct_name = struct_name
         self.starting_mod = starting_mod
+        self.global_mod = global_mod
+        self.void_type = void_type
         self.exceptions = exceptions
         self.is_ptr = is_ptr
         self.oracle = oracle
@@ -45,7 +50,8 @@ class Params(AbstractParams):
             asl: CLRList = None,
             txt: str = None,
             mod: Context = None,
-            starting_mod: Config = None,
+            starting_mod: Context = None,
+            global_mod: Context = None,
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
@@ -53,11 +59,11 @@ class Params(AbstractParams):
 
             # used for interpreter
             objs: dict[str, InterpreterObject] = None,
-            ):
+            ) -> Params:
 
         return self._but_with(config=config, asl=asl, txt=txt, mod=mod, starting_mod=starting_mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle,
-            objs=objs)
+            objs=objs, global_mod=global_mod, void_type=self.void_type)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -128,13 +134,48 @@ Token: {self.asl}
         global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
         global_mod.add_type(TypeFactory.produce_novel_type("void"))
 
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int*", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str*", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt*", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool*", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int?", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str?", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt?", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool?", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
+
+        void_type = TypeClassFactory.produce_novel_type("void", global_mod=global_mod)
+        global_mod.add_typeclass(void_type)
+
         return Params(
             config=config, 
             asl=asl,
             txt=txt,
             mod=global_mod,
             starting_mod=global_mod,
+            global_mod=global_mod,
+            void_type=void_type,
             struct_name=None,
             exceptions=[],
             is_ptr=False,
             oracle=Oracle())
+
+    def asl_get_struct_name(self) -> str:
+        if isinstance(self.asl, CLRList) and self.asl.type == "struct":
+            return self.asl.first().value
+        raise Exception(f"cannot call method on {self.asl}")
+
+    def asl_get_interface_name(self) -> str:
+        if isinstance(self.asl, CLRList) and self.asl.type == "interface":
+            return self.asl.first().value
+        raise Exception(f"cannot call method on {self.asl}")
+
+    def asl_get_mod(self) -> Context:
+        return self.oracle.get_module(self.asl)
+
+    def asl_get_typeclass(self) -> TypeClass2:
+        return self.oracle.get_typeclass(self.asl)

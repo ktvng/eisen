@@ -1,8 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+import uuid
+
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
+    from alpaca.concepts._typeclass import TypeClass2
+
 from alpaca.concepts._type import Type
 
 
@@ -12,10 +16,12 @@ class Context():
         self.name = name
         self.type = type
         self.types: list[Type] = []
+        self.typeclasses: list[TypeClass2] = []
 
         self.children = []
         self.parent = parent
         self.instances: dict[str, Instance] = {}
+        self.guid = uuid.uuid4()
         if parent:
             parent._add_child(self)
 
@@ -77,6 +83,21 @@ class Context():
             return self.parent.get_module_of_type(name)
         return None        
 
+    def add_typeclass(self, typeclass: TypeClass2):
+        if typeclass not in self.typeclasses:
+            self.typeclasses.append(typeclass)
+
+    def get_typeclass_by_name(self, name: str) -> TypeClass2:
+        found_typeclass = [tc for tc in self.typeclasses if tc.name == name]
+        if len(found_typeclass) == 1:
+            return found_typeclass[0]
+        if len(found_typeclass) > 1:
+            raise Exception(f"expected exactly one typeclass, got {len(found_typeclass)}")
+
+        if self.parent:
+            return self.parent.get_typeclass_by_name(name)
+        raise Exception(f"could not find typeclass {name}")
+
 
     def add_type(self, type: Type):
         self.types.append(type)
@@ -99,3 +120,13 @@ class Context():
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
         return f"{self.type} {self.name}\n{indented_subtext}"
         
+    def get_full_name(self) -> str:
+        # case for the global module
+        if self.parent is None:
+            return ""
+
+        name = self.name
+        mod = self.parent
+        while mod is not None and mod.parent is not None:
+            name += mod.name + "::"
+        return name

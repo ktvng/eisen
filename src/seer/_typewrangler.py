@@ -42,6 +42,21 @@ class TypeWrangler(Wrangler):
         raise Exception(f"unknown type! {token.value}")
         return TypeFactory.produce_novel_type(token.value)
 
+    @Wrangler.covers(asls_of_type("interface_type"))
+    @resolves_type
+    def interface_type_(fn, params: Params) -> Type:
+        # eg. (type int)
+        token: CLRToken = params.asl.head()
+        if token.type != "TAG":
+            raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
+
+        found_type = params.mod.get_type_by_name(token.value)
+        if found_type:
+            return found_type
+
+        raise Exception(f"unknown type! {token.value}")
+        return TypeFactory.produce_novel_type(token.value)
+
     @Wrangler.covers(asls_of_type(":"))
     @resolves_type
     def colon_(fn, params: Params) -> Type:
@@ -100,9 +115,19 @@ class TypeWrangler(Wrangler):
     @resolves_type
     def struct_(fn, params: Params) -> Type:
         # eg. (struct name (: ...) (: ...) ... (create ...))
-        attributes = [component for component in params.asl if component.type == ":"]
+        attributes = [component for component in params.asl if component.type == ":" or component.type == ":="]
         return TypeFactory.produce_struct_type(
             name=params.asl.first().value,
             components=[fn.apply(params.but_with(asl=component)) for component in attributes],
             component_names=TypeWrangler._get_component_names(attributes))
 
+    @Wrangler.covers(asls_of_type("interface"))
+    @resolves_type
+    def interface_(fn, params: Params) -> Type:
+        # eg. (interface name (: ...) ...)
+        attributes = [component for component in params.asl if component.type == ":"]
+        return TypeFactory.produce_interface_type(
+            name=params.asl.first().value,
+            components=[fn.apply(params.but_with(asl=component)) for component in attributes],
+            component_names=TypeWrangler._get_component_names(attributes)) 
+    

@@ -70,6 +70,7 @@ SYMBOLICS
     keyword interface   ->  interface
     keyword is          ->  is
     keyword some        ->  some
+    keyword as          ->  as
 
     symbol ,            ->  ,
     symbol {            ->  \s*{\s* 
@@ -372,7 +373,7 @@ STRUCTURE
         |   TAG ?
         @action filter_build type*
         |   TAG *
-        @action filter_build some_type
+        @action filter_build interface_type
         |   some TAG
         @action pass
         |   FN_TYPE
@@ -414,6 +415,11 @@ STRUCTURE
     TAGS_TUPLE_BUILDER -> 
         |   TAG , TAG
         |   TAG , TAGS_TUPLE_BUILDER
+
+    ############################################################################
+    # Casting
+    @action filter_build cast
+    EXPR -> EXPR . as ( TYPE )
 
 
     ############################################################################

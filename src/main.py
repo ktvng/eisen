@@ -79,9 +79,17 @@ def run_seer(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-
     print("############ STANZA ###############")
     params = seer.Params.create_initial(config, asl, txt)
+
+    for step in seer.Workflow.steps:
+        print(step)
+        step().apply(params)
+
+    print("========")
+    for t in params.mod.typeclasses:
+        print(t)
+    exit()
     seer.ModuleWrangler(debug=False).apply(params)
     mod = params.mod
     try:
@@ -92,7 +100,7 @@ def run_seer(filename: str):
 
     print("############ STANZA ###############")
     print(params.asl)
-    
+
     c_config = run_and_measure("interpreter ran",
         seer.AstInterpreter().apply,
         params=params)

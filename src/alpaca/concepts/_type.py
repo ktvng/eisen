@@ -7,8 +7,9 @@ class type_constructions:
     struct = "struct"
     function = "function"
     maybe = "maybe"
+    interface = "interface"
 
-TypeConstruction = Literal["novel", "tuple", "struct", "function", "maybe"]
+TypeConstruction = Literal["novel", "tuple", "struct", "function", "maybe", "interface"]
 
 class Type():
     def __init__(self, 
@@ -32,13 +33,7 @@ class Type():
             and all([x == y for x, y in zip(u, v)]))
 
     def __eq__(self, o: Any) -> bool:
-        # TODO: can we return hash == hash here?
-        if not isinstance(o, Type):
-            return False
-        if self.construction == type_constructions.novel and o.construction == type_constructions.novel:
-            return self.name == o.name
-        return (self._equiv(self.components, o.components)
-            and self._equiv(self.component_names, o.component_names))
+        return hash(self) == hash(o)
 
     def _get_unique_string_id(self) -> str:
         if self.construction == type_constructions.novel:
@@ -62,7 +57,7 @@ class Type():
         return name in self.component_names
 
     def get_member_attribute_by_name(self, name: str) -> Type:
-        if self.construction != type_constructions.struct:
+        if self.construction != type_constructions.struct and self.construction != type_constructions.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
@@ -108,3 +103,8 @@ class TypeFactory:
     @classmethod
     def produce_maybe_type(cls, components: list[Type], name: str = ""):
         return Type(name, type_constructions.maybe, components)
+
+    @classmethod
+    def produce_interface_type(cls, name: str, components: list[Type], component_names: list[str]) -> Type:
+        return Type(name, type_constructions.interface, components, component_names)
+        

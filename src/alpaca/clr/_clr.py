@@ -97,7 +97,6 @@ class CLRList:
 
     def __str__(self) -> str:
         str_reps = [str(x) for x in self._list]
-
         if any([("\n" in s) for s in str_reps]):
             parts = reduce(lambda lst, s: lst + s.split('\n'), str_reps, [])
             parts = [CLRList.indent + s for s in parts]

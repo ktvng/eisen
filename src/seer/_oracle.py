@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
-from alpaca.concepts import Type, Context, Instance
+from alpaca.concepts import Type, Context, Instance, TypeClass2
 from alpaca.clr import CLRToken, CLRList
 
 class Oracle:
@@ -65,3 +65,10 @@ class Oracle:
 
     def get_instances(self, asl: CLRList) -> list[Instance]:
         return self._get_node_property(asl, "instances")
+
+    def add_typeclass(self, asl: CLRList, typeclass: TypeClass2):
+        return self._add_property(asl, "typeclass", typeclass)
+
+    def get_typeclass(self, asl: CLRList) -> TypeClass2:
+        return self._get_node_property(asl, "typeclass")
+

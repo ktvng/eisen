@@ -1,5 +1,13 @@
 from seer._typedeclarationwrangler import ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoWrangler, TypeClassFlowWrangler, FunctionWrangler
 from seer._ast_interpreter import AstInterpreter
+from seer._exceptionshandler import ExceptionsHandler
+
+# Notes:
+# A module is a collection of structs/functions
+# A context, properly, is a block with instances defined
+# A context may have a parent as a module (as module level functions are available
+# for use as instances)
+# They are implemented the same.
 
 class Workflow():   
     steps = [
@@ -26,6 +34,8 @@ class Workflow():
         #   - the typeclass which is flowed through a node can be accessed by
         #     params.asl_get_typeclass()
         TypeClassFlowWrangler,
+
+        ExceptionsHandler,
 
         # execute the augmented AST via the interpreter.
         AstInterpreter  

@@ -28,22 +28,22 @@ class Context():
     def _add_child(self, child: Context):
         self.children.append(child)
 
-    def _find_instance(self, name: str) -> Instance | None:
+    def find_instance(self, name: str) -> Instance | None:
         if name in self.instances:
             return self.instances[name]
         if self.parent:
-            return self.parent._find_instance(name)
+            return self.parent.find_instance(name)
         return None
 
     def resolve_instance(self, name: str, type: Type) -> Instance:
-        found_instance = self._find_instance(name)
+        found_instance = self.find_instance(name)
         if found_instance:
             return found_instance
 
         return self.add_instance(name, type)
 
     def get_instance_by_name(self, name: str) -> Instance | None:
-        return self._find_instance(name)
+        return self.find_instance(name)
 
     def add_instance(self, instance: Instance) -> Instance:
         self.instances[instance.name] = instance

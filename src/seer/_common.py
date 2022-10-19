@@ -6,6 +6,8 @@ if TYPE_CHECKING:
 from alpaca.concepts import Type, Instance, Context
 from alpaca.clr import CLRList
 
+Module = Context
+
 class ContextTypes:
     mod = "module"
     fn = "fn"

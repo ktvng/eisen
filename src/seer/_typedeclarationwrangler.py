@@ -1,4 +1,5 @@
 from __future__ import annotations
+from socket import CAN_BCM_TX_RESET_MULTI_IDX
 
 from alpaca.utils import Wrangler
 from alpaca.clr import CLRList, CLRToken
@@ -6,9 +7,11 @@ from alpaca.concepts import Context, TypeClass, TypeClassFactory
 
 from seer._params import Params
 from seer._common import asls_of_type, ContextTypes
+from seer._exceptions import Exceptions
 
 from seer._callconfigurer import CallConfigurer
-from seer._common import asls_of_type, ContextTypes, SeerInstance
+from seer._common import asls_of_type, ContextTypes, SeerInstance, Module
+
 
 ################################################################################
 # this parses the asl and creates the module structure of the program.
@@ -34,7 +37,7 @@ class ModuleWrangler2(Wrangler):
     def mod_(fn, params: Params) -> Context:
         # create a new module; the name of the module is stored as a CLRToken
         # in the first position of the module asl.
-        new_mod = Context(
+        new_mod = Module(
             name=params.asl.first().value,
             type=ContextTypes.mod, 
             parent=params.mod)
@@ -206,12 +209,13 @@ class FinalizeProtoWrangler(Wrangler):
         interfaces: list[TypeClass] = []
 
         # this looks like (impls name1 name2)
-        impls_asl = params.asl.second()
-        for child in impls_asl:
-            # TODO: currently we only allow the interface to be looked up in the same
-            # module as the struct. In general, we need to allow interfaces from arbitrary
-            # modules.
-            interfaces.append(mod.get_typeclass_by_name(child.value))
+        if len(params.asl) >= 2 and isinstance(params.asl.second(), CLRList) and params.asl.second().type == "impls":
+            impls_asl = params.asl.second()
+            for child in impls_asl:
+                # TODO: currently we only allow the interface to be looked up in the same
+                # module as the struct. In general, we need to allow interfaces from arbitrary
+                # modules.
+                interfaces.append(mod.get_typeclass_by_name(child.value))
 
         component_asls = [child for child in params.asl if child.type == ":" or child.type == ":="]
         this_struct_typeclass.finalize(
@@ -325,6 +329,7 @@ class FunctionWrangler(Wrangler):
 class TypeClassFlowWrangler(Wrangler):
     def __init__(self, debug: bool = False):
         super().__init__(debug=debug)
+        # self.debug = True
 
     def apply(self, params: Params) -> TypeClass:
         if self.debug and isinstance(params.asl, CLRList):
@@ -413,9 +418,12 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def tuple_(fn, params: Params) -> TypeClass:
-        return TypeClassFactory.produce_tuple_type(
-            components=[fn.apply(params.but_with(asl=child)) for child in params.asl],
-            global_mod=params.global_mod)
+        if len(params.asl) > 1:
+            return TypeClassFactory.produce_tuple_type(
+                components=[fn.apply(params.but_with(asl=child)) for child in params.asl],
+                global_mod=params.global_mod)
+        # if there is only one child, then we simply pass the type back, not as a tuple
+        return fn.apply(params.but_with(asl=params.asl.first()))
 
 
     @Wrangler.covers(asls_of_type("if"))
@@ -426,10 +434,10 @@ class TypeClassFlowWrangler(Wrangler):
         for child in params.asl:
             fn.apply(params.but_with(
                 asl=child, 
-                mod=Context(
+                context=Context(
                     name="if",
                     type=ContextTypes.block,
-                    parent=params.asl_get_mod())))
+                    parent=params.get_parent_context())))
 
 
     @Wrangler.covers(asls_of_type("while"))
@@ -439,7 +447,10 @@ class TypeClassFlowWrangler(Wrangler):
     def while_(fn, params: Params) -> TypeClass:
         fn.apply(params.but_with(
             asl=params.asl.first(),
-            mod=Context(name="while", type=ContextTypes.block, parent=params.asl_get_mod())))
+            context=Context(
+                name="while", 
+                type=ContextTypes.block, 
+                parent=params.get_parent_context())))
 
 
     @Wrangler.covers(asls_of_type(":"))
@@ -449,6 +460,7 @@ class TypeClassFlowWrangler(Wrangler):
         if isinstance(params.asl.first(), CLRToken):
             names = [params.asl.first().value]
         else:
+            # TODO: will we ever get here? probably
             if params.asl.first().type != "tags":
                 raise Exception(f"Expected tags but got {params.asl.first().type}")
             names = [token.value for token in params.asl.first()]
@@ -456,9 +468,11 @@ class TypeClassFlowWrangler(Wrangler):
         type = fn.apply(params.but_with(asl=params.asl.second()))
         instances = []
         for name in names:
-            instances.append(
-                params.asl_get_mod().add_instance(
-                    SeerInstance(name, type, params.asl_get_mod(), params.asl, is_ptr=params.is_ptr)))
+            result = Validate.name_is_unbound(params, name)
+            if not result.failed():
+                instances.append(
+                    params.context.add_instance(
+                        SeerInstance(name, type, params.asl_get_mod(), params.asl, is_ptr=params.is_ptr)))
         params.oracle.add_instances(params.asl, instances)
         return type
 
@@ -490,10 +504,21 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def call_(fn, params: Params) -> TypeClass:
+        fn_name = ""
+        if params.asl.first().type == "fn":
+            fn_name = params.asl.first().first().value
         fn_type = fn.apply(params.but_with(asl=params.asl.first()))
 
         # still need to type flow through the params passed to the function
-        fn.apply(params.but_with(asl=params.asl.second()))
+        params_type = fn.apply(params.but_with(asl=params.asl.second()))
+
+        # TODO: make this nicer
+        if fn_name != "print":
+            fn_in_type = fn_type.get_argument_type()
+            result = Validate.correct_argument_types(params, fn_in_type, params_type)
+            if result.failed():
+                return result.get_failure_type()
+
         return fn_type.get_return_type()
 
 
@@ -521,7 +546,12 @@ class TypeClassFlowWrangler(Wrangler):
     def struct(fn, params: Params) -> TypeClass:
         # ignore the first element because this is the CLRToken storing the name
         for child in params.asl[1:]:
-            fn.apply(params.but_with(asl=child))
+            fn.apply(params.but_with(
+                asl=child,
+                context=Context(
+                    name="struct",
+                    type=ContextTypes.block,
+                    parent=None)))
 
 
     @Wrangler.covers(asls_of_type("cast"))
@@ -532,11 +562,12 @@ class TypeClassFlowWrangler(Wrangler):
         left_typeclass = fn.apply(params.but_with(asl=params.asl.first()))
         right_typeclass = fn.apply(params.but_with(asl=params.asl.second()))
 
-        if right_typeclass in left_typeclass.inherits:
-            return right_typeclass
-
-        # TODO: throw compiler error if this occurs.
-        raise Exception(f"TODO handle cast error {left_typeclass} != {right_typeclass}")
+        result = Validate.castable_types(params, 
+            type=left_typeclass, 
+            cast_into_type=right_typeclass)
+        if result.failed():
+            return result.get_failure_type()
+        return right_typeclass
 
 
     @Wrangler.covers(asls_of_type("impls"))
@@ -566,13 +597,15 @@ class TypeClassFlowWrangler(Wrangler):
         # inside the FunctionWrangler, (def ...) and (create ...) asls have been
         # normalized to have the same signature. therefore we can treat them identically
         # here
-        local_mod = Context(
+
+        parent_context = params.get_parent_context() if params.asl.type == "def" else None
+        fn_context = Context(
             name=params.asl.first().value,
             type=ContextTypes.fn,
-            parent=params.asl_get_mod())
+            parent=parent_context)
 
         for child in params.asl[1:]:
-            fn.apply(params.but_with(asl=child, mod=local_mod))
+            fn.apply(params.but_with(asl=child, context=fn_context))
 
 
     # we don't need to add/record typeclasses because this is a CLRToken
@@ -596,22 +629,18 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     def idecls_(fn, params: Params):
         name = params.asl.first().value
+        result = Validate.name_is_unbound(params, name)
+        if result.failed():
+            return result.get_failure_type()
 
-        if isinstance(params.asl.second(), CLRToken):
-            type=TypeClassFactory.produce_novel_type(
-                name=params.asl.second().type,
-                global_mod=params.global_mod)
-            typeclass = TypeClass.create_general(type)
-        else:
-            typeclass = fn.apply(params.but_with(asl=params.asl.second()))
-
-        params.oracle.add_instances(
-            asl=params.asl, 
-            instances=[params.asl_get_mod().add_instance(SeerInstance(
-                name, 
-                typeclass, 
-                params.asl_get_mod(), 
-                params.asl))])
+        typeclass = fn.apply(params.but_with(asl=params.asl.second()))
+        instance = SeerInstance(
+            name, 
+            typeclass, 
+            params.asl_get_mod(), 
+            params.asl)
+        params.oracle.add_instances(params.asl, [instance])
+        params.context.add_instance(instance)
         return typeclass
 
 
@@ -625,9 +654,10 @@ class TypeClassFlowWrangler(Wrangler):
     # - multiple inference
     #       let x, y = 4, 4
     #       (let (tags x y ) (tuple 4 4))
-    @Wrangler.covers(asls_of_type('val', 'var', 'mut_val', 'mut_var', 'let'))
+    @Wrangler.covers(asls_of_type("val", "var", "mut_val", "mut_var", "let"))
     @records_typeclass
     @passes_if_critical_exception
+    @returns_void_type
     def decls_(fn, params: Params):
         if isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
             names = [token.value for token in params.asl.first()]
@@ -635,21 +665,18 @@ class TypeClassFlowWrangler(Wrangler):
 
             instances = []
             for name, type in zip(names, types):
-                instances.append(
-                    params.asl_get_mod().add_instance(SeerInstance(name, type, params.asl_get_mod(), params.asl)))
+                result = Validate.name_is_unbound(params, name)
+                if not result.failed():
+                    instances.append(
+                        params.context.add_instance(SeerInstance(name, type, params.asl_get_mod(), params.asl)))
             params.oracle.add_instances(params.asl, instances)
-            return params.void_type
 
         elif isinstance(params.asl.first(), CLRList) and params.asl.first().type == ":":
+            # validations occur inside the (: ...) asl 
             type = fn.apply(params.but_with(asl=params.asl.first()))
             params.oracle.add_instances(
                 asl=params.asl,
                 instances=params.oracle.get_instances(params.asl.first()))
-            return type
-
-        else:
-            raise Exception(f"Unexpected format: {params.asl}")
-
 
     @Wrangler.covers(asls_of_type("type", "type?", "type*"))
     @records_typeclass
@@ -658,7 +685,7 @@ class TypeClassFlowWrangler(Wrangler):
         return params.asl_get_mod().get_typeclass_by_name(name=params.asl.first().value)
 
 
-    binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
+    binary_ops = ["+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "==", "!=", "+=", "-=", "*=", "/="] 
     @Wrangler.covers(asls_of_type(*binary_ops))
     @records_typeclass
     @passes_if_critical_exception
@@ -666,9 +693,9 @@ class TypeClassFlowWrangler(Wrangler):
         left_type = fn.apply(params.but_with(asl=params.asl.first()))
         right_type = fn.apply(params.but_with(asl=params.asl.second()))
 
-        if left_type != right_type:
-            raise Exception("TODO: gracefully handle exception")
-
+        result = Validate.equivalent_types(params, left_type, right_type)
+        if result.failed():
+            return result.get_failure_type()
         return left_type
 
 
@@ -678,17 +705,12 @@ class TypeClassFlowWrangler(Wrangler):
     def assigns(fn, params: Params) -> TypeClass:
         left_type = fn.apply(params.but_with(asl=params.asl.first()))
         right_type = fn.apply(params.but_with(asl=params.asl.second()))
+
+        result = Validate.equivalent_types(params, left_type, right_type)
+        if result.failed():
+            return result.get_failure_type()
+        return left_type
         
-        # TODO: validations
-
-        # if left_type != right_type:
-        #     params.report_exception(
-        #         Exceptions.TypeMismatch(
-        #             msg = f"expected {left_type} but got {right_type}",
-        #             line_number=params.asl.line_number))
-
-        return left_type 
-
 
     @Wrangler.covers(asls_of_type("<-"))
     @records_typeclass
@@ -697,8 +719,9 @@ class TypeClassFlowWrangler(Wrangler):
         left_type = fn.apply(params.but_with(asl=params.asl.first()))
         right_type = fn.apply(params.but_with(asl=params.asl.second()))
 
-        # TODO: validations
-
+        result = Validate.equivalent_types(params, left_type, right_type)
+        if result.failed():
+            return result.get_failure_type()
         return left_type
 
 
@@ -706,11 +729,11 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def ref_(fn, params: Params) -> TypeClass:
-        name = params.asl.first().value
-        instance = params.asl_get_mod().get_instance_by_name(name)
-        if not instance:
-            raise Exception("TODO: gracefully handle instance not being found")
+        result = Validate.instance_exists(params)
+        if result.failed():
+            return result.get_failure_type()
 
+        instance = result.get_found_instance()
         params.oracle.add_instances(params.asl, instance)
         return instance.type
 
@@ -733,3 +756,90 @@ class TypeClassFlowWrangler(Wrangler):
             return params.void_type
         type = fn.apply(params.but_with(asl=params.asl.first(), is_ptr=True))
         return type
+
+
+class ValidationResult():
+    def __init__(self, result: bool, return_obj: TypeClass | SeerInstance):
+        self.result = result
+        self.return_obj = return_obj
+
+    def failed(self) -> bool:
+        return not self.result
+
+    def get_failure_type(self) -> TypeClass:
+        return self.return_obj
+
+    def get_found_instance(self) -> SeerInstance:
+        return self.return_obj
+
+
+################################################################################
+# performs the actual validations
+class Validate:
+    @classmethod
+    def _abort_signal(cls, params: Params) -> ValidationResult:
+        return ValidationResult(result=False, return_obj=params.abort_signal)
+
+    @classmethod
+    def _success(cls, return_obj=None) -> ValidationResult:
+        return ValidationResult(result=True, return_obj=return_obj)
+
+    @classmethod
+    def equivalent_types(cls, params: Params, type1: TypeClass, type2: TypeClass) -> ValidationResult:
+        if any([params.abort_signal in (type1, type2)]):
+            return Validate._abort_signal(params) 
+
+        if type1 != type2:
+            params.report_exception(Exceptions.TypeMismatch(
+                msg=f"'{type1}' != '{type2}'",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params) 
+        return Validate._success(type1)
+
+
+    @classmethod
+    def correct_argument_types(cls, params: Params, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
+        if any([params.abort_signal in (fn_type, given_type)]):
+            return Validate._abort_signal(params) 
+
+        if fn_type != given_type:
+            params.report_exception(Exceptions.TypeMismatch(
+                msg=f"function takes '{fn_type}' but was given '{given_type}'",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params) 
+        return Validate._success(fn_type)
+
+
+    @classmethod
+    def instance_exists(cls, params: Params) -> ValidationResult:
+        name = params.asl.first().value
+        instance = params.context.get_instance_by_name(name)
+        if instance is None:
+            params.report_exception(Exceptions.UndefinedVariable(
+                msg=f"'{name}' is not defined",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params) 
+        return Validate._success(return_obj=instance)
+
+    
+    @classmethod
+    def name_is_unbound(cls, params: Params, name: str) -> ValidationResult:
+        if params.context.find_instance(name) is not None:
+            params.report_exception(Exceptions.RedefinedIdentifier(
+                msg=f"'{name}' is in use",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params)
+        return Validate._success(return_obj=None)
+
+    
+    @classmethod
+    def castable_types(cls, params: Params, type: TypeClass, cast_into_type: TypeClass):
+        if any([params.abort_signal in (type, cast_into_type)]):
+            return Validate._abort_signal(params) 
+
+        if cast_into_type not in type.inherits:
+            params.report_exception(Exceptions.CastIncompatibleTypes(
+                msg=f"{type} cannot be cast into {cast_into_type}",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params)
+        return Validate._success(return_obj=None)

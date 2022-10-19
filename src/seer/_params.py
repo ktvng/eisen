@@ -12,21 +12,33 @@ from seer._oracle import Oracle
 
 if TYPE_CHECKING:
     from seer._ast_interpreter import InterpreterObject
+    from seer._common import Module
+
+class SharedBool():
+    def __init__(self, value: bool):
+        self.value = value
+    
+    def __bool__(self) -> bool:
+        return self.value
+
+    def set(self, value: bool):
+        self.value = value
 
 class Params(AbstractParams):
     def __init__(self, 
             config: Config, 
             asl: CLRList, 
             txt: str,
-            mod: Context,
-            starting_mod: Context,
-            global_mod: Context,
+            context: Context,
+            mod: Module,
+            starting_mod: Module,
+            global_mod: Module,
             void_type: TypeClass,
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
             oracle: Oracle,
-            critical_exception: bool = False,
+            critical_exception: SharedBool = SharedBool(False),
             
             # used for interpreter
             objs: dict[str, InterpreterObject] = {},
@@ -35,6 +47,7 @@ class Params(AbstractParams):
         self.config = config
         self.asl = asl
         self.txt = txt
+        self.context = context
         self.mod = mod
         self.struct_name = struct_name
         self.starting_mod = starting_mod
@@ -51,6 +64,7 @@ class Params(AbstractParams):
             config: Config = None,
             asl: CLRList = None,
             txt: str = None,
+            context: Context = None,
             mod: Context = None,
             starting_mod: Context = None,
             global_mod: Context = None,
@@ -63,7 +77,8 @@ class Params(AbstractParams):
             objs: dict[str, InterpreterObject] = None,
             ) -> Params:
 
-        return self._but_with(config=config, asl=asl, txt=txt, mod=mod, starting_mod=starting_mod,
+        return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
+            starting_mod=starting_mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle,
             objs=objs, global_mod=global_mod, 
 
@@ -160,6 +175,7 @@ Token: {self.asl}
             config=config, 
             asl=asl,
             txt=txt,
+            context=None,
             mod=global_mod,
             starting_mod=global_mod,
             global_mod=global_mod,
@@ -179,8 +195,16 @@ Token: {self.asl}
             return self.asl.first().value
         raise Exception(f"cannot call method on {self.asl}")
 
-    def asl_get_mod(self) -> Context:
+    def asl_get_mod(self) -> Module:
         return self.oracle.get_module(self.asl)
 
     def asl_get_typeclass(self) -> TypeClass:
         return self.oracle.get_typeclass(self.asl)
+
+    def get_parent_context(self) -> Context:
+        # if no current context, use the module as the parent context
+        if self.context is None:
+            return self.asl_get_mod()
+        return self.context
+
+    abort_signal = TypeClassFactory.produce_novel_type("_abort_", global_mod=None)

@@ -71,15 +71,20 @@ class TypeClass():
         if shorten and self.name:
             return self.name
 
-        name_str = self.name + "=" if self.name else ""
+        name_str = self.name if self.name else ""
+
+        if self.classification == TypeClass.classifications.function:
+            arg = self.components[0]._get_printable_str(shorten=True)
+            ret = self.components[1]._get_printable_str(shorten=True)
+            return mod_str + f"{name_str}<{self.classification}({arg} -> {ret})>"
 
         if self.component_names:
-            member_strs = [f"{member_name}<{member._get_printable_str(shorten=True)}" 
+            member_strs = [f"{member_name}:{member._get_printable_str(shorten=True)}" 
                 for member_name, member in zip(self.component_names, self.components)]
         else:
             member_strs = [member._get_printable_str(shorten=True) for member in self.components] 
 
-        return mod_str + f"{name_str}{self.classification}({', '.join(member_strs)})" 
+        return mod_str + f"{name_str}<{self.classification}({', '.join(member_strs)})>" 
 
     def _equiv(self, u : list, v : list) -> bool:
         return (u is not None 
@@ -99,7 +104,7 @@ class TypeClass():
     def has_member_attribute_with_name(self, name: str) -> bool:
         return name in self.component_names
 
-    def get_member_attribute_by_name(self, name: str) -> Type:
+    def get_member_attribute_by_name(self, name: str) -> TypeClass:
         if self.classification != TypeClass.classifications.struct and self.classification != TypeClass.classifications.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
@@ -109,13 +114,13 @@ class TypeClass():
         pos = self.component_names.index(name)
         return self.components[pos]
 
-    def get_return_type(self) -> Type:
+    def get_return_type(self) -> TypeClass:
         if self.classification != TypeClass.classifications.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
         
         return self.components[1]
 
-    def get_argument_type(self) -> Type:
+    def get_argument_type(self) -> TypeClass:
         if self.classification != TypeClass.classifications.function:
             raise Exception(f"Can only get_argument_type on function constructions, got {self}")
         

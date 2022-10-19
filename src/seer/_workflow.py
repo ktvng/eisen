@@ -1,4 +1,4 @@
-from seer._typedeclarationwrangler import ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoWrangler, TypeClassFlowWrangler, FunctionWrangler
+from seer._working import ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoInterfaceWrangler, FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler
 from seer._ast_interpreter import AstInterpreter
 from seer._exceptionshandler import ExceptionsHandler
 
@@ -21,8 +21,12 @@ class Workflow():
 
         # finalizes the proto types (which moves from declaration to definition)
         # TODO: for now, interfaces can only be implemented from the same module 
-        # in which they are defined
-        FinalizeProtoWrangler,
+        # in which they are defined.
+        #
+        # we must finalize interfaces first because structs depend on interfaces
+        # as they implement interfaces
+        FinalizeProtoInterfaceWrangler,
+        FinalizeProtoStructWrangler,
 
         # adds types for and constructs the functions. this also normalizes the
         # (def ...) and (create ...) asls so they have the same child structure,

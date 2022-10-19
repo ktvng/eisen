@@ -36,7 +36,7 @@ class CallConfigurer():
         params.asl.update(
             type="call",
             lst=[new_fn_asl, params_asl])
-            
+
     @classmethod
     def process(cls, params: Params):
         if params.asl.type == "basic_call":
@@ -45,6 +45,7 @@ class CallConfigurer():
             cls._unravel(params)
         else:
             cls._construct_standard_call(params)
+
 
     # case is (raw_call (ref x) (fn run) (params )))))
     # note that (ref x) could also be an expression

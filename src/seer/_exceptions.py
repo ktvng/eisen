@@ -14,6 +14,10 @@ class Exceptions():
     class UndefinedVariable(AbstractException):
         type = "UndefinedVariable"
         description = "variable is not defined"
+
+    class UndefinedFunction(AbstractException):
+        type = "UndefinedFunction"
+        description = "function is not defined"
     
     class RedefinedIdentifier(AbstractException):
         type = "RedefinedIdentifier"
@@ -30,4 +34,11 @@ class Exceptions():
     class CastIncompatibleTypes(AbstractException):
         type = "CastIncompatibleTypes"
         description = "casting a type into an un-inherited type"
-    
+
+    class MissingAttribute(AbstractException):
+        type = "MissingAttribute"
+        description = "missing a required attribute" 
+
+    class AttributeMismatch(AbstractException):
+        type = "AttributeMismatch"
+        description = "attribute exists but is the wrong type"

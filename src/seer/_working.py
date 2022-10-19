@@ -90,6 +90,15 @@ class TypeClassWrangler(Wrangler):
         # eg. (: name (type int))
         return fn.apply(params.but_with(asl=params.asl.second()))
 
+    @Wrangler.covers(asls_of_type(":="))
+    def eq_colon_(fn, params: Params) -> TypeClass:
+        # eg. (:= name (args ...) (rets ...) (seq ...))
+        return TypeClassFactory.produce_function_type(
+            arg=fn.apply(params.but_with(asl=params.asl.second())),
+            ret=fn.apply(params.but_with(asl=params.asl.third())),
+            mod=params.global_mod)
+
+
     @Wrangler.covers(asls_of_type("prod_type", "types"))
     def prod_type_(fn, params: Params) -> TypeClass:
         # eg.  (prod_type
@@ -183,7 +192,7 @@ class TypeDeclarationWrangler(Wrangler):
 # we need to separate declaration and definition because types may refer back to
 # themselves, or to other types which have yet to be defined, but exist in the 
 # same module.
-class FinalizeProtoWrangler(Wrangler):
+class FinalizeProtoInterfaceWrangler(Wrangler):
     def apply(self, params: Params) -> None:
         return self._apply([params], [params])
 
@@ -192,6 +201,41 @@ class FinalizeProtoWrangler(Wrangler):
     def _get_component_names(cls, components: list[CLRList]) -> list[str]:
         if any([component.type != ":" for component in components]):
             raise Exception("expected all components to have type ':'")
+        return [component.first().value for component in components]
+
+    @Wrangler.covers(asls_of_type("start", "mod"))
+    def general_(fn, params: Params):
+        for child in params.asl:
+            fn.apply(params.but_with(asl=child)) 
+ 
+    @Wrangler.covers(asls_of_type("interface"))
+    def interface_(fn, params: Params) -> None:
+        # eg. (interface name (: ...) ...)
+        mod = params.asl_get_mod()
+        this_interface_typeclass = mod.get_typeclass_by_name(params.asl.first().value)
+        
+        # TODO: consider whether or not to allow interfaces to inherit from other interfaces
+        component_asls = [child for child in params.asl if child.type == ":" or child.type == ":="]
+        this_interface_typeclass.finalize(
+            components=[TypeClassWrangler().apply(params.but_with(asl=child)) for child in component_asls],
+            component_names=FinalizeProtoInterfaceWrangler._get_component_names(component_asls), 
+            inherits=[])
+
+    @Wrangler.default
+    def default_(fn, params: Params) -> None:
+        # nothing to do by default
+        return
+
+
+class FinalizeProtoStructWrangler(Wrangler):
+    def apply(self, params: Params) -> None:
+        return self._apply([params], [params])
+
+    # returns the names (in order) for all components in a list of CLRlists.
+    @classmethod
+    def _get_component_names(cls, components: list[CLRList]) -> list[str]:
+        if any([component.type != ":" and component.type != ":=" for component in components]):
+            raise Exception("expected all components to have type ':' or ':=")
         return [component.first().value for component in components]
 
     @Wrangler.covers(asls_of_type("start", "mod"))
@@ -220,26 +264,19 @@ class FinalizeProtoWrangler(Wrangler):
         component_asls = [child for child in params.asl if child.type == ":" or child.type == ":="]
         this_struct_typeclass.finalize(
             components=[TypeClassWrangler().apply(params.but_with(asl=child)) for child in component_asls],
-            component_names=FinalizeProtoWrangler._get_component_names(component_asls), 
+            component_names=FinalizeProtoStructWrangler._get_component_names(component_asls), 
             inherits=interfaces)
 
-    @Wrangler.covers(asls_of_type("interface"))
-    def interface_(fn, params: Params) -> None:
-        # eg. (interface name (: ...) ...)
-        mod = params.asl_get_mod()
-        this_interface_typeclass = mod.get_typeclass_by_name(params.asl.first().value)
-        
-        # TODO: consider whether or not to allow interfaces to inherit from other interfaces
-        component_asls = [child for child in params.asl if child.type == ":" or child.type == ":="]
-        this_interface_typeclass.finalize(
-            components=[TypeClassWrangler().apply(params.but_with(asl=child)) for child in component_asls],
-            component_names=FinalizeProtoWrangler._get_component_names(component_asls), 
-            inherits=[])
+        for interface in interfaces:
+            Validate.implementation_is_complete(params, this_struct_typeclass, interface)
+
 
     @Wrangler.default
     def default_(fn, params: Params) -> None:
         # nothing to do by default
         return
+
+
 
 
 ################################################################################
@@ -287,6 +324,7 @@ class FunctionWrangler(Wrangler):
                     type=new_type,
                     context=mod,
                     asl=params.asl))])
+
 
     @Wrangler.covers(asls_of_type("create"))
     def create_(fn, params: Params):
@@ -338,15 +376,6 @@ class TypeClassFlowWrangler(Wrangler):
             print("\n"*4)
             input()
         return self._apply([params], [params])
-
-    # this adds the returned typeclass to the list of known typeclasses 
-    # in the current module.
-    def adds_typeclass_to_module(f):
-        def decorator(fn, params: Params):
-            result: TypeClass = f(fn, params)
-            params.asl_get_mod().add_typeclass(result)
-            return result
-        return decorator
 
     # this records the typeclass which flows up through this node (params.asl) 
     # so that it can be referenced later via params.asl_get_typeclass()
@@ -414,7 +443,6 @@ class TypeClassFlowWrangler(Wrangler):
 
 
     @Wrangler.covers(asls_of_type("tuple", "params", "prod_type"))
-    @adds_typeclass_to_module
     @records_typeclass
     @passes_if_critical_exception
     def tuple_(fn, params: Params) -> TypeClass:
@@ -478,7 +506,6 @@ class TypeClassFlowWrangler(Wrangler):
 
 
     @Wrangler.covers(asls_of_type("fn"))
-    @adds_typeclass_to_module
     @records_typeclass
     @passes_if_critical_exception
     def fn_(fn, params: Params) -> TypeClass:
@@ -491,31 +518,36 @@ class TypeClassFlowWrangler(Wrangler):
                         ret=params.void_type,
                         mod=params.global_mod)
 
-            instance: SeerInstance = params.asl_get_mod().get_instance_by_name(name=name)
-            params.oracle.add_instances(params.asl, instance)
-        else:
-            type = fn.apply(params.but_with(asl=params.asl.first()))
-            return type
+            result = Validate.function_instance_exists(params)
+            if result.failed():
+                return result.get_failure_type()
 
-        return instance.type
+            instance = result.get_found_instance()
+            params.oracle.add_instances(params.asl, instance)
+            return instance.type
+        else:
+            return fn.apply(params.but_with(asl=params.asl.first()))
+
 
 
     @Wrangler.covers(asls_of_type("call"))
     @records_typeclass
     @passes_if_critical_exception
     def call_(fn, params: Params) -> TypeClass:
-        fn_name = ""
-        if params.asl.first().type == "fn":
-            fn_name = params.asl.first().first().value
         fn_type = fn.apply(params.but_with(asl=params.asl.first()))
+        if fn_type == params.abort_signal:
+            return params.abort_signal
 
         # still need to type flow through the params passed to the function
         params_type = fn.apply(params.but_with(asl=params.asl.second()))
 
-        # TODO: make this nicer
+        # TODO: make this nicer. aka. figure out a better way to get the function name
+        fn_name = ""
+        if params.asl.first().type == "fn" and isinstance(params.asl.first().first(), CLRToken):
+            fn_name = params.asl.first().first().value
         if fn_name != "print":
             fn_in_type = fn_type.get_argument_type()
-            result = Validate.correct_argument_types(params, fn_in_type, params_type)
+            result = Validate.correct_argument_types(params, fn_name, fn_in_type, params_type)
             if result.failed():
                 return result.get_failure_type()
 
@@ -533,6 +565,7 @@ class TypeClassFlowWrangler(Wrangler):
 
         # this will actually change params.asl, converting (raw_call ...) into (call ...)
         CallConfigurer.process(params)
+        # print(params.asl)
 
         # now we have converted the (raw_call ...) into a normal (call ...) asl 
         # so we can apply fn to the params again with the new asl.
@@ -589,7 +622,7 @@ class TypeClassFlowWrangler(Wrangler):
                 mod=params.asl_get_mod().get_child_module_by_name(name)))
 
 
-    @Wrangler.covers(asls_of_type("def", "create"))
+    @Wrangler.covers(asls_of_type("def", "create", ":="))
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -624,7 +657,6 @@ class TypeClassFlowWrangler(Wrangler):
     #       let x = 4
     #       (let x 4)
     @Wrangler.covers(asls_of_type("ilet"))
-    @adds_typeclass_to_module
     @records_typeclass
     @passes_if_critical_exception
     def idecls_(fn, params: Params):
@@ -634,6 +666,10 @@ class TypeClassFlowWrangler(Wrangler):
             return result.get_failure_type()
 
         typeclass = fn.apply(params.but_with(asl=params.asl.second()))
+        if typeclass is params.abort_signal:
+            params.critical_exception.set(True)
+            return None
+            
         instance = SeerInstance(
             name, 
             typeclass, 
@@ -798,13 +834,13 @@ class Validate:
 
 
     @classmethod
-    def correct_argument_types(cls, params: Params, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
+    def correct_argument_types(cls, params: Params, name: str, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
         if any([params.abort_signal in (fn_type, given_type)]):
             return Validate._abort_signal(params) 
 
         if fn_type != given_type:
             params.report_exception(Exceptions.TypeMismatch(
-                msg=f"function takes '{fn_type}' but was given '{given_type}'",
+                msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
                 line_number=params.asl.line_number))
             return Validate._abort_signal(params) 
         return Validate._success(fn_type)
@@ -816,6 +852,18 @@ class Validate:
         instance = params.context.get_instance_by_name(name)
         if instance is None:
             params.report_exception(Exceptions.UndefinedVariable(
+                msg=f"'{name}' is not defined",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params) 
+        return Validate._success(return_obj=instance)
+
+
+    @classmethod
+    def function_instance_exists(cls, params: Params) -> ValidationResult:
+        name = params.asl.first().value
+        instance = params.context.get_instance_by_name(name)
+        if instance is None:
+            params.report_exception(Exceptions.UndefinedFunction(
                 msg=f"'{name}' is not defined",
                 line_number=params.asl.line_number))
             return Validate._abort_signal(params) 
@@ -833,13 +881,36 @@ class Validate:
 
     
     @classmethod
-    def castable_types(cls, params: Params, type: TypeClass, cast_into_type: TypeClass):
+    def castable_types(cls, params: Params, type: TypeClass, cast_into_type: TypeClass) -> ValidationResult:
         if any([params.abort_signal in (type, cast_into_type)]):
             return Validate._abort_signal(params) 
 
         if cast_into_type not in type.inherits:
             params.report_exception(Exceptions.CastIncompatibleTypes(
-                msg=f"{type} cannot be cast into {cast_into_type}",
+                msg=f"'{type}' cannot be cast into '{cast_into_type}'",
                 line_number=params.asl.line_number))
             return Validate._abort_signal(params)
         return Validate._success(return_obj=None)
+
+
+    @classmethod
+    def implementation_is_complete(cls, params: Params, type: TypeClass, inherited_type: TypeClass) -> ValidationResult:
+        encountered_exception = False
+        for name, required_attribute_type in zip(inherited_type.component_names, inherited_type.components):
+            if type.has_member_attribute_with_name(name):
+                attribute_type = type.get_member_attribute_by_name(name)
+                if attribute_type != required_attribute_type:
+                    encountered_exception = True
+                    params.report_exception(Exceptions.AttributeMismatch(
+                        msg=f"'{type}' has attribute '{name}' of '{attribute_type}', but '{required_attribute_type}' is required to inherit '{inherited_type}'",
+                        line_number=params.asl.line_number))
+            else:
+                encountered_exception = True
+                params.report_exception(Exceptions.MissingAttribute(
+                    msg=f"'{type}' is missing attribute '{name}' required to inherit '{inherited_type}'",
+                    line_number=params.asl.line_number))
+
+        if encountered_exception:
+            return Validate._abort_signal(params)
+        return Validate._success()
+        

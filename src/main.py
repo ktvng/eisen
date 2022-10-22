@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import sys
 import time
@@ -53,6 +55,12 @@ def run_c(filename: str):
     txt = alpaca.utils.formatter.indent(txt)
     print(txt)
 
+def pretty_print_perf(perf: list[tuple[str, int]]):
+    longest_name_size = max(len(x[0]) for x in perf)
+    block_size = longest_name_size + 4
+    for name, val in perf:
+        print(" "*(block_size - len(name)), name, " ", val)
+
 def run_seer(filename: str):
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
@@ -82,13 +90,20 @@ def run_seer(filename: str):
     print("############ STANZA ###############")
     params = seer.Params.create_initial(config, asl, txt)
 
+    perf = []
     for step in seer.Workflow.steps:
-        print(step)
+        print(step.__name__)
+        start = time.perf_counter_ns()
         step().apply(params)
+        end = time.perf_counter_ns()
+        perf.append((step.__name__, (end-start)/1000000))
 
     print("========")
     for t in params.mod.typeclasses:
         print(t)
+    print("========")
+    pretty_print_perf(perf)
+
     exit()
     seer.ModuleWrangler(debug=False).apply(params)
     mod = params.mod
@@ -105,10 +120,6 @@ def run_seer(filename: str):
         seer.AstInterpreter().apply,
         params=params)
     exit()
-
-
-
-
 
 
 

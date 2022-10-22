@@ -1,5 +1,4 @@
 from __future__ import annotations
-from socket import CAN_BCM_TX_RESET_MULTI_IDX
 
 from alpaca.utils import Wrangler
 from alpaca.clr import CLRList, CLRToken
@@ -669,7 +668,7 @@ class TypeClassFlowWrangler(Wrangler):
         if typeclass is params.abort_signal:
             params.critical_exception.set(True)
             return None
-            
+
         instance = SeerInstance(
             name, 
             typeclass, 

@@ -46,45 +46,50 @@ class TypeClass():
         self.component_names = component_names
         self.inherits = inherits
 
+    def _get_module_prefix_for_uuid(self) -> str:
+        mod_str = self.mod.get_full_name() if self.mod else ""
+        return mod_str + "::" if mod_str else ""
+
+
+    # struct and novel types must be identified by the module they reside in and 
+    # their name. For novel types, this is required because we don't have any other
+    # information to use. For struct types, this is required to avoid a circular
+    # dependencies where some attribute of the struct may refer to that same struct.
+    # Therefore we avoid consideration of the uuid for struct attributes, and 
+    # instead enforce the condition that a struct must be uniquely defined based
+    # on it's name.
+    def _get_uuid_based_on_module_and_name(self) -> str:
+        return self._get_module_prefix_for_uuid() + self.name
+
+    def _get_uuid_based_on_components(self) -> str:
+        name_str = self.name if self.name else ""
+        member_strs = [member._get_uuid_str() for member in self.components] 
+        return self._get_module_prefix_for_uuid() + f"{name_str}({', '.join(member_strs)})" 
+
+    def _get_uuid_for_function(self) -> str:
+        name_str = self.name if self.name else "f"
+        member_strs = [member._get_uuid_str() for member in self.components] 
+        return self._get_module_prefix_for_uuid() + f"{name_str}({member_strs[0]} -> {member_strs[1]})" 
+
+
+    # Return the uuid string which can be hashed to obtain a proper uuid. All 
+    # typeclasses should be identified by uuid, such that muliple instances of 
+    # the same typeclass can be created that express equality to each other. This
+    # allows us to treat typeclasses as frozen literals.
     def _get_uuid_str(self) -> str:
-        mod_str = self.mod.get_full_name() if self.mod else ""
         if self.classification == TypeClass.classifications.novel:
-            return mod_str + "::" + self.name
-
-        name_str = self.name if self.name else ""
-
-        if self.component_names:
-            member_strs = [f"{member_name}:{member._get_uuid_str()}" 
-                for member_name, member in zip(self.component_names, self.components)]
+            return self._get_uuid_based_on_module_and_name()
+        elif self.classification == TypeClass.classifications.struct:
+            return self._get_uuid_based_on_module_and_name() + "<struct>"
+        elif self.classification == TypeClass.classifications.interface:
+            return self._get_uuid_based_on_module_and_name() + "<interface>"
+        elif self.classification == TypeClass.classifications.tuple:
+            return self._get_uuid_based_on_components()
+        elif self.classification == TypeClass.classifications.function:
+            return self._get_uuid_for_function()
         else:
-            member_strs = [member._get_uuid_str() for member in self.components] 
-
-        return mod_str + "::" + f"{name_str}={self.classification}({', '.join(member_strs)})" 
-
-    # note: we omit the global module for brevity. thus global::int => int
-    def _get_printable_str(self, shorten: bool = False) -> str:
-        mod_str = self.mod.get_full_name() if self.mod else ""
-        mod_str = mod_str + "::" if mod_str else ""
-        if self.classification == TypeClass.classifications.novel:
-            return mod_str + self.name
-
-        if shorten and self.name:
-            return self.name
-
-        name_str = self.name if self.name else ""
-
-        if self.classification == TypeClass.classifications.function:
-            arg = self.components[0]._get_printable_str(shorten=True)
-            ret = self.components[1]._get_printable_str(shorten=True)
-            return mod_str + f"{name_str}<{self.classification}({arg} -> {ret})>"
-
-        if self.component_names:
-            member_strs = [f"{member_name}:{member._get_printable_str(shorten=True)}" 
-                for member_name, member in zip(self.component_names, self.components)]
-        else:
-            member_strs = [member._get_printable_str(shorten=True) for member in self.components] 
-
-        return mod_str + f"{name_str}<{self.classification}({', '.join(member_strs)})>" 
+            # this should be the case for proto entities,
+            return self._get_uuid_based_on_module_and_name()
 
     def _equiv(self, u : list, v : list) -> bool:
         return (u is not None 
@@ -99,7 +104,7 @@ class TypeClass():
         return hash(self._get_uuid_str())
         
     def __str__(self) -> str:
-        return self._get_printable_str()
+        return self._get_uuid_str()
 
     def has_member_attribute_with_name(self, name: str) -> bool:
         return name in self.component_names

@@ -88,7 +88,28 @@ class CYKAlgo:
     @classmethod
     def tokens_to_clrtoken(cls, tokens : list[Token]) -> list[CLRToken]:
         return [CLRToken(t.rule.type_chain, t.value, t.line_number) for t in tokens]
-    
+
+    def _fill_first_diagonal_special(self):
+        points = self._get_points_on_diagonal(0)
+        for point in points:
+            x, y = point
+            clrtoken = self.tokens[x]
+            rules = [rule for rule in self.cfg.rules if rule.production_symbol == "CONTEXT"]
+            bootstrap_rule = rules[0]
+            self.dp_table[x][y] = [DpTableEntry(bootstrap_rule, x, y)]
+
+
+
+    def parse_clrtokens(self, tokens: list[CLRToken]):
+        self.n = len(tokens)
+        self.tokens = tokens
+        self.dp_table = [[[] for y in range(self.n)] for x in range(self.n)]
+
+        self._fill_first_diagonal_special()
+        for i in range (1, self.n):
+            self._fill_diagonal(i)
+        # can't call do_parse b/c filling first row is different
+        # self._do_parse()
     
     def parse(self, tokens : list[Token]):
         self.n = len(tokens)

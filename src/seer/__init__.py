@@ -10,3 +10,5 @@ from seer._inspect import Inspector
 from seer._dot_deref_filter import DotDerefFilter
 from seer._ast_interpreter import AstInterpreter
 from seer._workflow import Workflow
+from seer._customparser import CustomParser
+from seer._testrunner import TestRunner

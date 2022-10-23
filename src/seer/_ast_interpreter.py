@@ -1,4 +1,6 @@
 from __future__ import annotations
+import email
+from sys import stdout
 from typing import Any, Callable
 import re
 
@@ -11,7 +13,7 @@ from seer._params import Params
 lambda_map = {
     "+": lambda x, y: x + y,
     "-": lambda x, y: x - y,
-    "/": lambda x, y: x / y,
+    "/": lambda x, y: x // y,
     "*": lambda x, y: x * y,
     "<": lambda x, y: x < y,
     "<=": lambda x, y: x <= y,
@@ -43,6 +45,9 @@ class InterpreterObject:
         return self._binary_ops(o, lambda_map["*"])
 
     def __truediv__(self, o: Any):
+        return self._binary_ops(o, lambda_map["/"])
+
+    def __floordiv__(self, o: Any):
         return self._binary_ops(o, lambda_map["/"])
 
     def __lt__(self, o: Any):
@@ -80,6 +85,11 @@ class InterpreterObject:
 
 
 class AstInterpreter(Wrangler):
+    def __init__(self, redirect_output=False):
+        super().__init__()
+        self.stdout = "";
+        self.redirect_output = redirect_output
+
     def apply(self, params: Params) -> list[InterpreterObject]:
         # print(params.asl)
         return self._apply([params], [params])
@@ -161,10 +171,16 @@ class AstInterpreter(Wrangler):
 
     @Wrangler.covers(asls_of_type("ilet"))
     def ilet_(fn, params: Params):
-        name = params.asl.first().value
-        value = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        params.objs[name] = value
-        return [value]
+        if isinstance(params.asl.first(), CLRList):
+            names = [token.value for token in params.asl.first()]
+            values = [fn.apply(params.but_with(asl=child))[0] for child in params.asl.second()]
+        else:
+            names = [params.asl.first().value]
+            values = [fn.apply(params.but_with(asl=params.asl.second()))[0]]
+        
+        for name, value in zip(names, values):
+            params.objs[name] = value
+        return []
 
     @Wrangler.covers(asls_of_type("cast"))
     def cast_(fn, params: Params):
@@ -177,7 +193,10 @@ class AstInterpreter(Wrangler):
 
         if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
             args = [fn.apply(params.but_with(asl=asl))[0] for asl in params.asl.second()]
-            PrintFunction.emulate(*args)
+            if fn.redirect_output:
+                fn.stdout += PrintFunction.emulate(fn.stdout, *args)
+            else:
+                PrintFunction.emulate(None, *args)
             
             return []
 
@@ -305,10 +324,14 @@ class AstInterpreter(Wrangler):
 
 class PrintFunction():
     @classmethod
-    def emulate(cls, *args: list[InterpreterObject]):
+    def emulate(cls, redirect: str, *args: list[InterpreterObject]) -> str:
         base = args[0].value
         arg_strs = [str(arg.value) for arg in args[1:]]
         tag_regex = re.compile(r"%\w")
         for arg in arg_strs:
             base = tag_regex.sub(arg, base, count=1)
-        print(base[1:-1])
+        if redirect is not None:
+            return(base)
+        else:
+            print(base)
+            return ""

@@ -658,25 +658,34 @@ class TypeClassFlowWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("ilet"))
     @records_typeclass
     @passes_if_critical_exception
+    @returns_void_type
     def idecls_(fn, params: Params):
-        name = params.asl.first().value
-        result = Validate.name_is_unbound(params, name)
-        if result.failed():
-            return result.get_failure_type()
+        if isinstance(params.asl.first(), CLRList):
+            names = [token.value for token in params.asl.first()]
+            typeclasses = [fn.apply(params.but_with(asl=child)) for child in params.asl.second()]
+        else:
+            names = [params.asl.first().value]
+            typeclasses = [fn.apply(params.but_with(asl=params.asl.second()))]
 
-        typeclass = fn.apply(params.but_with(asl=params.asl.second()))
-        if typeclass is params.abort_signal:
-            params.critical_exception.set(True)
-            return None
+        instances = []
+        for name, typeclass in zip(names, typeclasses):
+            result = Validate.name_is_unbound(params, name)
+            if result.failed():
+                return 
 
-        instance = SeerInstance(
-            name, 
-            typeclass, 
-            params.asl_get_mod(), 
-            params.asl)
-        params.oracle.add_instances(params.asl, [instance])
-        params.context.add_instance(instance)
-        return typeclass
+            if type is params.abort_signal:
+                params.critical_exception.set(True)
+                return
+
+            instances.append(SeerInstance(
+                name, 
+                typeclass, 
+                params.asl_get_mod(), 
+                params.asl))
+
+        params.oracle.add_instances(params.asl, instances)
+        for instance in instances:
+            params.context.add_instance(instance)
 
 
     # cases for let:

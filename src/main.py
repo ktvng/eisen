@@ -61,7 +61,12 @@ def pretty_print_perf(perf: list[tuple[str, int]]):
     for name, val in perf:
         print(" "*(block_size - len(name)), name, " ", val)
 
+    print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
+
 def run_seer(filename: str):
+    seer.TestRunner.run_all_tests()
+    exit()
+    perf = []
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
         alpaca.config.parser.run,
@@ -76,13 +81,21 @@ def run_seer(filename: str):
         alpaca.lexer.run,
         text=txt, config=config, callback=seer.SeerCallback)
 
+    
+
     # print("====================")
     # [print(t) for t in tokens]
 
-    # PARSE TO AST
-    asl = run_and_measure("parser",
-        alpaca.parser.run,
-        config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
+    # CUSTOM PARSER
+    start = time.perf_counter_ns()
+    asl = seer.CustomParser.run(config, tokens, seer.SeerBuilder())
+    end = time.perf_counter_ns()
+    perf.append(("CustomParser", (end-start)/1000000))
+
+    # # PARSE TO AST
+    # asl = run_and_measure("parser",
+    #     alpaca.parser.run,
+    #     config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
 
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
@@ -90,7 +103,6 @@ def run_seer(filename: str):
     print("############ STANZA ###############")
     params = seer.Params.create_initial(config, asl, txt)
 
-    perf = []
     for step in seer.Workflow.steps:
         print(step.__name__)
         start = time.perf_counter_ns()
@@ -103,6 +115,9 @@ def run_seer(filename: str):
         print(t)
     print("========")
     pretty_print_perf(perf)
+
+    with open("./src/seer/tests2/decls.html", 'r') as f:
+        txt = f.read()
 
     exit()
     seer.ModuleWrangler(debug=False).apply(params)

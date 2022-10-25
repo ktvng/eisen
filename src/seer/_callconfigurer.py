@@ -51,7 +51,7 @@ class CallConfigurer():
     # note that (ref x) could also be an expression
     @classmethod
     def _should_unravel(cls, params: Params) -> bool:
-        typeclass = params.but_with(asl=params.asl.first()).asl_get_typeclass()
+        typeclass = params.but_with(asl=params.asl.first()).get_returned_typeclass()
         secondary_name = params.asl.second().first().value
         if typeclass.is_struct() and typeclass.has_member_attribute_with_name(secondary_name):
             return False

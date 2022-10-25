@@ -9,10 +9,12 @@ from alpaca.clr import CLRList
 
 from seer._common import ContextTypes
 from seer._oracle import Oracle
+from seer._nodedata import NodeData
 
 if TYPE_CHECKING:
     from seer._ast_interpreter import InterpreterObject
-    from seer._common import Module
+    from seer._common import Module, SeerInstance
+
 
 class SharedBool():
     def __init__(self, value: bool):
@@ -95,7 +97,7 @@ class Params(AbstractParams):
         if isinstance(self.asl, CLRList):
             instances = None
             try:
-                instances = self.oracle.get_instances(self.asl)
+                instances = self.get_instances(self.asl)
             except:
                 pass
             
@@ -185,6 +187,28 @@ Token: {self.asl}
             is_ptr=False,
             oracle=Oracle())
 
+    def get_node_data(self) -> NodeData:
+        return self.asl.data
+
+    def assign_module(self):
+        self.get_node_data().module = self.mod
+
+    def get_module(self) -> Module:
+        return self.get_node_data().module
+
+    def assign_returned_typeclass(self, typeclass: TypeClass):
+        self.oracle.add_typeclass(self.asl, typeclass)
+        # self.get_node_data().returned_typeclass = typeclass
+
+    def get_returned_typeclass(self):
+        return self.oracle.get_typeclass(self.asl)
+
+    def assign_instances(self, instances: list[SeerInstance]):
+        self.oracle.add_instances(self.asl, instances)
+
+    def get_instances(self) -> list[SeerInstance]:
+        return self.oracle.get_instances(self.asl)
+
     def asl_get_struct_name(self) -> str:
         if isinstance(self.asl, CLRList) and self.asl.type == "struct":
             return self.asl.first().value
@@ -195,16 +219,10 @@ Token: {self.asl}
             return self.asl.first().value
         raise Exception(f"cannot call method on {self.asl}")
 
-    def asl_get_mod(self) -> Module:
-        return self.oracle.get_module(self.asl)
-
-    def asl_get_typeclass(self) -> TypeClass:
-        return self.oracle.get_typeclass(self.asl)
-
     def get_parent_context(self) -> Context:
         # if no current context, use the module as the parent context
         if self.context is None:
-            return self.asl_get_mod()
+            return self.get_module()
         return self.context
 
     def get_bool_type(self) -> TypeClass:

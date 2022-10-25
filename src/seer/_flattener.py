@@ -114,7 +114,7 @@ class Flattener(Wrangler):
 
         # we need to drop into the original CLR which defines the original function
         # in order to get the return types.
-        fn_instance = params.oracle.get_instances(fn_asl)[0]
+        fn_instance = params.but_with(asl=fn_asl).get_instances()[0]
         asl_defining_the_function = fn_instance.asl
 
         # the third child is (rets ...)
@@ -134,7 +134,8 @@ class Flattener(Wrangler):
         for ref in refs:
             packet.asl._list.append(Flattener._make_code_token_for(f"(addr {ref.value})"))
 
-        fn_name = Utils.get_full_name_of_function(params.oracle.get_instances(fn_asl)[0])
+        fn_name = Utils.get_full_name_of_function(instance=
+            params.but_with(asl=fn_asl).get_instances()[0])
 
         # missing a close paren as we need to add the (params ...) which is added as
         # an asl, not a token, because we don't yet have the ability to transmute it.
@@ -175,11 +176,11 @@ class Flattener(Wrangler):
     # TODO: fix 
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: Params) -> tuple[list[str], list[str]]:
-        type=params.oracle.get_propagated_type(params.asl.second())
+        typeclass = params.but_with(asl=params.asl.second()).get_returned_typeclass()
         prefix = "struct_" if type.is_struct() else ""
         type_name = Utils.get_name_of_type(
-            type=type,
-            mod=params.oracle.get_module_of_propagated_type(params.asl.second()))
+            type=typeclass,
+            mod=typeclass.mod)
 
         var_name = self._produce_var_name()
         return [f"({prefix}decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]

@@ -244,7 +244,7 @@ class AstInterpreter(Wrangler):
             else:
                 # we need to drop into the original CLR which defines the original function
                 # in order to get the return types.
-                fn_instance = params.oracle.get_instances(fn_asl)[0]
+                fn_instance = params.but_with(asl=fn_asl).get_instances()[0]
 
         asl_defining_the_function = fn_instance.asl
 
@@ -285,7 +285,7 @@ class AstInterpreter(Wrangler):
             return [local_obj]
 
         # this is for functions apparently
-        instance = params.oracle.get_instances(params.asl)[0]
+        instance = params.get_instances()[0]
         return [InterpreterObject(instance)]
         
 

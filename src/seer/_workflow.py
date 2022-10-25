@@ -1,4 +1,6 @@
-from seer._working import ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoInterfaceWrangler, FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler
+from seer._working import (ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoInterfaceWrangler, 
+    FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler, InitializeNodeData)
+
 from seer._ast_interpreter import AstInterpreter
 from seer._exceptionshandler import ExceptionsHandler
 
@@ -11,6 +13,9 @@ from seer._exceptionshandler import ExceptionsHandler
 
 class Workflow():   
     steps = [
+        # initialize the .data attribute for all asls with empty NodeData instances
+        InitializeNodeData,
+
         # create the module structure of the program.
         #   - the module of a node can be accessed by params.asl_get_mod()
         ModuleWrangler2, 
@@ -36,7 +41,7 @@ class Workflow():
         
         # evaluate the flow of types through the program. 
         #   - the typeclass which is flowed through a node can be accessed by
-        #     params.asl_get_typeclass()
+        #     params.get_returned_typeclass()
         TypeClassFlowWrangler,
 
         ExceptionsHandler,

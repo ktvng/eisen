@@ -64,17 +64,17 @@ class Wrangler():
             if self.default_transform is not None:
                 return self.default_transform.invoke(*[self, *fn_args])
 
-            msg = f"No matching transforms for provided match_args: '{args_str}'"
+            msg = f"{type(self).__name__} has no matching transforms for provided match_args: '{args_str}'"
             self.logger.raise_exception(msg)
 
         if len(matching_transforms) > 1:
-            msg = f"Multiple matching transforms for provided match_args: '{args_str}'"
+            msg = f"{type(self).__name__} has multiple matching transforms for provided match_args: '{args_str}'"
             transform_names = ", ".join([x.f.__name__ for x in matching_transforms])
             self.logger.log_error(f"Matched transform names: [{transform_names}]")
             self.logger.raise_exception(msg)
 
         if self.debug and self._depth > self.max_depth:
-            self.logger.raise_exception(f"Max depth ({self.max_depth}) reached; forcing exit")
+            self.logger.raise_exception(f"{type(self).__name__} has reached max depth ({self.max_depth}); forcing exit")
 
         self._depth += 1
         result = matching_transforms[0].invoke(*[self, *fn_args])

@@ -1,0 +1,8 @@
+{
+    "name": "assignment",
+    "info": "tests for simple assignment",
+    "expected": {
+        "success": true,
+        "output": "4 4 8 0"
+    }
+}

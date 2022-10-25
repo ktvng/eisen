@@ -1,0 +1,8 @@
+{
+    "name": "decls",
+    "info": "tests for simple declarations",
+    "expected": {
+        "success": true,
+        "output": ""
+    }
+}

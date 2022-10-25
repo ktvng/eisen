@@ -1,0 +1,8 @@
+{
+    "name": "while",
+    "info": "tests for simple while statements",
+    "expected": {
+        "success": true,
+        "output": "1234"
+    }
+}

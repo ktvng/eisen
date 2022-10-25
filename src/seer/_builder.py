@@ -63,4 +63,7 @@ class SeerBuilder(CommonBuilder):
         if len(flattened_comps) != 2:
             raise Exception("expected size 2 for handle_op_pref")
 
-        return [CLRList(flattened_comps[0], [flattened_comps[1]]), flattened_comps[0].line_number]
+        return [CLRList(
+            type=flattened_comps[0].type, 
+            lst=[flattened_comps[1]], 
+            line_number=flattened_comps[0].line_number)]

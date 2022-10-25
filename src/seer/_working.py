@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 from alpaca.utils import Wrangler
 from alpaca.clr import CLRList, CLRToken
@@ -27,13 +28,13 @@ class ModuleWrangler2(Wrangler):
 
     @Wrangler.default
     @sets_module
-    def default_(fn, params: Params) -> Context:
+    def default_(fn, params: Params) -> Module:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
     @Wrangler.covers(asls_of_type("mod"))
     @sets_module
-    def mod_(fn, params: Params) -> Context:
+    def mod_(fn, params: Params) -> Module:
         # create a new module; the name of the module is stored as a CLRToken
         # in the first position of the module asl.
         new_mod = Module(
@@ -171,7 +172,7 @@ class TypeDeclarationWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("interface"))
     @adds_typeclass_to_module
     def interface_(fn, params: Params) -> TypeClass:
-        return TypeClassFactory.produce_proto_struct_type(
+        return TypeClassFactory.produce_proto_interface_type(
             name=params.asl_get_interface_name(),
             mod=params.asl_get_mod())
 
@@ -419,14 +420,23 @@ class TypeClassFlowWrangler(Wrangler):
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
+    @Wrangler.covers(asls_of_type("!"))
+    @records_typeclass
+    @passes_if_critical_exception
+    def not_(fn, params: Params) -> TypeClass:
+        return fn.apply(params.but_with(asl=params.asl.first()))
+
 
     @Wrangler.covers(asls_of_type("."))
     @records_typeclass
     @passes_if_critical_exception
     def dot_(fn, params: Params) -> TypeClass:
         parent_typeclass = fn.apply(params.but_with(asl=params.asl.first()))
-        return parent_typeclass.get_member_attribute_by_name(
-            name=params.asl.second().value)
+        name = params.asl.second().value
+        result = Validate.has_member_attribute(params, parent_typeclass, name)
+        if result.failed():
+            return result.get_failure_type()
+        return parent_typeclass.get_member_attribute_by_name(name)
 
 
     # TODO: will this work for a::b()?
@@ -445,6 +455,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def tuple_(fn, params: Params) -> TypeClass:
+        if len(params.asl) == 0:
+            return params.void_type
         if len(params.asl) > 1:
             return TypeClassFactory.produce_tuple_type(
                 components=[fn.apply(params.but_with(asl=child)) for child in params.asl],
@@ -667,6 +679,11 @@ class TypeClassFlowWrangler(Wrangler):
             names = [params.asl.first().value]
             typeclasses = [fn.apply(params.but_with(asl=params.asl.second()))]
 
+        result = Validate.tuple_sizes_match(params, names, typeclasses)
+        if result.failed():
+            params.critical_exception.set(True)
+            return 
+
         instances = []
         for name, typeclass in zip(names, typeclasses):
             result = Validate.name_is_unbound(params, name)
@@ -729,7 +746,7 @@ class TypeClassFlowWrangler(Wrangler):
         return params.asl_get_mod().get_typeclass_by_name(name=params.asl.first().value)
 
 
-    binary_ops = ["+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "==", "!=", "+=", "-=", "*=", "/="] 
+    binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
     @Wrangler.covers(asls_of_type(*binary_ops))
     @records_typeclass
     @passes_if_critical_exception
@@ -741,6 +758,19 @@ class TypeClassFlowWrangler(Wrangler):
         if result.failed():
             return result.get_failure_type()
         return left_type
+    
+    boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
+    @Wrangler.covers(asls_of_type(*boolean_return_ops))
+    @records_typeclass
+    @passes_if_critical_exception
+    def boolean_return_ops_(fn, params: Params) -> TypeClass:
+        left_type = fn.apply(params.but_with(asl=params.asl.first()))
+        right_type = fn.apply(params.but_with(asl=params.asl.second()))
+
+        result = Validate.equivalent_types(params, left_type, right_type)
+        if result.failed():
+            return result.get_failure_type()
+        return params.get_bool_type()
 
 
     @Wrangler.covers(asls_of_type("="))
@@ -842,6 +872,16 @@ class Validate:
 
 
     @classmethod
+    def tuple_sizes_match(cls, params: Params, lst1: list, lst2: list):
+        if len(lst1) != len(lst2):
+            params.report_exception(Exceptions.TupleSizeMismatch(
+                msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params)
+        return Validate._success()
+
+
+    @classmethod
     def correct_argument_types(cls, params: Params, name: str, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
         if any([params.abort_signal in (fn_type, given_type)]):
             return Validate._abort_signal(params) 
@@ -883,6 +923,16 @@ class Validate:
         if params.context.find_instance(name) is not None:
             params.report_exception(Exceptions.RedefinedIdentifier(
                 msg=f"'{name}' is in use",
+                line_number=params.asl.line_number))
+            return Validate._abort_signal(params)
+        return Validate._success(return_obj=None)
+
+
+    @classmethod
+    def has_member_attribute(cls, params: Params, typeclass: TypeClass, attribute_name: str) -> ValidationResult:
+        if not typeclass.has_member_attribute_with_name(attribute_name):
+            params.report_exception(Exceptions.MissingAttribute(
+                f"'{typeclass}' does not have member attribute '{attribute_name}'",
                 line_number=params.asl.line_number))
             return Validate._abort_signal(params)
         return Validate._success(return_obj=None)

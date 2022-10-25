@@ -39,7 +39,7 @@ class CommonBuilder(Builder):
         operator = operators[0]
         children = [elem for elem in flattened_comps if elem != operator]
         return [CLRList(
-            type=operator.value,
+            type=operator.type,
             lst=children,
             line_number=operator.line_number)]
 

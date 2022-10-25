@@ -1,0 +1,8 @@
+{
+    "name": "comparison",
+    "info": "tests for simple comparisons",
+    "expected": {
+        "success": true,
+        "output": "false true false"
+    }
+}

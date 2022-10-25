@@ -1,0 +1,8 @@
+{
+    "name": "arithmetic",
+    "info": "tests for simple arithmetic",
+    "expected": {
+        "success": true,
+        "output": "19 1 -8"
+    }
+}

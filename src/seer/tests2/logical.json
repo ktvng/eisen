@@ -1,0 +1,8 @@
+{
+    "name": "logical",
+    "info": "tests for simple logical operators",
+    "expected": {
+        "success": true,
+        "output": "true false true"
+    }
+}

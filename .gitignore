@@ -14,4 +14,5 @@ __pycache__
 *.c
 notes.txt
 *.log
-*.rs
+idea.rs
+test*.rs

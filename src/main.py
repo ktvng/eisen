@@ -64,8 +64,6 @@ def pretty_print_perf(perf: list[tuple[str, int]]):
     print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
 
 def run_seer(filename: str):
-    seer.TestRunner.run_all_tests()
-    exit()
     perf = []
     # PARSE SEER CONFIG
     config = run_and_measure("config parsed",
@@ -115,9 +113,6 @@ def run_seer(filename: str):
         print(t)
     print("========")
     pretty_print_perf(perf)
-
-    with open("./src/seer/tests2/decls.html", 'r') as f:
-        txt = f.read()
 
     exit()
     seer.ModuleWrangler(debug=False).apply(params)
@@ -319,10 +314,18 @@ def run_and_measure(name: str, f, *args, **kwargs):
     print(f"|  - {name} finished in {(endtime-starttime)/1000000} ms")
     return result;
 
-def run_seer_tests():
-    internal_run_tests("./src/seer/tests/validator_tests.rs", should_transpile=False)
-    input()
-    internal_run_tests("./src/seer/tests/test.rs")
+def run_seer_tests(name: str):
+    if name:
+        status, msg = seer.TestRunner.run_test_by_name(name)
+        if status:
+            print(f"ran test '{name}' successfully")
+        else:
+            print(msg)
+    else:
+        seer.TestRunner.run_all_tests()
+    # internal_run_tests("./src/seer/tests/validator_tests.rs", should_transpile=False)
+    # input()
+    # internal_run_tests("./src/seer/tests/test.rs")
 
 def make_runnable(txt : str):
     lines = txt.split("\n")
@@ -343,7 +346,7 @@ if __name__ == "__main__":
     print("-"*28, "BEGINS", "-"*28)
     print(delim)
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--test", action="store_true")
+    parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
     parser.add_argument("-i", "--input", action="store", type=str)
     parser.add_argument("-l", "--lang", 
         action="store", 
@@ -353,8 +356,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.test:
-        run_seer_tests()
+    print(args.test)
+    if args.test is not None:
+        run_seer_tests(args.test)
     elif args.input and args.lang:
         run(args.lang, args.input)
 

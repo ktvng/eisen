@@ -1,0 +1,8 @@
+{
+    "name": "if",
+    "info": "tests for simple if statements",
+    "expected": {
+        "success": true,
+        "output": "1234"
+    }
+}

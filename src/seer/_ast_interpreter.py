@@ -21,8 +21,8 @@ lambda_map = {
     "!=": lambda x, y: x != y,
     ">": lambda x, y: x > y,
     ">=": lambda x, y: x >= y,
-    "||": lambda x, y: x or y,
-    "&&": lambda x, y: x and y,
+    "or": lambda x, y: x or y,
+    "and": lambda x, y: x and y,
 }
 
 # either value is primitive value, value is dict for struct, or value is asl for function
@@ -71,7 +71,7 @@ class InterpreterObject:
     def __str__(self) -> str:
         return str(self.value)
 
-    def get(self, key: str):
+    def get(self, key: str): 
         if not isinstance(self.value, dict):
             raise Exception("Interpreter object must be a dict (for struct)")
         found = self.value.get(key, None)
@@ -99,15 +99,28 @@ class AstInterpreter(Wrangler):
         value = params.asl.value
         if params.asl.type == "int":
             value = int(params.asl.value)
+        if params.asl.type == "bool":
+            value = params.asl.value == "true"
 
         return [InterpreterObject(value)]
 
-    @Wrangler.covers(asls_of_type("+", "-", "/", "*", "||", "&&", "<", "<=", "==", "!=", ">", ">="))
+    @Wrangler.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">="))
     def binop_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-
         return [lambda_map[params.asl.type](left, right)]
+
+    @Wrangler.covers(asls_of_type("and"))
+    def and_(fn, params: Params):
+        left = fn.apply(params.but_with(asl=params.asl.first()))[0]
+        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
+        return [InterpreterObject(left.value and right.value)] 
+
+    @Wrangler.covers(asls_of_type("or"))
+    def or_(fn, params: Params):
+        left = fn.apply(params.but_with(asl=params.asl.first()))[0]
+        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
+        return [InterpreterObject(left.value or right.value)] 
 
     @Wrangler.covers(asls_of_type("let"))
     def let_(fn, params: Params):
@@ -115,14 +128,20 @@ class AstInterpreter(Wrangler):
 
     @Wrangler.covers(asls_of_type(":"))
     def colon_(fn, params: Params):
-        objs = fn.apply(params.but_with(asl=params.asl.second()))
         if isinstance(params.asl.first(), CLRToken):
             names = [params.asl.first().value]
         else:
             names = [tag.value for tag in params.asl.first()]
 
-        for name in names:
-            params.objs[name] = objs[0]
+        if params.asl.second().type == "type":
+            # this is the case (let (: tags x y z) (type int))
+            # we create a new object for each name
+            objs = [InterpreterObject(None) for name in names]
+        else:
+            objs = fn.apply(params.but_with(asl=params.asl.second()))
+
+        for name, obj in zip(names, objs):
+            params.objs[name] = obj
         return objs
 
     @Wrangler.covers(asls_of_type("="))
@@ -132,6 +151,12 @@ class AstInterpreter(Wrangler):
         for l, r in zip(left, right):
             l.value = r.value
         return []
+
+    @Wrangler.covers(asls_of_type("!"))
+    def not_(fn, params: Params):
+        objs = fn.apply(params.but_with(asl=params.asl.first()))
+        x = [InterpreterObject(not objs[0].value)]
+        return x
 
     @Wrangler.covers(asls_of_type("tuple"))
     def tuple(fn, params: Params):
@@ -171,9 +196,16 @@ class AstInterpreter(Wrangler):
 
     @Wrangler.covers(asls_of_type("ilet"))
     def ilet_(fn, params: Params):
+        # this is the case for (ilet (tags x y) (...))
         if isinstance(params.asl.first(), CLRList):
             names = [token.value for token in params.asl.first()]
-            values = [fn.apply(params.but_with(asl=child))[0] for child in params.asl.second()]
+            # this handles if (...) is a (call ...)
+            if params.asl.second().type == "call":
+                values = fn.apply(params.but_with(asl=params.asl.second()))
+
+            # this handles if (...) is a (tuple ...)
+            else:
+                values = [fn.apply(params.but_with(asl=child))[0] for child in params.asl.second()]
         else:
             names = [params.asl.first().value]
             values = [fn.apply(params.but_with(asl=params.asl.second()))[0]]
@@ -219,11 +251,12 @@ class AstInterpreter(Wrangler):
         # enter a new object context
         fn_objs = {}
 
-        # add parameters to the context
+        # add parameters to the context; creates a new object so we don't override the 
+        # existing object when we change it in the function.
         param_names = fn._get_param_names(asl_defining_the_function)
         for name, param in zip(param_names, params.asl.second()):
             obj = fn.apply(params.but_with(asl=param))[0]
-            fn_objs[name] = obj
+            fn_objs[name] = InterpreterObject(obj.value)
 
         # add return values to the context
         return_values = []
@@ -251,6 +284,7 @@ class AstInterpreter(Wrangler):
         if local_obj is not None:
             return [local_obj]
 
+        # this is for functions apparently
         instance = params.oracle.get_instances(params.asl)[0]
         return [InterpreterObject(instance)]
         
@@ -326,7 +360,7 @@ class PrintFunction():
     @classmethod
     def emulate(cls, redirect: str, *args: list[InterpreterObject]) -> str:
         base = args[0].value
-        arg_strs = [str(arg.value) for arg in args[1:]]
+        arg_strs = cls._convert_args_to_strs(args[1:])
         tag_regex = re.compile(r"%\w")
         for arg in arg_strs:
             base = tag_regex.sub(arg, base, count=1)
@@ -335,3 +369,13 @@ class PrintFunction():
         else:
             print(base)
             return ""
+
+    @classmethod
+    def _convert_args_to_strs(cls, args: list[InterpreterObject]) -> list[str]:
+        arg_strs = []
+        for arg in args:
+            if isinstance(arg.value, bool):
+                arg_strs.append("true" if arg.value else "false")
+            else:
+                arg_strs.append(str(arg))
+        return arg_strs

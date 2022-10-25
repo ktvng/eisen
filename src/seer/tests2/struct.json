@@ -1,0 +1,8 @@
+{
+    "name": "struct",
+    "info": "tests for simple structs",
+    "expected": {
+        "success": true,
+        "output": "1 2 20"
+    }
+}

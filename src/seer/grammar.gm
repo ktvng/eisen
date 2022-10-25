@@ -95,9 +95,9 @@ SYMBOLICS
     operator -          ->  -      
     operator /          ->  /      
     operator *          ->  \*     
-    operator and        ->  &&     
-    operator or         ->  \|\|   
-    operator !          ->  !      
+    operator and        ->  (&&|and)     
+    operator or         ->  (\|\||or)   
+    operator !          ->  (!|not)      
     operator %          ->  %      
     operator |          ->  \|     
     operator <          ->  <      

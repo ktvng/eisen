@@ -207,4 +207,7 @@ Token: {self.asl}
             return self.asl_get_mod()
         return self.context
 
+    def get_bool_type(self) -> TypeClass:
+        return self.global_mod.get_typeclass_by_name("bool")
+
     abort_signal = TypeClassFactory.produce_novel_type("_abort_", global_mod=None)

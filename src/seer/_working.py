@@ -375,7 +375,7 @@ class TypeClassFlowWrangler(Visitor):
         return TypeclassParser().apply(state)
 
 
-    no_action = ["start", "return", "seq", "cond"] 
+    no_action = ["start", "return", "seq", "cond", "mod"] 
     @Visitor.covers(asls_of_type(*no_action))
     @records_typeclass
     @passes_if_critical_exception
@@ -510,18 +510,17 @@ class TypeClassFlowWrangler(Visitor):
         if fn_type == state.abort_signal:
             return state.abort_signal
 
-        # still need to type flow through the state passed to the function
-        state_type = fn.apply(state.but_with(asl=state.second_child()))
+        # still need to type flow through the params passed to the function
+        params_type = fn.apply(state.but_with(asl=state.second_child()))
 
         # TODO: make this nicer. aka. figure out a better way to get the function name
-        fn_name = ""
-        if state.first_child().type == "fn" and isinstance(state.first_child().first(), CLRToken):
-            fn_name = state.first_child().first().value
-        if fn_name != "print":
-            fn_in_type = fn_type.get_argument_type()
-            result = Validate.correct_argument_types(state, fn_name, fn_in_type, state_type)
-            if result.failed():
-                return result.get_failure_type()
+        if state.first_child().type == "fn":
+            fn_node = Nodes.Fn(state.but_with(asl=state.first_child()))
+            if not fn_node.is_print():
+                fn_in_type = fn_type.get_argument_type()
+                result = Validate.correct_argument_types(state, state.first_child().first().value, fn_in_type, params_type)
+                if result.failed():
+                    return result.get_failure_type()
 
         return fn_type.get_return_type()
 
@@ -580,18 +579,6 @@ class TypeClassFlowWrangler(Visitor):
     @passes_if_critical_exception
     def impls(fn, state: Params) -> TypeClass:
         return state.void_type
-
-
-    @Visitor.covers(asls_of_type("mod"))
-    @records_typeclass
-    @passes_if_critical_exception
-    @returns_void_type
-    def mod(fn, state: Params) -> TypeClass:
-        name = state.first_child().value
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child, 
-                mod=state.get_module().get_child_module_by_name(name)))
 
 
     @Visitor.covers(asls_of_type("def", "create", ":="))

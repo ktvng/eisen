@@ -48,4 +48,6 @@ class Workflow():
 
         # execute the augmented AST via the interpreter.
         AstInterpreter  
+
+        # note: def, create, fn, ref, ilet need instances!!
     ]

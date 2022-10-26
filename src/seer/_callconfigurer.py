@@ -4,6 +4,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import Instance
 
 from seer._params import Params
+from seer._nodedata import NodeData
 
 class CallConfigurer():
     @classmethod
@@ -26,12 +27,14 @@ class CallConfigurer():
         scope_asl = CLRList(
             type=".",
             lst=[ref_asl, fn_asl.first()],
-            line_number=params.asl.line_number)
+            line_number=params.asl.line_number,
+            data=NodeData())
 
         new_fn_asl = CLRList(
             type="fn",
             lst=[scope_asl],
-            line_number=params.asl.line_number)
+            line_number=params.asl.line_number,
+            data=NodeData())
 
         params.asl.update(
             type="call",

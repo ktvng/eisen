@@ -7,7 +7,6 @@ from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
 from seer._common import asls_of_type, Utils
-from seer._oracle import Oracle
 from seer._params import Params as Params0
 
 class SharedCounter():

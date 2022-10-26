@@ -1,5 +1,6 @@
 from __future__ import annotations
 import glob
+from re import A
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
@@ -8,12 +9,11 @@ from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from seer._common import ContextTypes
-from seer._oracle import Oracle
 from seer._nodedata import NodeData
+from seer._common import Module, SeerInstance
 
 if TYPE_CHECKING:
     from seer._ast_interpreter import InterpreterObject
-    from seer._common import Module, SeerInstance
 
 
 class SharedBool():
@@ -39,7 +39,6 @@ class Params(AbstractParams):
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
-            oracle: Oracle,
             critical_exception: SharedBool = SharedBool(False),
             
             # used for interpreter
@@ -57,7 +56,6 @@ class Params(AbstractParams):
         self.void_type = void_type
         self.exceptions = exceptions
         self.is_ptr = is_ptr
-        self.oracle = oracle
         self.critical_exception = critical_exception
 
         self.objs = objs
@@ -73,7 +71,6 @@ class Params(AbstractParams):
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
-            oracle: Oracle = None,
 
             # used for interpreter
             objs: dict[str, InterpreterObject] = None,
@@ -81,7 +78,7 @@ class Params(AbstractParams):
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
             starting_mod=starting_mod,
-            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr, oracle=oracle,
+            struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
             objs=objs, global_mod=global_mod, 
 
             # these cannot be changed by input params 
@@ -116,7 +113,7 @@ class Params(AbstractParams):
 
             type = "N/A"
             try:
-                type = self.oracle.get_propagated_type(self.asl)
+                type = self.get_node_data().returned_typeclass
             except:
                 pass
 
@@ -184,8 +181,7 @@ Token: {self.asl}
             void_type=void_type,
             struct_name=None,
             exceptions=[],
-            is_ptr=False,
-            oracle=Oracle())
+            is_ptr=False)
 
     def get_node_data(self) -> NodeData:
         return self.asl.data
@@ -197,27 +193,18 @@ Token: {self.asl}
         return self.get_node_data().module
 
     def assign_returned_typeclass(self, typeclass: TypeClass):
-        self.oracle.add_typeclass(self.asl, typeclass)
-        # self.get_node_data().returned_typeclass = typeclass
+        self.get_node_data().returned_typeclass = typeclass
 
     def get_returned_typeclass(self):
-        return self.oracle.get_typeclass(self.asl)
+        return self.get_node_data().returned_typeclass
 
-    def assign_instances(self, instances: list[SeerInstance]):
-        self.oracle.add_instances(self.asl, instances)
+    def assign_instances(self, instances: list[SeerInstance] | SeerInstance):
+        if isinstance(instances, SeerInstance):
+            instances = [instances]
+        self.get_node_data().instances = instances
 
     def get_instances(self) -> list[SeerInstance]:
-        return self.oracle.get_instances(self.asl)
-
-    def asl_get_struct_name(self) -> str:
-        if isinstance(self.asl, CLRList) and self.asl.type == "struct":
-            return self.asl.first().value
-        raise Exception(f"cannot call method on {self.asl}")
-
-    def asl_get_interface_name(self) -> str:
-        if isinstance(self.asl, CLRList) and self.asl.type == "interface":
-            return self.asl.first().value
-        raise Exception(f"cannot call method on {self.asl}")
+        return self.get_node_data().instances
 
     def get_parent_context(self) -> Context:
         # if no current context, use the module as the parent context
@@ -229,3 +216,16 @@ Token: {self.asl}
         return self.global_mod.get_typeclass_by_name("bool")
 
     abort_signal = TypeClassFactory.produce_novel_type("_abort_", global_mod=None)
+
+
+    def first_child(self) -> CLRList:
+        return self.asl.first()
+
+    def second_child(self) -> CLRList:
+        return self.asl.second()
+
+    def third_child(self) -> CLRList:
+        return self.asl.third()
+
+    def get_child_asls(self) -> list(CLRList):
+        return [child for child in self.asl if isinstance(child, CLRList)]

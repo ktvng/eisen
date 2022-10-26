@@ -64,7 +64,8 @@ class Flattener(Wrangler):
                         type="tuple",
                         lst=refs,
                         line_number=params.asl.line_number,
-                        guid=params.asl.guid))
+                        guid=params.asl.guid,
+                        data=params.asl.data))
                 elif len(refs) == 1:
                     children.append(refs[0])
                 # if no refs, then nothing to add.
@@ -78,7 +79,8 @@ class Flattener(Wrangler):
                 type=params.asl.type,
                 lst=children,
                 line_number=params.asl.line_number,
-                guid=params.asl.guid),
+                guid=params.asl.guid,
+                data=params.asl.data),
             auxillary=auxillary)
 
     @Wrangler.covers(asls_of_type("seq"))
@@ -100,7 +102,8 @@ class Flattener(Wrangler):
                 type=params.asl.type,
                 lst=children,
                 line_number=params.asl.line_number,
-                guid=params.asl.guid),
+                guid=params.asl.guid,
+                data=params.asl.data),
             auxillary=[])
 
     # note, we do not need the wrangler to cover asls_of_type "call" because

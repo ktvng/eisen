@@ -12,6 +12,7 @@ from seer._exceptions import Exceptions
 from seer._callconfigurer import CallConfigurer
 from seer._common import asls_of_type, ContextTypes, SeerInstance, Module
 from seer._nodedata import NodeData
+from seer._nodetypes import Nodes
 
 
 class InitializeNodeData(Wrangler):
@@ -21,7 +22,7 @@ class InitializeNodeData(Wrangler):
     @Wrangler.default
     def default_(fn, state: Params) -> None:
         state.asl.data = NodeData()
-        for child in state.asl:
+        for child in state.get_child_asls():
             if isinstance(child, CLRList):
                 fn.apply(state.but_with(asl=child))
         
@@ -41,7 +42,7 @@ class ModuleWrangler2(Wrangler):
     @Wrangler.default
     @sets_module
     def default_(fn, state: Params) -> Module:
-        for child in state.asl:
+        for child in state.get_child_asls():
             if isinstance(child, CLRList):
                 fn.apply(state.but_with(asl=child))
 
@@ -51,11 +52,11 @@ class ModuleWrangler2(Wrangler):
         # create a new module; the name of the module is stored as a CLRToken
         # in the first position of the module asl.
         new_mod = Module(
-            name=state.asl.first().value,
+            name=state.first_child().value,
             type=ContextTypes.mod, 
             parent=state.mod)
 
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
                 mod=new_mod))
@@ -72,7 +73,7 @@ class TypeClassWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("type"))
     def type_(fn, state: Params) -> TypeClass:
         # eg. (type int)
-        token: CLRToken = state.asl.first()
+        token: CLRToken = state.first_child()
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
 
@@ -84,7 +85,7 @@ class TypeClassWrangler(Wrangler):
     @Wrangler.covers(asls_of_type("interface_type"))
     def interface_type_(fn, state: Params) -> TypeClass:
         # eg. (interface_type name)
-        token: CLRToken = state.asl.first()
+        token: CLRToken = state.first_child()
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
 
@@ -96,14 +97,14 @@ class TypeClassWrangler(Wrangler):
     @Wrangler.covers(asls_of_type(":"))
     def colon_(fn, state: Params) -> TypeClass:
         # eg. (: name (type int))
-        return fn.apply(state.but_with(asl=state.asl.second()))
+        return fn.apply(state.but_with(asl=state.second_child()))
 
     @Wrangler.covers(asls_of_type(":="))
     def eq_colon_(fn, state: Params) -> TypeClass:
         # eg. (:= name (args ...) (rets ...) (seq ...))
         return TypeClassFactory.produce_function_type(
-            arg=fn.apply(state.but_with(asl=state.asl.second())),
-            ret=fn.apply(state.but_with(asl=state.asl.third())),
+            arg=fn.apply(state.but_with(asl=state.second_child())),
+            ret=fn.apply(state.but_with(asl=state.third_child())),
             mod=state.global_mod)
 
 
@@ -121,29 +122,29 @@ class TypeClassWrangler(Wrangler):
         # eg. (fn_type_in/out (type(s) ...))
         if len(state.asl) == 0:
             return state.get_module().resolve_type(TypeClassFactory.produce_novel_type("void"))
-        return fn.apply(state.but_with(asl=state.asl.first()))
+        return fn.apply(state.but_with(asl=state.first_child()))
 
     @Wrangler.covers(asls_of_type("fn_type")) 
     def fn_type_(fn, state: Params) -> TypeClass:
         # eg. (fn_type (fn_type_in ...) (fn_type_out ...))
         return TypeClassFactory.produce_function_type(
-            arg=fn.apply(state.but_with(asl=state.asl.first())),
-            ret=fn.apply(state.but_with(asl=state.asl.second())),
+            arg=fn.apply(state.but_with(asl=state.first_child())),
+            ret=fn.apply(state.but_with(asl=state.second_child())),
             mod=state.global_mod)
 
     @Wrangler.covers(asls_of_type("args", "rets"))
     def args_(fn, state: Params) -> TypeClass:
         # eg. (args (type ...))
         if state.asl:
-            return fn.apply(state.but_with(asl=state.asl.first()))
+            return fn.apply(state.but_with(asl=state.first_child()))
         return TypeClassFactory.produce_novel_type("void", state.global_mod)
 
     @Wrangler.covers(asls_of_type("def", "create"))
     def def_(fn, state: Params) -> TypeClass:
         # eg. (def name (args ...) (rets ...) (seq ...))
         return TypeClassFactory.produce_function_type(
-            arg=fn.apply(state.but_with(asl=state.asl.second())),
-            ret=fn.apply(state.but_with(asl=state.asl.third())),
+            arg=fn.apply(state.but_with(asl=state.second_child())),
+            ret=fn.apply(state.but_with(asl=state.third_child())),
             mod=state.global_mod)
     
     @Wrangler.covers(asls_of_type("struct", "interface"))
@@ -174,19 +175,19 @@ class TypeDeclarationWrangler(Wrangler):
     @adds_typeclass_to_module
     def struct_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_struct_type(
-            name=state.asl_get_struct_name(),
+            name=Nodes.Struct(state).get_struct_name(),
             mod=state.get_module())
 
     @Wrangler.covers(asls_of_type("interface"))
     @adds_typeclass_to_module
     def interface_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_interface_type(
-            name=state.asl_get_interface_name(),
+            name=Nodes.Interface(state).get_interface_name(),
             mod=state.get_module())
 
     @Wrangler.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child))
 
     @Wrangler.default
@@ -204,29 +205,20 @@ class FinalizeProtoInterfaceWrangler(Wrangler):
     def apply(self, state: Params) -> None:
         return self._apply([state], [state])
 
-    # returns the names (in order) for all components in a list of CLRlists.
-    @classmethod
-    def _get_component_names(cls, components: list[CLRList]) -> list[str]:
-        if any([component.type != ":" for component in components]):
-            raise Exception("expected all components to have type ':'")
-        return [component.first().value for component in components]
-
     @Wrangler.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child)) 
  
     @Wrangler.covers(asls_of_type("interface"))
     def interface_(fn, state: Params) -> None:
-        # eg. (interface name (: ...) ...)
-        mod = state.get_module()
-        this_interface_typeclass = mod.get_typeclass_by_name(state.asl.first().value)
+        node = Nodes.Interface(state)
+        this_interface_typeclass = node.get_this_typeclass()
         
         # TODO: consider whether or not to allow interfaces to inherit from other interfaces
-        component_asls = [child for child in state.asl if child.type == ":" or child.type == ":="]
         this_interface_typeclass.finalize(
-            components=[TypeClassWrangler().apply(state.but_with(asl=child)) for child in component_asls],
-            component_names=FinalizeProtoInterfaceWrangler._get_component_names(component_asls), 
+            components=[TypeClassWrangler().apply(state.but_with(asl=child)) for child in node.get_child_attribute_asls()],
+            component_names=node.get_child_attribute_names(),
             inherits=[])
 
     @Wrangler.default
@@ -239,45 +231,24 @@ class FinalizeProtoStructWrangler(Wrangler):
     def apply(self, state: Params) -> None:
         return self._apply([state], [state])
 
-    # returns the names (in order) for all components in a list of CLRlists.
-    @classmethod
-    def _get_component_names(cls, components: list[CLRList]) -> list[str]:
-        if any([component.type != ":" and component.type != ":=" for component in components]):
-            raise Exception("expected all components to have type ':' or ':=")
-        return [component.first().value for component in components]
-
     @Wrangler.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child)) 
  
     @Wrangler.covers(asls_of_type("struct"))
     def struct_(fn, state: Params) -> None:
-        # eg. (struct name (: ...) (: ...) ... (create ...))
-        mod = state.get_module()
-        this_struct_typeclass = mod.get_typeclass_by_name(state.asl.first().value)
+        node = Nodes.Struct(state)
+        this_struct_typeclass = node.get_this_typeclass()
 
-        # there can be multiple interfaces implemented
-        interfaces: list[TypeClass] = []
-
-        # this looks like (impls name1 name2)
-        if len(state.asl) >= 2 and isinstance(state.asl.second(), CLRList) and state.asl.second().type == "impls":
-            impls_asl = state.asl.second()
-            for child in impls_asl:
-                # TODO: currently we only allow the interface to be looked up in the same
-                # module as the struct. In general, we need to allow interfaces from arbitrary
-                # modules.
-                interfaces.append(mod.get_typeclass_by_name(child.value))
-
-        component_asls = [child for child in state.asl if child.type == ":" or child.type == ":="]
+        interfaces: list[TypeClass] = node.get_implemented_interfaces()
         this_struct_typeclass.finalize(
-            components=[TypeClassWrangler().apply(state.but_with(asl=child)) for child in component_asls],
-            component_names=FinalizeProtoStructWrangler._get_component_names(component_asls), 
+            components=[TypeClassWrangler().apply(state.but_with(asl=asl)) for asl in node.get_child_attribute_asls()],
+            component_names=node.get_child_attribute_names(),
             inherits=interfaces)
 
         for interface in interfaces:
             Validate.implementation_is_complete(state, this_struct_typeclass, interface)
-
 
     @Wrangler.default
     def default_(fn, state: Params) -> None:
@@ -299,13 +270,13 @@ class FunctionWrangler(Wrangler):
             input()
         return self._apply([state], [state])
 
-    @Wrangler.default
-    def default_(fn, state: Params):
-        for child in state.asl:
+    @Wrangler.covers(asls_of_type("start", "mod"))
+    def start_(fn, state: Params):
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child))
 
-    @Wrangler.covers(lambda state: isinstance(state.asl, CLRToken))
-    def token_(fn, state: Params) -> None:
+    @Wrangler.default
+    def default_(fn, state: Params) -> None:
         return None
 
     @Wrangler.covers(asls_of_type("struct"))
@@ -316,21 +287,20 @@ class FunctionWrangler(Wrangler):
         # for example, a struct named MyStruct will have a constructor method 
         # called via MyStruct(...), so the (create ...)  method inside the 
         # (struct MyStruct ... ) asl needs context as to the struct it is inside.
-        for child in state.asl:
-            fn.apply(state.but_with(asl=child, struct_name=state.asl_get_struct_name()))
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(
+                asl=child, 
+                struct_name=Nodes.Struct(state).get_struct_name()))
 
     @Wrangler.covers(asls_of_type("def"))
     def def_(fn, state: Params):
         mod = state.get_module()
-        new_type = TypeClassWrangler().apply(state.but_with(mod=mod))
-        state.get_module().add_typeclass(new_type)
-        state.assign_instances(
-            [state.get_module().add_instance(
-                SeerInstance(
-                    name=state.asl.first().value,
-                    type=new_type,
-                    context=mod,
-                    asl=state.asl))])
+        state.assign_instances(mod.add_instance(
+            SeerInstance(
+                name=Nodes.Def(state).get_function_name(),
+                type=TypeClassWrangler().apply(state.but_with(mod=mod)),
+                context=mod,
+                asl=state.asl)))
 
 
     @Wrangler.covers(asls_of_type("create"))
@@ -340,16 +310,15 @@ class FunctionWrangler(Wrangler):
         # of (def ...) and (create ...) asls so we can use the same code to process
         # them
         state.asl._list.insert(0, CLRToken(type_chain=["TAG"], value=state.struct_name))
-        new_type = TypeClassWrangler().apply(state.but_with(mod=mod))
-        state.get_module().add_typeclass(new_type)
-        state.assign_instances(
-            [state.get_module().add_instance(
-                SeerInstance(
-                    name=state.struct_name,
-                    type=new_type,
-                    context=state.get_module(),
-                    asl=state.asl,
-                    is_constructor=True))])
+
+        # the name of the constructor is the same as the struct
+        state.assign_instances(mod.add_instance(
+            SeerInstance(
+                name=state.struct_name,
+                type=TypeClassWrangler().apply(state.but_with(mod=mod)),
+                context=state.get_module(),
+                asl=state.asl,
+                is_constructor=True)))
 
 
 
@@ -423,22 +392,22 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     @returns_void_type
     def no_action_(fn, state: Params) -> TypeClass:
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child))
 
     @Wrangler.covers(asls_of_type("!"))
     @records_typeclass
     @passes_if_critical_exception
     def not_(fn, state: Params) -> TypeClass:
-        return fn.apply(state.but_with(asl=state.asl.first()))
+        return fn.apply(state.but_with(asl=state.first_child()))
 
 
     @Wrangler.covers(asls_of_type("."))
     @records_typeclass
     @passes_if_critical_exception
     def dot_(fn, state: Params) -> TypeClass:
-        parent_typeclass = fn.apply(state.but_with(asl=state.asl.first()))
-        name = state.asl.second().value
+        parent_typeclass = fn.apply(state.but_with(asl=state.first_child()))
+        name = state.second_child().value
         result = Validate.has_member_attribute(state, parent_typeclass, name)
         if result.failed():
             return result.get_failure_type()
@@ -450,9 +419,9 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def scope_(fn, state: Params) -> TypeClass:
-        next_mod = state.starting_mod.get_child_module_by_name(state.asl.first().value)
+        next_mod = state.starting_mod.get_child_module_by_name(state.first_child().value)
         return fn.apply(state.but_with(
-            asl=state.asl.second(),
+            asl=state.second_child(),
             starting_mod=next_mod,
             mod=next_mod))
 
@@ -468,7 +437,7 @@ class TypeClassFlowWrangler(Wrangler):
                 components=[fn.apply(state.but_with(asl=child)) for child in state.asl],
                 global_mod=state.global_mod)
         # if there is only one child, then we simply pass the type back, not as a tuple
-        return fn.apply(state.but_with(asl=state.asl.first()))
+        return fn.apply(state.but_with(asl=state.first_child()))
 
 
     @Wrangler.covers(asls_of_type("if"))
@@ -476,7 +445,7 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     @returns_void_type
     def if_(fn, state: Params) -> TypeClass:
-        for child in state.asl:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
                 context=Context(
@@ -491,7 +460,7 @@ class TypeClassFlowWrangler(Wrangler):
     @returns_void_type
     def while_(fn, state: Params) -> TypeClass:
         fn.apply(state.but_with(
-            asl=state.asl.first(),
+            asl=state.first_child(),
             context=Context(
                 name="while", 
                 type=ContextTypes.block, 
@@ -502,15 +471,15 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def colon_(fn, state: Params) -> TypeClass:
-        if isinstance(state.asl.first(), CLRToken):
-            names = [state.asl.first().value]
+        if isinstance(state.first_child(), CLRToken):
+            names = [state.first_child().value]
         else:
             # TODO: will we ever get here? probably
-            if state.asl.first().type != "tags":
-                raise Exception(f"Expected tags but got {state.asl.first().type}")
-            names = [token.value for token in state.asl.first()]
+            if state.first_child().type != "tags":
+                raise Exception(f"Expected tags but got {state.first_child().type}")
+            names = [token.value for token in state.first_child()]
 
-        type = fn.apply(state.but_with(asl=state.asl.second()))
+        type = fn.apply(state.but_with(asl=state.second_child()))
         instances = []
         for name in names:
             result = Validate.name_is_unbound(state, name)
@@ -526,8 +495,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def fn_(fn, state: Params) -> TypeClass:
-        if isinstance(state.asl.first(), CLRToken):
-            name = state.asl.first().value
+        if isinstance(state.first_child(), CLRToken):
+            name = state.first_child().value
             # special case. TODO: fix this
             if name == "print":
                 return TypeClassFactory.produce_function_type(
@@ -543,7 +512,7 @@ class TypeClassFlowWrangler(Wrangler):
             state.assign_instances(instance)
             return instance.type
         else:
-            return fn.apply(state.but_with(asl=state.asl.first()))
+            return fn.apply(state.but_with(asl=state.first_child()))
 
 
 
@@ -551,17 +520,17 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def call_(fn, state: Params) -> TypeClass:
-        fn_type = fn.apply(state.but_with(asl=state.asl.first()))
+        fn_type = fn.apply(state.but_with(asl=state.first_child()))
         if fn_type == state.abort_signal:
             return state.abort_signal
 
         # still need to type flow through the state passed to the function
-        state_type = fn.apply(state.but_with(asl=state.asl.second()))
+        state_type = fn.apply(state.but_with(asl=state.second_child()))
 
         # TODO: make this nicer. aka. figure out a better way to get the function name
         fn_name = ""
-        if state.asl.first().type == "fn" and isinstance(state.asl.first().first(), CLRToken):
-            fn_name = state.asl.first().first().value
+        if state.first_child().type == "fn" and isinstance(state.first_child().first(), CLRToken):
+            fn_name = state.first_child().first().value
         if fn_name != "print":
             fn_in_type = fn_type.get_argument_type()
             result = Validate.correct_argument_types(state, fn_name, fn_in_type, state_type)
@@ -578,7 +547,7 @@ class TypeClassFlowWrangler(Wrangler):
         # e.g. (raw_call (expr ...) (fn name) (state ...))
         # because the first element can be a list itself, we need to apply the 
         # fn over it to get the flowed out type.
-        fn.apply(state.but_with(asl=state.asl.first()))
+        fn.apply(state.but_with(asl=state.first_child()))
 
         # this will actually change state.asl, converting (raw_call ...) into (call ...)
         CallConfigurer.process(state)
@@ -594,8 +563,8 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     @returns_void_type
     def struct(fn, state: Params) -> TypeClass:
-        # ignore the first element because this is the CLRToken storing the name
-        for child in state.asl[1:]:
+        # currently structs/interfaces have the same get_child_asls structure
+        for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
                 context=Context(
@@ -609,8 +578,8 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     def cast(fn, state: Params) -> TypeClass:
         # (cast (ref name) (type into))
-        left_typeclass = fn.apply(state.but_with(asl=state.asl.first()))
-        right_typeclass = fn.apply(state.but_with(asl=state.asl.second()))
+        left_typeclass = fn.apply(state.but_with(asl=state.first_child()))
+        right_typeclass = fn.apply(state.but_with(asl=state.second_child()))
 
         result = Validate.castable_types(state, 
             type=left_typeclass, 
@@ -632,8 +601,8 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     @returns_void_type
     def mod(fn, state: Params) -> TypeClass:
-        name = state.asl.first().value
-        for child in state.asl[1:]:
+        name = state.first_child().value
+        for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
                 mod=state.get_module().get_child_module_by_name(name)))
@@ -646,15 +615,15 @@ class TypeClassFlowWrangler(Wrangler):
     def fn(fn, state: Params) -> TypeClass:
         # inside the FunctionWrangler, (def ...) and (create ...) asls have been
         # normalized to have the same signature. therefore we can treat them identically
-        # here
+        # here, more or less.
 
         parent_context = state.get_parent_context() if state.asl.type == "def" else None
         fn_context = Context(
-            name=state.asl.first().value,
+            name=Nodes.Def(state).get_function_name(),
             type=ContextTypes.fn,
             parent=parent_context)
 
-        for child in state.asl[1:]:
+        for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child, context=fn_context))
 
 
@@ -678,12 +647,12 @@ class TypeClassFlowWrangler(Wrangler):
     @passes_if_critical_exception
     @returns_void_type
     def idecls_(fn, state: Params):
-        if isinstance(state.asl.first(), CLRList):
-            names = [token.value for token in state.asl.first()]
-            typeclasses = [fn.apply(state.but_with(asl=child)) for child in state.asl.second()]
+        if isinstance(state.first_child(), CLRList):
+            names = [token.value for token in state.first_child()]
+            typeclasses = [fn.apply(state.but_with(asl=child)) for child in state.second_child()]
         else:
-            names = [state.asl.first().value]
-            typeclasses = [fn.apply(state.but_with(asl=state.asl.second()))]
+            names = [state.first_child().value]
+            typeclasses = [fn.apply(state.but_with(asl=state.second_child()))]
 
         result = Validate.tuple_sizes_match(state, names, typeclasses)
         if result.failed():
@@ -711,43 +680,20 @@ class TypeClassFlowWrangler(Wrangler):
             state.context.add_instance(instance)
 
 
-    # cases for let:
-    # - standard
-    #       let x: int
-    #       (let (: x (type int)))
-    # - multiple standard
-    #       let x, y: int
-    #       (let (: (tags x y) (type int)))
-    # - multiple inference
-    #       let x, y = 4, 4
-    #       (let (tags x y ) (tuple 4 4))
     @Wrangler.covers(asls_of_type("val", "var", "mut_val", "mut_var", "let"))
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
     def decls_(fn, state: Params):
-        if isinstance(state.asl.first(), CLRList) and state.asl.first().type == "tags":
-            names = [token.value for token in state.asl.first()]
-            types = [fn.apply(state.but_with(asl=child)) for child in state.asl.second()]
-
-            instances = []
-            for name, type in zip(names, types):
-                result = Validate.name_is_unbound(state, name)
-                if not result.failed():
-                    instances.append(
-                        state.context.add_instance(SeerInstance(name, type, state.get_module(), state.asl)))
-            state.assign_instances(instances)
-
-        elif isinstance(state.asl.first(), CLRList) and state.asl.first().type == ":":
-            # validations occur inside the (: ...) asl 
-            type = fn.apply(state.but_with(asl=state.asl.first()))
-            state.assign_instances(state.but_with(asl=state.asl.first()).get_instances())
+        # validations occur inside the (: ...) asl 
+        fn.apply(state.but_with(asl=state.first_child()))
+        state.assign_instances(state.but_with(asl=state.first_child()).get_instances())
 
     @Wrangler.covers(asls_of_type("type", "type?", "type*"))
     @records_typeclass
     @passes_if_critical_exception
     def _type1(fn, state: Params) -> TypeClass:
-        return state.get_module().get_typeclass_by_name(name=state.asl.first().value)
+        return state.get_module().get_typeclass_by_name(name=state.first_child().value)
 
 
     binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
@@ -755,8 +701,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def binary_ops(fn, state: Params) -> TypeClass:
-        left_type = fn.apply(state.but_with(asl=state.asl.first()))
-        right_type = fn.apply(state.but_with(asl=state.asl.second()))
+        left_type = fn.apply(state.but_with(asl=state.first_child()))
+        right_type = fn.apply(state.but_with(asl=state.second_child()))
 
         result = Validate.equivalent_types(state, left_type, right_type)
         if result.failed():
@@ -768,8 +714,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def boolean_return_ops_(fn, state: Params) -> TypeClass:
-        left_type = fn.apply(state.but_with(asl=state.asl.first()))
-        right_type = fn.apply(state.but_with(asl=state.asl.second()))
+        left_type = fn.apply(state.but_with(asl=state.first_child()))
+        right_type = fn.apply(state.but_with(asl=state.second_child()))
 
         result = Validate.equivalent_types(state, left_type, right_type)
         if result.failed():
@@ -781,8 +727,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def assigns(fn, state: Params) -> TypeClass:
-        left_type = fn.apply(state.but_with(asl=state.asl.first()))
-        right_type = fn.apply(state.but_with(asl=state.asl.second()))
+        left_type = fn.apply(state.but_with(asl=state.first_child()))
+        right_type = fn.apply(state.but_with(asl=state.second_child()))
 
         result = Validate.equivalent_types(state, left_type, right_type)
         if result.failed():
@@ -794,8 +740,8 @@ class TypeClassFlowWrangler(Wrangler):
     @records_typeclass
     @passes_if_critical_exception
     def larrow_(fn, state: Params) -> TypeClass:
-        left_type = fn.apply(state.but_with(asl=state.asl.first()))
-        right_type = fn.apply(state.but_with(asl=state.asl.second()))
+        left_type = fn.apply(state.but_with(asl=state.first_child()))
+        right_type = fn.apply(state.but_with(asl=state.second_child()))
 
         result = Validate.equivalent_types(state, left_type, right_type)
         if result.failed():
@@ -822,7 +768,7 @@ class TypeClassFlowWrangler(Wrangler):
     def args_(fn, state: Params) -> TypeClass:
         if not state.asl:
             return state.void_type
-        type = fn.apply(state.but_with(asl=state.asl.first(), is_ptr=False))
+        type = fn.apply(state.but_with(asl=state.first_child(), is_ptr=False))
         return type
 
 
@@ -832,7 +778,7 @@ class TypeClassFlowWrangler(Wrangler):
     def rets_(fn, state: Params) -> TypeClass:
         if not state.asl:
             return state.void_type
-        type = fn.apply(state.but_with(asl=state.asl.first(), is_ptr=True))
+        type = fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
         return type
 
 
@@ -900,7 +846,7 @@ class Validate:
 
     @classmethod
     def instance_exists(cls, state: Params) -> ValidationResult:
-        name = state.asl.first().value
+        name = state.first_child().value
         instance = state.context.get_instance_by_name(name)
         if instance is None:
             state.report_exception(Exceptions.UndefinedVariable(
@@ -912,7 +858,7 @@ class Validate:
 
     @classmethod
     def function_instance_exists(cls, state: Params) -> ValidationResult:
-        name = state.asl.first().value
+        name = state.first_child().value
         instance = state.context.get_instance_by_name(name)
         if instance is None:
             state.report_exception(Exceptions.UndefinedFunction(

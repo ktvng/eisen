@@ -73,7 +73,7 @@ class InterpreterObject:
 
     def get(self, key: str): 
         if not isinstance(self.value, dict):
-            raise Exception("Interpreter object must be a dict (for struct)")
+            raise Exception(f"Interpreter object must be a dict (for struct), but got {type(self.value)}")
         found = self.value.get(key, None)
         if found is None:
             new_obj = InterpreterObject(None)

@@ -1,4 +1,6 @@
 from __future__ import annotations
+from os import kill
+from re import I
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
@@ -60,6 +62,25 @@ class Nodes():
                     # modules.
             return interfaces
 
+        def _get_embed_asls(self) -> list[CLRList]:
+            return [child for child in self.state.asl if child.type == "embed"]
+
+        def _parse_embed_asl_for_typeclasses(self, embed_asl: CLRList) -> list[TypeClass]:
+            # TODO: currently we only allow the interface to be looked up in the same
+            # module as the struct. In general, we need to allow interfaces from arbitrary
+            # modules.
+            if isinstance(embed_asl.first(), CLRList):
+                return [self.state.get_module().get_typeclass_by_name(child.value) for child in embed_asl.first()]
+            return [self.state.get_module().get_typeclass_by_name(embed_asl.first().value)]
+
+        def get_embedded_structs(self) -> list[TypeClass]:
+            embedded_structs: list[TypeClass] = []
+            embed_asls = self._get_embed_asls()
+            for asl in embed_asls:
+                embedded_structs.extend(self._parse_embed_asl_for_typeclasses(asl))
+
+            return embedded_structs
+
         def get_child_attribute_asls(self) -> list[CLRList]:
             return [child for child in self.state.asl if child.type == ":" or child.type == ":="]
 
@@ -67,11 +88,13 @@ class Nodes():
             child_asls = self.get_child_attribute_asls()
             return [asl.first().value for asl in child_asls]
 
+        def has_create_asl(self) -> bool:
+            create_asls = [child for child in self.state.asl if child.type == "create"]
+            return len(create_asls) == 1
+
         def get_create_asl(self) -> CLRList:
             create_asls = [child for child in self.state.asl if child.type == "create"]
-            if len(create_asls) == 1:
-                return create_asls[0]
-            raise Exception(f"{self.state.asl} has no create method")
+            return create_asls[0]
 
 
 

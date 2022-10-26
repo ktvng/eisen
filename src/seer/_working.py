@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+from typing import Type
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
@@ -231,10 +232,12 @@ class FinalizeProtoStructWrangler(Visitor):
         this_struct_typeclass = node.get_this_typeclass()
 
         interfaces: list[TypeClass] = node.get_implemented_interfaces()
+        embeddings: list[TypeClass] = node.get_embedded_structs()
         this_struct_typeclass.finalize(
             components=[TypeclassParser().apply(state.but_with(asl=asl)) for asl in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),
-            inherits=interfaces)
+            inherits=interfaces,
+            embeds=embeddings)
 
         for interface in interfaces:
             Validate.implementation_is_complete(state, this_struct_typeclass, interface)
@@ -277,9 +280,10 @@ class FunctionWrangler(Visitor):
         # for example, a struct named MyStruct will have a constructor method 
         # called via MyStruct(...), so the (create ...)  method inside the 
         # (struct MyStruct ... ) asl needs context as to the struct it is inside.
-        fn.apply(state.but_with(
-            asl=node.get_create_asl(),
-            struct_name=node.get_struct_name()))
+        if node.has_create_asl():
+            fn.apply(state.but_with(
+                asl=node.get_create_asl(),
+                struct_name=node.get_struct_name()))
 
     @Visitor.covers(asls_of_type("def"))
     def def_(fn, state: Params):
@@ -543,19 +547,22 @@ class TypeClassFlowWrangler(Visitor):
         return fn.apply(state)
          
 
-    @Visitor.covers(asls_of_type("struct", "interface"))
+    @Visitor.covers(asls_of_type("struct"))
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
     def struct(fn, state: Params) -> TypeClass:
-        # currently structs/interfaces have the same get_child_asls structure
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                context=Context(
-                    name="struct",
-                    type=ContextTypes.block,
-                    parent=None)))
+        node = Nodes.Struct(state)
+        if node.has_create_asl():
+            fn.apply(state.but_with(asl=node.get_create_asl()))
+
+
+    @Visitor.covers(asls_of_type("interface"))
+    @records_typeclass
+    @passes_if_critical_exception
+    @returns_void_type
+    def interface_(fn, state: Params) -> TypeClass:
+        return
 
 
     @Visitor.covers(asls_of_type("cast"))
@@ -807,6 +814,16 @@ class Validate:
             return Validate._abort_signal(state) 
 
         if fn_type != given_type:
+            # if the given_type is a struct, we have another change to succeed if 
+            # the struct embeds the expected fn_type
+            if given_type.classification == TypeClass.classifications.struct:
+                if fn_type not in given_type.embeds:
+                    state.report_exception(Exceptions.TypeMismatch(
+                        msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
+                        line_number=state.asl.line_number))
+                    return Validate._abort_signal(state)  
+                return Validate._success(fn_type)
+            
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
                 line_number=state.asl.line_number))

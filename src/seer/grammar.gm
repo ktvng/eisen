@@ -71,6 +71,7 @@ SYMBOLICS
     keyword is          ->  is
     keyword some        ->  some
     keyword as          ->  as
+    keyword embed       ->  embed
 
     symbol ,            ->  ,
     symbol {            ->  \s*{\s* 
@@ -245,12 +246,18 @@ STRUCTURE
         |   STRUCT_CONSTRUCTOR
         |   STRUCT_DESTRUCTOR
         |   STRUCT_DECLARATION
+        |   STRUCT_EMBEDDINGS ENDLS
 
     @action filter_build create 
     STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
 
     @action filter_build destroy
     STRUCT_DESTRUCTOR -> destroy ARGS_DECL CODE_BLOCK
+
+    @action filter_build embed
+    STRUCT_EMBEDDINGS -> 
+        |   embed TAGS
+        |   embed TAG
 
     STRUCT_LINE ->
         @action pass

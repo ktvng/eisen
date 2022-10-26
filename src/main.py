@@ -84,16 +84,16 @@ def run_seer(filename: str):
     # print("====================")
     # [print(t) for t in tokens]
 
-    # CUSTOM PARSER
-    start = time.perf_counter_ns()
-    asl = seer.CustomParser.run(config, tokens, seer.SeerBuilder())
-    end = time.perf_counter_ns()
-    perf.append(("CustomParser", (end-start)/1000000))
+    # # CUSTOM PARSER
+    # start = time.perf_counter_ns()
+    # asl = seer.CustomParser.run(config, tokens, seer.SeerBuilder())
+    # end = time.perf_counter_ns()
+    # perf.append(("CustomParser", (end-start)/1000000))
 
-    # # PARSE TO AST
-    # asl = run_and_measure("parser",
-    #     alpaca.parser.run,
-    #     config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
+    # PARSE TO AST
+    asl = run_and_measure("parser",
+        alpaca.parser.run,
+        config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
 
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")

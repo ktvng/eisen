@@ -1,9 +1,6 @@
 from __future__ import annotations
 from typing import Any
 
-import uuid
-
-from alpaca.concepts._type import Type
 from alpaca.concepts._context import Context
 
 class TypeClass():
@@ -23,7 +20,8 @@ class TypeClass():
             mod: Context,
             components: list[TypeClass],
             component_names: list[str],
-            inherits: list[TypeClass]):
+            inherits: list[TypeClass],
+            embeds: list[TypeClass]):
 
         self.classification = classification 
         self.name = name
@@ -31,8 +29,13 @@ class TypeClass():
         self.components = components
         self.component_names = component_names
         self.inherits = inherits
+        self.embeds =embeds
 
-    def finalize(self, components: list[TypeClass], component_names: list[str], inherits: list[TypeClass] = []):
+    def finalize(self, 
+            components: list[TypeClass], 
+            component_names: list[str], 
+            inherits: list[TypeClass] = [],
+            embeds: list[TypeClass] = []):
         if (self.classification != TypeClass.classifications.proto_interface and
             self.classification != TypeClass.classifications.proto_struct):
             raise Exception("can only finalize a proto* TypeClass")
@@ -45,6 +48,7 @@ class TypeClass():
         self.components = components 
         self.component_names = component_names
         self.inherits = inherits
+        self.embeds = embeds
 
     def _get_module_prefix_for_uuid(self) -> str:
         mod_str = self.mod.get_full_name() if self.mod else ""
@@ -107,13 +111,30 @@ class TypeClass():
         return self._get_uuid_str()
 
     def has_member_attribute_with_name(self, name: str) -> bool:
-        return name in self.component_names
+        if name in self.component_names:
+            return True
+
+        # struct may also have embedded structs
+        if self.classification == TypeClass.classifications.struct:
+            for typeclass in self.embeds:
+                if typeclass.has_member_attribute_with_name(name):
+                    return True
+        return False
+            
+
 
     def get_member_attribute_by_name(self, name: str) -> TypeClass:
         if self.classification != TypeClass.classifications.struct and self.classification != TypeClass.classifications.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
+            if self.classification == TypeClass.classifications.struct:
+                matching_embeddings = [tc for tc in self.embeds if tc.has_member_attribute_with_name(name)]
+                if len(matching_embeddings) != 1:
+                    raise Exception(f"bad embedding structure, need to be handled elswhere got {len(matching_embeddings)} matches, need 1")
+                if matching_embeddings:
+                    return matching_embeddings[0].get_member_attribute_by_name(name)
+
             raise Exception(f"Type {self} does not have member attribute named '{name}'")
 
         pos = self.component_names.index(name)
@@ -150,7 +171,8 @@ class TypeClassFactory():
             mod=global_mod, 
             components=[], 
             component_names=[], 
-            inherits=[])
+            inherits=[],
+            embeds=[])
 
     @classmethod
     def produce_tuple_type(cls, components: list[TypeClass], global_mod: Context) -> TypeClass:
@@ -160,7 +182,8 @@ class TypeClassFactory():
             mod=global_mod, 
             components=components, 
             component_names=[], 
-            inherits=[])
+            inherits=[],
+            embeds=[])
 
     @classmethod
     def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Context, name: str = "") -> TypeClass:
@@ -170,7 +193,8 @@ class TypeClassFactory():
             mod=mod, 
             components=[arg, ret], 
             component_names=["arg", "ret"], 
-            inherits=[])
+            inherits=[],
+            embeds=[])
 
     @classmethod
     def produce_proto_struct_type(cls, name: str, mod: Context) -> TypeClass:
@@ -180,7 +204,8 @@ class TypeClassFactory():
             mod=mod, 
             components=[], 
             component_names=[], 
-            inherits=[])
+            inherits=[],
+            embeds=[])
 
     @classmethod
     def produce_proto_interface_type(cls, name: str, mod: Context) -> TypeClass:
@@ -190,4 +215,5 @@ class TypeClassFactory():
             mod=mod, 
             components=[], 
             component_names=[], 
-            inherits=[])
+            inherits=[],
+            embeds=[])

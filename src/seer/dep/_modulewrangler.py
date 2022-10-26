@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.concepts import Type, Context
 from alpaca.clr import CLRList, CLRToken
 
@@ -10,7 +10,7 @@ from seer._common import ContextTypes, asls_of_type, SeerInstance
 
 
 # generate the module structure and add types to the respective modules
-class ModuleWrangler(Wrangler):
+class ModuleWrangler(Visitor):
     def apply(self, params: Params):
         if self.debug and isinstance(params.asl, CLRList):
             print("\n"*64)
@@ -23,20 +23,20 @@ class ModuleWrangler(Wrangler):
     def parse_type(cls, params: Params) -> Type:
         return TypeWrangler().apply(params)
     
-    @Wrangler.covers(asls_of_type("start"))
+    @Visitor.covers(asls_of_type("start"))
     def start_i(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
 
-    @Wrangler.covers(asls_of_type("struct", "interface"))
+    @Visitor.covers(asls_of_type("struct", "interface"))
     def struct_i(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)
         params.mod.resolve_type(ModuleWrangler.parse_type(params))
         for child in params.asl:
             fn.apply(params.but_with(asl=child, struct_name=params.asl.first().value))
 
-    @Wrangler.covers(asls_of_type("mod"))
+    @Visitor.covers(asls_of_type("mod"))
     def mod_i(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)
         child_mod = Context(
@@ -49,7 +49,7 @@ class ModuleWrangler(Wrangler):
                 asl=child, 
                 mod=child_mod))
 
-    @Wrangler.covers(asls_of_type("def"))
+    @Visitor.covers(asls_of_type("def"))
     def def_i(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)
         new_type = ModuleWrangler.parse_type(params)
@@ -65,7 +65,7 @@ class ModuleWrangler(Wrangler):
 
 
 
-    @Wrangler.covers(asls_of_type("create"))
+    @Visitor.covers(asls_of_type("create"))
     def create_i(fn, params: Params):
         # add the struct name as the first parameter
         params.asl._list.insert(0, CLRToken(type_chain=["TAG"], value=params.struct_name))
@@ -82,10 +82,10 @@ class ModuleWrangler(Wrangler):
                     asl=params.asl,
                     is_constructor=True))])
 
-    @Wrangler.covers(asls_of_type("TAG", ":"))
+    @Visitor.covers(asls_of_type("TAG", ":"))
     def TAG_i(fn, params: Params):
         return
 
-    @Wrangler.default
+    @Visitor.default
     def default_(fn, params: Params):
         params.oracle.add_module(params.asl, params.mod)

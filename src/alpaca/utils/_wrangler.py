@@ -27,7 +27,7 @@ class DefaultTransform():
     def __call__(self, *args, **kwargs):
         return self.f(*args, **kwargs) 
 
-class Wrangler():
+class Visitor():
     max_depth = 100
 
     def __init__(self, debug: bool = False):

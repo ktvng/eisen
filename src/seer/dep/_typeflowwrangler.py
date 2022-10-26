@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.clr import CLRList, CLRToken
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.concepts import Context, TypeFactory, Instance, Type
 
 from seer._params import Params
@@ -12,7 +12,7 @@ from seer.dep._typewrangler import TypeWrangler
 from seer._callconfigurer import CallConfigurer
 from seer._common import asls_of_type, ContextTypes, SeerInstance
 
-class TypeFlowWrangler(Wrangler):
+class TypeFlowWrangler(Visitor):
     def __init__(self, debug: bool = False):
         super().__init__(debug=debug)
         self.void_type = TypeFactory.produce_novel_type("void")
@@ -34,27 +34,27 @@ class TypeFlowWrangler(Wrangler):
             return result
         return decorator
 
-    @Wrangler.covers(asls_of_type("fn_type"))
+    @Visitor.covers(asls_of_type("fn_type"))
     @assigns_type
     def fn_type_(fn, params: Params) -> Type:
         type = TypeWrangler().apply(params)
         return type
 
-    @Wrangler.covers(asls_of_type("prod_type"))
+    @Visitor.covers(asls_of_type("prod_type"))
     @assigns_type
     def _prod_type(fn, params: Params) -> Type:
         types = [fn.apply(params.but_with(asl=child)) for child in params.asl]
         return params.mod.resolve_type(TypeFactory.produce_tuple_type(types))
 
     no_action = ["start", "return", "seq"] 
-    @Wrangler.covers(asls_of_type(*no_action))
+    @Visitor.covers(asls_of_type(*no_action))
     @assigns_type
     def no_action_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type("."))
+    @Visitor.covers(asls_of_type("."))
     @assigns_type
     def dot_(fn, params: Params) -> Type:
         parent_type = fn.apply(params.but_with(asl=params.asl.head()))
@@ -63,7 +63,7 @@ class TypeFlowWrangler(Wrangler):
         return attr_type
 
     # TODO: will this work for a::b()?
-    @Wrangler.covers(asls_of_type("::"))
+    @Visitor.covers(asls_of_type("::"))
     @assigns_type
     def scope_(fn, params: Params) -> Type:
         next_mod = params.starting_mod.get_child_module_by_name(params.asl.first().value)
@@ -72,21 +72,21 @@ class TypeFlowWrangler(Wrangler):
             starting_mod=next_mod,
             mod=next_mod))
 
-    @Wrangler.covers(asls_of_type("tuple"))
+    @Visitor.covers(asls_of_type("tuple"))
     @assigns_type
     def tuple_(fn, params: Params) -> Type:
         components = [fn.apply(params.but_with(asl=child)) for child in params.asl]
         return params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(components))
 
-    @Wrangler.covers(asls_of_type("cond"))
+    @Visitor.covers(asls_of_type("cond"))
     @assigns_type
     def cond_(fn, params: Params) -> Type:
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type("if"))
+    @Visitor.covers(asls_of_type("if"))
     @assigns_type
     def if_(fn, params: Params) -> Type:
         for child in params.asl:
@@ -98,7 +98,7 @@ class TypeFlowWrangler(Wrangler):
                     parent=params.mod)))
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type("while"))
+    @Visitor.covers(asls_of_type("while"))
     @assigns_type
     def while_(fn, params: Params) -> Type:
         fn.apply(params.but_with(
@@ -106,7 +106,7 @@ class TypeFlowWrangler(Wrangler):
             mod=Context(name="while", type=ContextTypes.block, parent=params.mod)))
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type(":"))
+    @Visitor.covers(asls_of_type(":"))
     @assigns_type
     def colon_(fn, params: Params) -> Type:
         name = params.asl.first().value
@@ -115,7 +115,7 @@ class TypeFlowWrangler(Wrangler):
         params.oracle.add_instances(params.asl, instance)
         return type
 
-    @Wrangler.covers(asls_of_type("fn"))
+    @Visitor.covers(asls_of_type("fn"))
     @assigns_type
     def fn_(fn, params: Params) -> Type:
         if isinstance(params.asl.first(), CLRToken):
@@ -135,14 +135,14 @@ class TypeFlowWrangler(Wrangler):
 
         return instance.type
 
-    @Wrangler.covers(asls_of_type("params"))
+    @Visitor.covers(asls_of_type("params"))
     @assigns_type
     def params_(fn, params: Params) -> Type:
         component_types = [fn.apply(params.but_with(asl=child)) for child in params.asl]
         return params.mod.resolve_type(
             type=TypeFactory.produce_tuple_type(component_types))
 
-    @Wrangler.covers(asls_of_type("call"))
+    @Visitor.covers(asls_of_type("call"))
     @assigns_type
     def call_(fn, params: Params) -> Type:
         fn_type = fn.apply(params.but_with(asl=params.asl.first()))
@@ -151,7 +151,7 @@ class TypeFlowWrangler(Wrangler):
         fn.apply(params.but_with(asl=params.asl.second()))
         return fn_type.get_return_type()
 
-    @Wrangler.covers(asls_of_type("raw_call"))
+    @Visitor.covers(asls_of_type("raw_call"))
     @assigns_type
     def raw_call(fn, params: Params) -> Type:
         CallConfigurer.process(params)
@@ -161,7 +161,7 @@ class TypeFlowWrangler(Wrangler):
         fn.apply(params.but_with(asl=params.asl.second()))
         return fn_type.get_return_type()
          
-    @Wrangler.covers(asls_of_type("struct"))
+    @Visitor.covers(asls_of_type("struct"))
     @assigns_type
     def struct(fn, params: Params) -> Type:
         name = params.asl.first().value
@@ -172,14 +172,14 @@ class TypeFlowWrangler(Wrangler):
             fn.apply(params.but_with(asl=child))
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type("interface"))
+    @Visitor.covers(asls_of_type("interface"))
     @assigns_type
     def interface(fn, params: Params) -> Type:
         for child in params.asl[1:]:
             fn.apply(params.but_with(asl=child))
         return fn.void_type 
 
-    @Wrangler.covers(asls_of_type("cast"))
+    @Visitor.covers(asls_of_type("cast"))
     @assigns_type
     def cast(fn, params: Params) -> Type:
         # (cast (ref name) (type into))
@@ -191,12 +191,12 @@ class TypeFlowWrangler(Wrangler):
 
         raise Exception(f"TODO handle cast error {left_type} != {right_type}")
 
-    @Wrangler.covers(asls_of_type("impls"))
+    @Visitor.covers(asls_of_type("impls"))
     @assigns_type
     def impls(fn, params: Params) -> Type:
         return fn.void_type
 
-    @Wrangler.covers(asls_of_type("mod"))
+    @Visitor.covers(asls_of_type("mod"))
     @assigns_type
     def mod(fn, params: Params) -> Type:
         name = params.asl.first().value
@@ -205,7 +205,7 @@ class TypeFlowWrangler(Wrangler):
             fn.apply(params.but_with(asl=child, mod=child_mod))
         return fn.void_type
  
-    @Wrangler.covers(asls_of_type("def", "create"))
+    @Visitor.covers(asls_of_type("def", "create"))
     @assigns_type
     def fn(fn, params: Params) -> Type:
         params.oracle.add_module_of_propagated_type(params.asl, params.mod)
@@ -218,7 +218,7 @@ class TypeFlowWrangler(Wrangler):
         return fn.void_type
 
     binary_ops = ['+', '-', '/', '*', '&&', '||', '<', '>', '<=', '>=', '==', '!=', '+=', '-=', '*=', '/='] 
-    @Wrangler.covers(asls_of_type(*binary_ops))
+    @Visitor.covers(asls_of_type(*binary_ops))
     @assigns_type
     def binary_ops(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl.first()))
@@ -229,7 +229,7 @@ class TypeFlowWrangler(Wrangler):
 
         return left_type
 
-    @Wrangler.covers(asls_of_type(":"))
+    @Visitor.covers(asls_of_type(":"))
     @assigns_type
     def colon_(fn, params: Params) -> Type:
         if isinstance(params.asl.first(), CLRToken):
@@ -249,7 +249,7 @@ class TypeFlowWrangler(Wrangler):
 
         return type
 
-    @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
+    @Visitor.covers(lambda params: isinstance(params.asl, CLRToken))
     @assigns_type
     def token_(fn, params: Params) -> Type:
         # TODO: make this nicer
@@ -263,7 +263,7 @@ class TypeFlowWrangler(Wrangler):
     # - inference
     #       let x = 4
     #       (let x 4)
-    @Wrangler.covers(asls_of_type("ilet"))
+    @Visitor.covers(asls_of_type("ilet"))
     @assigns_type
     def idecls_(fn, params: Params):
         name = params.asl.first().value
@@ -293,7 +293,7 @@ class TypeFlowWrangler(Wrangler):
     # - multiple inference
     #       let x, y = 4, 4
     #       (let (tags x y ) (tuple 4 4))
-    @Wrangler.covers(asls_of_type('val', 'var', 'mut_val', 'mut_var', 'let'))
+    @Visitor.covers(asls_of_type('val', 'var', 'mut_val', 'mut_var', 'let'))
     @assigns_type
     def decls_(fn, params: Params):
         if isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags":
@@ -317,7 +317,7 @@ class TypeFlowWrangler(Wrangler):
         else:
             raise Exception(f"Unexpected format: {params.asl}")
 
-    @Wrangler.covers(asls_of_type("type", "type?", "type*"))
+    @Visitor.covers(asls_of_type("type", "type?", "type*"))
     @assigns_type
     def _type1(fn, params: Params) -> Type:
         type = params.mod.get_type_by_name(name=params.asl.first().value)
@@ -327,7 +327,7 @@ class TypeFlowWrangler(Wrangler):
         params.oracle.add_module_of_propagated_type(params.asl, mod)
         return type
 
-    @Wrangler.covers(asls_of_type("="))
+    @Visitor.covers(asls_of_type("="))
     @assigns_type
     def assigns(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
@@ -343,7 +343,7 @@ class TypeFlowWrangler(Wrangler):
 
         return left_type 
 
-    @Wrangler.covers(asls_of_type("<-"))
+    @Visitor.covers(asls_of_type("<-"))
     @assigns_type
     def larrow_(fn, params: Params) -> Type:
         left_type = fn.apply(params.but_with(asl=params.asl[0]))
@@ -353,7 +353,7 @@ class TypeFlowWrangler(Wrangler):
 
         return left_type
 
-    @Wrangler.covers(asls_of_type("ref"))
+    @Visitor.covers(asls_of_type("ref"))
     @assigns_type
     def ref_(fn, params: Params) -> Type:
         name = params.asl.first().value
@@ -364,7 +364,7 @@ class TypeFlowWrangler(Wrangler):
         params.oracle.add_instances(params.asl, instance)
         return instance.type
 
-    @Wrangler.covers(asls_of_type("args"))
+    @Visitor.covers(asls_of_type("args"))
     @assigns_type
     def args_(fn, params: Params) -> Type:
         if not params.asl:
@@ -372,7 +372,7 @@ class TypeFlowWrangler(Wrangler):
         type = fn.apply(params.but_with(asl=params.asl.first(), is_ptr=False))
         return type
 
-    @Wrangler.covers(asls_of_type("rets"))
+    @Visitor.covers(asls_of_type("rets"))
     @assigns_type
     def rets_(fn, params: Params) -> Type:
         if not params.asl:

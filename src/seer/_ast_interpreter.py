@@ -5,7 +5,7 @@ from typing import Any, Callable
 import re
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 
 from seer._common import asls_of_type
 from seer._params import Params
@@ -84,7 +84,7 @@ class InterpreterObject:
 
 
 
-class AstInterpreter(Wrangler):
+class AstInterpreter(Visitor):
     def __init__(self, redirect_output=False):
         super().__init__()
         self.stdout = "";
@@ -94,7 +94,7 @@ class AstInterpreter(Wrangler):
         # print(params.asl)
         return self._apply([params], [params])
 
-    @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
+    @Visitor.covers(lambda params: isinstance(params.asl, CLRToken))
     def token_(fn, params: Params):
         value = params.asl.value
         if params.asl.type == "int":
@@ -104,29 +104,29 @@ class AstInterpreter(Wrangler):
 
         return [InterpreterObject(value)]
 
-    @Wrangler.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">="))
+    @Visitor.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">="))
     def binop_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
         return [lambda_map[params.asl.type](left, right)]
 
-    @Wrangler.covers(asls_of_type("and"))
+    @Visitor.covers(asls_of_type("and"))
     def and_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
         return [InterpreterObject(left.value and right.value)] 
 
-    @Wrangler.covers(asls_of_type("or"))
+    @Visitor.covers(asls_of_type("or"))
     def or_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
         return [InterpreterObject(left.value or right.value)] 
 
-    @Wrangler.covers(asls_of_type("let"))
+    @Visitor.covers(asls_of_type("let"))
     def let_(fn, params: Params):
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @Wrangler.covers(asls_of_type(":"))
+    @Visitor.covers(asls_of_type(":"))
     def colon_(fn, params: Params):
         if isinstance(params.asl.first(), CLRToken):
             names = [params.asl.first().value]
@@ -144,7 +144,7 @@ class AstInterpreter(Wrangler):
             params.objs[name] = obj
         return objs
 
-    @Wrangler.covers(asls_of_type("="))
+    @Visitor.covers(asls_of_type("="))
     def eqs_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))
         right = fn.apply(params.but_with(asl=params.asl.second()))
@@ -152,20 +152,20 @@ class AstInterpreter(Wrangler):
             l.value = r.value
         return []
 
-    @Wrangler.covers(asls_of_type("!"))
+    @Visitor.covers(asls_of_type("!"))
     def not_(fn, params: Params):
         objs = fn.apply(params.but_with(asl=params.asl.first()))
         x = [InterpreterObject(not objs[0].value)]
         return x
 
-    @Wrangler.covers(asls_of_type("tuple"))
+    @Visitor.covers(asls_of_type("tuple"))
     def tuple(fn, params: Params):
         objs = []
         for child in params.asl:
             objs += fn.apply(params.but_with(asl=child))
         return objs
 
-    @Wrangler.covers(asls_of_type("+=", "-=", "/=", "*="))
+    @Visitor.covers(asls_of_type("+=", "-=", "/=", "*="))
     def asseqs_(fn, params: Params):
         # because (= (ref name) ...)
         name = params.asl.first().first().value
@@ -176,11 +176,11 @@ class AstInterpreter(Wrangler):
         params.objs[name].value = new_obj.value
         return []
 
-    @Wrangler.covers(asls_of_type("mod", "struct", "interface", "return"))
+    @Visitor.covers(asls_of_type("mod", "struct", "interface", "return"))
     def skip_(fn, params: Params):
         return
 
-    @Wrangler.covers(asls_of_type("def"))
+    @Visitor.covers(asls_of_type("def"))
     def def_(fn, params: Params):
         fn_name = params.asl.first().value
         if fn_name == "main":
@@ -188,13 +188,13 @@ class AstInterpreter(Wrangler):
             fn.apply(params.but_with(asl=params.asl[-1]))
         return []
 
-    @Wrangler.covers(asls_of_type("start", "seq"))
+    @Visitor.covers(asls_of_type("start", "seq"))
     def exec_(fn, params: Params):
         for child in params.asl:
             fn.apply(params.but_with(asl=child))
         return []
 
-    @Wrangler.covers(asls_of_type("ilet"))
+    @Visitor.covers(asls_of_type("ilet"))
     def ilet_(fn, params: Params):
         # this is the case for (ilet (tags x y) (...))
         if isinstance(params.asl.first(), CLRList):
@@ -214,11 +214,11 @@ class AstInterpreter(Wrangler):
             params.objs[name] = value
         return []
 
-    @Wrangler.covers(asls_of_type("cast"))
+    @Visitor.covers(asls_of_type("cast"))
     def cast_(fn, params: Params):
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @Wrangler.covers(asls_of_type("call"))
+    @Visitor.covers(asls_of_type("call"))
     def call_(fn, params: Params):
         # get the asl of type (fn <name>)
         fn_asl = fn._unravel_scoping(params.asl.first())
@@ -277,7 +277,7 @@ class AstInterpreter(Wrangler):
 
         return return_values
 
-    @Wrangler.covers(asls_of_type("ref"))
+    @Visitor.covers(asls_of_type("ref"))
     def ref_(fn, params: Params):
         name = params.asl.first().value
         local_obj = params.objs.get(name, None)
@@ -289,23 +289,23 @@ class AstInterpreter(Wrangler):
         return [InterpreterObject(instance)]
         
 
-    @Wrangler.covers(asls_of_type("."))
+    @Visitor.covers(asls_of_type("."))
     def dot_(fn, params: Params):
         obj = fn.apply(params.but_with(asl=params.asl.first()))[0]
         return [obj.get(params.asl.second().value)]
 
-    @Wrangler.covers(asls_of_type("type"))
+    @Visitor.covers(asls_of_type("type"))
     def type_(fn, params: Params):
         return [InterpreterObject(None)]
 
-    @Wrangler.covers(asls_of_type("while"))
+    @Visitor.covers(asls_of_type("while"))
     def while_(fn, params: Params):
         result = fn._handle_cond(params.but_with(asl=params.asl.first()))
         while result:
             result = fn._handle_cond(params.but_with(asl=params.asl.first()))
         return []
 
-    @Wrangler.covers(asls_of_type("if"))
+    @Visitor.covers(asls_of_type("if"))
     def if_(fn, params: Params):
         for child in params.asl:
             if child.type == "cond":

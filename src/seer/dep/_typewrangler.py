@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import Type, TypeFactory
 
@@ -10,7 +10,7 @@ from seer._params import Params
 from seer._common import asls_of_type
 
 # generate a type within a module
-class TypeWrangler(Wrangler):
+class TypeWrangler(Visitor):
     def apply(self, params: Params) -> Type:
         return self._apply([params], [params])
 
@@ -29,7 +29,7 @@ class TypeWrangler(Wrangler):
 
         return [component.first().value for component in components]
 
-    @Wrangler.covers(asls_of_type("type"))
+    @Visitor.covers(asls_of_type("type"))
     @resolves_type
     def type_(fn, params: Params) -> Type:
         # eg. (type int)
@@ -44,7 +44,7 @@ class TypeWrangler(Wrangler):
         raise Exception(f"unknown type! {token.value}")
         return TypeFactory.produce_novel_type(token.value)
 
-    @Wrangler.covers(asls_of_type("interface_type"))
+    @Visitor.covers(asls_of_type("interface_type"))
     @resolves_type
     def interface_type_(fn, params: Params) -> Type:
         # eg. (type int)
@@ -59,13 +59,13 @@ class TypeWrangler(Wrangler):
         raise Exception(f"unknown type! {token.value}")
         return TypeFactory.produce_novel_type(token.value)
 
-    @Wrangler.covers(asls_of_type(":"))
+    @Visitor.covers(asls_of_type(":"))
     @resolves_type
     def colon_(fn, params: Params) -> Type:
         # eg. (: name (type int))
         return fn.apply(params.but_with(asl=params.asl.second()))
 
-    @Wrangler.covers(asls_of_type("prod_type"))
+    @Visitor.covers(asls_of_type("prod_type"))
     @resolves_type
     def prod_type_(fn, params: Params) -> Type:
         # eg.  (prod_type
@@ -74,14 +74,14 @@ class TypeWrangler(Wrangler):
         component_types = [fn.apply(params.but_with(asl=component)) for component in params.asl]
         return TypeFactory.produce_tuple_type(components=component_types)
 
-    @Wrangler.covers(asls_of_type("types"))
+    @Visitor.covers(asls_of_type("types"))
     @resolves_type
     def types_(fn, params: Params) -> Type:
         # eg. (types (type int) (type str))
         component_types = [fn.apply(params.but_with(asl=component)) for component in params.asl]
         return TypeFactory.produce_tuple_type(components=component_types)
 
-    @Wrangler.covers(asls_of_type("fn_type_in", "fn_type_out"))
+    @Visitor.covers(asls_of_type("fn_type_in", "fn_type_out"))
     @resolves_type
     def fn_type_out(fn, params: Params) -> Type:
         # eg. (fn_type_in/out (type(s) ...))
@@ -89,7 +89,7 @@ class TypeWrangler(Wrangler):
             return params.mod.resolve_type(TypeFactory.produce_novel_type("void"))
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @Wrangler.covers(asls_of_type("fn_type")) 
+    @Visitor.covers(asls_of_type("fn_type")) 
     @resolves_type
     def fn_type_(fn, params: Params) -> Type:
         # eg. (fn_type (fn_type_in ...) (fn_type_out ...))
@@ -97,7 +97,7 @@ class TypeWrangler(Wrangler):
             arg=fn.apply(params.but_with(asl=params.asl.first())),
             ret=fn.apply(params.but_with(asl=params.asl.second())))
 
-    @Wrangler.covers(asls_of_type("args", "rets"))
+    @Visitor.covers(asls_of_type("args", "rets"))
     @resolves_type
     def args_(fn, params: Params) -> Type:
         # eg. (args (type ...))
@@ -105,7 +105,7 @@ class TypeWrangler(Wrangler):
             return fn.apply(params.but_with(asl=params.asl.first()))
         return TypeFactory.produce_novel_type("void")
 
-    @Wrangler.covers(asls_of_type("def", "create"))
+    @Visitor.covers(asls_of_type("def", "create"))
     @resolves_type
     def def_(fn, params: Params) -> Type:
         # eg. (def name (args ...) (rets ...) (seq ...))
@@ -113,7 +113,7 @@ class TypeWrangler(Wrangler):
             arg=fn.apply(params.but_with(asl=params.asl.second())),
             ret=fn.apply(params.but_with(asl=params.asl.third())))
 
-    @Wrangler.covers(asls_of_type("struct"))
+    @Visitor.covers(asls_of_type("struct"))
     @resolves_type
     def struct_(fn, params: Params) -> Type:
         # eg. (struct name (: ...) (: ...) ... (create ...))
@@ -123,7 +123,7 @@ class TypeWrangler(Wrangler):
             components=[fn.apply(params.but_with(asl=component)) for component in attributes],
             component_names=TypeWrangler._get_component_names(attributes))
 
-    @Wrangler.covers(asls_of_type("interface"))
+    @Visitor.covers(asls_of_type("interface"))
     @resolves_type
     def interface_(fn, params: Params) -> Type:
         # eg. (interface name (: ...) ...)

@@ -1,7 +1,7 @@
 from __future__ import annotations
-from alpaca.utils._wrangler import PartialTransform, Wrangler
+from alpaca.utils._wrangler import PartialTransform, Visitor
 
-class Builder(Wrangler):
+class Builder(Visitor):
     @classmethod
     def for_procedure(cls, matching_name: str):
         def decorator(f):

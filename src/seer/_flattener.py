@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import alpaca
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
 from seer._params import Params
@@ -19,7 +19,7 @@ class FlatteningPacket:
 
 
 # flatten the function calls out of an expression
-class Flattener(Wrangler):
+class Flattener(Visitor):
     def __init__(self, debug: bool = False):
         super().__init__(debug)
         self.config = alpaca.config.parser.run("./src/seer/grammar.gm")
@@ -36,11 +36,11 @@ class Flattener(Wrangler):
         self.counter += 1
         return f"__var{self.counter}__"
 
-    @Wrangler.covers(lambda x: isinstance(x, CLRToken))
+    @Visitor.covers(lambda x: isinstance(x, CLRToken))
     def leaf_(fn, params: Params) -> FlatteningPacket:
         return FlatteningPacket(params.asl, [])
 
-    @Wrangler.default
+    @Visitor.default
     def default_(fn, params: Params) -> FlatteningPacket:
         children = []
         auxillary = []
@@ -83,7 +83,7 @@ class Flattener(Wrangler):
                 data=params.asl.data),
             auxillary=auxillary)
 
-    @Wrangler.covers(asls_of_type("seq"))
+    @Visitor.covers(asls_of_type("seq"))
     def seq_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:
         children = []
         for child in params.asl:

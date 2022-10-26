@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import re
 
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.parser import CommonBuilder
 from alpaca.clr import CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
@@ -40,7 +40,7 @@ class Builder(CommonBuilder):
 
         return [CLRList(flattened_comps[0], [flattened_comps[1]], flattened_comps[0].line_number)]
 
-class Writer(Wrangler):
+class Writer(Visitor):
     def run(self, asl: CLRList) -> str:
         parts = Writer().apply(asl)
         txt = "".join(parts)
@@ -78,11 +78,11 @@ class Writer(Wrangler):
             return list(itertools.chain(*[fn.apply(child) for child in asl]))
         return []
 
-    @Wrangler.covers(lambda asl: isinstance(asl, CLRToken))
+    @Visitor.covers(lambda asl: isinstance(asl, CLRToken))
     def token_(fn, asl: CLRToken) -> list[str]:
         return [asl.value]
 
-    @Wrangler.covers(asls_of_type("start"))
+    @Visitor.covers(asls_of_type("start"))
     def start_(fn, asl: CLRList) -> list[str]:
         lists_for_components = [fn.apply(child) for child in asl]
 
@@ -90,30 +90,30 @@ class Writer(Wrangler):
         lists_for_components = [l + ["\n"] for l in lists_for_components if l]
         return list(itertools.chain(*lists_for_components))
 
-    @Wrangler.covers(asls_of_type("decl"))
+    @Visitor.covers(asls_of_type("decl"))
     def decl_(fn, asl: CLRList) -> list[str]:
         return [*fn.apply(asl.first()), " ", *fn.apply(asl.second())]
 
-    @Wrangler.covers(asls_of_type("def"))
+    @Visitor.covers(asls_of_type("def"))
     def def_(fn, asl: CLRList) -> list[str]:
         parts = [*fn.apply(asl.first()), " "]
         for child in asl[1:]:
             parts.extend(fn.apply(child))
         return parts
 
-    @Wrangler.covers(asls_of_type("struct_decl"))
+    @Visitor.covers(asls_of_type("struct_decl"))
     def struct_decl_(fn, asl: CLRList) -> list[str]:
         return ["struct ", *fn.apply(asl.first()), " ", *fn.apply(asl.second())]
 
-    @Wrangler.covers(asls_of_type(["type", "call", "fn", "ref"]))
+    @Visitor.covers(asls_of_type(["type", "call", "fn", "ref"]))
     def pass_(fn, asl: CLRList) -> list[str]:
         return fn.delegate(asl)
 
-    @Wrangler.covers(asls_of_type(["cond"]))
+    @Visitor.covers(asls_of_type(["cond"]))
     def cond_(fn, asl: CLRList) -> list[str]:
         return ["(", *fn.apply(asl.first()), ")", *fn.apply(asl.second())]
 
-    @Wrangler.covers(asls_of_type("seq"))
+    @Visitor.covers(asls_of_type("seq"))
     def seq_(fn, asl: CLRList) -> list[str]:
         contexts = ["if", "while"]
         components = []
@@ -124,24 +124,24 @@ class Writer(Wrangler):
                 components.append(fn.apply(child) + [";\n"])
         return [" {\n"] + list(itertools.chain(*components)) + ["}\n"]
 
-    @Wrangler.covers(asls_of_type(["+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->"]))
+    @Visitor.covers(asls_of_type(["+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->"]))
     def op_(fn, asl: CLRList) -> list[str]:
         ops_which_dont_need_space = [".", "->"]
         op = asl.type if asl.type in ops_which_dont_need_space else f" {asl.type} "
         return [*fn.apply(asl.first()), op, *fn.apply(asl.second())]
 
-    @Wrangler.covers(asls_of_type("ptr"))
+    @Visitor.covers(asls_of_type("ptr"))
     def ptr_(fn, asl: CLRList) -> list[str]:
         return fn.delegate(asl) + ["*"]
 
-    @Wrangler.covers(asls_of_type("return"))
+    @Visitor.covers(asls_of_type("return"))
     def return_(fn, asl: CLRList) -> list[str]:
         return_value = fn.delegate(asl)
         if return_value:
             return ["return "] + return_value
         return ["return"]
 
-    @Wrangler.covers(asls_of_type(["params", "args"]))
+    @Visitor.covers(asls_of_type(["params", "args"]))
     def params_(fn, asl: CLRList) -> list[str]:
         if not asl:
             return ["()"]
@@ -150,18 +150,18 @@ class Writer(Wrangler):
             parts += [", "] + fn.apply(child)
         return ["("] + parts + [")"]
 
-    @Wrangler.covers(asls_of_type("while"))
+    @Visitor.covers(asls_of_type("while"))
     def while_(fn, asl: CLRList) -> list[str]:
         return [f"while "] + fn.delegate(asl)
 
-    @Wrangler.covers(asls_of_type("struct"))
+    @Visitor.covers(asls_of_type("struct"))
     def struct_(fn, asl: CLRList) -> list[str]:
         parts = [f"struct ", *fn.apply(asl.first()), " {\n"]
         for child in asl[1:]:
             parts += fn.apply(child) + [";\n"]
         return parts + ["};\n"]
 
-    @Wrangler.covers(asls_of_type("if"))
+    @Visitor.covers(asls_of_type("if"))
     def if_(fn, asl: CLRList) -> list[str]:
         parts = [f"{asl.type} "] + fn.apply(asl.first())
         for child in asl[1:]:
@@ -173,10 +173,10 @@ class Writer(Wrangler):
                 raise Exception(f"if_ unknown type {child.type}")
         return parts
 
-    @Wrangler.covers(asls_of_type("addr"))
+    @Visitor.covers(asls_of_type("addr"))
     def addr_(fn, asl: CLRList) -> list[str]:
         return ["&"] + fn.delegate(asl)
     
-    @Wrangler.covers(asls_of_type("deref"))
+    @Visitor.covers(asls_of_type("deref"))
     def deref_(fn, asl: CLRList) -> list[str]:
         return ["*"] + fn.delegate(asl)

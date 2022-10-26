@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 
-class DotDerefFilter(Wrangler):
+class DotDerefFilter(Visitor):
     def apply(self, asl: CLRList) -> CLRList:
         return self._apply([asl], [asl])
     
@@ -13,17 +13,17 @@ class DotDerefFilter(Wrangler):
             and isinstance(asl.first(), CLRList)
             and asl.first().type == "deref")
 
-    @Wrangler.default
+    @Visitor.default
     def default_(fn, asl: CLRList):
         children = [fn.apply(child) for child in asl]
         asl._list = children
         return asl
 
-    @Wrangler.covers(lambda asl: isinstance(asl, CLRToken))
+    @Visitor.covers(lambda asl: isinstance(asl, CLRToken))
     def token_(fn, asl: CLRList) -> CLRToken:
         return asl
 
-    @Wrangler.covers(is_dot_deref)
+    @Visitor.covers(is_dot_deref)
     def dot_deref_(fn, asl: CLRList) -> CLRList:
         print("here")
         ref_child = fn.apply(asl.first().first())

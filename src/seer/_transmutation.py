@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.clr import CLRList, CLRToken
-from alpaca.utils import Wrangler
+from alpaca.utils import Visitor
 from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
@@ -93,7 +93,7 @@ INSPECT ==================================================
 Token: {self.asl}
 """
 
-class CTransmutation(Wrangler):
+class CTransmutation(Visitor):
     global_prefix = ""
     def run(self, asl: CLRList, params: Params0) -> str:
         txt = alpaca.utils.formatter.format_clr(self.apply(
@@ -109,7 +109,7 @@ class CTransmutation(Wrangler):
         return self._apply([params], [params])
 
     # TESTING
-    @Wrangler.default
+    @Visitor.default
     def default_(fn, params: Params) -> str:
         return f"#{params.asl.type}"
 
@@ -121,19 +121,19 @@ class CTransmutation(Wrangler):
         return " ".join([fn.apply(params.but_with(asl=asl)) for asl in asls])
 
     # TODO: need to make this struct name by modules
-    @Wrangler.covers(lambda params: isinstance(params.asl, CLRToken))
+    @Visitor.covers(lambda params: isinstance(params.asl, CLRToken))
     def token_(fn, params: Params) -> str:
         return params.asl.value
 
-    @Wrangler.covers(asls_of_type("start"))
+    @Visitor.covers(asls_of_type("start"))
     def partial_1(fn, params: Params) -> str:
         return f"(start {fn.transmute(params.asl.items(), params)} {fn._main_method()})"
 
-    @Wrangler.covers(asls_of_type("mod"))
+    @Visitor.covers(asls_of_type("mod"))
     def partial_2(fn, params: Params) -> str:
         return f"{fn.transmute(params.asl.items()[1:], params)}"
 
-    @Wrangler.covers(asls_of_type("struct"))
+    @Visitor.covers(asls_of_type("struct"))
     def partial_3(fn, params: Params) -> str:
         full_name = Utils.get_full_name_of_struct(
             name=params.asl.first().value, 
@@ -147,14 +147,14 @@ class CTransmutation(Wrangler):
         code = f"(struct {full_name} {attribute_strs}) {method_strs}"
         return code
 
-    @Wrangler.covers(asls_of_type(
+    @Visitor.covers(asls_of_type(
         "args", "seq", "+", "-", "*", "/", "<", ">", "<=", ">=", "==", "!=",
         "+=", "-=", "*=", "/=",
         "params", "if", "while", "cond", "return", "call"))
     def partial_4(fn, params: Params) -> str:
         return f"({params.asl.type} {fn.transmute(params.asl.items(), params)})"
 
-    @Wrangler.covers(asls_of_type(":"))
+    @Visitor.covers(asls_of_type(":"))
     def partial_5(fn, params: Params) -> str:
         # hotfix, formalize tuples
         if (isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags"
@@ -173,7 +173,7 @@ class CTransmutation(Wrangler):
         return " ".join(strs)
 
     # TODO make real type
-    @Wrangler.covers(asls_of_type("type"))
+    @Visitor.covers(asls_of_type("type"))
     def partial_6(fn, params: Params) -> str:
         type: Type = params.oracle.get_propagated_type(params.asl)
         mod: Context = params.oracle.get_module_of_propagated_type(params.asl)
@@ -181,11 +181,11 @@ class CTransmutation(Wrangler):
             return f"(type (ptr {Utils.get_name_of_type(type, mod)}))"
         return f"(type {Utils.get_name_of_type(type, mod)})"
 
-    @Wrangler.covers(asls_of_type("prod_type"))
+    @Visitor.covers(asls_of_type("prod_type"))
     def partial_7(fn, params: Params) -> str:
         return fn.transmute(params.asl.items(), params)
 
-    @Wrangler.covers(asls_of_type("def"))
+    @Visitor.covers(asls_of_type("def"))
     def partial_8(fn, params: Params) -> str:
         instances = params.get_instances()
         name = Utils.get_full_name_of_function(instances[0])
@@ -195,7 +195,7 @@ class CTransmutation(Wrangler):
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
-    @Wrangler.covers(asls_of_type("create"))
+    @Visitor.covers(asls_of_type("create"))
     def partial_17(fn, params: Params) -> str:
         instances = params.get_instances()
         # get the type returned by the create object, as this is the type of the struct.
@@ -209,11 +209,11 @@ class CTransmutation(Wrangler):
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
-    @Wrangler.covers(asls_of_type("let"))
+    @Visitor.covers(asls_of_type("let"))
     def partial_9(fn, params: Params) -> str:
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @Wrangler.covers(asls_of_type("ilet"))
+    @Visitor.covers(asls_of_type("ilet"))
     def partial_(fn, params: Params) -> str:
         instance = params.get_instances()[0]
         mod = params.oracle.get_module_of_propagated_type(params.asl)
@@ -224,11 +224,11 @@ class CTransmutation(Wrangler):
             return f"(struct_decl (type {type_name}) {name}) (= {name} {value})"
         return f"(decl (type {type_name}) {name}) (= {name} {value})"
 
-    @Wrangler.covers(asls_of_type("::"))
+    @Visitor.covers(asls_of_type("::"))
     def partial_11(fn, params: Params) -> str:
         return fn.apply(params.but_with(asl=params.asl.second()))
 
-    @Wrangler.covers(asls_of_type("fn"))
+    @Visitor.covers(asls_of_type("fn"))
     def partial_12(fn, params: Params) -> str:
         if (params.asl.first().value == "print"):
             return f"(fn print)"
@@ -236,20 +236,20 @@ class CTransmutation(Wrangler):
         instances = params.get_instances()
         return f"({params.asl.type} {Utils.get_full_name_of_function(instances[0])})"
 
-    @Wrangler.covers(asls_of_type("rets"))
+    @Visitor.covers(asls_of_type("rets"))
     def partial_13(fn, params: Params) -> str:
         if not params.asl:
             return ""
         return fn.apply(params.but_with(asl=params.asl.first(), as_ptr=True))
 
-    @Wrangler.covers(asls_of_type("ref"))
+    @Visitor.covers(asls_of_type("ref"))
     def partial_14(fn, params: Params) -> str:
         instances = params.get_instances()
         if instances[0].is_ptr:
             return f"(deref (ref {fn.apply(params.but_with(asl=params.asl.first()))}))"
         return f"(ref {fn.apply(params.but_with(asl=params.asl.first()))})"
 
-    @Wrangler.covers(asls_of_type("="))
+    @Visitor.covers(asls_of_type("="))
     def partial_15(fn, params: Params) -> str:
         # hotfix, formalize tuples
         if len(params.asl) == 2 and isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tuple":
@@ -264,6 +264,6 @@ class CTransmutation(Wrangler):
 
         return f"(= {fn.transmute(params.asl.items(), params)})"
 
-    @Wrangler.covers(asls_of_type("."))
+    @Visitor.covers(asls_of_type("."))
     def partial_16(fn, params: Params) -> str:
         return f"(. {fn.transmute(params.asl.items(), params)})"

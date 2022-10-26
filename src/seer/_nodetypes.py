@@ -67,6 +67,11 @@ class Nodes():
             child_asls = self.get_child_attribute_asls()
             return [asl.first().value for asl in child_asls]
 
+        def get_create_asl(self) -> CLRList:
+            create_asls = [child for child in self.state.asl if child.type == "create"]
+            if len(create_asls) == 1:
+                return create_asls[0]
+            raise Exception(f"{self.state.asl} has no create method")
 
 
 
@@ -98,6 +103,56 @@ class Nodes():
             (seq ...))
         """
         get_function_name = get_name_from_first_child
+        def get_args_asl(self) -> CLRList:
+            return self.second_child()
+
+        def get_rets_asl(self) -> CLRList:
+            return self.third_child()
+
+
+    class Create(AbstractNodeInterface):
+        asl_type = "create"
+        examples = """
+        1. wild
+            (create
+                (args ...)
+                (rets ...)
+                (seq ...))
+        2. normalized
+            (create struct_name
+                (args ...)
+                (rets ...)
+                (seq ...))
+        """
+
+        # adds the struct name as the first parameter. this normalizes the structure
+        # of (def ...) and (create ...) asls so we can use the same code to process
+        # them
+        def normalize(self, struct_name: str):
+            self.state.asl._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
+    
+        def get_args_asl(self) -> CLRList:
+            return self.second_child()
+
+        def get_rets_asl(self) -> CLRList:
+            return self.third_child()
+
+    class CommonFunction(AbstractNodeInterface):
+        asl_types = ["def", "create", ":="]
+        examples = """
+        (<asl_type> name
+            (args ...)
+            (rets ...)
+            (seq ...))
+        """
+        get_name = get_name_from_first_child
+
+        def get_args_asl(self) -> CLRList:
+            return self.second_child()
+
+        def get_rets_asl(self) -> CLRList:
+            return self.third_child()
+ 
 
     class Ilet(AbstractNodeInterface):
         asl_type = "ilet"
@@ -108,8 +163,14 @@ class Nodes():
         4. (ilet (tags ...) (tuple ...))
         5. (ilet (tags ...) (call ...))
         """
-        def get_names() -> list[str]:
-            pass
+
+        def get_names(self) -> list[str]:
+            if isinstance(self.first_child(), CLRList):
+                return [token.value for token in self.first_child()]
+            return [self.first_child().value]
+
+        def assigns_a_tuple(self) -> bool:
+            return isinstance(self.first_child(), CLRList)
 
     class Let(AbstractNodeInterface):
         asl_type = "let"
@@ -134,6 +195,9 @@ class Nodes():
             else:
                 return [child.value for child in self.first_child()]
 
+        def get_type_asl(self) -> CLRList:
+            return self.second_child()
+
     class Assignment(AbstractNodeInterface):
         asl_type = "="
         examples = """
@@ -145,5 +209,19 @@ class Nodes():
 
         is_single_assignment = first_child_is_token
 
+    class Fn(AbstractNodeInterface):
+        asl_type = "fn"
+        examples = """
+        1. simple 
+            (fn name)
+        2. module
+            (fn (:: mod name))
+        3. attribute 
+            (fn (. (ref obj) name))
+        """
+        
+        def is_print(self):
+            return self.is_simple() and self.first_child().value == "print"
 
-
+        def is_simple(self):
+            return isinstance(self.first_child(), CLRToken)

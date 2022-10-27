@@ -25,7 +25,7 @@ class Restriction():
         return Restriction(cls.var, cls.States.not_initialized)
 
     @classmethod
-    def create_let(cls, is_init: bool) -> Restriction:
+    def create_let(cls, is_init: bool = False) -> Restriction:
         if is_init:
             return Restriction(cls.let, cls.States.initialized)
         return Restriction(cls.let, cls.States.not_initialized)
@@ -58,6 +58,27 @@ class Restriction():
             if not assignable:
                 return False, ("a primitive type declared by 'let' can only be assigned to other "
                     "primitive types declared by 'let' or to other literals")
-        return True, "success"
+            return True, "success"
+        if self.type == Restriction.none:
+            return True, "TODO: we should't be getting None here right?"
+        if self.type == Restriction.var:
+            assignable = (right.type == Restriction.var
+                or right.type == Restriction.let
+                or right.type == Restriction.let_primitive)
+            if not assignable:
+                return False, ("a type declared by 'var' can only be assigned to other "
+                    "variable declared by 'var' or to memory declared with 'let'")
+            return True, "success"
+        if self.type == Restriction.let:
+            assignable = (self.state == Restriction.States.not_initialized and
+                right.type == Restriction.let)
+            if not assignable:
+                return False, ("memory declared by 'let' cannot be reassigned after it has been "
+                    "initialized the first time")
+            return True, "success"
 
+        raise Exception(f"{self} not implemented assignable_to")
+
+    def mark_as_initialized(self):
+        self.state = Restriction.States.initialized
     

@@ -277,3 +277,12 @@ class Nodes():
 
         def get_asl_defining_restriction(self) -> CLRList:
             return self.first_child()
+
+    class Call(AbstractNodeInterface):
+        asl_type = "call"
+        examples = """
+        (call (fn name) (params ...))
+        """
+
+        def get_function_return_instance(self):
+            pass

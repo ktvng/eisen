@@ -1,8 +1,8 @@
 from __future__ import annotations
-import email
-from sys import stdout
+from ast import In
 from typing import Any, Callable
 import re
+from xml.dom.expatbuilder import InternalSubsetExtractor
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
@@ -25,15 +25,32 @@ lambda_map = {
     "and": lambda x, y: x and y,
 }
 
-# either value is primitive value, value is dict for struct, or value is asl for function
-class InterpreterObject:
+class Primitive:
     def __init__(self, value: Any):
         self.value = value
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+# either value is primitive object, value is dict for struct, or value is asl for function
+class InterpreterObject:
+    def __init__(self, value: Any, name: str = "anon", is_var: bool = False):
+        self.name = name
+        self.value = value
+        self.is_var = is_var
+
+    @classmethod
+    def from_existing(cls, obj: InterpreterObject) -> InterpreterObject:
+        if isinstance(obj.value, Primitive):
+            return InterpreterObject(Primitive(obj.value.value))
+        else:
+            return InterpreterObject(obj.value)
+
 
     def _binary_ops(self, o: InterpreterObject, f: Callable[[Any, Any], Any]):
         if not isinstance(o, InterpreterObject):
             raise Exception(f"Error: expected interpreter object, but got {type(o)}")
-        return InterpreterObject(f(self.value, o.value))
+        return InterpreterObject(Primitive(f(self.value.value, o.value.value)))
 
     def __add__(self, o: Any):
         return self._binary_ops(o, lambda_map["+"])
@@ -71,6 +88,9 @@ class InterpreterObject:
     def __str__(self) -> str:
         return str(self.value)
 
+    def get_debug_str(self) -> str:
+        return f"{self.name}:{self.value}"
+
     def get(self, key: str): 
         if not isinstance(self.value, dict):
             raise Exception(f"Interpreter object must be a dict (for struct), but got {type(self.value)}")
@@ -102,7 +122,7 @@ class AstInterpreter(Visitor):
         if params.asl.type == "bool":
             value = params.asl.value == "true"
 
-        return [InterpreterObject(value)]
+        return [InterpreterObject(Primitive(value))]
 
     @Visitor.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">="))
     def binop_(fn, params: Params):
@@ -114,17 +134,25 @@ class AstInterpreter(Visitor):
     def and_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        return [InterpreterObject(left.value and right.value)] 
+        return [InterpreterObject(Primitive(left.value.value and right.value.value))] 
 
     @Visitor.covers(asls_of_type("or"))
     def or_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        return [InterpreterObject(left.value or right.value)] 
+        return [InterpreterObject(Primitive(left.value.value or right.value.value))] 
 
-    @Visitor.covers(asls_of_type("let", "var"))
+    @Visitor.covers(asls_of_type("let"))
     def let_(fn, params: Params):
         return fn.apply(params.but_with(asl=params.asl.first()))
+
+    @Visitor.covers(asls_of_type("var"))
+    def var_(fn, params: Params):
+        objs = fn.apply(params.but_with(asl=params.asl.first()))
+        for obj in objs:
+            obj.is_var = True
+        return objs
+    
 
     @Visitor.covers(asls_of_type(":"))
     def colon_(fn, params: Params):
@@ -136,7 +164,7 @@ class AstInterpreter(Visitor):
         if params.asl.second().type == "type":
             # this is the case (let (: tags x y z) (type int))
             # we create a new object for each name
-            objs = [InterpreterObject(None) for name in names]
+            objs = [InterpreterObject(None, name=name) for name in names]
         else:
             objs = fn.apply(params.but_with(asl=params.asl.second()))
 
@@ -149,13 +177,21 @@ class AstInterpreter(Visitor):
         left = fn.apply(params.but_with(asl=params.asl.first()))
         right = fn.apply(params.but_with(asl=params.asl.second()))
         for l, r in zip(left, right):
-            l.value = r.value
+            # if l is a var, then we alias the name so it's effectively a pointer.
+            if isinstance(l.value, Primitive):
+                if l.is_var:
+                    l.value = r.value
+                else:
+                    l.value = Primitive(r.value.value)
+            else:
+                l.value = r.value
+
         return []
 
     @Visitor.covers(asls_of_type("!"))
     def not_(fn, params: Params):
         objs = fn.apply(params.but_with(asl=params.asl.first()))
-        x = [InterpreterObject(not objs[0].value)]
+        x = [InterpreterObject(Primitive(not objs[0].value.value))]
         return x
 
     @Visitor.covers(asls_of_type("tuple"))
@@ -211,6 +247,7 @@ class AstInterpreter(Visitor):
             values = [fn.apply(params.but_with(asl=params.asl.second()))[0]]
         
         for name, value in zip(names, values):
+            value.name = name
             params.objs[name] = value
         return []
 
@@ -256,7 +293,7 @@ class AstInterpreter(Visitor):
         param_names = fn._get_param_names(asl_defining_the_function)
         for name, param in zip(param_names, params.asl.second()):
             obj = fn.apply(params.but_with(asl=param))[0]
-            fn_objs[name] = InterpreterObject(obj.value)
+            fn_objs[name] = InterpreterObject.from_existing(obj)
 
         # add return values to the context
         return_values = []
@@ -359,7 +396,7 @@ class AstInterpreter(Visitor):
 class PrintFunction():
     @classmethod
     def emulate(cls, redirect: str, *args: list[InterpreterObject]) -> str:
-        base = args[0].value
+        base = args[0].value.value
         arg_strs = cls._convert_args_to_strs(args[1:])
         tag_regex = re.compile(r"%\w")
         for arg in arg_strs:
@@ -374,8 +411,8 @@ class PrintFunction():
     def _convert_args_to_strs(cls, args: list[InterpreterObject]) -> list[str]:
         arg_strs = []
         for arg in args:
-            if isinstance(arg.value, bool):
-                arg_strs.append("true" if arg.value else "false")
+            if isinstance(arg.value.value, bool):
+                arg_strs.append("true" if arg.value.value else "false")
             else:
-                arg_strs.append(str(arg))
+                arg_strs.append(str(arg.value))
         return arg_strs

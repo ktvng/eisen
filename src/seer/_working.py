@@ -871,9 +871,13 @@ class VerifyAssignmentPermissions(Visitor):
     def let_(fn, state: Params) -> list[Restriction]:
         for instance in state.get_instances():
             if instance.type.is_novel():
-                state.add_restriction(instance.name, Restriction.for_let_of_novel_type())
+                restriction = Restriction.for_let_of_novel_type()
             else:
-                state.add_restriction(instance.name, Restriction.create_var())
+                restriction = Restriction.create_let()
+
+            if state.asl.type == "ilet":
+                restriction.mark_as_initialized()
+            state.add_restriction(instance.name, restriction)
         return []
 
     
@@ -899,6 +903,9 @@ class VerifyAssignmentPermissions(Visitor):
 
         for left_restriction, right_restriction in zip(left_restrictions, right_restrictions):
             Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+            # must mark as initialized after we check critera, otherwise checks may fail
+            # if this is where the first initialization occurs
+            left_restriction.mark_as_initialized()
         return []
 
     @Visitor.covers(asls_of_type("."))
@@ -910,6 +917,12 @@ class VerifyAssignmentPermissions(Visitor):
         if state.get_returned_typeclass().is_novel():
             return Restriction.none
         return fn.apply(state.but_with(asl=node.get_asl_defining_restriction()))
+
+    # TODO: finish this here
+    # @Visitor.covers(asls_of_type("call"))
+    # def call_(fn, state: Params) -> list[Restriction]:
+    #     node = Nodes.Call(state)
+    #     pass
 
     @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
     def token_(fn, state: Params) -> list[Restriction]:

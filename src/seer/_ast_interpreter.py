@@ -357,7 +357,7 @@ class AstInterpreter(Visitor):
 
     def _handle_cond(fn, params: Params):
         condition = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        if condition.value:
+        if condition.value.value:
             fn.apply(params.but_with(asl=params.asl.second()))
             return True
         return False

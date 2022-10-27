@@ -70,8 +70,9 @@ class Restriction():
                     "variable declared by 'var' or to memory declared with 'let'")
             return True, "success"
         if self.type == Restriction.let:
+            # TODO: none is added because restriction logic is not fully built out yet
             assignable = (self.state == Restriction.States.not_initialized and
-                right.type == Restriction.let)
+                (right.type == Restriction.let or right.type == Restriction.none))
             if not assignable:
                 return False, ("memory declared by 'let' cannot be reassigned after it has been "
                     "initialized the first time")

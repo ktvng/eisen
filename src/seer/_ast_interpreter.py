@@ -122,7 +122,7 @@ class AstInterpreter(Visitor):
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
         return [InterpreterObject(left.value or right.value)] 
 
-    @Visitor.covers(asls_of_type("let"))
+    @Visitor.covers(asls_of_type("let", "var"))
     def let_(fn, params: Params):
         return fn.apply(params.but_with(asl=params.asl.first()))
 

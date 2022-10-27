@@ -1,6 +1,5 @@
 from __future__ import annotations
-import re
-from typing import Type
+from unittest import expectedFailure, installHandler
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
@@ -14,6 +13,7 @@ from seer._callconfigurer import CallConfigurer
 from seer._common import asls_of_type, ContextTypes, SeerInstance, Module
 from seer._nodedata import NodeData
 from seer._nodetypes import Nodes
+from seer._restriction import Restriction
 
 
 class InitializeNodeData(Visitor):
@@ -241,6 +241,8 @@ class FinalizeProtoStructWrangler(Visitor):
 
         for interface in interfaces:
             Validate.implementation_is_complete(state, this_struct_typeclass, interface)
+
+        Validate.embeddings_dont_conflict(state, this_struct_typeclass)
 
     @Visitor.default
     def default_(fn, state: Params) -> None:
@@ -653,20 +655,32 @@ class TypeClassFlowWrangler(Visitor):
                 state.get_module(), 
                 state.asl)
 
-            instances.append(instances)
+            instances.append(instance)
             state.context.add_instance(instance)
 
         state.assign_instances(instances)
 
+    @Visitor.covers(asls_of_type("var"))
+    @records_typeclass
+    @passes_if_critical_exception
+    @returns_void_type
+    def var_(fn, state: Params):
+        # validations occur inside the (: ...) asl 
+        fn.apply(state.but_with(asl=state.first_child()))
+        instances = state.but_with(asl=state.first_child()).get_instances()
+        for instance in instances:
+            instance.is_var = True
+        state.assign_instances(instances) 
 
-    @Visitor.covers(asls_of_type("val", "var", "mut_val", "mut_var", "let"))
+    @Visitor.covers(asls_of_type("val", "mut_val", "mut_var", "let"))
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
     def decls_(fn, state: Params):
         # validations occur inside the (: ...) asl 
         fn.apply(state.but_with(asl=state.first_child()))
-        state.assign_instances(state.but_with(asl=state.first_child()).get_instances())
+        instances = state.but_with(asl=state.first_child()).get_instances()
+        state.assign_instances(instances)
 
     @Visitor.covers(asls_of_type("type", "type?", "type*"))
     @records_typeclass
@@ -757,6 +771,166 @@ class TypeClassFlowWrangler(Visitor):
         if not state.asl:
             return state.void_type
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
+
+
+
+
+
+
+
+
+
+
+
+
+
+class VerifyAssignmentPermissions(Visitor):
+    def apply(self, state: Params) -> list[Restriction]:
+        if self.debug and isinstance(state.asl, CLRList):
+            print("\n"*64)
+            print(state.inspect())
+            print("\n"*4)
+            input()
+        return self._apply([state], [state])
+
+    @Visitor.covers(asls_of_type("def", "create"))
+    def defs_(fn, state: Params) -> list[Restriction]:
+        node = Nodes.CommonFunction(state)
+        fn_context = Context(
+            name=node.get_name(),
+            type=ContextTypes.fn,
+            parent=None)
+
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(
+                asl=child,
+                context=fn_context))
+        return []
+
+    @Visitor.covers(asls_of_type("args", "rets", "prod_type"))
+    def args_(fn, state: Params) -> list[Restriction]:
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(asl=child))
+        return []
+
+    @Visitor.covers(asls_of_type(":"))
+    def colon_(fn, state: Params) -> list[Restriction]:
+        instance = state.get_instances()[0]
+        if instance.type.is_novel():
+            # pass primitives by value
+            restriction = Restriction.for_let_of_novel_type()
+        else:
+            # pass everything else by reference (variable)
+            restriction = Restriction.create_var()
+
+        state.add_restriction(instance.name, restriction)
+        return [restriction]
+        
+    @Visitor.covers(asls_of_type("struct"))
+    def struct_(fn, state: Params) -> list[Restriction]:
+        node = Nodes.Struct(state)
+        if node.has_create_asl():
+            fn.apply(state.but_with(asl=node.get_create_asl()))
+        return []
+
+    @Visitor.covers(asls_of_type("if"))
+    def if_(fn, state: Params) -> list[Restriction]:
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(
+                asl=child, 
+                context=Context(
+                    name="if",
+                    type=ContextTypes.block,
+                    parent=state.get_parent_context())))
+        return []
+
+
+    @Visitor.covers(asls_of_type("while"))
+    def while_(fn, state: Params) -> list[Restriction]:
+        fn.apply(state.but_with(
+            asl=state.first_child(),
+            context=Context(
+                name="while", 
+                type=ContextTypes.block, 
+                parent=state.get_parent_context())))
+        return []
+
+
+    @Visitor.covers(asls_of_type("start", "mod", "seq"))
+    def seq_(fn, state: Params) -> Restriction:
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(asl=child))
+        return []
+
+    @Visitor.covers(asls_of_type("ref"))
+    def ref_(fn, state: Params) -> list[Restriction]:
+        node = Nodes.Ref(state)
+        return [state.get_restriction_for(node.get_name())]
+
+    @Visitor.covers(asls_of_type("let", "ilet"))
+    def let_(fn, state: Params) -> list[Restriction]:
+        for instance in state.get_instances():
+            if instance.type.is_novel():
+                state.add_restriction(instance.name, Restriction.for_let_of_novel_type())
+            else:
+                state.add_restriction(instance.name, Restriction.create_var())
+        return []
+
+    
+    @Visitor.covers(asls_of_type("var"))
+    def var_(fn, state: Params) -> list[Restriction]:
+        for instance in state.get_instances():
+            state.add_restriction(instance.name, Restriction.create_var())
+        return []
+
+
+    @Visitor.covers(asls_of_type("tuple"))
+    def tuple_(fn, state: Params) -> list[Restriction]:
+        restrictions = []
+        for child in state.get_child_asls():
+            restrictions += fn.apply(state.but_with(asl=child))
+        return restrictions
+    
+    @Visitor.covers(asls_of_type("="))
+    def equals_(fn, state: Params) -> Restriction:
+        node = Nodes.Assignment(state)
+        left_restrictions = fn.apply(state.but_with(asl=state.first_child()))
+        right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
+
+        for left_restriction, right_restriction in zip(left_restrictions, right_restrictions):
+            Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+        return []
+
+    @Visitor.covers(asls_of_type("."))
+    def dot_(fn, state: Params) -> Restriction:
+        # TODO: figure this out
+        return [Restriction.create_none()]
+        node = Nodes.Scope(state)
+        # if we are accessing a primitive attribute, then remove it's restriction.
+        if state.get_returned_typeclass().is_novel():
+            return Restriction.none
+        return fn.apply(state.but_with(asl=node.get_asl_defining_restriction()))
+
+    @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
+    def token_(fn, state: Params) -> list[Restriction]:
+        return [Restriction.create_literal()]
+
+    @Visitor.default
+    def default_(fn, state: Params) -> Restriction:
+        return [Restriction.create_none()]
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class ValidationResult():
@@ -908,4 +1082,50 @@ class Validate:
         if encountered_exception:
             return Validate._abort_signal(state)
         return Validate._success()
+
+    
+    @classmethod
+    def embeddings_dont_conflict(cls, state: Params, typeclass: TypeClass):
+        conflicts = False
+        conflict_map: dict[tuple[str, TypeClass], bool] = {}
+        
+        for attribute_pair in typeclass.get_direct_attribute_name_type_pairs():
+            conflict_map[attribute_pair] = typeclass
+
+        for embedded_type in typeclass.embeds:
+            embedded_type_attribute_pairs = embedded_type.get_all_attribute_name_type_pairs()
+            for pair in embedded_type_attribute_pairs:
+                conflicting_type = conflict_map.get(pair, None)
+                if conflicting_type is not None:
+                    conflicts = True
+                    state.report_exception(Exceptions.EmbeddedStructCollision(
+                        msg=f"attribute '{pair[0]}' received from {embedded_type} conflicts with the same "
+                            + f"attribute received from '{conflicting_type}'",
+                        line_number=state.asl.line_number))
+                else:
+                    conflict_map[pair] = embedded_type
+        if conflicts:
+            return Validate._abort_signal(state)
+        return Validate._success()
+
+
+    @classmethod
+    def assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
+        is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
+        if not is_assignable:
+            state.report_exception(Exceptions.MemoryAssignment(
+                # TODO, figure out how to pass the name of the variable here
+                msg=error_msg,
+                line_number=state.asl.line_number))
+            return Validate._abort_signal(state)
+        
+        # if left_restriction == Restriction.var and right_restriction == Restriction.literal:
+        #     state.report_exception(Exceptions.LiteralAssignment(
+        #         # TODO, figure out how to pass the name of the variable here
+        #         msg=f"improper use!",
+        #         line_number=state.asl.line_number))
+        #     return Validate._abort_signal(state) 
+
+        return Validate._success()
+
         

@@ -23,6 +23,7 @@ class SeerInstance(Instance):
         super().__init__(name, type, context, asl)
         self.is_ptr = is_ptr
         self.is_constructor = is_constructor
+        self.is_var = False
 
 class Utils:
     global_prefix = ""

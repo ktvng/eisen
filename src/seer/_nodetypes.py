@@ -1,11 +1,10 @@
 from __future__ import annotations
-from os import kill
-from re import I
-
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
 
 from seer._params import Params
+from seer._restriction import Restriction
+
 
 def get_name_from_first_child(self) -> str:
     return self.state.first_child().value
@@ -175,6 +174,9 @@ class Nodes():
 
         def get_rets_asl(self) -> CLRList:
             return self.third_child()
+
+        def get_seq_asl(self) -> CLRList:
+            return self.state.asl[-1]
  
 
     class Ilet(AbstractNodeInterface):
@@ -228,9 +230,12 @@ class Nodes():
             (= (ref name) 4)
         2. multiple assignment
             (= (tuple (ref name1) (ref name2)) (tuple 4 4))
+        3. multiple call assignment
+            (= (tuple (ref name1) (ref name2)) (call ...))
         """
 
-        is_single_assignment = first_child_is_token
+        def is_single_assignment(self) -> bool:
+            return first_child_is_token(self) or self.first_child().type != "tuple"
 
     class Fn(AbstractNodeInterface):
         asl_type = "fn"
@@ -248,3 +253,27 @@ class Nodes():
 
         def is_simple(self):
             return isinstance(self.first_child(), CLRToken)
+
+    class Ref(AbstractNodeInterface):
+        asl_type = "ref"
+        examples = """
+        (ref name)
+        """
+
+        def get_restriction(self) -> Restriction:
+            instance = self.state.get_node_data().instances[0]
+            if instance.is_var:
+                return Restriction.var
+            else:
+                return Restriction.let
+
+        get_name = get_name_from_first_child
+
+    class Scope(AbstractNodeInterface):
+        asl_type = "."
+        examples = """
+        (. (ref obj) attr)
+        """
+
+        def get_asl_defining_restriction(self) -> CLRList:
+            return self.first_child()

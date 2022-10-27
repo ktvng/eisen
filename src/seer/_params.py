@@ -1,6 +1,4 @@
 from __future__ import annotations
-import glob
-from re import A
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
@@ -14,6 +12,7 @@ from seer._common import Module, SeerInstance
 
 if TYPE_CHECKING:
     from seer._ast_interpreter import InterpreterObject
+    from seer._restriction import Restriction
 
 
 class SharedBool():
@@ -195,7 +194,7 @@ Token: {self.asl}
     def assign_returned_typeclass(self, typeclass: TypeClass):
         self.get_node_data().returned_typeclass = typeclass
 
-    def get_returned_typeclass(self):
+    def get_returned_typeclass(self) -> TypeClass:
         return self.get_node_data().returned_typeclass
 
     def assign_instances(self, instances: list[SeerInstance] | SeerInstance):
@@ -229,3 +228,9 @@ Token: {self.asl}
 
     def get_child_asls(self) -> list(CLRList):
         return [child for child in self.asl if isinstance(child, CLRList)]
+
+    def add_restriction(self, name: str, restriction: Restriction):
+        self.context.add_obj(name, restriction)
+    
+    def get_restriction_for(self, name: str) -> Restriction:
+        return self.context.get_obj(name)

@@ -110,6 +110,16 @@ class TypeClass():
     def __str__(self) -> str:
         return self._get_uuid_str()
 
+    def get_direct_attribute_name_type_pairs(self) -> list[TypeClass]:
+        return zip(self.component_names, self.components)
+
+    def get_all_attribute_name_type_pairs(self) -> list[TypeClass]:
+        pairs = self.get_direct_attribute_name_type_pairs()
+        for embedded_type in self.embeds:
+            pairs.extend(embedded_type.get_all_attribute_name_type_pairs())
+        return pairs
+    
+
     def has_member_attribute_with_name(self, name: str) -> bool:
         if name in self.component_names:
             return True

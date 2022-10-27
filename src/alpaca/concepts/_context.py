@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import uuid
 
@@ -17,6 +17,7 @@ class Context():
         self.type = type
         self.types: list[Type] = []
         self.typeclasses: list[TypeClass] = []
+        self.objs: dict[str, Any] = {}
 
         self.children = []
         self.parent = parent
@@ -48,6 +49,17 @@ class Context():
     def add_instance(self, instance: Instance) -> Instance:
         self.instances[instance.name] = instance
         return instance
+
+    # TODO: refactor to use add_obj 
+    def add_obj(self, name: str, obj: Any):
+        self.objs[name] = obj
+
+    def get_obj(self, name: str) -> Any:
+        if name in self.objs:
+            return self.objs[name]
+        if self.parent:
+            return self.parent.get_obj(name)
+        return None
 
     def _find_type(self, type: Type) -> Type | None:
         if type in self.types:

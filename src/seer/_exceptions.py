@@ -42,3 +42,15 @@ class Exceptions():
     class AttributeMismatch(AbstractException):
         type = "AttributeMismatch"
         description = "attribute exists but is the wrong type"
+
+    class EmbeddedStructCollision(AbstractException):
+        type = "EmbeddedStructCollision"
+        description = "embedded structs cannot have an attribute with the same name and typeclass as another"
+
+    class MemoryAssignment(AbstractException):
+        type = "MemoryAssignment"
+        description = "incompatible assignment of let/var/val declared types"
+
+    class LiteralAssignment(AbstractException):
+        type = "LiteralAssignment"
+        description = "an entity declared with the 'var' keyword may not be assigned to a literal"

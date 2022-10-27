@@ -1,5 +1,6 @@
 from seer._working import (ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoInterfaceWrangler, 
-    FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler, InitializeNodeData)
+    FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler, InitializeNodeData, 
+    VerifyAssignmentPermissions)
 
 from seer._ast_interpreter import AstInterpreter
 from seer._exceptionshandler import ExceptionsHandler
@@ -33,6 +34,9 @@ class Workflow():
         FinalizeProtoInterfaceWrangler,
         FinalizeProtoStructWrangler,
 
+        # handle execptions thrown due to interfaces/embeddings
+        ExceptionsHandler,
+
         # adds types for and constructs the functions. this also normalizes the
         # (def ...) and (create ...) asls so they have the same child structure,
         # which allows us to process them identically later in the 
@@ -43,6 +47,9 @@ class Workflow():
         #   - the typeclass which is flowed through a node can be accessed by
         #     params.get_returned_typeclass()
         TypeClassFlowWrangler,
+
+        # this handles restrictions based on let/var/val differences
+        VerifyAssignmentPermissions,
 
         ExceptionsHandler,
 

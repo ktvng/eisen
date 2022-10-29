@@ -50,7 +50,7 @@ class Restriction():
         return f"{self.type}.{self.state}"
 
     def assignable_to(self, right: Restriction) -> tuple[bool, str]:
-        print(self, right)
+        # print(self, right)
         assignable = False
         if self.type == Restriction.let_primitive:
             assignable = (right.type == Restriction.let_primitive 

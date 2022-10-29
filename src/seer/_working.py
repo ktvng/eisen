@@ -266,6 +266,35 @@ class FinalizeProtoStructWrangler(Visitor):
         return
 
 
+class VarietyWrangler(Visitor):
+    def apply(self, state: Params):
+        if self.debug and isinstance(state.asl, CLRList):
+            print("\n"*64)
+            print(state.inspect())
+            print("\n"*4)
+            input()
+        return self._apply([state], [state])
+
+    @Visitor.covers(asls_of_type("start", "mod"))
+    def start_(fn, state: Params):
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module))
+
+    @Visitor.default
+    def default_(fn, state: Params) -> None:
+        return None
+
+    @Visitor.covers(asls_of_type("variety"))
+    def struct_(fn, state: Params) -> None:
+        node = Nodes.Variety(state)
+        variety_typeclass = TypeClassFactory.produce_variety_type(
+            name=node.get_name(),
+            mod=state.get_module(),
+            inherits=node.get_inherited_typeclass())
+        state.get_module().add_typeclass(variety_typeclass)
+
 
 
 ################################################################################
@@ -305,6 +334,20 @@ class FunctionWrangler(Visitor):
                 asl=node.get_create_asl(),
                 struct_name=node.get_struct_name()))
 
+    @Visitor.covers(asls_of_type("variety"))
+    def variety_(fn, state: Params) -> None:
+        node = Nodes.Variety(state)
+        # we need to pass down the struct name because the (create ...) asl will 
+        # take on the name of the struct. 
+        #
+        # for example, a struct named MyStruct will have a constructor method 
+        # called via MyStruct(...), so the (create ...)  method inside the 
+        # (struct MyStruct ... ) asl needs context as to the struct it is inside.
+        fn.apply(state.but_with(
+            asl=node.get_assert_asl(),
+            struct_name=node.get_struct_name()))
+
+
     @Visitor.covers(asls_of_type("def"))
     def def_(fn, state: Params):
         mod = state.get_module()
@@ -332,8 +375,6 @@ class FunctionWrangler(Visitor):
                 context=mod,
                 asl=state.asl,
                 is_constructor=True)))
-
-
 
 
 
@@ -864,7 +905,11 @@ class VerifyAssignmentPermissions(Visitor):
 
         state.add_restriction(instance.name, restriction)
         return [restriction]
-        
+
+    @Visitor.covers(asls_of_type("interface"))
+    def none_(fn, state: Params) -> list[Restriction]:
+        return []
+ 
     @Visitor.covers(asls_of_type("struct"))
     def struct_(fn, state: Params) -> list[Restriction]:
         node = Nodes.Struct(state)
@@ -923,7 +968,6 @@ class VerifyAssignmentPermissions(Visitor):
     def ilet_(fn, state: Params) -> list[Restriction]:
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
-            print("inside")
             if instance.type.is_novel():
                 left_restriction = Restriction.for_let_of_novel_type()
             else:
@@ -992,6 +1036,7 @@ class VerifyAssignmentPermissions(Visitor):
         if node.is_print():
             return [Restriction.create_none()]
 
+
         argument_converted_restrictions = []
         # handle argument restrictions
         argument_typeclass = node.get_argument_type()
@@ -1001,15 +1046,14 @@ class VerifyAssignmentPermissions(Visitor):
             if r.is_let() and tc.is_novel():
                 argument_converted_restrictions.append(Restriction.for_let_of_novel_type())
             elif r.is_let():
-                argument_converted_restrictions.append(Restriction.create_let(is_init=True))
+                argument_converted_restrictions.append(Restriction.create_var(is_init=False))
             elif r.is_var():
-                argument_converted_restrictions.append(Restriction.create_var(is_init=True))
+                argument_converted_restrictions.append(Restriction.create_var(is_init=False))
         
         param_restrictions = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_converted_restrictions, param_restrictions):
             Validate.parameter_assignment_restrictions_met(state, left, right)
-
-        
+ 
 
         # handle returned restrictions
         returned_typeclass = node.get_function_return_type()
@@ -1025,14 +1069,18 @@ class VerifyAssignmentPermissions(Visitor):
                 converted_restrictions.append(Restriction.create_var(is_init=False))
         return converted_restrictions
 
-    @Visitor.covers(asls_of_type(*(binary_ops + boolean_return_ops)))
+    @Visitor.covers(asls_of_type("cast"))
+    def cast_(fn, state: Params) -> list[Restriction]:
+        # restriction is carried over from the first child
+        return fn.apply(state.but_with(asl=state.first_child()))
+
+    @Visitor.covers(asls_of_type(*(binary_ops + boolean_return_ops), "!"))
     def ops_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
 
     @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
     def token_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
-
 
     
     @Visitor.default
@@ -1245,7 +1293,7 @@ class Validate:
 
     @classmethod
     def assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
-        print(state.asl)
+        # print(state.asl)
         is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
@@ -1257,7 +1305,7 @@ class Validate:
 
     @classmethod
     def parameter_assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
-        print(state.asl)
+        # print(state.asl)
         is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(

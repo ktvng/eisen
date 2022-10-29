@@ -1,5 +1,5 @@
 from __future__ import annotations
-from re import A
+
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
 
@@ -307,11 +307,17 @@ class Nodes():
             return self.state.get_node_data().returned_typeclass
 
         def get_argument_type(self) -> TypeClass:
-            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
-            return node.get_function_type()
+            if self.first_child().type == "fn":
+                node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            elif self.first_child().type == "::":
+                node = Nodes.ModuleScope(self.state.but_with(asl=self.first_child()))
+            return node.get_function_type().get_argument_type()
 
         def get_function_name(self) -> str:
-            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            if self.first_child().type == "fn":
+                node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            elif self.first_child().type == "::":
+                node = Nodes.ModuleScope(self.state.but_with(asl=self.first_child()))
             return node.get_function_name()
 
         def is_print(self) -> str:
@@ -324,9 +330,28 @@ class Nodes():
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"
         examples = """
-        (:: mod_name name)
-        (:: (:: mod 1 mod2) name)
+        (:: mod_name (disjoint_fn name))
+        (:: outer (:: inner (disjoint_fn name)))
         """
+
+        def get_function_type(self) -> TypeClass:
+            working_mod = self.state.mod
+            next_asl = self.state.asl
+            while next_asl.type == "::":
+                # the name is stored as the CLRToken in the first position
+                next_mod_name = next_asl.first().value
+                working_mod = working_mod.get_child_module_by_name(next_mod_name)
+                next_asl = next_asl.second()
+
+            return working_mod.get_instance_by_name(name=self.get_function_name()).type
+
+        def get_function_name(self) -> str:
+            right_child = self.second_child()
+            while right_child.type != "disjoint_fn":
+                right_child = right_child.second()
+            
+            return right_child.first().value
+
 
     class Rets(AbstractNodeInterface):
         asl_type = "rets"

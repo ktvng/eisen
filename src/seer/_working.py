@@ -1,9 +1,8 @@
 from __future__ import annotations
-from unittest import expectedFailure, installHandler
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
-from alpaca.concepts import Context, TypeClass, TypeClassFactory
+from alpaca.concepts import Context, TypeClass, TypeClassFactory, Restriction2
 
 from seer._params import Params
 from seer._common import asls_of_type, ContextTypes
@@ -15,6 +14,9 @@ from seer._nodedata import NodeData
 from seer._nodetypes import Nodes
 from seer._restriction import Restriction
 
+
+binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
+boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 
 class InitializeNodeData(Visitor):
     def apply(self, state: Params) -> None:
@@ -69,16 +71,22 @@ class TypeclassParser(Visitor):
     def apply(self, state: Params) -> TypeClass:
         return self._apply([state], [state])
 
-    @Visitor.covers(asls_of_type("type"))
+    @Visitor.covers(asls_of_type("type", "var_type"))
     def type_(fn, state: Params) -> TypeClass:
         # eg. (type int)
+        #     (var_type int)
         token: CLRToken = state.first_child()
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
 
+        if state.asl.type == "var_type":
+            restriction = Restriction2.for_var()
+        elif state.asl.type == "type":
+            restriction = Restriction2.for_let()
+
         found_type = state.get_module().get_typeclass_by_name(token.value)
         if found_type:
-            return found_type
+            return found_type.with_restriction(restriction)
         raise Exception(f"unknown type! {token.value}")
 
     @Visitor.covers(asls_of_type("interface_type"))
@@ -127,7 +135,7 @@ class TypeclassParser(Visitor):
         # eg. (args (type ...))
         if state.asl:
             return fn.apply(state.but_with(asl=state.first_child()))
-        return TypeClassFactory.produce_novel_type("void", state.global_mod)
+        return TypeClassFactory.produce_novel_type("void", state.global_mod).with_restriction(Restriction2.for_let())
 
     @Visitor.covers(asls_of_type("def", "create", ":="))
     def def_(fn, state: Params) -> TypeClass:
@@ -143,6 +151,8 @@ class TypeclassParser(Visitor):
         # should be created as a proto_struct/proto_interface by the
         # TypeDeclarationWrangler
         raise Exception("this should not be used to produce struct types")
+
+
 
 
 ################################################################################
@@ -704,14 +714,17 @@ class TypeClassFlowWrangler(Visitor):
         instances = state.but_with(asl=state.first_child()).get_instances()
         state.assign_instances(instances)
 
-    @Visitor.covers(asls_of_type("type", "type?", "type*"))
+    @Visitor.covers(asls_of_type("type", "type?", "var_type"))
     @records_typeclass
     @passes_if_critical_exception
     def _type1(fn, state: Params) -> TypeClass:
-        return state.get_module().get_typeclass_by_name(name=state.first_child().value)
+        typeclass = state.get_module().get_typeclass_by_name(name=state.first_child().value)
+        if state.asl.type == "type":
+            return typeclass.with_restriction(Restriction2.for_let())
+        elif state.asl.type == "var_type":
+            return typeclass.with_restriction(Restriction2.for_var())
 
 
-    binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
     @Visitor.covers(asls_of_type(*binary_ops))
     @records_typeclass
     @passes_if_critical_exception
@@ -724,7 +737,6 @@ class TypeClassFlowWrangler(Visitor):
             return result.get_failure_type()
         return left_type
     
-    boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
     @Visitor.covers(asls_of_type(*boolean_return_ops))
     @records_typeclass
     @passes_if_critical_exception
@@ -832,13 +844,17 @@ class VerifyAssignmentPermissions(Visitor):
     @Visitor.covers(asls_of_type("args", "rets", "prod_type"))
     def args_(fn, state: Params) -> list[Restriction]:
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+            restrictions = fn.apply(state.but_with(asl=child))
+            for restriction in restrictions:
+                restriction.mark_as_initialized()
         return []
 
     @Visitor.covers(asls_of_type(":"))
     def colon_(fn, state: Params) -> list[Restriction]:
         instance = state.get_instances()[0]
-        if instance.type.is_novel():
+        if instance.type.restriction is not None and instance.type.restriction.is_var():
+            restriction = Restriction.create_var()
+        elif instance.type.is_novel():
             # pass primitives by value
             restriction = Restriction.for_let_of_novel_type()
         else:
@@ -891,18 +907,30 @@ class VerifyAssignmentPermissions(Visitor):
         node = Nodes.Ref(state)
         return [state.get_restriction_for(node.get_name())]
 
-    @Visitor.covers(asls_of_type("let", "ilet"))
+    @Visitor.covers(asls_of_type("let"))
     def let_(fn, state: Params) -> list[Restriction]:
         for instance in state.get_instances():
             if instance.type.is_novel():
                 restriction = Restriction.for_let_of_novel_type()
             else:
                 restriction = Restriction.create_let()
-
-            if state.asl.type == "ilet":
-                restriction.mark_as_initialized()
             state.add_restriction(instance.name, restriction)
         return []
+
+    @Visitor.covers(asls_of_type("ilet"))
+    def ilet_(fn, state: Params) -> list[Restriction]:
+        right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
+        for instance, right_restriction in zip(state.get_instances(), right_restrictions):
+            if instance.type.is_novel():
+                left_restriction = Restriction.for_let_of_novel_type()
+            else:
+                left_restriction = Restriction.create_let()
+
+            state.add_restriction(instance.name, left_restriction)
+            Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+            left_restriction.mark_as_initialized()
+        return []
+
 
     
     @Visitor.covers(asls_of_type("var"))
@@ -942,11 +970,28 @@ class VerifyAssignmentPermissions(Visitor):
             return Restriction.none
         return fn.apply(state.but_with(asl=node.get_asl_defining_restriction()))
 
-    # TODO: finish this here
-    # @Visitor.covers(asls_of_type("call"))
-    # def call_(fn, state: Params) -> list[Restriction]:
-    #     node = Nodes.Call(state)
-    #     pass
+    @Visitor.covers(asls_of_type("call"))
+    def call_(fn, state: Params) -> list[Restriction]:
+        node = Nodes.Call(state)
+
+        if node.is_print():
+            return [Restriction.create_none()]
+
+        returned_typeclass = node.get_function_return_type()
+        restrictions = returned_typeclass.get_restrictions()
+        converted_restrictions = []
+        for restriction in restrictions:
+            if restriction.is_let() and returned_typeclass.is_novel():
+                converted_restrictions.append(Restriction.create_literal())
+            elif restriction.is_let():
+                converted_restrictions.append(Restriction.create_let(is_init=True))
+            elif restriction.is_var():
+                converted_restrictions.append(Restriction.create_var(is_init=True))
+        return converted_restrictions
+
+    @Visitor.covers(asls_of_type(*(binary_ops + boolean_return_ops)))
+    def ops_(fn, state: Params) -> list[Restriction]:
+        return [Restriction.create_literal()]
 
     @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
     def token_(fn, state: Params) -> list[Restriction]:
@@ -1161,6 +1206,7 @@ class Validate:
 
     @classmethod
     def assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
+        print(state.asl)
         is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(

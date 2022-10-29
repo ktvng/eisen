@@ -3,6 +3,35 @@ from typing import Any
 
 from alpaca.concepts._context import Context
 
+class Restriction2():
+    var = "var"
+    val = "val"
+    let = "let"
+
+    @classmethod
+    def for_var(cls) -> Restriction2:
+        return Restriction2(cls.var)
+
+    @classmethod
+    def for_val(cls) -> Restriction2:
+        return Restriction2(cls.val)
+
+    @classmethod
+    def for_let(cls) -> Restriction2:
+        return Restriction2(cls.let)
+
+    def __init__(self, type: str):
+        self.type = type
+
+    def is_var(self) -> bool:
+        return self.type == self.var
+
+    def is_val(self) -> bool:
+        return self.type == self.val
+
+    def is_let(self) -> bool:
+        return self.type == self.let 
+
 class TypeClass():
     class classifications:
         novel = "novel"
@@ -21,7 +50,8 @@ class TypeClass():
             components: list[TypeClass],
             component_names: list[str],
             inherits: list[TypeClass],
-            embeds: list[TypeClass]):
+            embeds: list[TypeClass],
+            restriction: Restriction2):
 
         self.classification = classification 
         self.name = name
@@ -29,7 +59,8 @@ class TypeClass():
         self.components = components
         self.component_names = component_names
         self.inherits = inherits
-        self.embeds =embeds
+        self.embeds = embeds
+        self.restriction = restriction 
 
     def finalize(self, 
             components: list[TypeClass], 
@@ -80,6 +111,8 @@ class TypeClass():
     # typeclasses should be identified by uuid, such that muliple instances of 
     # the same typeclass can be created that express equality to each other. This
     # allows us to treat typeclasses as frozen literals.
+    #
+    # Restriction is not included in the uuid
     def _get_uuid_str(self) -> str:
         if self.classification == TypeClass.classifications.novel:
             return self._get_uuid_based_on_module_and_name()
@@ -171,6 +204,30 @@ class TypeClass():
     def is_novel(self) -> bool:
         return self.classification == TypeClass.classifications.novel 
 
+    def with_restriction(self, restriction: Restriction2):
+        return self._copy_with_restriction(restriction)
+
+    def get_restrictions(self) -> list[Restriction2]:
+        if self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel:
+            return [self.restriction]
+        if self.classification == TypeClass.classifications.function:
+            return self.get_return_type().get_restrictions()
+        if self.classification == TypeClass.classifications.tuple:
+            return [elem.restriction for elem in self.components]
+        
+        raise Exception(f"unhandled classification {self.classification}")
+
+    def _copy_with_restriction(self, restriction: Restriction2):
+        return TypeClass(
+            classification=self.classification,
+            name=self.name,
+            mod=self.mod,
+            components=self.components,
+            component_names=self.component_names,
+            inherits=self.inherits,
+            embeds=self.embeds,
+            restriction=restriction)
+
 
 class TypeClassFactory():
     @classmethod
@@ -182,7 +239,8 @@ class TypeClassFactory():
             components=[], 
             component_names=[], 
             inherits=[],
-            embeds=[])
+            embeds=[],
+            restriction=None)
 
     @classmethod
     def produce_tuple_type(cls, components: list[TypeClass], global_mod: Context) -> TypeClass:
@@ -193,7 +251,8 @@ class TypeClassFactory():
             components=components, 
             component_names=[], 
             inherits=[],
-            embeds=[])
+            embeds=[],
+            restriction=None)
 
     @classmethod
     def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Context, name: str = "") -> TypeClass:
@@ -204,7 +263,8 @@ class TypeClassFactory():
             components=[arg, ret], 
             component_names=["arg", "ret"], 
             inherits=[],
-            embeds=[])
+            embeds=[],
+            restriction=None)
 
     @classmethod
     def produce_proto_struct_type(cls, name: str, mod: Context) -> TypeClass:
@@ -215,7 +275,8 @@ class TypeClassFactory():
             components=[], 
             component_names=[], 
             inherits=[],
-            embeds=[])
+            embeds=[],
+            restriction=None)
 
     @classmethod
     def produce_proto_interface_type(cls, name: str, mod: Context) -> TypeClass:
@@ -226,4 +287,5 @@ class TypeClassFactory():
             components=[], 
             component_names=[], 
             inherits=[],
-            embeds=[])
+            embeds=[],
+            restriction=None)

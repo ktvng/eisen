@@ -300,13 +300,16 @@ class Nodes():
                 return self.state.asl
             return self._unravel_scoping(asl=self.state.asl.second())
 
-
-        def get_function_instance(self) -> SeerInstance:
-            pass
+        def get_function_return_type(self) -> TypeClass:
+            return self.state.get_node_data().returned_typeclass
 
         def get_function_name(self) -> str:
             node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
             return node.get_function_name()
+
+        def is_print(self) -> str:
+            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            return node.is_print()
 
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"
@@ -315,4 +318,9 @@ class Nodes():
         (:: (:: mod 1 mod2) name)
         """
 
-        
+    class Rets(AbstractNodeInterface):
+        asl_type = "rets"
+        examples = """
+        (rets (: ...))
+        (rets (prod_type ...))
+        """

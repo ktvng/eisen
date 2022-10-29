@@ -21,8 +21,8 @@ class Restriction():
         self.state = state
 
     @classmethod
-    def create_var(cls) -> Restriction:
-        return Restriction(cls.var, cls.States.not_initialized)
+    def create_var(cls, is_init: bool = True) -> Restriction:
+        return Restriction(cls.var, cls.States.initialized if is_init else cls.States.not_initialized)
 
     @classmethod
     def create_let(cls, is_init: bool = False) -> Restriction:
@@ -50,6 +50,7 @@ class Restriction():
         return f"{self.type}.{self.state}"
 
     def assignable_to(self, right: Restriction) -> tuple[bool, str]:
+        print(self, right)
         assignable = False
         if self.type == Restriction.let_primitive:
             assignable = (right.type == Restriction.let_primitive 

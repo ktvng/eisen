@@ -379,15 +379,16 @@ STRUCTURE
     TYPE -> 
         @action filter_build type
         |   TAG
+        |   RESTRICTED_TYPE
         @action filter_build type?
         |   TAG ?
-        @action filter_build type*
-        |   TAG *
         @action filter_build interface_type
         |   some TAG
         @action pass
         |   FN_TYPE
         |   ARR_TYPE
+        @action filter_build var_type
+        |   TAG var
 
     @action filter_build types 
     TYPES -> TYPES_BUILDER

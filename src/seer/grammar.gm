@@ -174,8 +174,11 @@ STRUCTURE
     FN  -> 
         @action convert fn
         |   TAG
-        @action filter_build ::
-        |   MODULE :: FN
+        @action pass
+        |   MODULE
+
+    @action convert disjoint_fn
+    DISJOINT_FN -> TAG
 
     @action pass
     ENDLS ->
@@ -487,10 +490,9 @@ STRUCTURE
     SCOPED_VAR -> EXPR . TAG
 
     MODULE ->
-        @action pass
-        |   TAG
         @action build_operator
-        |   MODULE :: TAG
+        |   TAG :: MODULE
+        |   TAG :: DISJOINT_FN
 
     ############################################################################
     # Actions/Expressions

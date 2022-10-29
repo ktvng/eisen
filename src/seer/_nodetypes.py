@@ -1,9 +1,11 @@
 from __future__ import annotations
+from re import A
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
 
 from seer._params import Params
 from seer._restriction import Restriction
+from seer._common import SeerInstance
 
 
 def get_name_from_first_child(self) -> str:
@@ -248,11 +250,17 @@ class Nodes():
             (fn (. (ref obj) name))
         """
         
-        def is_print(self):
+        def is_print(self) -> bool:
             return self.is_simple() and self.first_child().value == "print"
 
-        def is_simple(self):
+        def is_simple(self) -> bool:
             return isinstance(self.first_child(), CLRToken)
+
+        def get_function_name(self) -> str:
+            if self.is_simple():
+                return self.state.first_child().value
+            return self.first_child().second().value
+            
 
     class Ref(AbstractNodeInterface):
         asl_type = "ref"
@@ -281,8 +289,30 @@ class Nodes():
     class Call(AbstractNodeInterface):
         asl_type = "call"
         examples = """
-        (call (fn name) (params ...))
+        (call (fn ...) (params ... ))
+        (call (:: mod (fn name)) (params ...)))))
         """
 
-        def get_function_return_instance(self):
+        def get_fn_asl(self) -> CLRList:
+            if self.state.asl.type != "::" and self.state.asl.type != "fn":
+                raise Exception(f"unexpected asl type of {self.state.asl.type}")
+            if self.stateasl.type == "fn":
+                return self.state.asl
+            return self._unravel_scoping(asl=self.state.asl.second())
+
+
+        def get_function_instance(self) -> SeerInstance:
             pass
+
+        def get_function_name(self) -> str:
+            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            return node.get_function_name()
+
+    class ModuleScope(AbstractNodeInterface):
+        asl_type = "::"
+        examples = """
+        (:: mod_name name)
+        (:: (:: mod 1 mod2) name)
+        """
+
+        

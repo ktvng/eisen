@@ -178,7 +178,9 @@ class TypeDeclarationWrangler(Visitor):
     @Visitor.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module))
 
     @Visitor.default
     def default_(fn, state: Params):
@@ -198,7 +200,9 @@ class FinalizeProtoInterfaceWrangler(Visitor):
     @Visitor.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child)) 
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module)) 
  
     @Visitor.covers(asls_of_type("interface"))
     def interface_(fn, state: Params) -> None:
@@ -224,7 +228,9 @@ class FinalizeProtoStructWrangler(Visitor):
     @Visitor.covers(asls_of_type("start", "mod"))
     def general_(fn, state: Params):
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child)) 
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module)) 
  
     @Visitor.covers(asls_of_type("struct"))
     def struct_(fn, state: Params) -> None:
@@ -267,7 +273,9 @@ class FunctionWrangler(Visitor):
     @Visitor.covers(asls_of_type("start", "mod"))
     def start_(fn, state: Params):
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module))
 
     @Visitor.default
     def default_(fn, state: Params) -> None:
@@ -388,7 +396,10 @@ class TypeClassFlowWrangler(Visitor):
     @returns_void_type
     def no_action_(fn, state: Params) -> TypeClass:
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module,
+                starting_mod=state.get_node_data().module))
 
 
     @Visitor.covers(asls_of_type("!"))
@@ -497,7 +508,7 @@ class TypeClassFlowWrangler(Visitor):
                     ret=state.void_type,
                     mod=state.global_mod)
         if node.is_simple():
-            result = Validate.function_instance_exists(state)
+            result = Validate.function_instance_exists_in_local_context(state)
             if result.failed():
                 return result.get_failure_type()
 
@@ -506,6 +517,19 @@ class TypeClassFlowWrangler(Visitor):
             return instance.type
         else:
             return fn.apply(state.but_with(asl=state.first_child()))
+
+
+    @Visitor.covers(asls_of_type("disjoint_fn"))
+    @records_typeclass
+    @passes_if_critical_exception
+    def disjoint_ref_(fn, state: Params) -> TypeClass:
+        result = Validate.function_instance_exists_in_module(state)
+        if result.failed():
+            return result.get_failure_type()
+
+        instance = result.get_found_instance()
+        state.assign_instances(instance)
+        return instance.type
 
 
     @Visitor.covers(asls_of_type("call"))
@@ -519,14 +543,12 @@ class TypeClassFlowWrangler(Visitor):
         # still need to type flow through the params passed to the function
         params_type = fn.apply(state.but_with(asl=state.second_child()))
 
-        # TODO: make this nicer. aka. figure out a better way to get the function name
-        if state.first_child().type == "fn":
-            fn_node = Nodes.Fn(state.but_with(asl=state.first_child()))
-            if not fn_node.is_print():
-                fn_in_type = fn_type.get_argument_type()
-                result = Validate.correct_argument_types(state, state.first_child().first().value, fn_in_type, params_type)
-                if result.failed():
-                    return result.get_failure_type()
+        fn_node = Nodes.Fn(state.but_with(asl=state.first_child()))
+        if not fn_node.is_print():
+            fn_in_type = fn_type.get_argument_type()
+            result = Validate.correct_argument_types(state, fn_node.get_function_name(), fn_in_type, params_type)
+            if result.failed():
+                return result.get_failure_type()
 
         return fn_type.get_return_type()
 
@@ -859,7 +881,9 @@ class VerifyAssignmentPermissions(Visitor):
     @Visitor.covers(asls_of_type("start", "mod", "seq"))
     def seq_(fn, state: Params) -> Restriction:
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(
+                asl=child,
+                mod=state.get_node_data().module))
         return []
 
     @Visitor.covers(asls_of_type("ref"))
@@ -1031,16 +1055,29 @@ class Validate:
 
 
     @classmethod
-    def function_instance_exists(cls, state: Params) -> ValidationResult:
-        name = state.first_child().value
-        instance = state.context.get_instance_by_name(name)
+    def function_instance_exists_in_local_context(cls, state: Params) -> ValidationResult:
+        return cls._instance_exists_in_container(
+            state.first_child().value,
+            state.context,
+            state)
+
+
+    @classmethod
+    def function_instance_exists_in_module(cls, state: Params) -> ValidationResult:
+        return cls._instance_exists_in_container(
+            state.first_child().value,
+            state.mod,
+            state)
+
+    @classmethod
+    def _instance_exists_in_container(cls, name: str, container: Context | Module, state: Params) -> ValidationResult:
+        instance = container.get_instance_by_name(name)
         if instance is None:
             state.report_exception(Exceptions.UndefinedFunction(
                 msg=f"'{name}' is not defined",
                 line_number=state.asl.line_number))
             return Validate._abort_signal(state) 
         return Validate._success(return_obj=instance)
-
     
     @classmethod
     def name_is_unbound(cls, state: Params, name: str) -> ValidationResult:

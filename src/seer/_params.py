@@ -138,32 +138,11 @@ Token: {self.asl}
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> Params:
         global_mod = Context("global", type=ContextTypes.mod)
-        global_mod.add_type(TypeFactory.produce_novel_type("int"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
-        global_mod.add_type(TypeFactory.produce_novel_type("int*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool*"))
-        global_mod.add_type(TypeFactory.produce_novel_type("int?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool?"))
-        global_mod.add_type(TypeFactory.produce_novel_type("void"))
-
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int*", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str*", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt*", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool*", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int?", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str?", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt?", global_mod=global_mod))
-        # global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool?", global_mod=global_mod))
+
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
 
         void_type = TypeClassFactory.produce_novel_type("void", global_mod=global_mod)
@@ -189,7 +168,7 @@ Token: {self.asl}
         self.get_node_data().module = self.mod
 
     def get_module(self) -> Module:
-        return self.get_node_data().module
+        return self.mod
 
     def assign_returned_typeclass(self, typeclass: TypeClass):
         self.get_node_data().returned_typeclass = typeclass

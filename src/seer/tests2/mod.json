@@ -1,0 +1,8 @@
+{
+    "name": "mod",
+    "info": "tests for simple module structure",
+    "expected": {
+        "success": true,
+        "output": "inner2 outer inner global"
+    }
+}

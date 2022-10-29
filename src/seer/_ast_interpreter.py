@@ -364,10 +364,10 @@ class AstInterpreter(Visitor):
 
     # TODO: make this shared 
     def _unravel_scoping(self, asl: CLRList) -> CLRList:
-        if asl.type != "::" and asl.type != "fn":
+        if asl.type != "::" and asl.type != "disjoint_fn" and asl.type != "fn":
             raise Exception(f"unexpected asl type of {asl.type}")
         
-        if asl.type == "fn":
+        if asl.type == "disjoint_fn" or asl.type == "fn":
             return asl
         return self._unravel_scoping(asl=asl.second())
 

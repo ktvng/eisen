@@ -895,7 +895,7 @@ class VerifyAssignmentPermissions(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("start", "mod", "seq"))
+    @Visitor.covers(asls_of_type("start", "mod", "seq", "cond"))
     def seq_(fn, state: Params) -> Restriction:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
@@ -1033,9 +1033,11 @@ class VerifyAssignmentPermissions(Visitor):
     def token_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
 
+
     
     @Visitor.default
     def default_(fn, state: Params) -> Restriction:
+        print("UNHANDLED", state.asl)
         return [Restriction.create_none()]
 
 

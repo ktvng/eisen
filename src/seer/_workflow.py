@@ -47,10 +47,10 @@ class Workflow():
         #   - the typeclass which is flowed through a node can be accessed by
         #     params.get_returned_typeclass()
         TypeClassFlowWrangler,
+        ExceptionsHandler,
 
         # this handles restrictions based on let/var/val differences
         VerifyAssignmentPermissions,
-
         ExceptionsHandler,
 
         # execute the augmented AST via the interpreter.

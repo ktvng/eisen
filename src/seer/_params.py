@@ -205,8 +205,11 @@ Token: {self.asl}
     def third_child(self) -> CLRList:
         return self.asl.third()
 
-    def get_child_asls(self) -> list(CLRList):
+    def get_child_asls(self) -> list[CLRList]:
         return [child for child in self.asl if isinstance(child, CLRList)]
+
+    def get_all_children(self) -> list[CLRList]:
+        return self.asl._list
 
     def add_restriction(self, name: str, restriction: Restriction):
         self.context.add_obj(name, restriction)

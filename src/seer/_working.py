@@ -649,10 +649,11 @@ class TypeClassFlowWrangler(Visitor):
         if state.asl.type in ["str", "int", "bool"]:
             return TypeClassFactory.produce_novel_type(name=state.asl.type, global_mod=state.global_mod)
         else:
+            print(state.asl)
             raise Exception(f"unexpected token type of {state.asl.type}")
 
 
-    @Visitor.covers(asls_of_type("ilet"))
+    @Visitor.covers(asls_of_type("ilet", "ivar"))
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -917,14 +918,28 @@ class VerifyAssignmentPermissions(Visitor):
             state.add_restriction(instance.name, restriction)
         return []
 
+
     @Visitor.covers(asls_of_type("ilet"))
     def ilet_(fn, state: Params) -> list[Restriction]:
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
+            print("inside")
             if instance.type.is_novel():
                 left_restriction = Restriction.for_let_of_novel_type()
             else:
                 left_restriction = Restriction.create_let()
+
+            state.add_restriction(instance.name, left_restriction)
+            Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+            left_restriction.mark_as_initialized()
+        return []
+
+
+    @Visitor.covers(asls_of_type("ivar"))
+    def ivar_(fn, state: Params) -> list[Restriction]:
+        right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
+        for instance, right_restriction in zip(state.get_instances(), right_restrictions):
+            left_restriction = Restriction.create_var()
 
             state.add_restriction(instance.name, left_restriction)
             Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
@@ -940,10 +955,10 @@ class VerifyAssignmentPermissions(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("tuple"))
+    @Visitor.covers(asls_of_type("tuple", "params"))
     def tuple_(fn, state: Params) -> list[Restriction]:
         restrictions = []
-        for child in state.get_child_asls():
+        for child in state.get_all_children():
             restrictions += fn.apply(state.but_with(asl=child))
         return restrictions
     
@@ -977,16 +992,37 @@ class VerifyAssignmentPermissions(Visitor):
         if node.is_print():
             return [Restriction.create_none()]
 
+        argument_converted_restrictions = []
+        # handle argument restrictions
+        argument_typeclass = node.get_argument_type()
+        restrictions = argument_typeclass.get_restrictions()
+        unpacked_argument_typeclasses = [argument_typeclass] if not argument_typeclass.is_tuple() else argument_typeclass.components
+        for r, tc in zip(restrictions, unpacked_argument_typeclasses):
+            if r.is_let() and tc.is_novel():
+                argument_converted_restrictions.append(Restriction.for_let_of_novel_type())
+            elif r.is_let():
+                argument_converted_restrictions.append(Restriction.create_let(is_init=True))
+            elif r.is_var():
+                argument_converted_restrictions.append(Restriction.create_var(is_init=True))
+        
+        param_restrictions = fn.apply(state.but_with(asl=node.get_params_asl()))
+        for left, right in zip(argument_converted_restrictions, param_restrictions):
+            Validate.parameter_assignment_restrictions_met(state, left, right)
+
+        
+
+        # handle returned restrictions
         returned_typeclass = node.get_function_return_type()
+        unpacked_return_typeclasses = [returned_typeclass] if not returned_typeclass.is_tuple() else returned_typeclass.components
         restrictions = returned_typeclass.get_restrictions()
         converted_restrictions = []
-        for restriction in restrictions:
-            if restriction.is_let() and returned_typeclass.is_novel():
-                converted_restrictions.append(Restriction.create_literal())
+        for restriction, tc in zip(restrictions, unpacked_return_typeclasses):
+            if restriction.is_let() and tc.is_novel():
+                converted_restrictions.append(Restriction.for_let_of_novel_type())
             elif restriction.is_let():
-                converted_restrictions.append(Restriction.create_let(is_init=True))
+                converted_restrictions.append(Restriction.create_let(is_init=False))
             elif restriction.is_var():
-                converted_restrictions.append(Restriction.create_var(is_init=True))
+                converted_restrictions.append(Restriction.create_var(is_init=False))
         return converted_restrictions
 
     @Visitor.covers(asls_of_type(*(binary_ops + boolean_return_ops)))
@@ -997,6 +1033,7 @@ class VerifyAssignmentPermissions(Visitor):
     def token_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
 
+    
     @Visitor.default
     def default_(fn, state: Params) -> Restriction:
         return [Restriction.create_none()]
@@ -1214,14 +1251,18 @@ class Validate:
                 msg=error_msg,
                 line_number=state.asl.line_number))
             return Validate._abort_signal(state)
-        
-        # if left_restriction == Restriction.var and right_restriction == Restriction.literal:
-        #     state.report_exception(Exceptions.LiteralAssignment(
-        #         # TODO, figure out how to pass the name of the variable here
-        #         msg=f"improper use!",
-        #         line_number=state.asl.line_number))
-        #     return Validate._abort_signal(state) 
-
         return Validate._success()
 
-        
+    @classmethod
+    def parameter_assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
+        print(state.asl)
+        is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
+        if not is_assignable:
+            state.report_exception(Exceptions.MemoryAssignment(
+                # TODO, figure out how to pass the name of the variable here
+                msg=error_msg,
+                line_number=state.asl.line_number))
+            return Validate._abort_signal(state)
+        return Validate._success()
+
+         

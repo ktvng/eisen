@@ -68,7 +68,8 @@ class Restriction():
                 or right.type == Restriction.let_primitive)
             if not assignable:
                 return False, ("a type declared by 'var' can only be assigned to other "
-                    "variable declared by 'var' or to memory declared with 'let'")
+                    "variable declared by 'var' or to memory declared with 'let'"
+                    f"\nleft={self}\nright={right}")
             return True, "success"
         if self.type == Restriction.let:
             # TODO: none is added because restriction logic is not fully built out yet

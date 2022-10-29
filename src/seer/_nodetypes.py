@@ -260,6 +260,9 @@ class Nodes():
             if self.is_simple():
                 return self.state.first_child().value
             return self.first_child().second().value
+
+        def get_function_type(self) -> TypeClass:
+            return self.state.get_instances()[0].type
             
 
     class Ref(AbstractNodeInterface):
@@ -303,6 +306,10 @@ class Nodes():
         def get_function_return_type(self) -> TypeClass:
             return self.state.get_node_data().returned_typeclass
 
+        def get_argument_type(self) -> TypeClass:
+            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            return node.get_function_type()
+
         def get_function_name(self) -> str:
             node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
             return node.get_function_name()
@@ -310,6 +317,9 @@ class Nodes():
         def is_print(self) -> str:
             node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
             return node.is_print()
+
+        def get_params_asl(self) -> str:
+            return self.state.asl[-1]
 
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"

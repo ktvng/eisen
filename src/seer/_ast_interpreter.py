@@ -9,6 +9,7 @@ from alpaca.utils import Visitor
 
 from seer._common import asls_of_type
 from seer._params import Params
+from seer._nodetypes import Nodes
 
 lambda_map = {
     "+": lambda x, y: x + y,
@@ -101,7 +102,8 @@ class InterpreterObject:
             found = new_obj
         return found
 
-
+class ReturnSignal():
+    pass
 
 
 class AstInterpreter(Visitor):
@@ -172,19 +174,23 @@ class AstInterpreter(Visitor):
             params.objs[name] = obj
         return objs
 
+    @classmethod
+    def _internal_assign(cls, l: InterpreterObject, r: InterpreterObject):
+        # if l is a var, then we alias the name so it's effectively a pointer.
+        if isinstance(l.value, Primitive):
+            if l.is_var:
+                l.value = r.value
+            else:
+                l.value = Primitive(r.value.value)
+        else:
+            l.value = r.value
+
     @Visitor.covers(asls_of_type("="))
     def eqs_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))
         right = fn.apply(params.but_with(asl=params.asl.second()))
         for l, r in zip(left, right):
-            # if l is a var, then we alias the name so it's effectively a pointer.
-            if isinstance(l.value, Primitive):
-                if l.is_var:
-                    l.value = r.value
-                else:
-                    l.value = Primitive(r.value.value)
-            else:
-                l.value = r.value
+            fn._internal_assign(l, r)
 
         return []
 
@@ -212,9 +218,9 @@ class AstInterpreter(Visitor):
         params.objs[name].value = new_obj.value
         return []
 
-    @Visitor.covers(asls_of_type("mod", "struct", "interface", "return"))
+    @Visitor.covers(asls_of_type("mod", "struct", "interface"))
     def skip_(fn, params: Params):
-        return
+        return []
 
     @Visitor.covers(asls_of_type("def"))
     def def_(fn, params: Params):
@@ -227,10 +233,12 @@ class AstInterpreter(Visitor):
     @Visitor.covers(asls_of_type("start", "seq"))
     def exec_(fn, params: Params):
         for child in params.asl:
-            fn.apply(params.but_with(asl=child))
+            result = fn.apply(params.but_with(asl=child))
+            if isinstance(result, ReturnSignal):
+                return result
         return []
 
-    @Visitor.covers(asls_of_type("ilet"))
+    @Visitor.covers(asls_of_type("ilet", "ivar"))
     def ilet_(fn, params: Params):
         # this is the case for (ilet (tags x y) (...))
         if isinstance(params.asl.first(), CLRList):
@@ -255,8 +263,14 @@ class AstInterpreter(Visitor):
     def cast_(fn, params: Params):
         return fn.apply(params.but_with(asl=params.asl.first()))
 
+    @Visitor.covers(asls_of_type("return"))
+    def return_(fn, params: Params):
+        return ReturnSignal()
+
     @Visitor.covers(asls_of_type("call"))
     def call_(fn, params: Params):
+        node = Nodes.Call(params)
+        
         # get the asl of type (fn <name>)
         fn_asl = fn._unravel_scoping(params.asl.first())
 
@@ -293,7 +307,9 @@ class AstInterpreter(Visitor):
         param_names = fn._get_param_names(asl_defining_the_function)
         for name, param in zip(param_names, params.asl.second()):
             obj = fn.apply(params.but_with(asl=param))[0]
-            fn_objs[name] = InterpreterObject.from_existing(obj)
+            new_obj = InterpreterObject(None)
+            fn._internal_assign(new_obj, obj)
+            fn_objs[name] = new_obj
 
         # add return values to the context
         return_values = []
@@ -347,18 +363,24 @@ class AstInterpreter(Visitor):
         for child in params.asl:
             if child.type == "cond":
                 was_true = fn._handle_cond(params.but_with(asl=child))
+                if isinstance(was_true, ReturnSignal):
+                    return ReturnSignal()
                 if was_true:
                     return []
             
             # this will catch the else
             if child.type == "seq":
-                fn.apply(params.but_with(asl=child))
+                result = fn.apply(params.but_with(asl=child))
+                if isinstance(result, ReturnSignal):
+                    return result
                 return []
 
     def _handle_cond(fn, params: Params):
         condition = fn.apply(params.but_with(asl=params.asl.first()))[0]
         if condition.value.value:
-            fn.apply(params.but_with(asl=params.asl.second()))
+            result = fn.apply(params.but_with(asl=params.asl.second()))
+            if isinstance(result, ReturnSignal):
+                return result
             return True
         return False
 

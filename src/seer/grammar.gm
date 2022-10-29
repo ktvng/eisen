@@ -445,6 +445,7 @@ STRUCTURE
     VAR_DECL -> 
         @action filter_build var
         |   var TYPING
+        @action filter_build ivar
         |   var DECL_ASSIGNMENT
         
         @action filter_build mut_var

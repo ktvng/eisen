@@ -23,6 +23,9 @@ class Restriction2():
     def __init__(self, type: str):
         self.type = type
 
+    def __str__(self) -> str:
+        return self.type
+
     def is_var(self) -> bool:
         return self.type == self.var
 
@@ -203,6 +206,9 @@ class TypeClass():
 
     def is_novel(self) -> bool:
         return self.classification == TypeClass.classifications.novel 
+
+    def is_tuple(self) -> bool:
+        return self.classification == TypeClass.classifications.tuple
 
     def with_restriction(self, restriction: Restriction2):
         return self._copy_with_restriction(restriction)

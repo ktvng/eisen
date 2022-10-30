@@ -1,0 +1,8 @@
+{
+    "name": "pointers",
+    "info": "tests for simple var pointers",
+    "expected": {
+        "success": true,
+        "output": "15 4 0"
+    }
+}

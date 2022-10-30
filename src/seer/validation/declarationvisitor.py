@@ -14,7 +14,7 @@ from seer.validation.nodetypes import Nodes
 # see FinalizeProtoWrangler for more details.
 class DeclarationVisitor(Visitor):
     def apply(self, state: Params) -> None:
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
     def adds_typeclass_to_module(f):
         def decorator(fn, state: Params) -> None:
@@ -22,28 +22,28 @@ class DeclarationVisitor(Visitor):
             state.get_module().add_typeclass(result)
         return decorator
 
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     @adds_typeclass_to_module
     def struct_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_struct_type(
             name=Nodes.Struct(state).get_struct_name(),
             mod=state.get_module())
 
-    @Visitor.covers(asls_of_type("interface"))
+    @Visitor.for_asls("interface")
     @adds_typeclass_to_module
     def interface_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_interface_type(
             name=Nodes.Interface(state).get_interface_name(),
             mod=state.get_module())
 
-    @Visitor.covers(asls_of_type("start", "mod"))
+    @Visitor.for_asls("start", "mod")
     def general_(fn, state: Params):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
                 mod=state.get_node_data().module))
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params):
         # nothing to do by default
         return

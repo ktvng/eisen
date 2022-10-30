@@ -24,7 +24,7 @@ class FlowVisitor(Visitor):
             print(state.inspect())
             print("\n"*4)
             input()
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
     # this records the typeclass which flows up through this node (state.asl) 
     # so that it can be referenced later via state.get_returned_typeclass()
@@ -53,7 +53,7 @@ class FlowVisitor(Visitor):
         return decorator
 
 
-    @Visitor.covers(asls_of_type("fn_type"))
+    @Visitor.for_asls("fn_type")
     @records_typeclass
     @passes_if_critical_exception
     def fn_type_(fn, state: Params) -> TypeClass:
@@ -61,7 +61,7 @@ class FlowVisitor(Visitor):
 
 
     no_action = ["start", "return", "seq", "cond", "mod"] 
-    @Visitor.covers(asls_of_type(*no_action))
+    @Visitor.for_asls(*no_action)
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -73,14 +73,14 @@ class FlowVisitor(Visitor):
                 starting_mod=state.get_node_data().module))
 
 
-    @Visitor.covers(asls_of_type("!"))
+    @Visitor.for_asls("!")
     @records_typeclass
     @passes_if_critical_exception
     def not_(fn, state: Params) -> TypeClass:
         return fn.apply(state.but_with(asl=state.first_child()))
 
 
-    @Visitor.covers(asls_of_type("."))
+    @Visitor.for_asls(".")
     @records_typeclass
     @passes_if_critical_exception
     def dot_(fn, state: Params) -> TypeClass:
@@ -93,7 +93,7 @@ class FlowVisitor(Visitor):
 
 
     # TODO: will this work for a::b()?
-    @Visitor.covers(asls_of_type("::"))
+    @Visitor.for_asls("::")
     @records_typeclass
     @passes_if_critical_exception
     def scope_(fn, state: Params) -> TypeClass:
@@ -104,7 +104,7 @@ class FlowVisitor(Visitor):
             mod=next_mod))
 
 
-    @Visitor.covers(asls_of_type("tuple", "params", "prod_type"))
+    @Visitor.for_asls("tuple", "params", "prod_type")
     @records_typeclass
     @passes_if_critical_exception
     def tuple_(fn, state: Params) -> TypeClass:
@@ -118,7 +118,7 @@ class FlowVisitor(Visitor):
         return fn.apply(state.but_with(asl=state.first_child()))
 
 
-    @Visitor.covers(asls_of_type("if"))
+    @Visitor.for_asls("if")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -132,7 +132,7 @@ class FlowVisitor(Visitor):
                     parent=state.get_parent_context())))
 
 
-    @Visitor.covers(asls_of_type("while"))
+    @Visitor.for_asls("while")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -145,7 +145,7 @@ class FlowVisitor(Visitor):
                 parent=state.get_parent_context())))
 
 
-    @Visitor.covers(asls_of_type(":"))
+    @Visitor.for_asls(":")
     @records_typeclass
     @passes_if_critical_exception
     def colon_(fn, state: Params) -> TypeClass:
@@ -167,7 +167,7 @@ class FlowVisitor(Visitor):
         return typeclass
 
 
-    @Visitor.covers(asls_of_type("fn"))
+    @Visitor.for_asls("fn")
     @records_typeclass
     @passes_if_critical_exception
     def fn_(fn, state: Params) -> TypeClass:
@@ -190,7 +190,7 @@ class FlowVisitor(Visitor):
             return fn.apply(state.but_with(asl=state.first_child()))
 
 
-    @Visitor.covers(asls_of_type("disjoint_fn"))
+    @Visitor.for_asls("disjoint_fn")
     @records_typeclass
     @passes_if_critical_exception
     def disjoint_ref_(fn, state: Params) -> TypeClass:
@@ -203,7 +203,7 @@ class FlowVisitor(Visitor):
         return instance.type
 
 
-    @Visitor.covers(asls_of_type("call"))
+    @Visitor.for_asls("call")
     @records_typeclass
     @passes_if_critical_exception
     def call_(fn, state: Params) -> TypeClass:
@@ -224,7 +224,7 @@ class FlowVisitor(Visitor):
         return fn_type.get_return_type()
 
 
-    @Visitor.covers(asls_of_type("raw_call"))
+    @Visitor.for_asls("raw_call")
     @records_typeclass
     @passes_if_critical_exception
     def raw_call(fn, state: Params) -> TypeClass:
@@ -242,7 +242,7 @@ class FlowVisitor(Visitor):
         return fn.apply(state)
          
 
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -252,7 +252,7 @@ class FlowVisitor(Visitor):
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
 
-    @Visitor.covers(asls_of_type("interface"))
+    @Visitor.for_asls("interface")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -260,7 +260,7 @@ class FlowVisitor(Visitor):
         return
 
 
-    @Visitor.covers(asls_of_type("cast"))
+    @Visitor.for_asls("cast")
     @records_typeclass
     @passes_if_critical_exception
     def cast(fn, state: Params) -> TypeClass:
@@ -276,14 +276,14 @@ class FlowVisitor(Visitor):
         return right_typeclass
 
 
-    @Visitor.covers(asls_of_type("impls"))
+    @Visitor.for_asls("impls")
     @records_typeclass
     @passes_if_critical_exception
     def impls(fn, state: Params) -> TypeClass:
         return state.void_type
 
 
-    @Visitor.covers(asls_of_type("def", "create", ":="))
+    @Visitor.for_asls("def", "create", ":=")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -303,7 +303,7 @@ class FlowVisitor(Visitor):
 
 
     # we don't need to add/record typeclasses because this is a CLRToken
-    @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
+    @Visitor.for_tokens
     @passes_if_critical_exception
     def token_(fn, state: Params) -> TypeClass:
         # TODO: make this nicer
@@ -314,7 +314,7 @@ class FlowVisitor(Visitor):
             raise Exception(f"unexpected token type of {state.asl.type}")
 
 
-    @Visitor.covers(asls_of_type("ilet", "ivar"))
+    @Visitor.for_asls("ilet", "ivar")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -354,7 +354,7 @@ class FlowVisitor(Visitor):
 
         state.assign_instances(instances)
 
-    @Visitor.covers(asls_of_type("var"))
+    @Visitor.for_asls("var")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -366,7 +366,7 @@ class FlowVisitor(Visitor):
             instance.is_var = True
         state.assign_instances(instances) 
 
-    @Visitor.covers(asls_of_type("val", "mut_val", "mut_var", "let"))
+    @Visitor.for_asls("val", "mut_val", "mut_var", "let")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
@@ -376,7 +376,7 @@ class FlowVisitor(Visitor):
         instances = state.but_with(asl=state.first_child()).get_instances()
         state.assign_instances(instances)
 
-    @Visitor.covers(asls_of_type("type", "type?", "var_type"))
+    @Visitor.for_asls("type", "type?", "var_type")
     @records_typeclass
     @passes_if_critical_exception
     def _type1(fn, state: Params) -> TypeClass:
@@ -387,7 +387,7 @@ class FlowVisitor(Visitor):
             return typeclass.with_restriction(Restriction2.for_var())
 
 
-    @Visitor.covers(asls_of_type(*binary_ops))
+    @Visitor.for_asls(*binary_ops)
     @records_typeclass
     @passes_if_critical_exception
     def binary_ops(fn, state: Params) -> TypeClass:
@@ -399,7 +399,7 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return left_type
     
-    @Visitor.covers(asls_of_type(*boolean_return_ops))
+    @Visitor.for_asls(*boolean_return_ops)
     @records_typeclass
     @passes_if_critical_exception
     def boolean_return_ops_(fn, state: Params) -> TypeClass:
@@ -412,7 +412,7 @@ class FlowVisitor(Visitor):
         return state.get_bool_type()
 
 
-    @Visitor.covers(asls_of_type("="))
+    @Visitor.for_asls("=")
     @records_typeclass
     @passes_if_critical_exception
     def assigns(fn, state: Params) -> TypeClass:
@@ -425,7 +425,7 @@ class FlowVisitor(Visitor):
         return left_type
         
 
-    @Visitor.covers(asls_of_type("<-"))
+    @Visitor.for_asls("<-")
     @records_typeclass
     @passes_if_critical_exception
     def larrow_(fn, state: Params) -> TypeClass:
@@ -438,7 +438,7 @@ class FlowVisitor(Visitor):
         return left_type
 
 
-    @Visitor.covers(asls_of_type("ref"))
+    @Visitor.for_asls("ref")
     @records_typeclass
     @passes_if_critical_exception
     def ref_(fn, state: Params) -> TypeClass:
@@ -451,7 +451,7 @@ class FlowVisitor(Visitor):
         return instance.type
 
 
-    @Visitor.covers(asls_of_type("args"))
+    @Visitor.for_asls("args")
     @records_typeclass
     @passes_if_critical_exception
     def args_(fn, state: Params) -> TypeClass:
@@ -460,7 +460,7 @@ class FlowVisitor(Visitor):
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=False))
 
 
-    @Visitor.covers(asls_of_type("rets"))
+    @Visitor.for_asls("rets")
     @records_typeclass
     @passes_if_critical_exception
     def rets_(fn, state: Params) -> TypeClass:

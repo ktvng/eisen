@@ -1,7 +1,28 @@
 from __future__ import annotations
 from typing import Any, Callable
 
+from alpaca.clr import CLRList
 from alpaca.logging._logger import Logger
+
+class TaggedTransform():
+    def __init__(self, types: list[str], f):
+        self.f = f
+        self.handles_types = types
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return self.f(*args, **kwds)
+
+class DefaultTaggedTransform(TaggedTransform):
+    def __init__(self, f) -> None:
+        self.f = f 
+        self.handles_types = None
+
+class TokenTaggedTransform(TaggedTransform):
+    def __init__(self, f) -> None:
+        self.f = f 
+        self.handles_types = None
+
+
 
 class PartialTransform():
     def __init__(self, predicate: Callable[[Any], bool], f: Callable[[Any], Any]):
@@ -55,6 +76,25 @@ class Visitor():
         if has_default_transform_attr:
             self.default_transform: DefaultTransform = has_default_transform_attr[0]
 
+        # start of new implementation
+        self.index = {}
+        self.new_default_transform = None
+        self.token_transform = None
+
+        transforms: list[TaggedTransform] = [getattr(self, k) for k in attrs
+            if isinstance(getattr(self, k), TaggedTransform)]
+        for t in transforms:
+            if isinstance(t, DefaultTaggedTransform):
+                self.new_default_transform = t
+            elif isinstance(t, TokenTaggedTransform):
+                self.token_transform = t
+            else:
+                for type_name in t.handles_types:
+                    if type_name in self.index:
+                        raise Exception(f"{self._get_loggable_name()} already has definition for {type_name}")
+                    self.index[type_name] = t
+
+
     def _apply(self, match_args: list, fn_args: list):
         args_str = str([str(arg) for arg in match_args])
         self.logger.log(f"Matching against {args_str}, depth={self._depth}")
@@ -80,6 +120,37 @@ class Visitor():
         result = matching_transforms[0].invoke(*[self, *fn_args])
         self._depth -= 1
         return result
+
+    def _route(self, asl: CLRList, state: Any):
+        if isinstance(asl, CLRList):
+            transform = self.index.get(asl.type, self.new_default_transform)
+            if transform is None:
+                raise Exception(f"{self._get_loggable_name()} has no matching transforms for asl of type '{asl.type}'")
+            result = transform(self, state)
+        else:
+            if self.token_transform is None:
+                raise Exception(f"{self._get_loggable_name()} has no transform for CLRTokens")
+            result = self.token_transform(self, state)
+            
+        return result
+
+    def _get_loggable_name(self) -> str:
+        return type(self).__name__
+
+    @classmethod
+    def for_asls(cls, *args: list[str]):
+        def decorator(f):
+            return TaggedTransform(args, f)
+        return decorator
+
+    @classmethod
+    def for_tokens(cls, f):
+        return TokenTaggedTransform(f)
+
+    @classmethod
+    def for_default(cls, f):
+        return DefaultTaggedTransform(f)
+
 
     @classmethod
     def covers(cls, predicate: Callable[[Any], bool]):

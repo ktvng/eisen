@@ -6,9 +6,10 @@ from seer.common.params import Params
 
 class Initializer(Visitor):
     def apply(self, state: Params) -> None:
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
+        # return self._apply([state], [state])
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params) -> None:
         state.asl.data = NodeData()
         for child in state.get_child_asls():

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeClass
-from seer.common import asls_of_type
 from seer.common.params import Params
 from seer.validation.nodetypes import Nodes
 from seer.validation.typeclassparser import TypeclassParser
@@ -15,16 +14,17 @@ from seer.validation.validate import Validate
 # same module.
 class FinalizeProtoInterfaceWrangler(Visitor):
     def apply(self, state: Params) -> None:
+        return self._route(state.asl, state)
         return self._apply([state], [state])
 
-    @Visitor.covers(asls_of_type("start", "mod"))
+    @Visitor.for_asls("start", "mod")
     def general_(fn, state: Params):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
                 mod=state.get_node_data().module)) 
  
-    @Visitor.covers(asls_of_type("interface"))
+    @Visitor.for_asls("interface")
     def interface_(fn, state: Params) -> None:
         node = Nodes.Interface(state)
         this_interface_typeclass = node.get_this_typeclass()
@@ -35,7 +35,7 @@ class FinalizeProtoInterfaceWrangler(Visitor):
             component_names=node.get_child_attribute_names(),
             inherits=[])
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params) -> None:
         # nothing to do by default
         return
@@ -43,16 +43,16 @@ class FinalizeProtoInterfaceWrangler(Visitor):
 
 class FinalizeProtoStructWrangler(Visitor):
     def apply(self, state: Params) -> None:
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
-    @Visitor.covers(asls_of_type("start", "mod"))
+    @Visitor.for_asls("start", "mod")
     def general_(fn, state: Params):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
                 mod=state.get_node_data().module)) 
  
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     def struct_(fn, state: Params) -> None:
         node = Nodes.Struct(state)
         this_struct_typeclass = node.get_this_typeclass()
@@ -70,7 +70,7 @@ class FinalizeProtoStructWrangler(Visitor):
 
         Validate.embeddings_dont_conflict(state, this_struct_typeclass)
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params) -> None:
         # nothing to do by default
         return

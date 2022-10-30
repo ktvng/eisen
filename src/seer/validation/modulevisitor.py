@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from seer.common import Module, asls_of_type, ContextTypes
+from seer.common import Module, ContextTypes
 from seer.common.params import Params
 
 ################################################################################
 # this parses the asl and creates the module structure of the program.
 class ModuleVisitor(Visitor):
     def apply(self, state: Params):
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
     # set the module inside which a given asl resides.
     def sets_module(f):
@@ -17,13 +17,13 @@ class ModuleVisitor(Visitor):
             return f(fn, state)
         return decorator
 
-    @Visitor.default
+    @Visitor.for_default
     @sets_module
     def default_(fn, state: Params) -> Module:
         for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child))
 
-    @Visitor.covers(asls_of_type("mod"))
+    @Visitor.for_asls("mod")
     @sets_module
     def mod_(fn, state: Params) -> Module:
         # create a new module; the name of the module is stored as a CLRToken

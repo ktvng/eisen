@@ -18,9 +18,9 @@ class PermissionsVisitor(Visitor):
             print(state.inspect())
             print("\n"*4)
             input()
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
-    @Visitor.covers(asls_of_type("def", "create"))
+    @Visitor.for_asls("def", "create")
     def defs_(fn, state: Params) -> list[Restriction]:
         node = Nodes.CommonFunction(state)
         fn_context = Context(
@@ -34,7 +34,7 @@ class PermissionsVisitor(Visitor):
                 context=fn_context))
         return []
 
-    @Visitor.covers(asls_of_type("args", "rets", "prod_type"))
+    @Visitor.for_asls("args", "rets", "prod_type")
     def args_(fn, state: Params) -> list[Restriction]:
         for child in state.get_child_asls():
             restrictions = fn.apply(state.but_with(asl=child))
@@ -42,7 +42,7 @@ class PermissionsVisitor(Visitor):
                 restriction.mark_as_initialized()
         return []
 
-    @Visitor.covers(asls_of_type(":"))
+    @Visitor.for_asls(":")
     def colon_(fn, state: Params) -> list[Restriction]:
         instance = state.get_instances()[0]
         if instance.type.restriction is not None and instance.type.restriction.is_var():
@@ -57,18 +57,18 @@ class PermissionsVisitor(Visitor):
         state.add_restriction(instance.name, restriction)
         return [restriction]
 
-    @Visitor.covers(asls_of_type("interface"))
+    @Visitor.for_asls("interface")
     def none_(fn, state: Params) -> list[Restriction]:
         return []
  
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     def struct_(fn, state: Params) -> list[Restriction]:
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
         return []
 
-    @Visitor.covers(asls_of_type("if"))
+    @Visitor.for_asls("if")
     def if_(fn, state: Params) -> list[Restriction]:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
@@ -80,7 +80,7 @@ class PermissionsVisitor(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("while"))
+    @Visitor.for_asls("while")
     def while_(fn, state: Params) -> list[Restriction]:
         fn.apply(state.but_with(
             asl=state.first_child(),
@@ -91,7 +91,7 @@ class PermissionsVisitor(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("start", "mod", "seq", "cond"))
+    @Visitor.for_asls("start", "mod", "seq", "cond")
     def seq_(fn, state: Params) -> Restriction:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
@@ -99,12 +99,12 @@ class PermissionsVisitor(Visitor):
                 mod=state.get_node_data().module))
         return []
 
-    @Visitor.covers(asls_of_type("ref"))
+    @Visitor.for_asls("ref")
     def ref_(fn, state: Params) -> list[Restriction]:
         node = Nodes.Ref(state)
         return [state.get_restriction_for(node.get_name())]
 
-    @Visitor.covers(asls_of_type("let"))
+    @Visitor.for_asls("let")
     def let_(fn, state: Params) -> list[Restriction]:
         for instance in state.get_instances():
             if instance.type.is_novel():
@@ -115,7 +115,7 @@ class PermissionsVisitor(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("ilet"))
+    @Visitor.for_asls("ilet")
     def ilet_(fn, state: Params) -> list[Restriction]:
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
@@ -130,7 +130,7 @@ class PermissionsVisitor(Visitor):
         return []
 
 
-    @Visitor.covers(asls_of_type("ivar"))
+    @Visitor.for_asls("ivar")
     def ivar_(fn, state: Params) -> list[Restriction]:
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
@@ -143,21 +143,21 @@ class PermissionsVisitor(Visitor):
 
 
     
-    @Visitor.covers(asls_of_type("var"))
+    @Visitor.for_asls("var")
     def var_(fn, state: Params) -> list[Restriction]:
         for instance in state.get_instances():
             state.add_restriction(instance.name, Restriction.create_var())
         return []
 
 
-    @Visitor.covers(asls_of_type("tuple", "params"))
+    @Visitor.for_asls("tuple", "params")
     def tuple_(fn, state: Params) -> list[Restriction]:
         restrictions = []
         for child in state.get_all_children():
             restrictions += fn.apply(state.but_with(asl=child))
         return restrictions
     
-    @Visitor.covers(asls_of_type("="))
+    @Visitor.for_asls("=")
     def equals_(fn, state: Params) -> Restriction:
         node = Nodes.Assignment(state)
         left_restrictions = fn.apply(state.but_with(asl=state.first_child()))
@@ -170,7 +170,7 @@ class PermissionsVisitor(Visitor):
             left_restriction.mark_as_initialized()
         return []
 
-    @Visitor.covers(asls_of_type("."))
+    @Visitor.for_asls(".")
     def dot_(fn, state: Params) -> Restriction:
         # TODO: figure this out
         return [Restriction.create_none()]
@@ -180,7 +180,7 @@ class PermissionsVisitor(Visitor):
             return Restriction.none
         return fn.apply(state.but_with(asl=node.get_asl_defining_restriction()))
 
-    @Visitor.covers(asls_of_type("call"))
+    @Visitor.for_asls("call")
     def call_(fn, state: Params) -> list[Restriction]:
         node = Nodes.Call(state)
 
@@ -220,21 +220,21 @@ class PermissionsVisitor(Visitor):
                 converted_restrictions.append(Restriction.create_var(is_init=False))
         return converted_restrictions
 
-    @Visitor.covers(asls_of_type("cast"))
+    @Visitor.for_asls("cast")
     def cast_(fn, state: Params) -> list[Restriction]:
         # restriction is carried over from the first child
         return fn.apply(state.but_with(asl=state.first_child()))
 
-    @Visitor.covers(asls_of_type(*(binary_ops + boolean_return_ops), "!"))
+    @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
 
-    @Visitor.covers(lambda state: isinstance(state.asl, CLRToken))
+    @Visitor.for_tokens
     def token_(fn, state: Params) -> list[Restriction]:
         return [Restriction.create_literal()]
 
     
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params) -> Restriction:
         print("UNHANDLED", state.asl)
         return [Restriction.create_none()]

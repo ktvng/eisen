@@ -101,161 +101,160 @@ class AstInterpreter(Visitor):
         self.stdout = "";
         self.redirect_output = redirect_output
 
-    def apply(self, params: Params) -> list[Obj]:
-        # print(params.asl)
-        return self._apply([params], [params])
+    def apply(self, state: Params) -> list[Obj]:
+        # print(state.asl)
+        return self._route(state.asl, state)
 
-    @Visitor.covers(lambda params: isinstance(params.asl, CLRToken))
-    def token_(fn, params: Params):
-        value = params.asl.value
-        if params.asl.type == "int":
-            value = int(params.asl.value)
-        if params.asl.type == "bool":
-            value = params.asl.value == "true"
+    @Visitor.for_tokens
+    def token_(fn, state: Params):
+        value = state.asl.value
+        if state.asl.type == "int":
+            value = int(state.asl.value)
+        if state.asl.type == "bool":
+            value = state.asl.value == "true"
 
         return [Obj(value)]
 
-    @Visitor.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or"))
-    def binop_(fn, params: Params):
-        op = params.asl.type
-        left = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
+    @Visitor.for_asls("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or")
+    def binop_(fn, state: Params):
+        op = state.asl.type
+        left = fn.apply(state.but_with(asl=state.asl.first()))[0]
+        right = fn.apply(state.but_with(asl=state.asl.second()))[0]
         return [Obj.apply_binary_operation(op, left, right)]
 
-    @Visitor.covers(asls_of_type("let"))
-    def let_(fn, params: Params):
-        return fn.apply(params.but_with(asl=params.asl.first()))
+    @Visitor.for_asls("let")
+    def let_(fn, state: Params):
+        return fn.apply(state.but_with(asl=state.asl.first()))
 
-    @Visitor.covers(asls_of_type("var"))
-    def var_(fn, params: Params):
-        objs = fn.apply(params.but_with(asl=params.asl.first()))
+    @Visitor.for_asls("var")
+    def var_(fn, state: Params):
+        objs = fn.apply(state.but_with(asl=state.asl.first()))
         for obj in objs:
             obj.is_var = True
         return objs
     
 
-    @Visitor.covers(asls_of_type(":"))
-    def colon_(fn, params: Params):
-        if isinstance(params.asl.first(), CLRToken):
-            names = [params.asl.first().value]
+    @Visitor.for_asls(":")
+    def colon_(fn, state: Params):
+        if isinstance(state.asl.first(), CLRToken):
+            names = [state.asl.first().value]
         else:
-            names = [tag.value for tag in params.asl.first()]
+            names = [tag.value for tag in state.asl.first()]
 
-        if params.asl.second().type == "type":
+        if state.asl.second().type == "type":
             # this is the case (let (: tags x y z) (type int))
             # we create a new object for each name
             objs = [Obj(None, name=name) for name in names]
         else:
-            objs = fn.apply(params.but_with(asl=params.asl.second()))
+            objs = fn.apply(state.but_with(asl=state.asl.second()))
 
         for name, obj in zip(names, objs):
-            params.objs[name] = obj
+            state.objs[name] = obj
         return objs
 
 
-    @Visitor.covers(asls_of_type("<-"))
-    def write_(fn, params: Params):
-        left = fn.apply(params.but_with(asl=params.asl.first()))
-        right = fn.apply(params.but_with(asl=params.asl.second()))
+    @Visitor.for_asls("<-")
+    def write_(fn, state: Params):
+        left = fn.apply(state.but_with(asl=state.asl.first()))
+        right = fn.apply(state.but_with(asl=state.asl.second()))
         for l, r in zip(left, right):
-            Passer.pass_by_value(params.objs, l, r)
+            Passer.pass_by_value(state.objs, l, r)
         return [] 
 
-    @Visitor.covers(asls_of_type("="))
-    def eqs_(fn, params: Params):
-        left = fn.apply(params.but_with(asl=params.asl.first()))
-        right = fn.apply(params.but_with(asl=params.asl.second()))
+    @Visitor.for_asls("=")
+    def eqs_(fn, state: Params):
+        left = fn.apply(state.but_with(asl=state.asl.first()))
+        right = fn.apply(state.but_with(asl=state.asl.second()))
         for l, r in zip(left, right):
-            Passer.handle_assignment(params.objs, l, r)
+            Passer.handle_assignment(state.objs, l, r)
         return []
 
-    @Visitor.covers(asls_of_type("!"))
-    def not_(fn, params: Params):
-        objs = fn.apply(params.but_with(asl=params.asl.first()))
+    @Visitor.for_asls("!")
+    def not_(fn, state: Params):
+        objs = fn.apply(state.but_with(asl=state.asl.first()))
         x = [Obj(not objs[0].value)]
         return x
 
-    @Visitor.covers(asls_of_type("tuple"))
-    def tuple(fn, params: Params):
+    @Visitor.for_asls("tuple")
+    def tuple(fn, state: Params):
         objs = []
-        for child in params.asl:
-            objs += fn.apply(params.but_with(asl=child))
+        for child in state.asl:
+            objs += fn.apply(state.but_with(asl=child))
         return objs
 
-    @Visitor.covers(asls_of_type("+=", "-=", "/=", "*="))
-    def asseqs_(fn, params: Params):
+    @Visitor.for_asls("+=", "-=", "/=", "*=")
+    def asseqs_(fn, state: Params):
         # because (= (ref name) ...)
-        name = params.asl.first().first().value
+        name = state.asl.first().first().value
 
-        left = params.objs[name]
-        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
+        left = state.objs[name]
+        right = fn.apply(state.but_with(asl=state.asl.second()))[0]
 
-        new_obj = Obj.apply_binary_operation(params.asl.type[0], left, right) 
-        Passer.handle_assignment(params.objs, left, new_obj)
+        new_obj = Obj.apply_binary_operation(state.asl.type[0], left, right) 
+        Passer.handle_assignment(state.objs, left, new_obj)
         return []
 
-    @Visitor.covers(asls_of_type("mod", "struct", "interface"))
-    def skip_(fn, params: Params):
+    @Visitor.for_asls("mod", "struct", "interface")
+    def skip_(fn, state: Params):
         return []
 
-    @Visitor.covers(asls_of_type("def"))
-    def def_(fn, params: Params):
-        fn_name = params.asl.first().value
+    @Visitor.for_asls("def")
+    def def_(fn, state: Params):
+        fn_name = state.asl.first().value
         if fn_name == "main":
             # apply to the seq
-            fn.apply(params.but_with(asl=params.asl[-1]))
+            fn.apply(state.but_with(asl=state.asl[-1]))
         return []
 
-    @Visitor.covers(asls_of_type("start", "seq"))
-    def exec_(fn, params: Params):
-        for child in params.asl:
-            result = fn.apply(params.but_with(asl=child))
+    @Visitor.for_asls("start", "seq")
+    def exec_(fn, state: Params):
+        for child in state.asl:
+            result = fn.apply(state.but_with(asl=child))
             if isinstance(result, ReturnSignal):
                 return result
         return []
 
-    @Visitor.covers(asls_of_type("ilet", "ivar"))
-    def ilet_(fn, params: Params):
-        is_var = params.asl.type == "ivar"
+    @Visitor.for_asls("ilet", "ivar")
+    def ilet_(fn, state: Params):
+        is_var = state.asl.type == "ivar"
         # this is the case for (ilet (tags x y) (...))
-        if isinstance(params.asl.first(), CLRList):
-            names = [token.value for token in params.asl.first()]
+        if isinstance(state.asl.first(), CLRList):
+            names = [token.value for token in state.asl.first()]
             # this handles if (...) is a (call ...)
-            if params.asl.second().type == "call":
-                values = fn.apply(params.but_with(asl=params.asl.second()))
+            if state.asl.second().type == "call":
+                values = fn.apply(state.but_with(asl=state.asl.second()))
 
             # this handles if (...) is a (tuple ...)
             else:
-                values = [fn.apply(params.but_with(asl=child))[0] for child in params.asl.second()]
+                values = [fn.apply(state.but_with(asl=child))[0] for child in state.asl.second()]
         else:
-            names = [params.asl.first().value]
-            values = [fn.apply(params.but_with(asl=params.asl.second()))[0]]
+            names = [state.asl.first().value]
+            values = [fn.apply(state.but_with(asl=state.asl.second()))[0]]
  
         for name, value in zip(names, values):
             if is_var:
-                Passer.add_var(params.objs, name, value)
+                Passer.add_var(state.objs, name, value)
             else:
-                Passer.add_let(params.objs, name, value)
+                Passer.add_let(state.objs, name, value)
         return []
 
-    @Visitor.covers(asls_of_type("cast"))
-    def cast_(fn, params: Params):
-        return fn.apply(params.but_with(asl=params.asl.first()))
+    @Visitor.for_asls("cast")
+    def cast_(fn, state: Params):
+        return fn.apply(state.but_with(asl=state.asl.first()))
 
-    @Visitor.covers(asls_of_type("return"))
-    def return_(fn, params: Params):
+    @Visitor.for_asls("return")
+    def return_(fn, state: Params):
         return ReturnSignal()
 
-    @Visitor.covers(asls_of_type("call"))
-    def call_(fn, params: Params):
-        # need to make sure the module is correct for the restriction lookup later.
-        node = Nodes.Call(params.but_with(mod=params.get_node_data().module))
+    @Visitor.for_asls("call")
+    def call_(fn, state: Params):
+        node = Nodes.Call(state)
         
         # get the asl of type (fn <name>)
-        fn_asl = fn._unravel_scoping(params.asl.first())
+        fn_asl = fn._unravel_scoping(state.asl.first())
 
         if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
-            args = [fn.apply(params.but_with(asl=asl))[0] for asl in params.asl.second()]
+            args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
             if fn.redirect_output:
                 fn.stdout += PrintFunction.emulate(fn.stdout, *args)
             else:
@@ -265,17 +264,17 @@ class AstInterpreter(Visitor):
 
         # this case is if we are looking pu the function inside a struct
         if fn_asl.first().type == ".":
-            obj = fn.apply(params.but_with(asl=fn_asl.first()))[0]
+            obj = fn.apply(state.but_with(asl=fn_asl.first()))[0]
             fn_instance = obj.value
         # this case is if we are looking up a local function or a function in the closure
         else:
-            found_fn = params.objs.get(fn_asl.first().value, None)
+            found_fn = state.objs.get(fn_asl.first().value, None)
             if found_fn:
                 fn_instance = found_fn.value
             else:
                 # we need to drop into the original CLR which defines the original function
                 # in order to get the return types.
-                fn_instance = params.but_with(asl=fn_asl).get_instances()[0]
+                fn_instance = state.but_with(asl=fn_asl).get_instances()[0]
 
         asl_defining_the_function = fn_instance.asl
 
@@ -285,10 +284,14 @@ class AstInterpreter(Visitor):
         # add parameters to the context; creates a new object so we don't override the 
         # existing object when we change it in the function.
         param_names = fn._get_param_names(asl_defining_the_function)
-        argument_typeclass = node.get_argument_type()
-        restrictions = argument_typeclass.get_restrictions()
-        for name, param, restriction in zip(param_names, params.asl.second(), restrictions):
-            obj = fn.apply(params.but_with(asl=param))[0]
+        restrictions  = (state.but_with(asl=state.first_child())
+            .get_node_data()
+            .returned_typeclass
+            .get_argument_type()
+            .get_restrictions())
+
+        for name, param, restriction in zip(param_names, state.asl.second(), restrictions):
+            obj = fn.apply(state.but_with(asl=param))[0]
             new_obj = Obj(None, name=name, is_var=restriction.is_var())
             fn_objs[name] = new_obj
             Passer.handle_assignment(fn_objs, new_obj, obj)
@@ -307,7 +310,7 @@ class AstInterpreter(Visitor):
             fn_objs[name] = obj
 
         # call the function by invoking the seq of the asl_defining_the_function
-        fn.apply(params.but_with(
+        fn.apply(state.but_with(
             asl=asl_defining_the_function[-1],
             objs=fn_objs))
 
@@ -317,39 +320,39 @@ class AstInterpreter(Visitor):
             return_values.append(fn_objs[name])
         return return_values
 
-    @Visitor.covers(asls_of_type("ref"))
-    def ref_(fn, params: Params):
-        name = params.asl.first().value
-        local_obj = params.objs.get(name, None)
+    @Visitor.for_asls("ref")
+    def ref_(fn, state: Params):
+        name = state.asl.first().value
+        local_obj = state.objs.get(name, None)
         if local_obj is not None:
             return [local_obj]
 
         # this is for functions apparently
-        instance = params.get_instances()[0]
+        instance = state.get_instances()[0]
         return [Obj(instance)]
         
 
-    @Visitor.covers(asls_of_type("."))
-    def dot_(fn, params: Params):
-        obj = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        return [obj.get(params.asl.second().value)]
+    @Visitor.for_asls(".")
+    def dot_(fn, state: Params):
+        obj = fn.apply(state.but_with(asl=state.asl.first()))[0]
+        return [obj.get(state.asl.second().value)]
 
-    @Visitor.covers(asls_of_type("type"))
-    def type_(fn, params: Params):
+    @Visitor.for_asls("type")
+    def type_(fn, state: Params):
         return Obj(None)
 
-    @Visitor.covers(asls_of_type("while"))
-    def while_(fn, params: Params):
-        result = fn._handle_cond(params.but_with(asl=params.asl.first()))
+    @Visitor.for_asls("while")
+    def while_(fn, state: Params):
+        result = fn._handle_cond(state.but_with(asl=state.asl.first()))
         while result:
-            result = fn._handle_cond(params.but_with(asl=params.asl.first()))
+            result = fn._handle_cond(state.but_with(asl=state.asl.first()))
         return []
 
-    @Visitor.covers(asls_of_type("if"))
-    def if_(fn, params: Params):
-        for child in params.asl:
+    @Visitor.for_asls("if")
+    def if_(fn, state: Params):
+        for child in state.asl:
             if child.type == "cond":
-                was_true = fn._handle_cond(params.but_with(asl=child))
+                was_true = fn._handle_cond(state.but_with(asl=child))
                 if isinstance(was_true, ReturnSignal):
                     return ReturnSignal()
                 if was_true:
@@ -357,15 +360,15 @@ class AstInterpreter(Visitor):
             
             # this will catch the else
             if child.type == "seq":
-                result = fn.apply(params.but_with(asl=child))
+                result = fn.apply(state.but_with(asl=child))
                 if isinstance(result, ReturnSignal):
                     return result
                 return []
 
-    def _handle_cond(fn, params: Params):
-        condition = fn.apply(params.but_with(asl=params.asl.first()))[0]
+    def _handle_cond(fn, state: Params):
+        condition = fn.apply(state.but_with(asl=state.asl.first()))[0]
         if condition.value:
-            result = fn.apply(params.but_with(asl=params.asl.second()))
+            result = fn.apply(state.but_with(asl=state.asl.second()))
             if isinstance(result, ReturnSignal):
                 return result
             return True

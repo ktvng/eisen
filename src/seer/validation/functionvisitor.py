@@ -17,20 +17,20 @@ class FunctionVisitor(Visitor):
             print(state.inspect())
             print("\n"*4)
             input()
-        return self._apply([state], [state])
+        return self._route(state.asl, state)
 
-    @Visitor.covers(asls_of_type("start", "mod"))
+    @Visitor.for_asls("start", "mod")
     def start_(fn, state: Params):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
                 mod=state.get_node_data().module))
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, state: Params) -> None:
         return None
 
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     def struct_(fn, state: Params) -> None:
         node = Nodes.Struct(state)
         # we need to pass down the struct name because the (create ...) asl will 
@@ -44,7 +44,7 @@ class FunctionVisitor(Visitor):
                 asl=node.get_create_asl(),
                 struct_name=node.get_struct_name()))
 
-    @Visitor.covers(asls_of_type("variety"))
+    @Visitor.for_asls("variety")
     def variety_(fn, state: Params) -> None:
         node = Nodes.Variety(state)
         # we need to pass down the struct name because the (create ...) asl will 
@@ -58,7 +58,7 @@ class FunctionVisitor(Visitor):
             struct_name=node.get_struct_name()))
 
 
-    @Visitor.covers(asls_of_type("def"))
+    @Visitor.for_asls("def")
     def def_(fn, state: Params):
         mod = state.get_module()
         state.assign_instances(mod.add_instance(
@@ -69,7 +69,7 @@ class FunctionVisitor(Visitor):
                 asl=state.asl)))
 
 
-    @Visitor.covers(asls_of_type("create"))
+    @Visitor.for_asls("create")
     def create_(fn, state: Params):
         node = Nodes.Create(state)
         # we need to normalize the create asl before we can use the TypeclassParser

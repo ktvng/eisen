@@ -7,9 +7,9 @@ from xml.dom.expatbuilder import InternalSubsetExtractor
 from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
 
-from seer._common import asls_of_type
-from seer._params import Params
-from seer._nodetypes import Nodes
+from seer.common import asls_of_type
+from seer.common.params import Params
+from seer.validation.nodetypes import Nodes
 
 lambda_map = {
     "+": lambda x, y: x + y,

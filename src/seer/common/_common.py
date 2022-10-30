@@ -2,11 +2,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from seer._params import Params
+    from seer.common.params import Params
 from alpaca.concepts import TypeClass, Instance, Context
 from alpaca.clr import CLRList
 
 Module = Context
+
+binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
+boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 
 class ContextTypes:
     mod = "module"

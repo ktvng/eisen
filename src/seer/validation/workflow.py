@@ -1,9 +1,13 @@
-from seer._working import (ModuleWrangler2, TypeDeclarationWrangler, FinalizeProtoInterfaceWrangler, 
-    FinalizeProtoStructWrangler, TypeClassFlowWrangler, FunctionWrangler, InitializeNodeData, 
-    VerifyAssignmentPermissions)
+from seer.validation.modulevisitor import ModuleVisitor
+from seer.validation.flowvisitor import FlowVisitor
+from seer.validation.functionvisitor import FunctionVisitor
+from seer.validation.permissionsvisitor import PermissionsVisitor
+from seer.validation.declarationvisitor import DeclarationVisitor
+from seer.validation.finalizationvisitor import FinalizeProtoInterfaceWrangler, FinalizeProtoStructWrangler
+from seer.validation.initalizer import Initializer
 
-from seer._ast_interpreter import AstInterpreter
-from seer._exceptionshandler import ExceptionsHandler
+from seer.ast_interpreter import AstInterpreter
+from seer.common.exceptionshandler import ExceptionsHandler
 
 # Notes:
 # A module is a collection of structs/functions
@@ -15,15 +19,15 @@ from seer._exceptionshandler import ExceptionsHandler
 class Workflow():   
     steps = [
         # initialize the .data attribute for all asls with empty NodeData instances
-        InitializeNodeData,
+        Initializer,
 
         # create the module structure of the program.
         #   - the module of a node can be accessed by params.asl_get_mod()
-        ModuleWrangler2, 
+        ModuleVisitor, 
 
         # add proto types for struct/interfaces, which are the representation 
         # of struct declaration without definition.
-        TypeDeclarationWrangler,
+        DeclarationVisitor,
 
         # finalizes the proto types (which moves from declaration to definition)
         # TODO: for now, interfaces can only be implemented from the same module 
@@ -41,16 +45,16 @@ class Workflow():
         # (def ...) and (create ...) asls so they have the same child structure,
         # which allows us to process them identically later in the 
         # TypeClassFlowWrangler.
-        FunctionWrangler,
+        FunctionVisitor,
         
         # evaluate the flow of types through the program. 
         #   - the typeclass which is flowed through a node can be accessed by
         #     params.get_returned_typeclass()
-        TypeClassFlowWrangler,
+        FlowVisitor,
         ExceptionsHandler,
 
         # this handles restrictions based on let/var/val differences
-        VerifyAssignmentPermissions,
+        PermissionsVisitor,
         ExceptionsHandler,
 
         # execute the augmented AST via the interpreter.

@@ -2,17 +2,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Context, TypeFactory, TypeClassFactory, TypeClass
+from alpaca.concepts import Context, TypeClassFactory, TypeClass
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
-from seer._common import ContextTypes
-from seer._nodedata import NodeData
-from seer._common import Module, SeerInstance
+from seer.common import ContextTypes
+from seer.common.nodedata import NodeData
+from seer.common import Module, SeerInstance
 
 if TYPE_CHECKING:
-    from seer._ast_interpreter import InterpreterObject
-    from seer._restriction import Restriction
+    from seer.ast_interpreter import InterpreterObject
+    from seer.common.restriction import Restriction
 
 
 class SharedBool():

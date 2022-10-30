@@ -7,10 +7,10 @@ from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Visitor
 from alpaca.concepts import Context, TypeFactory, Instance, Type
 
-from seer._params import Params
+from seer.common.params import Params
 from seer.dep._typewrangler import TypeWrangler
 from seer._callconfigurer import CallConfigurer
-from seer._common import asls_of_type, ContextTypes, SeerInstance
+from seer.common import asls_of_type, ContextTypes, SeerInstance
 
 class TypeFlowWrangler(Visitor):
     def __init__(self, debug: bool = False):

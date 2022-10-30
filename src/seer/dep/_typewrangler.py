@@ -6,8 +6,8 @@ from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import Type, TypeFactory
 
-from seer._params import Params
-from seer._common import asls_of_type
+from seer.common.params import Params
+from seer.common import asls_of_type
 
 # generate a type within a module
 class TypeWrangler(Visitor):

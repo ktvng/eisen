@@ -3,9 +3,8 @@ from __future__ import annotations
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
 
-from seer._params import Params
-from seer._restriction import Restriction
-from seer._common import SeerInstance
+from seer.common.params import Params
+from seer.common.restriction import Restriction
 
 
 def get_name_from_first_child(self) -> str:

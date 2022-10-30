@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from seer._params import Params
+from seer.common.params import Params
 
 class ExceptionsHandler():
     def apply(cls, params: Params):

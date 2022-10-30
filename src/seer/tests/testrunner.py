@@ -7,15 +7,15 @@ import traceback
 
 import alpaca
 
-from seer._callback import SeerCallback
-from seer._customparser import CustomParser
-from seer._builder import SeerBuilder
-from seer._params import Params
-from seer._workflow import Workflow
-from seer._ast_interpreter import AstInterpreter
+from seer.parsing.callback import SeerCallback
+from seer.parsing.customparser import CustomParser
+from seer.parsing.builder import SeerBuilder
+from seer.common.params import Params
+from seer.validation.workflow import Workflow
+from seer.ast_interpreter import AstInterpreter
 
 class Test():
-    testdir = "./src/seer/tests2/"
+    testdir = "./src/seer/tests/"
     grammarfile = "./src/seer/grammar.gm"
 
     def __init__(self, name: str):
@@ -70,7 +70,7 @@ class TestParser():
         return self.current_data_context
 
 class TestRunner():
-    testdir = "./src/seer/tests2/"
+    testdir = "./src/seer/tests/"
     grammarfile = "./src/seer/grammar.gm"
 
     @classmethod
@@ -127,3 +127,4 @@ class TestRunner():
         end = time.perf_counter()
         total_tests= len(test_files)
         print(f"ran {total_tests} tests in {round(end-start, 4)}s, {successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
+        

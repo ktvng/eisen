@@ -4,8 +4,8 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
-from seer._params import Params
-from seer._common import asls_of_type, Utils
+from seer.common.params import Params
+from seer.common import asls_of_type, Utils
 
 # date structure which contains the information obtain from flattening. 
 class FlatteningPacket:

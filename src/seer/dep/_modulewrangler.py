@@ -4,9 +4,9 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, Context
 from alpaca.clr import CLRList, CLRToken
 
-from seer._params import Params
+from seer.common.params import Params
 from seer.dep._typewrangler import TypeWrangler
-from seer._common import ContextTypes, asls_of_type, SeerInstance
+from seer.common import ContextTypes, asls_of_type, SeerInstance
 
 
 # generate the module structure and add types to the respective modules

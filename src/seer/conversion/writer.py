@@ -4,7 +4,7 @@ import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Visitor
 
-from seer._common import asls_of_type
+from seer.common import asls_of_type
 
 class Writer(Visitor):
     def run(self, asl: CLRList) -> str:

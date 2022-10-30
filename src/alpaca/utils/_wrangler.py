@@ -24,6 +24,7 @@ class TokenTaggedTransform(TaggedTransform):
 
 
 
+# TODO: remove some of this deprecated code
 class PartialTransform():
     def __init__(self, predicate: Callable[[Any], bool], f: Callable[[Any], Any]):
         self.f = f
@@ -65,6 +66,7 @@ class Visitor():
         # depth of recusion, used during debug functionality
         self._depth = 0
 
+        # TODO: remove some of this deprecated code
         attrs = dir(self)
         self.partial_transforms: list[PartialTransform] = [getattr(self, k) for k in attrs
             if isinstance(getattr(self, k), PartialTransform)]
@@ -95,6 +97,7 @@ class Visitor():
                     self.index[type_name] = t
 
 
+    # TODO: remove some of this deprecated code
     def _apply(self, match_args: list, fn_args: list):
         args_str = str([str(arg) for arg in match_args])
         self.logger.log(f"Matching against {args_str}, depth={self._depth}")

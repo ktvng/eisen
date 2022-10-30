@@ -15,7 +15,6 @@ from seer.validation.validate import Validate
 class FinalizeProtoInterfaceWrangler(Visitor):
     def apply(self, state: Params) -> None:
         return self._route(state.asl, state)
-        return self._apply([state], [state])
 
     @Visitor.for_asls("start", "mod")
     def general_(fn, state: Params):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
+# to be deprecated soon
 from alpaca.concepts import Type, Context, Instance, TypeClass
 from alpaca.clr import CLRToken, CLRList
 

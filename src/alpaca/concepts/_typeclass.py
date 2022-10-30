@@ -214,7 +214,8 @@ class TypeClass():
         return self._copy_with_restriction(restriction)
 
     def get_restrictions(self) -> list[Restriction2]:
-        if self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel:
+        if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
+            or self.classification == TypeClass.classifications.interface):
             return [self.restriction]
         if self.classification == TypeClass.classifications.function:
             return self.get_return_type().get_restrictions()

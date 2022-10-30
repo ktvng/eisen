@@ -1,11 +1,11 @@
 from __future__ import annotations
-from ast import In
+
 from typing import Any, Callable
 import re
-from xml.dom.expatbuilder import InternalSubsetExtractor
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
+from alpaca.concepts import Restriction2
 
 from seer.common import asls_of_type
 from seer.common.params import Params
@@ -33,58 +33,18 @@ class Primitive:
     def __str__(self) -> str:
         return str(self.value)
 
-# either value is primitive object, value is dict for struct, or value is asl for function
-class InterpreterObject:
+class Obj:
     def __init__(self, value: Any, name: str = "anon", is_var: bool = False):
-        self.name = name
         self.value = value
+        self.name = name
         self.is_var = is_var
 
     @classmethod
-    def from_existing(cls, obj: InterpreterObject) -> InterpreterObject:
-        if isinstance(obj.value, Primitive):
-            return InterpreterObject(Primitive(obj.value.value))
+    def apply_binary_operation(cls, op: str, obj1: Obj, obj2: Obj):
+        if op in lambda_map:
+            return Obj(lambda_map[op](obj1.value, obj2.value))
         else:
-            return InterpreterObject(obj.value)
-
-
-    def _binary_ops(self, o: InterpreterObject, f: Callable[[Any, Any], Any]):
-        if not isinstance(o, InterpreterObject):
-            raise Exception(f"Error: expected interpreter object, but got {type(o)}")
-        return InterpreterObject(Primitive(f(self.value.value, o.value.value)))
-
-    def __add__(self, o: Any):
-        return self._binary_ops(o, lambda_map["+"])
-
-    def __sub__(self, o: Any):
-        return self._binary_ops(o, lambda_map["-"])
-
-    def __mul__(self, o: Any):
-        return self._binary_ops(o, lambda_map["*"])
-
-    def __truediv__(self, o: Any):
-        return self._binary_ops(o, lambda_map["/"])
-
-    def __floordiv__(self, o: Any):
-        return self._binary_ops(o, lambda_map["/"])
-
-    def __lt__(self, o: Any):
-        return self._binary_ops(o, lambda_map["<"])
-
-    def __le__(self, o: Any):
-        return self._binary_ops(o, lambda_map["<="])
-
-    def __eq__(self, o: Any):
-        return self._binary_ops(o, lambda_map["=="])
-
-    def __ne__(self, o: Any):
-        return self._binary_ops(o, lambda_map["!="])
-
-    def __gt__(self, o: Any):
-        return self._binary_ops(o, lambda_map[">"])
-
-    def __ge__(self, o: Any):
-        return self._binary_ops(o, lambda_map[">="])
+            raise Exception(f"unhandled binary operation {op}")
 
     def __str__(self) -> str:
         return str(self.value)
@@ -97,10 +57,39 @@ class InterpreterObject:
             raise Exception(f"Interpreter object must be a dict (for struct), but got {type(self.value)}")
         found = self.value.get(key, None)
         if found is None:
-            new_obj = InterpreterObject(None)
+            new_obj = Obj(None)
             self.value[key] = new_obj
             found = new_obj
         return found
+
+
+class Passer():
+    @classmethod
+    def pass_by_value(cls, context: dict, l: Obj, r: Obj):
+        l.value = r.value
+
+    @classmethod
+    def pass_by_reference(cls, context: dict, l: Obj, r: Obj):
+        context[l.name] = r
+
+    @classmethod
+    def handle_assignment(cls, context: dict, l: Obj, r: Obj):
+        if l.is_var:
+            cls.pass_by_reference(context, l, r)
+        else:
+            cls.pass_by_value(context, l, r)
+
+    @classmethod
+    def add_var(cls, context: dict, name: str, val: Obj):
+        context[name] = val
+    
+    @classmethod
+    def add_let(cls, context: dict, name: str, val: Obj):
+        l = Obj(None, name=name)
+        context[name] = l
+        Passer.pass_by_value(context, l, val)
+
+
 
 class ReturnSignal():
     pass
@@ -112,7 +101,7 @@ class AstInterpreter(Visitor):
         self.stdout = "";
         self.redirect_output = redirect_output
 
-    def apply(self, params: Params) -> list[InterpreterObject]:
+    def apply(self, params: Params) -> list[Obj]:
         # print(params.asl)
         return self._apply([params], [params])
 
@@ -124,25 +113,14 @@ class AstInterpreter(Visitor):
         if params.asl.type == "bool":
             value = params.asl.value == "true"
 
-        return [InterpreterObject(Primitive(value))]
+        return [Obj(value)]
 
-    @Visitor.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">="))
+    @Visitor.covers(asls_of_type("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or"))
     def binop_(fn, params: Params):
+        op = params.asl.type
         left = fn.apply(params.but_with(asl=params.asl.first()))[0]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        return [lambda_map[params.asl.type](left, right)]
-
-    @Visitor.covers(asls_of_type("and"))
-    def and_(fn, params: Params):
-        left = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        return [InterpreterObject(Primitive(left.value.value and right.value.value))] 
-
-    @Visitor.covers(asls_of_type("or"))
-    def or_(fn, params: Params):
-        left = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        return [InterpreterObject(Primitive(left.value.value or right.value.value))] 
+        return [Obj.apply_binary_operation(op, left, right)]
 
     @Visitor.covers(asls_of_type("let"))
     def let_(fn, params: Params):
@@ -166,7 +144,7 @@ class AstInterpreter(Visitor):
         if params.asl.second().type == "type":
             # this is the case (let (: tags x y z) (type int))
             # we create a new object for each name
-            objs = [InterpreterObject(None, name=name) for name in names]
+            objs = [Obj(None, name=name) for name in names]
         else:
             objs = fn.apply(params.but_with(asl=params.asl.second()))
 
@@ -174,30 +152,27 @@ class AstInterpreter(Visitor):
             params.objs[name] = obj
         return objs
 
-    @classmethod
-    def _internal_assign(cls, l: InterpreterObject, r: InterpreterObject):
-        # if l is a var, then we alias the name so it's effectively a pointer.
-        if isinstance(l.value, Primitive):
-            if l.is_var:
-                l.value = r.value
-            else:
-                l.value = Primitive(r.value.value)
-        else:
-            l.value = r.value
+
+    @Visitor.covers(asls_of_type("<-"))
+    def write_(fn, params: Params):
+        left = fn.apply(params.but_with(asl=params.asl.first()))
+        right = fn.apply(params.but_with(asl=params.asl.second()))
+        for l, r in zip(left, right):
+            Passer.pass_by_value(params.objs, l, r)
+        return [] 
 
     @Visitor.covers(asls_of_type("="))
     def eqs_(fn, params: Params):
         left = fn.apply(params.but_with(asl=params.asl.first()))
         right = fn.apply(params.but_with(asl=params.asl.second()))
         for l, r in zip(left, right):
-            fn._internal_assign(l, r)
-
+            Passer.handle_assignment(params.objs, l, r)
         return []
 
     @Visitor.covers(asls_of_type("!"))
     def not_(fn, params: Params):
         objs = fn.apply(params.but_with(asl=params.asl.first()))
-        x = [InterpreterObject(Primitive(not objs[0].value.value))]
+        x = [Obj(not objs[0].value)]
         return x
 
     @Visitor.covers(asls_of_type("tuple"))
@@ -214,8 +189,9 @@ class AstInterpreter(Visitor):
 
         left = params.objs[name]
         right = fn.apply(params.but_with(asl=params.asl.second()))[0]
-        new_obj = lambda_map[params.asl.type[0]](left, right)
-        params.objs[name].value = new_obj.value
+
+        new_obj = Obj.apply_binary_operation(params.asl.type[0], left, right) 
+        Passer.handle_assignment(params.objs, left, new_obj)
         return []
 
     @Visitor.covers(asls_of_type("mod", "struct", "interface"))
@@ -240,6 +216,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.covers(asls_of_type("ilet", "ivar"))
     def ilet_(fn, params: Params):
+        is_var = params.asl.type == "ivar"
         # this is the case for (ilet (tags x y) (...))
         if isinstance(params.asl.first(), CLRList):
             names = [token.value for token in params.asl.first()]
@@ -253,10 +230,12 @@ class AstInterpreter(Visitor):
         else:
             names = [params.asl.first().value]
             values = [fn.apply(params.but_with(asl=params.asl.second()))[0]]
-        
+ 
         for name, value in zip(names, values):
-            value.name = name
-            params.objs[name] = value
+            if is_var:
+                Passer.add_var(params.objs, name, value)
+            else:
+                Passer.add_let(params.objs, name, value)
         return []
 
     @Visitor.covers(asls_of_type("cast"))
@@ -269,7 +248,8 @@ class AstInterpreter(Visitor):
 
     @Visitor.covers(asls_of_type("call"))
     def call_(fn, params: Params):
-        node = Nodes.Call(params)
+        # need to make sure the module is correct for the restriction lookup later.
+        node = Nodes.Call(params.but_with(mod=params.get_node_data().module))
         
         # get the asl of type (fn <name>)
         fn_asl = fn._unravel_scoping(params.asl.first())
@@ -305,29 +285,36 @@ class AstInterpreter(Visitor):
         # add parameters to the context; creates a new object so we don't override the 
         # existing object when we change it in the function.
         param_names = fn._get_param_names(asl_defining_the_function)
-        for name, param in zip(param_names, params.asl.second()):
+        argument_typeclass = node.get_argument_type()
+        restrictions = argument_typeclass.get_restrictions()
+        for name, param, restriction in zip(param_names, params.asl.second(), restrictions):
             obj = fn.apply(params.but_with(asl=param))[0]
-            new_obj = InterpreterObject(None)
-            fn._internal_assign(new_obj, obj)
+            new_obj = Obj(None, name=name, is_var=restriction.is_var())
             fn_objs[name] = new_obj
+            Passer.handle_assignment(fn_objs, new_obj, obj)
 
         # add return values to the context
-        return_values = []
+        returned_typeclass = node.get_function_return_type()
+        restrictions = returned_typeclass.get_restrictions()
         return_names = fn._get_return_names(asl_defining_the_function)
-        for name in return_names:
+        for name, r in zip(return_names, restrictions):
+            is_var =  r.is_var()
             if asl_defining_the_function.type == "create":
-                obj = InterpreterObject({})
+                obj = Obj({}, name=name, is_var=is_var)
             else:
-                obj = InterpreterObject(None)
+                obj = Obj(None, name=name, is_var=is_var)
 
             fn_objs[name] = obj
-            return_values.append(obj)
 
         # call the function by invoking the seq of the asl_defining_the_function
         fn.apply(params.but_with(
             asl=asl_defining_the_function[-1],
             objs=fn_objs))
 
+        # get the actual return values 
+        return_values = []
+        for name in return_names:
+            return_values.append(fn_objs[name])
         return return_values
 
     @Visitor.covers(asls_of_type("ref"))
@@ -339,7 +326,7 @@ class AstInterpreter(Visitor):
 
         # this is for functions apparently
         instance = params.get_instances()[0]
-        return [InterpreterObject(instance)]
+        return [Obj(instance)]
         
 
     @Visitor.covers(asls_of_type("."))
@@ -349,7 +336,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.covers(asls_of_type("type"))
     def type_(fn, params: Params):
-        return [InterpreterObject(None)]
+        return Obj(None)
 
     @Visitor.covers(asls_of_type("while"))
     def while_(fn, params: Params):
@@ -377,7 +364,7 @@ class AstInterpreter(Visitor):
 
     def _handle_cond(fn, params: Params):
         condition = fn.apply(params.but_with(asl=params.asl.first()))[0]
-        if condition.value.value:
+        if condition.value:
             result = fn.apply(params.but_with(asl=params.asl.second()))
             if isinstance(result, ReturnSignal):
                 return result
@@ -417,8 +404,8 @@ class AstInterpreter(Visitor):
 
 class PrintFunction():
     @classmethod
-    def emulate(cls, redirect: str, *args: list[InterpreterObject]) -> str:
-        base = args[0].value.value
+    def emulate(cls, redirect: str, *args: list[Obj]) -> str:
+        base = args[0].value
         arg_strs = cls._convert_args_to_strs(args[1:])
         tag_regex = re.compile(r"%\w")
         for arg in arg_strs:
@@ -430,11 +417,11 @@ class PrintFunction():
             return ""
 
     @classmethod
-    def _convert_args_to_strs(cls, args: list[InterpreterObject]) -> list[str]:
+    def _convert_args_to_strs(cls, args: list[Obj]) -> list[str]:
         arg_strs = []
         for arg in args:
-            if isinstance(arg.value.value, bool):
-                arg_strs.append("true" if arg.value.value else "false")
+            if isinstance(arg.value, bool):
+                arg_strs.append("true" if arg.value else "false")
             else:
-                arg_strs.append(str(arg.value))
+                arg_strs.append(str(arg))
         return arg_strs

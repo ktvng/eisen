@@ -104,10 +104,4 @@ class CustomParser:
         return CLRList("start", lst=asls)
             
     
-            
-            
-
-        
-        
-
 

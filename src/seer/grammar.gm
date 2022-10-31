@@ -54,7 +54,6 @@ SYMBOLICS
     <type>              ->  <regex>
     keyword fn          ->  fn
     keyword struct      ->  struct
-    keyword this        ->  this
     keyword if          ->  if
     keyword else        ->  else
     keyword while       ->  while
@@ -566,4 +565,4 @@ STRUCTURE
     # Testing
     
     @action build start
-    START -> EXPR
+    START -> ACTION

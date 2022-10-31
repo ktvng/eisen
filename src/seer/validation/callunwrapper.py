@@ -4,24 +4,36 @@ from alpaca.clr import CLRList
 
 from seer.common.params import Params
 from seer.common.nodedata import NodeData
+from seer.validation.nodetypes import Nodes
 
 class CallUnwrapper():
     @classmethod
+    # to unravel a (raw_call ...) is to perform the following action
+    #   
+    #   (raw_call (ref name) (fn name) (params ...)) ->
+    #   (call (fn name) (params (ref name) ...)) 
     def _unravel(cls, params: Params):
-        ref_asl = params.asl[0]
-        fn_asl = params.asl[1]
-        params_asl = params.asl[2]
+        node = Nodes.RawCall(params)
+        ref_asl = node.get_ref_asl()
+        fn_asl = node.get_fn_identifying_asl()
+        params_asl = node.get_params_asl()
+
+        # modify the contents of the params asl to include the reference as the first
+        # argument.
         params_asl[:] = [ref_asl, *params_asl]
 
+        # update the (raw_call ...) asl with the new lst contents
         params.asl.update(
             type="call",
             lst=[fn_asl, params_asl])
 
     @classmethod
     def _construct_standard_call(cls, params: Params):
-        ref_asl = params.asl[0]
-        fn_asl = params.asl[1]
-        params_asl = params.asl[2] 
+        node = Nodes.RawCall(params)
+        ref_asl = node.get_ref_asl()
+        fn_asl = node.get_fn_identifying_asl()
+        print(fn_asl)
+        params_asl = node.get_params_asl()
 
         scope_asl = CLRList(
             type=".",

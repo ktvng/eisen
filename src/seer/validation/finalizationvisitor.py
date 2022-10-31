@@ -16,13 +16,14 @@ class FinalizeProtoInterfaceWrangler(Visitor):
     def apply(self, state: Params) -> None:
         return self._route(state.asl, state)
 
-    @Visitor.for_asls("start", "mod")
-    def general_(fn, state: Params):
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module)) 
- 
+    @Visitor.for_asls("start")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+
     @Visitor.for_asls("interface")
     def interface_(fn, state: Params) -> None:
         node = Nodes.Interface(state)
@@ -44,12 +45,13 @@ class FinalizeProtoStructWrangler(Visitor):
     def apply(self, state: Params) -> None:
         return self._route(state.asl, state)
 
-    @Visitor.for_asls("start", "mod")
-    def general_(fn, state: Params):
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module)) 
+    @Visitor.for_asls("start")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
  
     @Visitor.for_asls("struct")
     def struct_(fn, state: Params) -> None:

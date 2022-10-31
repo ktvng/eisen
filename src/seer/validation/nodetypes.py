@@ -1,8 +1,11 @@
 from __future__ import annotations
+from operator import mod
+from string import ascii_letters
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass
 
+from seer.common import Module
 from seer.common.params import Params
 from seer.common.restriction import Restriction
 
@@ -14,7 +17,7 @@ def first_child_is_token(self) -> bool:
     return isinstance(self.first_child(), CLRToken)
 
 def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
-    return self.state.get_module().get_typeclass_by_name(self._get_name())
+    return self.state.get_enclosing_module().get_typeclass_by_name(self._get_name())
 
 
 class Nodes():
@@ -30,6 +33,24 @@ class Nodes():
 
         def third_child(self):
             return self.state.asl.third()
+
+    class Mod(AbstractNodeInterface):
+        asl_type = "mod"
+        examples = """
+        (mod name ...)
+        """
+        get_module_name = get_name_from_first_child
+        def get_entered_module(self) -> Module:
+            return self.state.get_node_data().enters_module
+
+        def set_entered_module(self, mod: Module):
+            self.state.get_node_data().enters_module = mod
+
+        def enter_module_and_apply_fn_to_child_asls(self, fn):
+            for child in self.state.asl[1:]:
+                fn.apply(self.state.but_with(
+                    asl=child,
+                    mod=self.get_entered_module()))
 
     class Struct(AbstractNodeInterface):
         asl_type = "struct"
@@ -56,7 +77,7 @@ class Nodes():
             interfaces = []
             if self.implements_interfaces():
                 for child in self.get_impls_asl():
-                    interfaces.append(self.state.get_module().get_typeclass_by_name(child.value))
+                    interfaces.append(self.state.get_enclosing_module().get_typeclass_by_name(child.value))
                     # TODO: currently we only allow the interface to be looked up in the same
                     # module as the struct. In general, we need to allow interfaces from arbitrary
                     # modules.
@@ -70,8 +91,8 @@ class Nodes():
             # module as the struct. In general, we need to allow interfaces from arbitrary
             # modules.
             if isinstance(embed_asl.first(), CLRList):
-                return [self.state.get_module().get_typeclass_by_name(child.value) for child in embed_asl.first()]
-            return [self.state.get_module().get_typeclass_by_name(embed_asl.first().value)]
+                return [self.state.get_enclosing_module().get_typeclass_by_name(child.value) for child in embed_asl.first()]
+            return [self.state.get_enclosing_module().get_typeclass_by_name(embed_asl.first().value)]
 
         def get_embedded_structs(self) -> list[TypeClass]:
             embedded_structs: list[TypeClass] = []
@@ -339,7 +360,7 @@ class Nodes():
             while next_asl.type == "::":
                 # the name is stored as the CLRToken in the first position
                 next_mod_name = next_asl.first().value
-                working_mod = working_mod.get_child_module_by_name(next_mod_name)
+                working_mod = working_mod.get_child_by_name(next_mod_name)
                 next_asl = next_asl.second()
 
             return working_mod.get_instance_by_name(name=self.get_function_name()).type
@@ -358,3 +379,20 @@ class Nodes():
         (rets (: ...))
         (rets (prod_type ...))
         """
+
+    class RawCall(AbstractNodeInterface):
+        asl_type = "raw_call"
+        examples = """
+        (raw_call (ref name) (fn name) (params ...))
+        (raw_call (ref name) (:: mod_name (disjoint_fn name)) (params ...))
+        """
+
+        def get_ref_asl(self) -> CLRList:
+            return self.first_child()
+
+        def get_fn_identifying_asl(self) -> CLRList:
+            return self.second_child()
+
+        def get_params_asl(self) -> CLRList:
+            return self.third_child()
+        

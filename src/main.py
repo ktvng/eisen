@@ -84,8 +84,11 @@ def run_seer(filename: str):
 
     # # CUSTOM PARSER
     # start = time.perf_counter_ns()
-    # asl = seer.CustomParser.run(config, tokens, seer.SeerBuilder())
-    # end = time.perf_counter_ns()
+    # asl = run_and_measure("customparser2",
+    #     seer.CustomParser2(config).parse,
+    #     toks=tokens)
+    # print(asl)
+    # exit()
     # perf.append(("CustomParser", (end-start)/1000000))
 
     # PARSE TO AST
@@ -248,6 +251,7 @@ if __name__ == "__main__":
     print(delim)
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
+    parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
     parser.add_argument("-l", "--lang", 
         action="store", 
@@ -262,6 +266,8 @@ if __name__ == "__main__":
         run_seer_tests(args.test)
     elif args.input and args.lang:
         run(args.lang, args.input)
+    elif args.build:
+        seer.TestRunner.rebuild_cache()
 
     print(delim)
     

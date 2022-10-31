@@ -14,3 +14,9 @@ class CFGRule():
 
     def __str__(self):
         return f"{self.production_symbol} -> {self.pattern_str}"
+
+    def __eq__(self, __o: object) -> bool:
+        return hash(self) == hash(__o)
+
+    def __hash__(self) -> int:
+        return hash(self.production_symbol + self.pattern_str)

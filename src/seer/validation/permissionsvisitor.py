@@ -90,14 +90,16 @@ class PermissionsVisitor(Visitor):
                 parent=state.get_parent_context())))
         return []
 
-
-    @Visitor.for_asls("start", "mod", "seq", "cond")
-    def seq_(fn, state: Params) -> Restriction:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module))
+    @Visitor.for_asls("start", "seq", "cond")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
         return []
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        return []
+
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: Params) -> list[Restriction]:

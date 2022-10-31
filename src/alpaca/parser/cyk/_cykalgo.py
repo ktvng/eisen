@@ -93,7 +93,6 @@ class CYKAlgo:
         points = self._get_points_on_diagonal(0)
         for point in points:
             x, y = point
-            clrtoken = self.tokens[x]
             rules = [rule for rule in self.cfg.rules if rule.production_symbol == "CONTEXT"]
             bootstrap_rule = rules[0]
             self.dp_table[x][y] = [DpTableEntry(bootstrap_rule, x, y)]

@@ -19,29 +19,32 @@ class DeclarationVisitor(Visitor):
     def adds_typeclass_to_module(f):
         def decorator(fn, state: Params) -> None:
             result: TypeClass = f(fn, state)
-            state.get_module().add_typeclass(result)
+            state.get_enclosing_module().add_typeclass(result)
         return decorator
+
+
+    @Visitor.for_asls("start")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
     @Visitor.for_asls("struct")
     @adds_typeclass_to_module
     def struct_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_struct_type(
             name=Nodes.Struct(state).get_struct_name(),
-            mod=state.get_module())
+            mod=state.get_enclosing_module())
 
     @Visitor.for_asls("interface")
     @adds_typeclass_to_module
     def interface_(fn, state: Params) -> TypeClass:
         return TypeClassFactory.produce_proto_interface_type(
             name=Nodes.Interface(state).get_interface_name(),
-            mod=state.get_module())
+            mod=state.get_enclosing_module())
 
-    @Visitor.for_asls("start", "mod")
-    def general_(fn, state: Params):
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module))
 
     @Visitor.for_default
     def default_(fn, state: Params):

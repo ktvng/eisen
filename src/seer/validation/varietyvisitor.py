@@ -16,12 +16,13 @@ class VarietyWrangler(Visitor):
             input()
         return self._apply([state], [state])
 
-    @Visitor.covers(asls_of_type("start", "mod"))
+    @Visitor.for_asls("start")
     def start_(fn, state: Params):
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module))
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
     @Visitor.default
     def default_(fn, state: Params) -> None:
@@ -32,7 +33,7 @@ class VarietyWrangler(Visitor):
         node = Nodes.Variety(state)
         variety_typeclass = TypeClassFactory.produce_variety_type(
             name=node.get_name(),
-            mod=state.get_module(),
+            mod=state.get_enclosing_module(),
             inherits=node.get_inherited_typeclass())
-        state.get_module().add_typeclass(variety_typeclass)
+        state.get_enclosing_module().add_typeclass(variety_typeclass)
 

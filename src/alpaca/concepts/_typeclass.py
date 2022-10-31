@@ -105,7 +105,7 @@ class TypeClass():
         return self._get_module_prefix_for_uuid() + f"{name_str}({', '.join(member_strs)})" 
 
     def _get_uuid_for_function(self) -> str:
-        name_str = self.name if self.name else "f"
+        name_str = self.name if self.name else ""
         member_strs = [member._get_uuid_str() for member in self.components] 
         return self._get_module_prefix_for_uuid() + f"{name_str}({member_strs[0]} -> {member_strs[1]})" 
 

@@ -59,18 +59,19 @@ class FlowVisitor(Visitor):
     def fn_type_(fn, state: Params) -> TypeClass:
         return TypeclassParser().apply(state)
 
-
-    no_action = ["start", "return", "seq", "cond", "mod"] 
-    @Visitor.for_asls(*no_action)
+    @Visitor.for_asls("start", "return", "cond", "seq")
     @records_typeclass
     @passes_if_critical_exception
     @returns_void_type
-    def no_action_(fn, state: Params) -> TypeClass:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module,
-                starting_mod=state.get_node_data().module))
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    @records_typeclass
+    @passes_if_critical_exception
+    @returns_void_type
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
 
     @Visitor.for_asls("!")
@@ -97,10 +98,9 @@ class FlowVisitor(Visitor):
     @records_typeclass
     @passes_if_critical_exception
     def scope_(fn, state: Params) -> TypeClass:
-        next_mod = state.starting_mod.get_child_module_by_name(state.first_child().value)
+        next_mod = state.mod.get_child_by_name(state.first_child().value)
         return fn.apply(state.but_with(
             asl=state.second_child(),
-            starting_mod=next_mod,
             mod=next_mod))
 
 
@@ -160,7 +160,7 @@ class FlowVisitor(Visitor):
                 instances.append(state.context.add_instance(SeerInstance(
                     name=name, 
                     type=typeclass, 
-                    context=state.get_module(), 
+                    context=state.get_enclosing_module(), 
                     asl=state.asl, 
                     is_ptr=state.is_ptr)))
         state.assign_instances(instances)
@@ -290,13 +290,11 @@ class FlowVisitor(Visitor):
     def fn(fn, state: Params) -> TypeClass:
         # inside the FunctionWrangler, (def ...) and (create ...) asls have been
         # normalized to have the same signature. therefore we can treat them identically
-        # here, more or less.
-
-        parent_context = state.get_parent_context() if state.asl.type == "def" else None
+        # here
         fn_context = Context(
-            name=Nodes.Def(state).get_function_name(),
+            name=Nodes.CommonFunction(state).get_name(),
             type=ContextTypes.fn,
-            parent=parent_context)
+            parent=state.get_parent_context())
 
         for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child, context=fn_context))
@@ -346,7 +344,7 @@ class FlowVisitor(Visitor):
             instance = SeerInstance(
                 name, 
                 typeclass, 
-                state.get_module(), 
+                state.get_enclosing_module(), 
                 state.asl)
 
             instances.append(instance)
@@ -380,7 +378,7 @@ class FlowVisitor(Visitor):
     @records_typeclass
     @passes_if_critical_exception
     def _type1(fn, state: Params) -> TypeClass:
-        typeclass = state.get_module().get_typeclass_by_name(name=state.first_child().value)
+        typeclass = state.get_enclosing_module().get_typeclass_by_name(name=state.first_child().value)
         if state.asl.type == "type":
             return typeclass.with_restriction(Restriction2.for_let())
         elif state.asl.type == "var_type":

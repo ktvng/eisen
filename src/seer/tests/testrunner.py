@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from os import walk
 import time
+import os
 import json
 import traceback
 
@@ -16,6 +17,7 @@ from seer.ast_interpreter import AstInterpreter
 
 class Test():
     testdir = "./src/seer/tests/"
+    cachedir = "./src/seer/tests/cache/"
     grammarfile = "./src/seer/grammar.gm"
 
     def __init__(self, name: str):
@@ -26,14 +28,26 @@ class Test():
         with open(Test.testdir + name + ".rs", 'r') as f:
             self.code = f.read()
 
+    def parse_asl_with_cache(self):
+        # config = alpaca.config.parser.run(filename=Test.grammarfile)
+        # if os.path.exists(self.cachedir + self.name):
+        #     with open(self.cachedir + self.name, "r") as f:
+        #         asl_str = f.read()
+        #         print(asl_str)
+        #     return alpaca.clr.CLRParser.run(config, asl_str)
+        return self.parse_asl()
+
     def parse_asl(self): 
         config = alpaca.config.parser.run(filename=Test.grammarfile)
         tokens = alpaca.lexer.run(text=self.code, config=config, callback=SeerCallback)
         return alpaca.parser.run(config, tokens, builder=SeerBuilder())
 
     def run(self) -> tuple[bool, str]:
-        asl = self.parse_asl()
+        asl = self.parse_asl_with_cache()
         config = alpaca.config.parser.run(filename=Test.grammarfile)
+        
+        config.cfg.get_subgrammar_from("ACTION")
+
         params = Params.create_initial(config, asl, txt=self.code)
         for step in Workflow.steps[:-1]:
             step().apply(params)
@@ -71,6 +85,7 @@ class TestParser():
 
 class TestRunner():
     testdir = "./src/seer/tests/"
+    cachedir = "./src/seer/tests/cache/"
     grammarfile = "./src/seer/grammar.gm"
 
     @classmethod
@@ -93,16 +108,20 @@ class TestRunner():
                 status, msg = False, f"unhandled exception: {e} {traceback.format_exc()}\n" + str(test.parse_asl())
             except:
                 status, msg = False, f"!! could not parse asl"
-        return status, msg
+        return status, msg  
+    
+    @classmethod
+    def get_all_test_names(cls) -> list[str]:
+        filenames = next(walk(TestRunner.testdir), (None, None, []))[2]
+        test_files = [f for f in filenames if f.endswith(".json")] 
+        return [t.split(".")[0] for t in test_files]
 
     @classmethod
     def run_all_tests(cls):
         start = time.perf_counter()
         successes = 0
-        filenames = next(walk(TestRunner.testdir), (None, None, []))[2]
-        test_files = [f for f in filenames if f.endswith(".json")]
-        for filename_and_ext in test_files:
-            testname = filename_and_ext.split(".")[0]
+        tests = cls.get_all_test_names()
+        for testname in tests:
             status, msg = cls.run_test_by_name(testname)
             
             if status:
@@ -125,6 +144,15 @@ class TestRunner():
             #     print("\n".join(["   " + l for l in msg.split("\n")]))
 
         end = time.perf_counter()
-        total_tests= len(test_files)
+        total_tests= len(tests)
         print(f"ran {total_tests} tests in {round(end-start, 4)}s, {successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
+
+    @classmethod
+    def rebuild_cache(cls):
+        for testname in cls.get_all_test_names():
+            test = Test(testname)
+            asl_str = str(test.parse_asl())
+            with open(cls.cachedir + testname, 'w') as f:
+                f.write(asl_str)
+        
         

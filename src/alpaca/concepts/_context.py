@@ -114,7 +114,7 @@ class Context():
     def add_type(self, type: Type):
         self.types.append(type)
 
-    def get_child_module_by_name(self, name: str) -> Context:
+    def get_child_by_name(self, name: str) -> Context:
         child_module_names = [m.name for m in self.children]
         if name in child_module_names:
             pos = child_module_names.index(name)

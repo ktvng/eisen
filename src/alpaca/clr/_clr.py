@@ -18,7 +18,7 @@ class CLRToken:
         if self.type == "TAG" or self.type == "int" or self.type == "bool" or self.type == "code":
             return self.value
         elif self.type == "str":
-            return f'{self.value}'
+            return f'"{self.value}"'
         else:
             return self.type
 

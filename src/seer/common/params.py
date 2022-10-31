@@ -32,7 +32,6 @@ class Params(AbstractParams):
             txt: str,
             context: Context,
             mod: Module,
-            starting_mod: Module,
             global_mod: Module,
             void_type: TypeClass,
             struct_name: str,
@@ -50,7 +49,6 @@ class Params(AbstractParams):
         self.context = context
         self.mod = mod
         self.struct_name = struct_name
-        self.starting_mod = starting_mod
         self.global_mod = global_mod
         self.void_type = void_type
         self.exceptions = exceptions
@@ -65,7 +63,6 @@ class Params(AbstractParams):
             txt: str = None,
             context: Context = None,
             mod: Context = None,
-            starting_mod: Context = None,
             global_mod: Context = None,
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
@@ -76,7 +73,6 @@ class Params(AbstractParams):
             ) -> Params:
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
-            starting_mod=starting_mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
             objs=objs, global_mod=global_mod, 
 
@@ -154,7 +150,6 @@ Token: {self.asl}
             txt=txt,
             context=None,
             mod=global_mod,
-            starting_mod=global_mod,
             global_mod=global_mod,
             void_type=void_type,
             struct_name=None,
@@ -165,9 +160,9 @@ Token: {self.asl}
         return self.asl.data
 
     def assign_module(self):
-        self.get_node_data().module = self.mod
+        self.get_node_data().enclosing_module = self.mod
 
-    def get_module(self) -> Module:
+    def get_enclosing_module(self) -> Module:
         return self.mod
 
     def assign_returned_typeclass(self, typeclass: TypeClass):
@@ -187,7 +182,7 @@ Token: {self.asl}
     def get_parent_context(self) -> Context:
         # if no current context, use the module as the parent context
         if self.context is None:
-            return self.get_module()
+            return self.get_enclosing_module()
         return self.context
 
     def get_bool_type(self) -> TypeClass:
@@ -216,3 +211,7 @@ Token: {self.asl}
     
     def get_restriction_for(self, name: str) -> Restriction:
         return self.context.get_obj(name)
+
+    def apply_fn_to_all_children(self, fn):
+        for child in self.asl:
+            fn.apply(self.but_with(asl=child))

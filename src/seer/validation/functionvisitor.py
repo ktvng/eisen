@@ -19,12 +19,15 @@ class FunctionVisitor(Visitor):
             input()
         return self._route(state.asl, state)
 
-    @Visitor.for_asls("start", "mod")
+
+    @Visitor.for_asls("start")
     def start_(fn, state: Params):
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                mod=state.get_node_data().module))
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+
 
     @Visitor.for_default
     def default_(fn, state: Params) -> None:
@@ -60,7 +63,8 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("def")
     def def_(fn, state: Params):
-        mod = state.get_module()
+        # we need to get the module that this node is defined in
+        mod = state.get_enclosing_module()
         state.assign_instances(mod.add_instance(
             SeerInstance(
                 name=Nodes.Def(state).get_function_name(),
@@ -75,8 +79,8 @@ class FunctionVisitor(Visitor):
         # we need to normalize the create asl before we can use the TypeclassParser
         # on it. see method documentation for why.
         node.normalize(struct_name=state.struct_name)
-        mod = state.get_module()
-
+        mod = state.get_enclosing_module()
+        
         # the name of the constructor is the same as the struct
         state.assign_instances(mod.add_instance(
             SeerInstance(

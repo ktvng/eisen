@@ -28,7 +28,7 @@ class TypeclassParser(Visitor):
         elif state.asl.type == "type":
             restriction = Restriction2.for_let()
 
-        found_type = state.get_module().get_typeclass_by_name(token.value)
+        found_type = state.get_enclosing_module().get_typeclass_by_name(token.value)
         if found_type:
             return found_type.with_restriction(restriction)
         raise Exception(f"unknown type! {token.value}")
@@ -40,7 +40,7 @@ class TypeclassParser(Visitor):
         if token.type != "TAG":
             raise Exception(f"(type ...) must be a TAG attribute, but got {token.type} instead")
 
-        found_type = state.get_module().get_typeclass_by_name(token.value)
+        found_type = state.get_enclosing_module().get_typeclass_by_name(token.value)
         if found_type:
             return found_type
         raise Exception(f"unknown type! {token.value}")
@@ -63,7 +63,7 @@ class TypeclassParser(Visitor):
     def fn_type_out(fn, state: Params) -> TypeClass:
         # eg. (fn_type_in/out (type(s) ...))
         if len(state.asl) == 0:
-            return state.get_module().resolve_type(TypeClassFactory.produce_novel_type("void"))
+            return state.get_enclosing_module().resolve_type(TypeClassFactory.produce_novel_type("void"))
         return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("fn_type")

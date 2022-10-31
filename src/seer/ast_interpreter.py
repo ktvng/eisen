@@ -8,7 +8,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Restriction2
 
 from seer.common import asls_of_type
-from seer.common.params import Params
+from seer.common.params import State
 from seer.validation.nodetypes import Nodes
 
 lambda_map = {
@@ -101,12 +101,12 @@ class AstInterpreter(Visitor):
         self.stdout = "";
         self.redirect_output = redirect_output
 
-    def apply(self, state: Params) -> list[Obj]:
+    def apply(self, state: State) -> list[Obj]:
         # print(state.asl)
         return self._route(state.asl, state)
 
     @Visitor.for_tokens
-    def token_(fn, state: Params):
+    def token_(fn, state: State):
         value = state.asl.value
         if state.asl.type == "int":
             value = int(state.asl.value)
@@ -116,18 +116,18 @@ class AstInterpreter(Visitor):
         return [Obj(value)]
 
     @Visitor.for_asls("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or")
-    def binop_(fn, state: Params):
+    def binop_(fn, state: State):
         op = state.asl.type
         left = fn.apply(state.but_with(asl=state.asl.first()))[0]
         right = fn.apply(state.but_with(asl=state.asl.second()))[0]
         return [Obj.apply_binary_operation(op, left, right)]
 
     @Visitor.for_asls("let")
-    def let_(fn, state: Params):
+    def let_(fn, state: State):
         return fn.apply(state.but_with(asl=state.asl.first()))
 
     @Visitor.for_asls("var")
-    def var_(fn, state: Params):
+    def var_(fn, state: State):
         objs = fn.apply(state.but_with(asl=state.asl.first()))
         for obj in objs:
             obj.is_var = True
@@ -135,7 +135,7 @@ class AstInterpreter(Visitor):
     
 
     @Visitor.for_asls(":")
-    def colon_(fn, state: Params):
+    def colon_(fn, state: State):
         if isinstance(state.asl.first(), CLRToken):
             names = [state.asl.first().value]
         else:
@@ -154,7 +154,7 @@ class AstInterpreter(Visitor):
 
 
     @Visitor.for_asls("<-")
-    def write_(fn, state: Params):
+    def write_(fn, state: State):
         left = fn.apply(state.but_with(asl=state.asl.first()))
         right = fn.apply(state.but_with(asl=state.asl.second()))
         for l, r in zip(left, right):
@@ -162,7 +162,7 @@ class AstInterpreter(Visitor):
         return [] 
 
     @Visitor.for_asls("=")
-    def eqs_(fn, state: Params):
+    def eqs_(fn, state: State):
         left = fn.apply(state.but_with(asl=state.asl.first()))
         right = fn.apply(state.but_with(asl=state.asl.second()))
         for l, r in zip(left, right):
@@ -170,20 +170,20 @@ class AstInterpreter(Visitor):
         return []
 
     @Visitor.for_asls("!")
-    def not_(fn, state: Params):
+    def not_(fn, state: State):
         objs = fn.apply(state.but_with(asl=state.asl.first()))
         x = [Obj(not objs[0].value)]
         return x
 
     @Visitor.for_asls("tuple")
-    def tuple(fn, state: Params):
+    def tuple(fn, state: State):
         objs = []
         for child in state.asl:
             objs += fn.apply(state.but_with(asl=child))
         return objs
 
     @Visitor.for_asls("+=", "-=", "/=", "*=")
-    def asseqs_(fn, state: Params):
+    def asseqs_(fn, state: State):
         # because (= (ref name) ...)
         name = state.asl.first().first().value
 
@@ -195,11 +195,11 @@ class AstInterpreter(Visitor):
         return []
 
     @Visitor.for_asls("mod", "struct", "interface")
-    def skip_(fn, state: Params):
+    def skip_(fn, state: State):
         return []
 
     @Visitor.for_asls("def")
-    def def_(fn, state: Params):
+    def def_(fn, state: State):
         fn_name = state.asl.first().value
         if fn_name == "main":
             # apply to the seq
@@ -207,7 +207,7 @@ class AstInterpreter(Visitor):
         return []
 
     @Visitor.for_asls("start", "seq")
-    def exec_(fn, state: Params):
+    def exec_(fn, state: State):
         for child in state.asl:
             result = fn.apply(state.but_with(asl=child))
             if isinstance(result, ReturnSignal):
@@ -215,7 +215,7 @@ class AstInterpreter(Visitor):
         return []
 
     @Visitor.for_asls("ilet", "ivar")
-    def ilet_(fn, state: Params):
+    def ilet_(fn, state: State):
         is_var = state.asl.type == "ivar"
         # this is the case for (ilet (tags x y) (...))
         if isinstance(state.asl.first(), CLRList):
@@ -239,15 +239,15 @@ class AstInterpreter(Visitor):
         return []
 
     @Visitor.for_asls("cast")
-    def cast_(fn, state: Params):
+    def cast_(fn, state: State):
         return fn.apply(state.but_with(asl=state.asl.first()))
 
     @Visitor.for_asls("return")
-    def return_(fn, state: Params):
+    def return_(fn, state: State):
         return ReturnSignal()
 
     @Visitor.for_asls("call")
-    def call_(fn, state: Params):
+    def call_(fn, state: State):
         node = Nodes.Call(state)
         
         # get the asl of type (fn <name>)
@@ -321,7 +321,7 @@ class AstInterpreter(Visitor):
         return return_values
 
     @Visitor.for_asls("ref")
-    def ref_(fn, state: Params):
+    def ref_(fn, state: State):
         name = state.asl.first().value
         local_obj = state.objs.get(name, None)
         if local_obj is not None:
@@ -333,23 +333,23 @@ class AstInterpreter(Visitor):
         
 
     @Visitor.for_asls(".")
-    def dot_(fn, state: Params):
+    def dot_(fn, state: State):
         obj = fn.apply(state.but_with(asl=state.asl.first()))[0]
         return [obj.get(state.asl.second().value)]
 
     @Visitor.for_asls("type")
-    def type_(fn, state: Params):
+    def type_(fn, state: State):
         return Obj(None)
 
     @Visitor.for_asls("while")
-    def while_(fn, state: Params):
+    def while_(fn, state: State):
         result = fn._handle_cond(state.but_with(asl=state.asl.first()))
         while result:
             result = fn._handle_cond(state.but_with(asl=state.asl.first()))
         return []
 
     @Visitor.for_asls("if")
-    def if_(fn, state: Params):
+    def if_(fn, state: State):
         for child in state.asl:
             if child.type == "cond":
                 was_true = fn._handle_cond(state.but_with(asl=child))
@@ -365,7 +365,7 @@ class AstInterpreter(Visitor):
                     return result
                 return []
 
-    def _handle_cond(fn, state: Params):
+    def _handle_cond(fn, state: State):
         condition = fn.apply(state.but_with(asl=state.asl.first()))[0]
         if condition.value:
             result = fn.apply(state.but_with(asl=state.asl.second()))

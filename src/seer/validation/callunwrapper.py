@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.clr import CLRList
 
-from seer.common.params import Params
+from seer.common.params import State
 from seer.common.nodedata import NodeData
 from seer.validation.nodetypes import Nodes
 
@@ -12,7 +12,7 @@ class CallUnwrapper():
     #   
     #   (raw_call (ref name) (fn name) (params ...)) ->
     #   (call (fn name) (params (ref name) ...)) 
-    def _unravel(cls, params: Params):
+    def _unravel(cls, params: State):
         node = Nodes.RawCall(params)
         ref_asl = node.get_ref_asl()
         fn_asl = node.get_fn_identifying_asl()
@@ -28,7 +28,7 @@ class CallUnwrapper():
             lst=[fn_asl, params_asl])
 
     @classmethod
-    def _construct_standard_call(cls, params: Params):
+    def _construct_standard_call(cls, params: State):
         node = Nodes.RawCall(params)
         ref_asl = node.get_ref_asl()
         fn_asl = node.get_fn_identifying_asl()
@@ -52,7 +52,7 @@ class CallUnwrapper():
             lst=[new_fn_asl, params_asl])
 
     @classmethod
-    def process(cls, params: Params):
+    def process(cls, params: State):
         if params.asl.type == "basic_call":
             cls._handle_basic_call(params)
         if cls._should_unravel(params):
@@ -64,7 +64,7 @@ class CallUnwrapper():
     # case is (raw_call (ref x) (fn run) (params )))))
     # note that (ref x) could also be an expression
     @classmethod
-    def _should_unravel(cls, params: Params) -> bool:
+    def _should_unravel(cls, params: State) -> bool:
         typeclass = params.but_with(asl=params.asl.first()).get_returned_typeclass()
         secondary_name = params.asl.second().first().value
         if typeclass.is_struct() and typeclass.has_member_attribute_with_name(secondary_name):

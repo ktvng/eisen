@@ -4,7 +4,7 @@ from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass, Restriction2
 
 from seer.common import Module
-from seer.common.params import Params
+from seer.common.params import State
 from seer.common.restriction import Restriction
 
 
@@ -20,7 +20,7 @@ def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
 
 class Nodes():
     class AbstractNodeInterface():
-        def __init__(self, state: Params):
+        def __init__(self, state: State):
             self.state = state
 
         def first_child(self):

@@ -100,7 +100,7 @@ def run_seer(filename: str):
     print(*asl_str, sep="\n")
 
     print("############ STANZA ###############")
-    params = seer.Params.create_initial(config, asl, txt)
+    params = seer.State.create_initial(config, asl, txt)
 
     for step in seer.Workflow.steps:
         print(step.__name__)

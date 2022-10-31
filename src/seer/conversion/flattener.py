@@ -4,7 +4,7 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
-from seer.common.params import Params
+from seer.common.params import State
 from seer.common import asls_of_type, Utils
 
 # date structure which contains the information obtain from flattening. 
@@ -25,10 +25,10 @@ class Flattener(Visitor):
         self.config = alpaca.config.parser.run("./src/seer/grammar.gm")
         self.counter = 0
 
-    def run(self, params: Params) -> CLRList:
+    def run(self, params: State) -> CLRList:
         return self.apply(params.but_with(params.asl)).asl
 
-    def apply(self, params: Params) -> FlatteningPacket:
+    def apply(self, params: State) -> FlatteningPacket:
         return self._apply([params], [params])
 
     # TODO: allow the reuse of old variables of the same type if they are freed up
@@ -37,11 +37,11 @@ class Flattener(Visitor):
         return f"__var{self.counter}__"
 
     @Visitor.covers(lambda x: isinstance(x, CLRToken))
-    def leaf_(fn, params: Params) -> FlatteningPacket:
+    def leaf_(fn, params: State) -> FlatteningPacket:
         return FlatteningPacket(params.asl, [])
 
     @Visitor.default
-    def default_(fn, params: Params) -> FlatteningPacket:
+    def default_(fn, params: State) -> FlatteningPacket:
         children = []
         auxillary = []
         for child in params.asl:
@@ -84,7 +84,7 @@ class Flattener(Visitor):
             auxillary=auxillary)
 
     @Visitor.covers(asls_of_type("seq"))
-    def seq_(fn, params: Params) -> tuple[CLRList, list[CLRList]]:
+    def seq_(fn, params: State) -> tuple[CLRList, list[CLRList]]:
         children = []
         for child in params.asl:
             if child.type == "call":
@@ -108,7 +108,7 @@ class Flattener(Visitor):
 
     # note, we do not need the wrangler to cover asls_of_type "call" because
     # all (call ...) lists should be caught and handled in their containing list
-    def _flatten_call(fn, params: Params) -> tuple[list[CLRList], list[CLRList]]:
+    def _flatten_call(fn, params: State) -> tuple[list[CLRList], list[CLRList]]:
         # this will flatten the (params ...) component of the (call ...) list.
         packet = fn.apply(params.but_with(asl=params.asl.second()))
 
@@ -169,7 +169,7 @@ class Flattener(Visitor):
     # return a tuple of two lists. the first list contains the code for the declaration
     # of any temporary variables. the second list contains the code for the return 
     # variables of the function
-    def _unpack_function_return_type(self, params: Params) -> tuple[list[str], list[str]]:
+    def _unpack_function_return_type(self, params: State) -> tuple[list[str], list[str]]:
         if params.asl.first().type == "prod_type":
             decls, refs = self._unpack_prod_type(params.but_with(asl=params.asl.first()))
         else:
@@ -178,7 +178,7 @@ class Flattener(Visitor):
 
     # TODO: fix 
     # type actually looks like (: n (type int))
-    def _unpack_type(self, params: Params) -> tuple[list[str], list[str]]:
+    def _unpack_type(self, params: State) -> tuple[list[str], list[str]]:
         typeclass = params.but_with(asl=params.asl.second()).get_returned_typeclass()
         prefix = "struct_" if type.is_struct() else ""
         type_name = Utils.get_name_of_type(
@@ -188,7 +188,7 @@ class Flattener(Visitor):
         var_name = self._produce_var_name()
         return [f"({prefix}decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]
 
-    def _unpack_prod_type(self, params: Params) -> tuple[list[str], list[str]]:
+    def _unpack_prod_type(self, params: State) -> tuple[list[str], list[str]]:
         all_decls, all_refs = [], []
         for child in params.asl:
             decls, refs = self._unpack_type(params.but_with(asl=child))

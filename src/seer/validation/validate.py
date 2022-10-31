@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import TypeClass, Context
 from seer.common import SeerInstance, Module
-from seer.common.params import Params
+from seer.common.params import State
 from seer.common.exceptions import Exceptions
 from seer.common.restriction import Restriction
 
@@ -26,7 +26,7 @@ class ValidationResult():
 # performs the actual validations
 class Validate:
     @classmethod
-    def _abort_signal(cls, state: Params) -> ValidationResult:
+    def _abort_signal(cls, state: State) -> ValidationResult:
         return ValidationResult(result=False, return_obj=state.abort_signal)
 
     @classmethod
@@ -34,7 +34,7 @@ class Validate:
         return ValidationResult(result=True, return_obj=return_obj)
 
     @classmethod
-    def equivalent_types(cls, state: Params, type1: TypeClass, type2: TypeClass) -> ValidationResult:
+    def equivalent_types(cls, state: State, type1: TypeClass, type2: TypeClass) -> ValidationResult:
         if any([state.abort_signal in (type1, type2)]):
             return Validate._abort_signal(state) 
 
@@ -47,7 +47,7 @@ class Validate:
 
 
     @classmethod
-    def tuple_sizes_match(cls, state: Params, lst1: list, lst2: list):
+    def tuple_sizes_match(cls, state: State, lst1: list, lst2: list):
         if len(lst1) != len(lst2):
             state.report_exception(Exceptions.TupleSizeMismatch(
                 msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}",
@@ -57,7 +57,7 @@ class Validate:
 
 
     @classmethod
-    def correct_argument_types(cls, state: Params, name: str, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
+    def correct_argument_types(cls, state: State, name: str, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
         if any([state.abort_signal in (fn_type, given_type)]):
             return Validate._abort_signal(state) 
 
@@ -80,7 +80,7 @@ class Validate:
 
 
     @classmethod
-    def instance_exists(cls, state: Params) -> ValidationResult:
+    def instance_exists(cls, state: State) -> ValidationResult:
         name = state.first_child().value
         instance = state.context.get_instance_by_name(name)
         if instance is None:
@@ -92,7 +92,7 @@ class Validate:
 
 
     @classmethod
-    def function_instance_exists_in_local_context(cls, state: Params) -> ValidationResult:
+    def function_instance_exists_in_local_context(cls, state: State) -> ValidationResult:
         return cls._instance_exists_in_container(
             state.first_child().value,
             state.context,
@@ -100,14 +100,14 @@ class Validate:
 
 
     @classmethod
-    def function_instance_exists_in_module(cls, state: Params) -> ValidationResult:
+    def function_instance_exists_in_module(cls, state: State) -> ValidationResult:
         return cls._instance_exists_in_container(
             state.first_child().value,
             state.get_enclosing_module(),
             state)
 
     @classmethod
-    def _instance_exists_in_container(cls, name: str, container: Context | Module, state: Params) -> ValidationResult:
+    def _instance_exists_in_container(cls, name: str, container: Context | Module, state: State) -> ValidationResult:
         instance = container.get_instance_by_name(name)
         if instance is None:
             state.report_exception(Exceptions.UndefinedFunction(
@@ -117,7 +117,7 @@ class Validate:
         return Validate._success(return_obj=instance)
     
     @classmethod
-    def name_is_unbound(cls, state: Params, name: str) -> ValidationResult:
+    def name_is_unbound(cls, state: State, name: str) -> ValidationResult:
         if state.context.find_instance(name) is not None:
             state.report_exception(Exceptions.RedefinedIdentifier(
                 msg=f"'{name}' is in use",
@@ -127,7 +127,7 @@ class Validate:
 
 
     @classmethod
-    def has_member_attribute(cls, state: Params, typeclass: TypeClass, attribute_name: str) -> ValidationResult:
+    def has_member_attribute(cls, state: State, typeclass: TypeClass, attribute_name: str) -> ValidationResult:
         if not typeclass.has_member_attribute_with_name(attribute_name):
             state.report_exception(Exceptions.MissingAttribute(
                 f"'{typeclass}' does not have member attribute '{attribute_name}'",
@@ -137,7 +137,7 @@ class Validate:
 
     
     @classmethod
-    def castable_types(cls, state: Params, type: TypeClass, cast_into_type: TypeClass) -> ValidationResult:
+    def castable_types(cls, state: State, type: TypeClass, cast_into_type: TypeClass) -> ValidationResult:
         if any([state.abort_signal in (type, cast_into_type)]):
             return Validate._abort_signal(state) 
 
@@ -149,12 +149,12 @@ class Validate:
         return Validate._success(return_obj=None)
 
     @classmethod
-    def all_implementations_are_complete(cls, state: Params, type: TypeClass):
+    def all_implementations_are_complete(cls, state: State, type: TypeClass):
         for interface in type.inherits:
             cls.implementation_is_complete(state, type, interface)
 
     @classmethod
-    def implementation_is_complete(cls, state: Params, type: TypeClass, inherited_type: TypeClass) -> ValidationResult:
+    def implementation_is_complete(cls, state: State, type: TypeClass, inherited_type: TypeClass) -> ValidationResult:
         encountered_exception = False
         for name, required_attribute_type in zip(inherited_type.component_names, inherited_type.components):
             if type.has_member_attribute_with_name(name):
@@ -176,7 +176,7 @@ class Validate:
 
     
     @classmethod
-    def embeddings_dont_conflict(cls, state: Params, typeclass: TypeClass):
+    def embeddings_dont_conflict(cls, state: State, typeclass: TypeClass):
         conflicts = False
         conflict_map: dict[tuple[str, TypeClass], bool] = {}
         
@@ -201,7 +201,7 @@ class Validate:
 
 
     @classmethod
-    def assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
+    def assignment_restrictions_met(cls, state: State, left_restriction: Restriction, right_restriction: Restriction):
         # print(state.asl)
         is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
         if not is_assignable:
@@ -213,7 +213,7 @@ class Validate:
         return Validate._success()
 
     @classmethod
-    def parameter_assignment_restrictions_met(cls, state: Params, left_restriction: Restriction, right_restriction: Restriction):
+    def parameter_assignment_restrictions_met(cls, state: State, left_restriction: Restriction, right_restriction: Restriction):
         # print(state.asl)
         is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
         if not is_assignable:

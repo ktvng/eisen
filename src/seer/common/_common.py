@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from seer.common.params import Params
+    from seer.common.params import State
 from alpaca.concepts import TypeClass, Instance, Context
 from alpaca.clr import CLRList
 
@@ -17,7 +17,7 @@ class ContextTypes:
     block = "block"
 
 def asls_of_type(type: str, *args):
-    def predicate(params: Params):
+    def predicate(params: State):
         return params.asl.type in list(args) + [type]
     return predicate
     

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeClass, TypeClassFactory, Restriction2
-from seer.common.params import Params
+from seer.common.params import State
 from seer.validation.nodetypes import Nodes
 
 ################################################################################
@@ -10,11 +10,11 @@ from seer.validation.nodetypes import Nodes
 #   type, interface_type, prod_type, types, fn_type_in, fn_type_out, fn_type, args, rets
 #   def, create, struct, interface
 class TypeclassParser(Visitor):
-    def apply(self, state: Params) -> TypeClass:
+    def apply(self, state: State) -> TypeClass:
         return self._route(state.asl, state)
 
     @Visitor.for_asls("type", "var_type")
-    def type_(fn, state: Params) -> TypeClass:
+    def type_(fn, state: State) -> TypeClass:
         """
         (type int)
         (var_type int)
@@ -27,14 +27,14 @@ class TypeclassParser(Visitor):
         raise Exception(f"unknown type! {node.get_name()}")
 
     @Visitor.for_asls(":")
-    def colon_(fn, state: Params) -> TypeClass:
+    def colon_(fn, state: State) -> TypeClass:
         """
         (: name (type int))
         """
         return fn.apply(state.but_with(asl=state.second_child()))
 
     @Visitor.for_asls("prod_type", "types")
-    def prod_type_(fn, state: Params) -> TypeClass:
+    def prod_type_(fn, state: State) -> TypeClass:
         """
         (prod_type (: name1 (type int)) (: name2 (type str)))
         (types (type int) (type str))
@@ -43,7 +43,7 @@ class TypeclassParser(Visitor):
         return TypeClassFactory.produce_tuple_type(components=component_types, global_mod=state.global_mod)
 
     @Visitor.for_asls("fn_type_in", "fn_type_out")
-    def fn_type_out(fn, state: Params) -> TypeClass:
+    def fn_type_out(fn, state: State) -> TypeClass:
         """
         (fn_type_in (type/s ...)
         (fn_type_out (type/s ...))
@@ -53,7 +53,7 @@ class TypeclassParser(Visitor):
         return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("fn_type")
-    def fn_type_(fn, state: Params) -> TypeClass:
+    def fn_type_(fn, state: State) -> TypeClass:
         """
         (fn_type (fn_type_in ...) (fn_type_out ...))
         """
@@ -63,7 +63,7 @@ class TypeclassParser(Visitor):
             mod=state.global_mod)
 
     @Visitor.for_asls("args", "rets")
-    def args_(fn, state: Params) -> TypeClass:
+    def args_(fn, state: State) -> TypeClass:
         """ 
         (args (type ...))
         """
@@ -72,7 +72,7 @@ class TypeclassParser(Visitor):
         return state.get_void_type().with_restriction(Restriction2.for_let())
 
     @Visitor.for_asls("def", "create", ":=")
-    def def_(fn, state: Params) -> TypeClass:
+    def def_(fn, state: State) -> TypeClass:
         """
         (def name (args ...) (rets ...) (seq ...))
         (create name (args ...) (rets ...) (seq ...)) # after normalization

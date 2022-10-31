@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeClass
-from seer.common.params import Params
+from seer.common.params import State
 from seer.validation.nodetypes import Nodes
 from seer.validation.typeclassparser import TypeclassParser
 from seer.validation.validate import Validate
@@ -13,19 +13,19 @@ from seer.validation.validate import Validate
 # themselves, or to other types which have yet to be defined, but exist in the 
 # same module.
 class FinalizeProtoInterfaceWrangler(Visitor):
-    def apply(self, state: Params) -> None:
+    def apply(self, state: State) -> None:
         return self._route(state.asl, state)
 
     @Visitor.for_asls("start")
-    def start_(fn, state: Params):
+    def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
     @Visitor.for_asls("mod")
-    def mod_(fn, state: Params):
+    def mod_(fn, state: State):
         Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
     @Visitor.for_asls("interface")
-    def interface_(fn, state: Params) -> None:
+    def interface_(fn, state: State) -> None:
         node = Nodes.Interface(state)
         this_interface_typeclass = node.get_this_typeclass()
         
@@ -37,25 +37,25 @@ class FinalizeProtoInterfaceWrangler(Visitor):
             inherits=[])
 
     @Visitor.for_default
-    def default_(fn, state: Params) -> None:
+    def default_(fn, state: State) -> None:
         # nothing to do by default
         return
 
 
 class FinalizeProtoStructWrangler(Visitor):
-    def apply(self, state: Params) -> None:
+    def apply(self, state: State) -> None:
         return self._route(state.asl, state)
 
     @Visitor.for_asls("start")
-    def start_(fn, state: Params):
+    def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
     @Visitor.for_asls("mod")
-    def mod_(fn, state: Params):
+    def mod_(fn, state: State):
         Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
  
     @Visitor.for_asls("struct")
-    def struct_(fn, state: Params) -> None:
+    def struct_(fn, state: State) -> None:
         node = Nodes.Struct(state)
         this_struct_typeclass = node.get_this_typeclass()
         this_struct_typeclass.finalize(
@@ -70,7 +70,7 @@ class FinalizeProtoStructWrangler(Visitor):
         Validate.all_implementations_are_complete(state, this_struct_typeclass)
 
     @Visitor.for_default
-    def default_(fn, state: Params) -> None:
+    def default_(fn, state: State) -> None:
         # nothing to do by default
         return
     

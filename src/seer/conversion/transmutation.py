@@ -7,7 +7,7 @@ from alpaca.concepts import Type, Context, Instance
 from alpaca.validator import AbstractParams
 
 from seer.common import asls_of_type, Utils
-from seer.common.params import Params as Params0
+from seer.common.params import State as Params0
 
 class SharedCounter():
     def __init__(self, n: int):

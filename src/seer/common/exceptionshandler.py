@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from seer.common.params import Params
+from seer.common.params import State
 
 class ExceptionsHandler():
-    def apply(cls, params: Params):
+    def apply(cls, params: State):
         for e in params.exceptions:
             print(e.to_str_with_context(params.txt))
         

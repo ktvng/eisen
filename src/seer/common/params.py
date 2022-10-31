@@ -1,6 +1,4 @@
 from __future__ import annotations
-from ast import Mod
-from re import A
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
@@ -27,7 +25,7 @@ class SharedBool():
     def set(self, value: bool):
         self.value = value
 
-class Params(AbstractParams):
+class State(AbstractParams):
     def __init__(self, 
             config: Config, 
             asl: CLRList, 
@@ -70,7 +68,7 @@ class Params(AbstractParams):
 
             # used for interpreter
             objs: dict[str, InterpreterObject] = None,
-            ) -> Params:
+            ) -> State:
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
@@ -132,7 +130,7 @@ Token: {self.asl}
 """
 
     @classmethod
-    def create_initial(cls, config: Config, asl: CLRList, txt: str) -> Params:
+    def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
         global_mod = Context("global", type=ContextTypes.mod)
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
@@ -140,7 +138,7 @@ Token: {self.asl}
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
 
-        return Params(
+        return State(
             config=config, 
             asl=asl,
             txt=txt,

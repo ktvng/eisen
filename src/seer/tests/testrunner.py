@@ -11,7 +11,7 @@ import alpaca
 from seer.parsing.callback import SeerCallback
 from seer.parsing.customparser import CustomParser
 from seer.parsing.builder import SeerBuilder
-from seer.common.params import Params
+from seer.common.params import State
 from seer.validation.workflow import Workflow
 from seer.ast_interpreter import AstInterpreter
 
@@ -48,7 +48,7 @@ class Test():
         
         config.cfg.get_subgrammar_from("ACTION")
 
-        params = Params.create_initial(config, asl, txt=self.code)
+        params = State.create_initial(config, asl, txt=self.code)
         for step in Workflow.steps[:-1]:
             step().apply(params)
 

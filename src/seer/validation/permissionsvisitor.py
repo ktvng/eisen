@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import CLRList
 from alpaca.concepts import Context
 
-from seer.common import asls_of_type, ContextTypes, binary_ops, boolean_return_ops
+from seer.common import ContextTypes, binary_ops, boolean_return_ops
 from seer.common.params import Params
 from seer.common.restriction import Restriction
 

@@ -148,6 +148,10 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
+    @classmethod
+    def all_implementations_are_complete(cls, state: Params, type: TypeClass):
+        for interface in type.inherits:
+            cls.implementation_is_complete(state, type, interface)
 
     @classmethod
     def implementation_is_complete(cls, state: Params, type: TypeClass, inherited_type: TypeClass) -> ValidationResult:

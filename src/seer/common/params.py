@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import Mod
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
@@ -33,7 +34,6 @@ class Params(AbstractParams):
             context: Context,
             mod: Module,
             global_mod: Module,
-            void_type: TypeClass,
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
@@ -50,7 +50,6 @@ class Params(AbstractParams):
         self.mod = mod
         self.struct_name = struct_name
         self.global_mod = global_mod
-        self.void_type = void_type
         self.exceptions = exceptions
         self.is_ptr = is_ptr
         self.critical_exception = critical_exception
@@ -77,7 +76,7 @@ class Params(AbstractParams):
             objs=objs, global_mod=global_mod, 
 
             # these cannot be changed by input params 
-            void_type=self.void_type, critical_exception=self.critical_exception)
+            critical_exception=self.critical_exception)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -138,11 +137,7 @@ Token: {self.asl}
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt", global_mod=global_mod))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
-
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
-
-        void_type = TypeClassFactory.produce_novel_type("void", global_mod=global_mod)
-        global_mod.add_typeclass(void_type)
 
         return Params(
             config=config, 
@@ -151,13 +146,17 @@ Token: {self.asl}
             context=None,
             mod=global_mod,
             global_mod=global_mod,
-            void_type=void_type,
             struct_name=None,
             exceptions=[],
             is_ptr=False)
 
     def get_node_data(self) -> NodeData:
         return self.asl.data
+
+    def get_context(self) -> Context | Module:
+        if self.context is not None:
+            return self.context
+        return self.mod
 
     def get_enclosing_module(self) -> Module:
         return self.mod
@@ -212,3 +211,9 @@ Token: {self.asl}
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:
             fn.apply(self.but_with(asl=child))
+
+    def get_void_type(self) -> TypeClass:
+        return TypeClassFactory.produce_novel_type("void", global_mod=self.global_mod)
+
+    def is_asl(self) -> bool:
+        return isinstance(self.asl, CLRList)

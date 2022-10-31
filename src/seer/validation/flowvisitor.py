@@ -3,12 +3,20 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import TypeClass, TypeClassFactory, Context, Restriction2
-from seer.common import asls_of_type, ContextTypes, SeerInstance, binary_ops, boolean_return_ops
+from seer.common import ContextTypes, SeerInstance, binary_ops, boolean_return_ops
 from seer.common.params import Params
 from seer.validation.nodetypes import Nodes
 from seer.validation.typeclassparser import TypeclassParser
 from seer.validation.validate import Validate
 from seer.validation.callunwrapper import CallUnwrapper
+
+class FlowHelpers:
+    @classmethod
+    def create_block_context(cls, state: Params, name: str) -> Context:
+        return Context(
+            name=name,
+            type=ContextTypes.block,
+            parent=state.get_parent_context())
 
 ################################################################################
 # this evaluates the flow of typeclasses throughout the asl, and records which 
@@ -24,66 +32,44 @@ class FlowVisitor(Visitor):
             print(state.inspect())
             print("\n"*4)
             input()
-        return self._route(state.asl, state)
 
-    # this records the typeclass which flows up through this node (state.asl) 
-    # so that it can be referenced later via state.get_returned_typeclass()
-    def records_typeclass(f):
-        def decorator(fn, state: Params):
-            result: TypeClass = f(fn, state)
+        # this guards the function such that if there is a critical exception thrown
+        # downstream, the method will skip execution.
+        if state.critical_exception:
+            return state.get_void_type()
+
+        result = self._route(state.asl, state)
+        if state.is_asl():
             state.assign_returned_typeclass(result)
-            return result
-        return decorator
-
-    # this guards the function such that if there is a critical exception thrown
-    # downstream, the method will skip execution.
-    def passes_if_critical_exception(f):
-        def decorator(fn, state: Params):
-            if state.critical_exception:
-                return state.void_type,
-            return f(fn, state)
-        return decorator
+        return result
 
     # this signifies that the void type should be returned. abstract this so if 
     # the void_type is changed, we can easily configure it here.
     def returns_void_type(f):
         def decorator(fn, state: Params):
             f(fn, state)
-            return state.void_type
+            return state.get_void_type()
         return decorator
 
-
     @Visitor.for_asls("fn_type")
-    @records_typeclass
-    @passes_if_critical_exception
     def fn_type_(fn, state: Params) -> TypeClass:
         return TypeclassParser().apply(state)
 
     @Visitor.for_asls("start", "return", "cond", "seq")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def start_(fn, state: Params):
         state.apply_fn_to_all_children(fn)
 
     @Visitor.for_asls("mod")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def mod_(fn, state: Params):
         Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
-
     @Visitor.for_asls("!")
-    @records_typeclass
-    @passes_if_critical_exception
     def not_(fn, state: Params) -> TypeClass:
         return fn.apply(state.but_with(asl=state.first_child()))
 
-
     @Visitor.for_asls(".")
-    @records_typeclass
-    @passes_if_critical_exception
     def dot_(fn, state: Params) -> TypeClass:
         parent_typeclass = fn.apply(state.but_with(asl=state.first_child()))
         name = state.second_child().value
@@ -92,62 +78,42 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return parent_typeclass.get_member_attribute_by_name(name)
 
-
     # TODO: will this work for a::b()?
     @Visitor.for_asls("::")
-    @records_typeclass
-    @passes_if_critical_exception
     def scope_(fn, state: Params) -> TypeClass:
-        next_mod = state.get_enclosing_module().get_child_by_name(state.first_child().value)
+        entering_into_mod = state.get_enclosing_module().get_child_by_name(state.first_child().value)
         return fn.apply(state.but_with(
             asl=state.second_child(),
-            mod=next_mod))
-
+            mod=entering_into_mod))
 
     @Visitor.for_asls("tuple", "params", "prod_type")
-    @records_typeclass
-    @passes_if_critical_exception
     def tuple_(fn, state: Params) -> TypeClass:
         if len(state.asl) == 0:
-            return state.void_type
+            return state.get_void_type()
+        if len(state.asl) == 1:
+            # if there is only one child, then we simply pass the type back, not as a tuple
+            return fn.apply(state.but_with(asl=state.first_child()))
         if len(state.asl) > 1:
             return TypeClassFactory.produce_tuple_type(
                 components=[fn.apply(state.but_with(asl=child)) for child in state.asl],
                 global_mod=state.global_mod)
-        # if there is only one child, then we simply pass the type back, not as a tuple
-        return fn.apply(state.but_with(asl=state.first_child()))
-
 
     @Visitor.for_asls("if")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def if_(fn, state: Params) -> TypeClass:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
-                context=Context(
-                    name="if",
-                    type=ContextTypes.block,
-                    parent=state.get_parent_context())))
-
+                context=FlowHelpers.create_block_context(state, "if")))
 
     @Visitor.for_asls("while")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def while_(fn, state: Params) -> TypeClass:
         fn.apply(state.but_with(
             asl=state.first_child(),
-            context=Context(
-                name="while", 
-                type=ContextTypes.block, 
-                parent=state.get_parent_context())))
-
+            context=FlowHelpers.create_block_context(state, "if")))
 
     @Visitor.for_asls(":")
-    @records_typeclass
-    @passes_if_critical_exception
     def colon_(fn, state: Params) -> TypeClass:
         node = Nodes.Colon(state)
         names = node.get_names()
@@ -166,17 +132,14 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
         return typeclass
 
-
     @Visitor.for_asls("fn")
-    @records_typeclass
-    @passes_if_critical_exception
     def fn_(fn, state: Params) -> TypeClass:
         node = Nodes.Fn(state)
         if node.is_print():
             # TODO: handle this better
             return TypeClassFactory.produce_function_type(
-                    arg=state.void_type,
-                    ret=state.void_type,
+                    arg=state.get_void_type(),
+                    ret=state.get_void_type(),
                     mod=state.global_mod)
         if node.is_simple():
             result = Validate.function_instance_exists_in_local_context(state)
@@ -189,10 +152,7 @@ class FlowVisitor(Visitor):
         else:
             return fn.apply(state.but_with(asl=state.first_child()))
 
-
     @Visitor.for_asls("disjoint_fn")
-    @records_typeclass
-    @passes_if_critical_exception
     def disjoint_ref_(fn, state: Params) -> TypeClass:
         result = Validate.function_instance_exists_in_module(state)
         if result.failed():
@@ -202,10 +162,7 @@ class FlowVisitor(Visitor):
         state.assign_instances(instance)
         return instance.type
 
-
     @Visitor.for_asls("call")
-    @records_typeclass
-    @passes_if_critical_exception
     def call_(fn, state: Params) -> TypeClass:
         fn_type = fn.apply(state.but_with(asl=state.first_child()))
         if fn_type == state.abort_signal:
@@ -223,10 +180,7 @@ class FlowVisitor(Visitor):
 
         return fn_type.get_return_type()
 
-
     @Visitor.for_asls("raw_call")
-    @records_typeclass
-    @passes_if_critical_exception
     def raw_call(fn, state: Params) -> TypeClass:
         # e.g. (raw_call (expr ...) (fn name) (state ...))
         # because the first element can be a list itself, we need to apply the 
@@ -240,29 +194,20 @@ class FlowVisitor(Visitor):
         # now we have converted the (raw_call ...) into a normal (call ...) asl 
         # so we can apply fn to the state again with the new asl.
         return fn.apply(state)
-         
 
     @Visitor.for_asls("struct")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def struct(fn, state: Params) -> TypeClass:
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
-
     @Visitor.for_asls("interface")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def interface_(fn, state: Params) -> TypeClass:
         return
 
-
     @Visitor.for_asls("cast")
-    @records_typeclass
-    @passes_if_critical_exception
     def cast(fn, state: Params) -> TypeClass:
         # (cast (ref name) (type into))
         left_typeclass = fn.apply(state.but_with(asl=state.first_child()))
@@ -275,34 +220,22 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return right_typeclass
 
-
     @Visitor.for_asls("impls")
-    @records_typeclass
-    @passes_if_critical_exception
     def impls(fn, state: Params) -> TypeClass:
-        return state.void_type
-
+        return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def fn(fn, state: Params) -> TypeClass:
         # inside the FunctionWrangler, (def ...) and (create ...) asls have been
         # normalized to have the same signature. therefore we can treat them identically
         # here
-        fn_context = Context(
-            name=Nodes.CommonFunction(state).get_name(),
-            type=ContextTypes.fn,
-            parent=state.get_parent_context())
-
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child, context=fn_context))
-
+            fn.apply(state.but_with(asl=child, 
+            context=FlowHelpers.create_block_context(state, "fn") ))
 
     # we don't need to add/record typeclasses because this is a CLRToken
     @Visitor.for_tokens
-    @passes_if_critical_exception
     def token_(fn, state: Params) -> TypeClass:
         # TODO: make this nicer
         if state.asl.type in ["str", "int", "bool"]:
@@ -311,10 +244,7 @@ class FlowVisitor(Visitor):
             print(state.asl)
             raise Exception(f"unexpected token type of {state.asl.type}")
 
-
     @Visitor.for_asls("ilet", "ivar")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def idecls_(fn, state: Params):
         node = Nodes.Ilet(state)
@@ -349,12 +279,9 @@ class FlowVisitor(Visitor):
 
             instances.append(instance)
             state.context.add_instance(instance)
-
         state.assign_instances(instances)
 
     @Visitor.for_asls("var")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def var_(fn, state: Params):
         # validations occur inside the (: ...) asl 
@@ -365,8 +292,6 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances) 
 
     @Visitor.for_asls("val", "mut_val", "mut_var", "let")
-    @records_typeclass
-    @passes_if_critical_exception
     @returns_void_type
     def decls_(fn, state: Params):
         # validations occur inside the (: ...) asl 
@@ -375,8 +300,6 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
 
     @Visitor.for_asls("type", "type?", "var_type")
-    @records_typeclass
-    @passes_if_critical_exception
     def _type1(fn, state: Params) -> TypeClass:
         typeclass = state.get_enclosing_module().get_typeclass_by_name(name=state.first_child().value)
         if state.asl.type == "type":
@@ -384,10 +307,7 @@ class FlowVisitor(Visitor):
         elif state.asl.type == "var_type":
             return typeclass.with_restriction(Restriction2.for_var())
 
-
     @Visitor.for_asls(*binary_ops)
-    @records_typeclass
-    @passes_if_critical_exception
     def binary_ops(fn, state: Params) -> TypeClass:
         left_type = fn.apply(state.but_with(asl=state.first_child()))
         right_type = fn.apply(state.but_with(asl=state.second_child()))
@@ -398,8 +318,6 @@ class FlowVisitor(Visitor):
         return left_type
     
     @Visitor.for_asls(*boolean_return_ops)
-    @records_typeclass
-    @passes_if_critical_exception
     def boolean_return_ops_(fn, state: Params) -> TypeClass:
         left_type = fn.apply(state.but_with(asl=state.first_child()))
         right_type = fn.apply(state.but_with(asl=state.second_child()))
@@ -409,10 +327,7 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return state.get_bool_type()
 
-
     @Visitor.for_asls("=")
-    @records_typeclass
-    @passes_if_critical_exception
     def assigns(fn, state: Params) -> TypeClass:
         left_type = fn.apply(state.but_with(asl=state.first_child()))
         right_type = fn.apply(state.but_with(asl=state.second_child()))
@@ -421,11 +336,8 @@ class FlowVisitor(Visitor):
         if result.failed():
             return result.get_failure_type()
         return left_type
-        
 
     @Visitor.for_asls("<-")
-    @records_typeclass
-    @passes_if_critical_exception
     def larrow_(fn, state: Params) -> TypeClass:
         left_type = fn.apply(state.but_with(asl=state.first_child()))
         right_type = fn.apply(state.but_with(asl=state.second_child()))
@@ -435,10 +347,7 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return left_type
 
-
     @Visitor.for_asls("ref")
-    @records_typeclass
-    @passes_if_critical_exception
     def ref_(fn, state: Params) -> TypeClass:
         result = Validate.instance_exists(state)
         if result.failed():
@@ -448,22 +357,16 @@ class FlowVisitor(Visitor):
         state.assign_instances(instance)
         return instance.type
 
-
     @Visitor.for_asls("args")
-    @records_typeclass
-    @passes_if_critical_exception
     def args_(fn, state: Params) -> TypeClass:
         if not state.asl:
-            return state.void_type
+            return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=False))
 
-
     @Visitor.for_asls("rets")
-    @records_typeclass
-    @passes_if_critical_exception
     def rets_(fn, state: Params) -> TypeClass:
         if not state.asl:
-            return state.void_type
+            return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
 
 

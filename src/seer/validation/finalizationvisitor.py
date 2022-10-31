@@ -31,7 +31,8 @@ class FinalizeProtoInterfaceWrangler(Visitor):
         
         # TODO: consider whether or not to allow interfaces to inherit from other interfaces
         this_interface_typeclass.finalize(
-            components=[TypeclassParser().apply(state.but_with(asl=child)) for child in node.get_child_attribute_asls()],
+            components=[TypeclassParser().apply(state.but_with(asl=child)) 
+                for child in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),
             inherits=[])
 
@@ -57,21 +58,19 @@ class FinalizeProtoStructWrangler(Visitor):
     def struct_(fn, state: Params) -> None:
         node = Nodes.Struct(state)
         this_struct_typeclass = node.get_this_typeclass()
-
-        interfaces: list[TypeClass] = node.get_implemented_interfaces()
-        embeddings: list[TypeClass] = node.get_embedded_structs()
         this_struct_typeclass.finalize(
-            components=[TypeclassParser().apply(state.but_with(asl=asl)) for asl in node.get_child_attribute_asls()],
+            components=[TypeclassParser().apply(state.but_with(asl=asl)) 
+                for asl in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),
-            inherits=interfaces,
-            embeds=embeddings)
+            inherits=node.get_implemented_interfaces(),
+            embeds=node.get_embedded_structs())
 
-        for interface in interfaces:
-            Validate.implementation_is_complete(state, this_struct_typeclass, interface)
-
+        # perform validations
         Validate.embeddings_dont_conflict(state, this_struct_typeclass)
+        Validate.all_implementations_are_complete(state, this_struct_typeclass)
 
     @Visitor.for_default
     def default_(fn, state: Params) -> None:
         # nothing to do by default
         return
+    

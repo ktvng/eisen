@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeClass, TypeClassFactory
-from seer.common import asls_of_type
 from seer.common.params import Params
 from seer.validation.nodetypes import Nodes
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
-from operator import mod
-from string import ascii_letters
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.concepts._typeclass import TypeClass
+from alpaca.concepts._typeclass import TypeClass, Restriction2
 
 from seer.common import Module
 from seer.common.params import Params
@@ -395,4 +393,18 @@ class Nodes():
 
         def get_params_asl(self) -> CLRList:
             return self.third_child()
-        
+
+    class TypeLike(AbstractNodeInterface):
+        asl_type = "type" 
+        examples = """
+        (type name)
+        (var_type name)
+        """
+        get_name = get_name_from_first_child
+
+        def get_restriction(self) -> Restriction2:
+            if self.state.asl.type == "var_type":
+                restriction = Restriction2.for_var()
+            elif self.state.asl.type == "type":
+                restriction = Restriction2.for_let()
+            return restriction

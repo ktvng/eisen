@@ -159,9 +159,6 @@ Token: {self.asl}
     def get_node_data(self) -> NodeData:
         return self.asl.data
 
-    def assign_module(self):
-        self.get_node_data().enclosing_module = self.mod
-
     def get_enclosing_module(self) -> Module:
         return self.mod
 

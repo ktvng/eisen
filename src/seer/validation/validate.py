@@ -103,7 +103,7 @@ class Validate:
     def function_instance_exists_in_module(cls, state: Params) -> ValidationResult:
         return cls._instance_exists_in_container(
             state.first_child().value,
-            state.mod,
+            state.get_enclosing_module(),
             state)
 
     @classmethod

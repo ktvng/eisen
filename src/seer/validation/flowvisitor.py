@@ -98,7 +98,7 @@ class FlowVisitor(Visitor):
     @records_typeclass
     @passes_if_critical_exception
     def scope_(fn, state: Params) -> TypeClass:
-        next_mod = state.mod.get_child_by_name(state.first_child().value)
+        next_mod = state.get_enclosing_module().get_child_by_name(state.first_child().value)
         return fn.apply(state.but_with(
             asl=state.second_child(),
             mod=next_mod))

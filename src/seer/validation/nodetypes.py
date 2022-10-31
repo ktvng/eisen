@@ -355,7 +355,7 @@ class Nodes():
         """
 
         def get_function_type(self) -> TypeClass:
-            working_mod = self.state.mod
+            working_mod = self.state.get_enclosing_module()
             next_asl = self.state.asl
             while next_asl.type == "::":
                 # the name is stored as the CLRToken in the first position

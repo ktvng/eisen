@@ -11,22 +11,12 @@ class ModuleVisitor(Visitor):
     def apply(self, state: Params):
         return self._route(state.asl, state)
 
-    # set the module inside which a given asl resides.
-    def sets_module(f):
-        def decorator(fn, state: Params):
-            state.assign_module()
-            return f(fn, state)
-        return decorator
-
-    @Visitor.for_default
-    @sets_module
-    def default_(fn, state: Params) -> Module:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+    @Visitor.for_asls("start")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
 
 
     @Visitor.for_asls("mod")
-    @sets_module
     def mod_(fn, state: Params) -> Module:
         node = Nodes.Mod(state)
         # create a new module; the name of the module is stored as a CLRToken
@@ -38,4 +28,7 @@ class ModuleVisitor(Visitor):
 
         node.set_entered_module(new_mod)
         node.enter_module_and_apply_fn_to_child_asls(fn)
-                
+
+    @Visitor.for_default
+    def default_(fn, state: Params):
+        return

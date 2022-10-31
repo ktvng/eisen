@@ -5,7 +5,6 @@ from seer.common import SeerInstance, Module
 
 class NodeData():
     def __init__(self):
-        self.enclosing_module: Module = None
         self.instances: list[SeerInstance] = None
         self.returned_typeclass = None
         self.enters_module: Module = None

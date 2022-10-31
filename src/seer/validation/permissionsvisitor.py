@@ -20,14 +20,19 @@ class PermissionsVisitor(Visitor):
             input()
         return self._route(state.asl, state)
 
+    @Visitor.for_asls("start", "seq", "cond")
+    def start_(fn, state: Params):
+        state.apply_fn_to_all_children(fn)
+        return []
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: Params):
+        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        return []
+
     @Visitor.for_asls("def", "create")
     def defs_(fn, state: Params) -> list[Restriction]:
-        node = Nodes.CommonFunction(state)
-        fn_context = Context(
-            name=node.get_name(),
-            type=ContextTypes.fn,
-            parent=None)
-
+        fn_context = state.create_block_context("func") 
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child,
@@ -73,38 +78,19 @@ class PermissionsVisitor(Visitor):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
-                context=Context(
-                    name="if",
-                    type=ContextTypes.block,
-                    parent=state.get_parent_context())))
+                context=state.create_block_context("if")))
         return []
-
 
     @Visitor.for_asls("while")
     def while_(fn, state: Params) -> list[Restriction]:
         fn.apply(state.but_with(
             asl=state.first_child(),
-            context=Context(
-                name="while", 
-                type=ContextTypes.block, 
-                parent=state.get_parent_context())))
+            context=state.create_block_context("while")))
         return []
-
-    @Visitor.for_asls("start", "seq", "cond")
-    def start_(fn, state: Params):
-        state.apply_fn_to_all_children(fn)
-        return []
-
-    @Visitor.for_asls("mod")
-    def mod_(fn, state: Params):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
-        return []
-
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: Params) -> list[Restriction]:
-        node = Nodes.Ref(state)
-        return [state.get_restriction_for(node.get_name())]
+        return [state.get_restriction_for(Nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("let")
     def let_(fn, state: Params) -> list[Restriction]:

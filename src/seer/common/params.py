@@ -1,5 +1,6 @@
 from __future__ import annotations
 from ast import Mod
+from re import A
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
@@ -217,3 +218,9 @@ Token: {self.asl}
 
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)
+
+    def create_block_context(self, name: str) -> Context:
+        return Context(
+            name=name,
+            type=ContextTypes.block,
+            parent=self.get_parent_context())

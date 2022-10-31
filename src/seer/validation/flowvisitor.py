@@ -2,21 +2,13 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
-from alpaca.concepts import TypeClass, TypeClassFactory, Context, Restriction2
-from seer.common import ContextTypes, SeerInstance, binary_ops, boolean_return_ops
+from alpaca.concepts import TypeClass, TypeClassFactory, Restriction2
+from seer.common import SeerInstance, binary_ops, boolean_return_ops
 from seer.common.params import Params
 from seer.validation.nodetypes import Nodes
 from seer.validation.typeclassparser import TypeclassParser
 from seer.validation.validate import Validate
 from seer.validation.callunwrapper import CallUnwrapper
-
-class FlowHelpers:
-    @classmethod
-    def create_block_context(cls, state: Params, name: str) -> Context:
-        return Context(
-            name=name,
-            type=ContextTypes.block,
-            parent=state.get_parent_context())
 
 ################################################################################
 # this evaluates the flow of typeclasses throughout the asl, and records which 
@@ -78,7 +70,6 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return parent_typeclass.get_member_attribute_by_name(name)
 
-    # TODO: will this work for a::b()?
     @Visitor.for_asls("::")
     def scope_(fn, state: Params) -> TypeClass:
         entering_into_mod = state.get_enclosing_module().get_child_by_name(state.first_child().value)
@@ -104,14 +95,14 @@ class FlowVisitor(Visitor):
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
-                context=FlowHelpers.create_block_context(state, "if")))
+                context=state.create_block_context("if")))
 
     @Visitor.for_asls("while")
     @returns_void_type
     def while_(fn, state: Params) -> TypeClass:
         fn.apply(state.but_with(
             asl=state.first_child(),
-            context=FlowHelpers.create_block_context(state, "if")))
+            context=state.create_block_context("while")))
 
     @Visitor.for_asls(":")
     def colon_(fn, state: Params) -> TypeClass:
@@ -126,7 +117,7 @@ class FlowVisitor(Visitor):
                 instances.append(state.context.add_instance(SeerInstance(
                     name=name, 
                     type=typeclass, 
-                    context=state.get_enclosing_module(), 
+                    context=state.get_context(), 
                     asl=state.asl, 
                     is_ptr=state.is_ptr)))
         state.assign_instances(instances)
@@ -202,7 +193,7 @@ class FlowVisitor(Visitor):
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_asls("interface", "impls")
     @returns_void_type
     def interface_(fn, state: Params) -> TypeClass:
         return
@@ -213,16 +204,13 @@ class FlowVisitor(Visitor):
         left_typeclass = fn.apply(state.but_with(asl=state.first_child()))
         right_typeclass = fn.apply(state.but_with(asl=state.second_child()))
 
-        result = Validate.castable_types(state, 
+        result = Validate.castable_types(
+            state=state, 
             type=left_typeclass, 
             cast_into_type=right_typeclass)
         if result.failed():
             return result.get_failure_type()
         return right_typeclass
-
-    @Visitor.for_asls("impls")
-    def impls(fn, state: Params) -> TypeClass:
-        return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=")
     @returns_void_type
@@ -230,9 +218,11 @@ class FlowVisitor(Visitor):
         # inside the FunctionWrangler, (def ...) and (create ...) asls have been
         # normalized to have the same signature. therefore we can treat them identically
         # here
+        fn_context = state.create_block_context("func")
         for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child, 
-            context=FlowHelpers.create_block_context(state, "fn") ))
+            fn.apply(state.but_with(
+                asl=child, 
+                context=fn_context))
 
     # we don't need to add/record typeclasses because this is a CLRToken
     @Visitor.for_tokens
@@ -274,7 +264,7 @@ class FlowVisitor(Visitor):
             instance = SeerInstance(
                 name, 
                 typeclass, 
-                state.get_enclosing_module(), 
+                state.get_context(), 
                 state.asl)
 
             instances.append(instance)
@@ -368,6 +358,3 @@ class FlowVisitor(Visitor):
         if not state.asl:
             return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
-
-
-

@@ -15,7 +15,6 @@ class Context():
     def __init__(self, name: str, type: str, parent: Context = None):
         self.name = name
         self.type = type
-        self.types: list[Type] = []
         self.typeclasses: list[TypeClass] = []
         self.objs: dict[str, Any] = {}
 
@@ -23,7 +22,7 @@ class Context():
         self.parent = parent
         self.instances: dict[str, Instance] = {}
         self.guid = uuid.uuid4()
-        if parent:
+        if parent and type == "module":
             parent._add_child(self)
 
     def _add_child(self, child: Context):
@@ -36,13 +35,6 @@ class Context():
             return self.parent.find_instance(name)
         return None
 
-    def resolve_instance(self, name: str, type: Type) -> Instance:
-        found_instance = self.find_instance(name)
-        if found_instance:
-            return found_instance
-
-        return self.add_instance(name, type)
-
     def get_instance_by_name(self, name: str) -> Instance | None:
         return self.find_instance(name)
 
@@ -50,7 +42,7 @@ class Context():
         self.instances[instance.name] = instance
         return instance
 
-    # TODO: refactor to use add_obj 
+    # TODO: refactor to use add_obj instead of specialized for typeclass and stuff
     def add_obj(self, name: str, obj: Any):
         self.objs[name] = obj
 
@@ -60,40 +52,6 @@ class Context():
         if self.parent:
             return self.parent.get_obj(name)
         return None
-
-    def _find_type(self, type: Type) -> Type | None:
-        if type in self.types:
-            return type
-        if self.parent:        
-            return self.parent._find_type(type)
-        return None
-
-    def resolve_type(self, type: Type) -> Type:
-        found_type = self._find_type(type)
-        if found_type:
-            return found_type
-
-        self.add_type(type)
-        return type
-
-    def get_type_by_name(self, name: str) -> Type | None:
-        type_names = [type.name for type in self.types]
-        if name in type_names:
-            pos = type_names.index(name)
-            return self.types[pos]
-
-        if self.parent:
-            return self.parent.get_type_by_name(name)
-        return None        
-
-    def get_module_of_type(self, name: str) -> Context | None:
-        type_names = [type.name for type in self.types]
-        if name in type_names:
-            return self
-
-        if self.parent:
-            return self.parent.get_module_of_type(name)
-        return None        
 
     def add_typeclass(self, typeclass: TypeClass):
         if typeclass not in self.typeclasses:
@@ -110,10 +68,6 @@ class Context():
             return self.parent.get_typeclass_by_name(name)
         raise Exception(f"could not find typeclass {name}")
 
-
-    def add_type(self, type: Type):
-        self.types.append(type)
-
     def get_child_by_name(self, name: str) -> Context:
         child_module_names = [m.name for m in self.children]
         if name in child_module_names:
@@ -127,8 +81,8 @@ class Context():
         for child in self.children:
             sub_module_lines.extend(str(child).split("\n"))
         object_lines = [str(instance) for instance in self.instances.values()]
-        types_lines = [str(type) for type in self.types]
-        sub_text_lines = types_lines + object_lines + sub_module_lines
+        types_lines = [("::" + str(type)).split("::")[-1] for type in self.typeclasses]
+        sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
         return f"{self.type} {self.name}\n{indented_subtext}"
         

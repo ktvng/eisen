@@ -112,6 +112,7 @@ def run_seer(filename: str):
     print("========")
     for t in params.mod.typeclasses:
         print(t)
+    print(params.mod)
     print("========")
     pretty_print_perf(perf)
 

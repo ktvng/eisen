@@ -6,13 +6,10 @@ test.*
 tmp
 idea.txt
 __pycache__
-*/__pycache__
-*/*/__pycache__
-*/*/*/__pycache__
-*/*/*/*/__pycache__
 .vscode/
 *.c
 notes.txt
 *.log
 idea.rs
 test*.rs
+node_modules/

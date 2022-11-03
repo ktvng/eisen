@@ -3,14 +3,16 @@
   "version": "0.0.1",
   "description": "documentation for the stanza programming language",
   "scripts": {
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:serve": "vitepress serve docs"
+    "postinstall": "patch-package",
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "serve": "vitepress serve docs"
   },
   "author": "ktvng",
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "patch-package": "^6.5.0",
     "vitepress": "^1.0.0-alpha.26"
   }
 }

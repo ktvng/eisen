@@ -1,0 +1,144 @@
+diff --git a/node_modules/shiki/dist/index.js b/node_modules/shiki/dist/index.js
+index 5b73412..ae8fdf8
+--- a/node_modules/shiki/dist/index.js
++++ b/node_modules/shiki/dist/index.js
+@@ -555,6 +555,11 @@ const languages = [
+     path: "perl.tmLanguage.json",
+     embeddedLangs: ["html", "xml", "css", "javascript", "sql"]
+   },
++  {
++    id: "pebl",
++    scopeName: "source.pebble",
++    path: "pebble.tmLanguage.json"
++  },
+   {
+     id: "php",
+     scopeName: "source.php",
+diff --git a/node_modules/shiki/languages/pebble.tmLanguage.json b/node_modules/shiki/languages/pebble.tmLanguage.json
+new file mode 100755
+index 0000000..a8a68f1
+--- /dev/null
++++ b/node_modules/shiki/languages/pebble.tmLanguage.json
+@@ -0,0 +1,122 @@
++{
++	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
++	"name": "Pebble",
++	"patterns": [
++		{
++			"include": "#keywords"
++		},
++		{
++			"include": "#strings"
++		},
++		{
++			"comment": "meta.definition.class.pebble",
++			"name": "meta.class.python",
++			"captures": {
++				"1": {
++					"name": "storage.type.class.python"
++				},
++				"2": {
++					"name": "entity.name.type.class.python"
++				}
++			},
++			"match": "(a|an)\\s+(([A-Z]\\w*))(\\(\\):)?"
++		},
++		{
++			"comment": "support.function.builtin.pebble",
++			"name": "support.function.builtin.python",
++			"match": "\\b(let|ask|print|say|consider|take|here|inherits)\\b"
++		},
++		{
++			"comment": "meta.function.pebble",
++			"match": "\\b([A-Z]\\w*)(\\()",
++			"captures": {
++				"1": {
++					"name": "entity.name.function.python"
++				},
++				"2": {
++					"name": "source.python"
++				}
++			}
++		},
++		{
++			"comment": "reference.source.pebble",
++			"name": "source.python",
++			"match": "\\b[A-Z]\\w*\\b"
++		},
++		{
++			"comment": "custom.keyword.operator.comparison.pebble",
++			"match": "(greater than)|(less than)|(geq (to)?)|(leq (to)?)|(is greater than or equal to)|(is less than or equal to)|(equal (to)?)|(equals)",
++			"name": "keyword.operator.comparison.python"
++		},
++		{
++			"comment": "keyword.operator.logical.python",
++			"name": "keyword.operator.logical.python",
++			"match": "\\b(and|&&|or|is|not)\\b"
++		},
++		{
++			"comment": "reference.builtin.language.pebble",
++			"name": "variable.language.special.self.python",
++			"match": "\\b(it|that|caller|self)\\b"
++		},
++		{
++			"comment": "comment.pebble",
++			"name": "comment",
++			"match": "\\b(the)\\b"
++		},
++		{
++			"comment": "constant.numeric.pebble",
++			"match": "\\b\\d+(.?\\d*)?\\b",
++			"name": "constant.numeric.python"
++		},
++		{
++			"comment": "keyword.operator.arithmetic.pebble",
++			"match": "(%|\\*|\\+|\\-|/)",
++			"name": "keyword.operator.arithmetic.python"
++		},
++		{
++			"comment": "keyword.operator.comparison.pebble",
++			"match": "<(?!<|=)|>(?!<|=|>)|<=|>=|==|!=",
++			"name": "keyword.operator.comparison.python"
++		},
++		{
++			"comment": "keyword.operator.assignment.pebble",
++			"match": "(=|\\bis\\b)",
++			"name": "keyword.operator.assignment.python"
++		},
++		{
++			"comment": "keyword.operator.scope.pebble",
++			"match": "'s",
++			"name": "source.python"
++		},
++		{
++			"comment": "constant.language.pebble",
++			"match": "\\b(true|false)\\b",
++			"name": "constant.language.python"
++		},
++		{
++			"comment": "comment.pebble",
++			"name": "comment",
++			"match": "#.*"
++		}
++	],
++	"repository": {
++		"keywords": {
++			"patterns": [{
++				"name": "keyword.control.pebble",
++				"match": "\\b(if|else|while|for each|return)\\b"
++			}]
++		},
++		"strings": {
++			"name": "string.quoted.double.pebble",
++			"begin": "\"",
++			"end": "\"",
++			"patterns": [
++				{
++					"name": "constant.character.escape.pebble",
++					"match": "\\\\."
++				}
++			]
++		}
++	},
++	"scopeName": "source.pebble"
++}

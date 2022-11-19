@@ -1,4 +1,21 @@
+diff --git a/node_modules/shiki/LICENSE b/node_modules/shiki/LICENSE
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/README.md b/node_modules/shiki/README.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/dist/index.browser.mjs b/node_modules/shiki/dist/index.browser.mjs
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/dist/index.d.ts b/node_modules/shiki/dist/index.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/dist/index.esm.js b/node_modules/shiki/dist/index.esm.js
+old mode 100644
+new mode 100755
 diff --git a/node_modules/shiki/dist/index.js b/node_modules/shiki/dist/index.js
+old mode 100644
+new mode 100755
 index 5b73412..ae8fdf8
 --- a/node_modules/shiki/dist/index.js
 +++ b/node_modules/shiki/dist/index.js
@@ -14,9 +31,279 @@ index 5b73412..ae8fdf8
    {
      id: "php",
      scopeName: "source.php",
+diff --git a/node_modules/shiki/dist/index.jsdelivr.iife.js b/node_modules/shiki/dist/index.jsdelivr.iife.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/dist/index.unpkg.iife.js b/node_modules/shiki/dist/index.unpkg.iife.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/dist/onig.wasm b/node_modules/shiki/dist/onig.wasm
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/abap.tmLanguage.json b/node_modules/shiki/languages/abap.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/actionscript-3.tmLanguage.json b/node_modules/shiki/languages/actionscript-3.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ada.tmLanguage.json b/node_modules/shiki/languages/ada.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/apache.tmLanguage.json b/node_modules/shiki/languages/apache.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/apex.tmLanguage.json b/node_modules/shiki/languages/apex.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/apl.tmLanguage.json b/node_modules/shiki/languages/apl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/applescript.tmLanguage.json b/node_modules/shiki/languages/applescript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/asm.tmLanguage.json b/node_modules/shiki/languages/asm.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/astro.tmLanguage.json b/node_modules/shiki/languages/astro.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/awk.tmLanguage.json b/node_modules/shiki/languages/awk.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ballerina.tmLanguage.json b/node_modules/shiki/languages/ballerina.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/bat.tmLanguage.json b/node_modules/shiki/languages/bat.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/berry.tmLanguage.json b/node_modules/shiki/languages/berry.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/bibtex.tmLanguage.json b/node_modules/shiki/languages/bibtex.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/bicep.tmLanguage.json b/node_modules/shiki/languages/bicep.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/blade.tmLanguage.json b/node_modules/shiki/languages/blade.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/c.tmLanguage.json b/node_modules/shiki/languages/c.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cadence.tmLanguage.json b/node_modules/shiki/languages/cadence.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/clarity.tmLanguage.json b/node_modules/shiki/languages/clarity.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/clojure.tmLanguage.json b/node_modules/shiki/languages/clojure.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cmake.tmLanguage.json b/node_modules/shiki/languages/cmake.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cobol.tmLanguage.json b/node_modules/shiki/languages/cobol.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/codeql.tmLanguage.json b/node_modules/shiki/languages/codeql.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/coffee.tmLanguage.json b/node_modules/shiki/languages/coffee.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cpp-macro.tmLanguage.json b/node_modules/shiki/languages/cpp-macro.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cpp.tmLanguage.json b/node_modules/shiki/languages/cpp.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/crystal.tmLanguage.json b/node_modules/shiki/languages/crystal.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/csharp.tmLanguage.json b/node_modules/shiki/languages/csharp.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/css.tmLanguage.json b/node_modules/shiki/languages/css.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/cue.tmLanguage.json b/node_modules/shiki/languages/cue.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/d.tmLanguage.json b/node_modules/shiki/languages/d.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/dart.tmLanguage.json b/node_modules/shiki/languages/dart.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/diff.tmLanguage.json b/node_modules/shiki/languages/diff.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/docker.tmLanguage.json b/node_modules/shiki/languages/docker.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/dream-maker.tmLanguage.json b/node_modules/shiki/languages/dream-maker.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/elixir.tmLanguage.json b/node_modules/shiki/languages/elixir.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/elm.tmLanguage.json b/node_modules/shiki/languages/elm.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/erb.tmLanguage.json b/node_modules/shiki/languages/erb.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/erlang.tmLanguage.json b/node_modules/shiki/languages/erlang.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/fish.tmLanguage.json b/node_modules/shiki/languages/fish.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/fsharp.tmLanguage.json b/node_modules/shiki/languages/fsharp.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/gherkin.tmLanguage.json b/node_modules/shiki/languages/gherkin.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/git-commit.tmLanguage.json b/node_modules/shiki/languages/git-commit.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/git-rebase.tmLanguage.json b/node_modules/shiki/languages/git-rebase.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/glsl.tmLanguage.json b/node_modules/shiki/languages/glsl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/gnuplot.tmLanguage.json b/node_modules/shiki/languages/gnuplot.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/go.tmLanguage.json b/node_modules/shiki/languages/go.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/graphql.tmLanguage.json b/node_modules/shiki/languages/graphql.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/groovy.tmLanguage.json b/node_modules/shiki/languages/groovy.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/hack.tmLanguage.json b/node_modules/shiki/languages/hack.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/haml.tmLanguage.json b/node_modules/shiki/languages/haml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/handlebars.tmLanguage.json b/node_modules/shiki/languages/handlebars.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/haskell.tmLanguage.json b/node_modules/shiki/languages/haskell.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/hcl.tmLanguage.json b/node_modules/shiki/languages/hcl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/hlsl.tmLanguage.json b/node_modules/shiki/languages/hlsl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/html.tmLanguage.json b/node_modules/shiki/languages/html.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ini.tmLanguage.json b/node_modules/shiki/languages/ini.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/java.tmLanguage.json b/node_modules/shiki/languages/java.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/javascript.tmLanguage.json b/node_modules/shiki/languages/javascript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jinja-html.tmLanguage.json b/node_modules/shiki/languages/jinja-html.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jinja.tmLanguage.json b/node_modules/shiki/languages/jinja.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/json.tmLanguage.json b/node_modules/shiki/languages/json.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jsonc.tmLanguage.json b/node_modules/shiki/languages/jsonc.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jsonnet.tmLanguage.json b/node_modules/shiki/languages/jsonnet.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jssm.tmLanguage.json b/node_modules/shiki/languages/jssm.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/jsx.tmLanguage.json b/node_modules/shiki/languages/jsx.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/julia.tmLanguage.json b/node_modules/shiki/languages/julia.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/kotlin.tmLanguage.json b/node_modules/shiki/languages/kotlin.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/latex.tmLanguage.json b/node_modules/shiki/languages/latex.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/less.tmLanguage.json b/node_modules/shiki/languages/less.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/liquid.tmLanguage.json b/node_modules/shiki/languages/liquid.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/lisp.tmLanguage.json b/node_modules/shiki/languages/lisp.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/logo.tmLanguage.json b/node_modules/shiki/languages/logo.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/lua.tmLanguage.json b/node_modules/shiki/languages/lua.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/make.tmLanguage.json b/node_modules/shiki/languages/make.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/markdown.tmLanguage.json b/node_modules/shiki/languages/markdown.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/marko.tmLanguage.json b/node_modules/shiki/languages/marko.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/matlab.tmLanguage.json b/node_modules/shiki/languages/matlab.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/mdx.tmLanguage.json b/node_modules/shiki/languages/mdx.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/mermaid.tmLanguage.json b/node_modules/shiki/languages/mermaid.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/nginx.tmLanguage.json b/node_modules/shiki/languages/nginx.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/nim.tmLanguage.json b/node_modules/shiki/languages/nim.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/nix.tmLanguage.json b/node_modules/shiki/languages/nix.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/objective-c.tmLanguage.json b/node_modules/shiki/languages/objective-c.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/objective-cpp.tmLanguage.json b/node_modules/shiki/languages/objective-cpp.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ocaml.tmLanguage.json b/node_modules/shiki/languages/ocaml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/pascal.tmLanguage.json b/node_modules/shiki/languages/pascal.tmLanguage.json
+old mode 100644
+new mode 100755
 diff --git a/node_modules/shiki/languages/pebble.tmLanguage.json b/node_modules/shiki/languages/pebble.tmLanguage.json
 new file mode 100755
-index 0000000..a8a68f1
+index 0000000..9bed1b9
 --- /dev/null
 +++ b/node_modules/shiki/languages/pebble.tmLanguage.json
 @@ -0,0 +1,122 @@
@@ -142,3 +429,530 @@ index 0000000..a8a68f1
 +	},
 +	"scopeName": "source.pebble"
 +}
+diff --git a/node_modules/shiki/languages/perl.tmLanguage.json b/node_modules/shiki/languages/perl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/php-html.tmLanguage.json b/node_modules/shiki/languages/php-html.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/php.tmLanguage.json b/node_modules/shiki/languages/php.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/plsql.tmLanguage.json b/node_modules/shiki/languages/plsql.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/postcss.tmLanguage.json b/node_modules/shiki/languages/postcss.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/powershell.tmLanguage.json b/node_modules/shiki/languages/powershell.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/prisma.tmLanguage.json b/node_modules/shiki/languages/prisma.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/prolog.tmLanguage.json b/node_modules/shiki/languages/prolog.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/pug.tmLanguage.json b/node_modules/shiki/languages/pug.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/puppet.tmLanguage.json b/node_modules/shiki/languages/puppet.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/purescript.tmLanguage.json b/node_modules/shiki/languages/purescript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/python.tmLanguage.json b/node_modules/shiki/languages/python.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/r.tmLanguage.json b/node_modules/shiki/languages/r.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/raku.tmLanguage.json b/node_modules/shiki/languages/raku.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/razor.tmLanguage.json b/node_modules/shiki/languages/razor.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/rel.tmLanguage.json b/node_modules/shiki/languages/rel.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/riscv.tmLanguage.json b/node_modules/shiki/languages/riscv.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/rst.tmLanguage.json b/node_modules/shiki/languages/rst.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ruby.tmLanguage.json b/node_modules/shiki/languages/ruby.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/rust.tmLanguage.json b/node_modules/shiki/languages/rust.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/sas.tmLanguage.json b/node_modules/shiki/languages/sas.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/sass.tmLanguage.json b/node_modules/shiki/languages/sass.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/scala.tmLanguage.json b/node_modules/shiki/languages/scala.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/scheme.tmLanguage.json b/node_modules/shiki/languages/scheme.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/scss.tmLanguage.json b/node_modules/shiki/languages/scss.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/shaderlab.tmLanguage.json b/node_modules/shiki/languages/shaderlab.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/shellscript.tmLanguage.json b/node_modules/shiki/languages/shellscript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/smalltalk.tmLanguage.json b/node_modules/shiki/languages/smalltalk.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/solidity.tmLanguage.json b/node_modules/shiki/languages/solidity.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/sparql.tmLanguage.json b/node_modules/shiki/languages/sparql.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/sql.tmLanguage.json b/node_modules/shiki/languages/sql.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/ssh-config.tmLanguage.json b/node_modules/shiki/languages/ssh-config.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/stanza.tmLanguage.json b/node_modules/shiki/languages/stanza.tmLanguage.json
+new file mode 100755
+index 0000000..dd4874d
+--- /dev/null
++++ b/node_modules/shiki/languages/stanza.tmLanguage.json
+@@ -0,0 +1,94 @@
++{
++    "version": "0.0.1",
++    "filetypes": [".stan", ".sn"],
++    "name": "stanza",
++    "scopeName": "source.stanza",
++	"repository": {
++		"keywords": {
++			"patterns": [{
++				"name": "keyword.control.stanza",
++				"match": "\\b(if|else|while|for|return)\\b"
++			}]
++		},
++		"strings": {
++			"name": "string.quoted.double.eisen",
++			"begin": "\"",
++			"end": "\"",
++			"patterns": [
++				{
++					"name": "constant.character.escape.pebble",
++					"match": "\\\\."
++				}
++			]
++		}
++	},
++    "patterns": [
++		{
++			"include": "#keywords"
++		},
++		{
++			"include": "#strings"
++		},
++		{
++			"comment": "meta.definition.class.pebble",
++			"name": "meta.class.python",
++			"captures": {
++				"1": {
++					"name": "storage.type.class.python"
++				},
++				"2": {
++					"name": "entity.name.type.class.python"
++				}
++			},
++			"match": "(a|an)\\s+(([A-Z]\\w*))(\\(\\):)?"
++		},
++		{
++			"comment": "support.function.builtin.pebble",
++			"name": "support.function.builtin.python",
++			"match": "\\b(let|ask|print|say|consider|take|here|inherits)\\b"
++		},
++		{
++			"comment": "meta.function.pebble",
++			"match": "\\b([A-Z]\\w*)(\\()",
++			"captures": {
++				"1": {
++					"name": "entity.name.function.python"
++				},
++				"2": {
++					"name": "source.python"
++				}
++			}
++		},
++		{
++			"comment": "constant.numeric.pebble",
++			"match": "\\b\\d+(.?\\d*)?\\b",
++			"name": "constant.numeric.python"
++		},
++		{
++			"comment": "keyword.operator.arithmetic.pebble",
++			"match": "(%|\\*|\\+|\\-|/)",
++			"name": "keyword.operator.arithmetic.python"
++		},
++		{
++			"comment": "keyword.operator.comparison.pebble",
++			"match": "<(?!<|=)|>(?!<|=|>)|<=|>=|==|!=",
++			"name": "keyword.operator.comparison.python"
++		},
++		{
++			"comment": "keyword.operator.assignment.pebble",
++			"match": "(=|\\bis\\b)",
++			"name": "keyword.operator.assignment.python"
++		},
++		{
++			"comment": "keyword.operator.scope.pebble",
++			"match": "'s",
++			"name": "source.python"
++		},
++		{
++			"comment": "constant.language.pebble",
++			"match": "\\b(true|false)\\b",
++			"name": "constant.language.python"
++		}
++    ]
++  }
++  
+\ No newline at end of file
+diff --git a/node_modules/shiki/languages/stata.tmLanguage.json b/node_modules/shiki/languages/stata.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/stylus.tmLanguage.json b/node_modules/shiki/languages/stylus.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/svelte.tmLanguage.json b/node_modules/shiki/languages/svelte.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/swift.tmLanguage.json b/node_modules/shiki/languages/swift.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/system-verilog.tmLanguage.json b/node_modules/shiki/languages/system-verilog.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/tasl.tmLanguage.json b/node_modules/shiki/languages/tasl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/tcl.tmLanguage.json b/node_modules/shiki/languages/tcl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/tex.tmLanguage.json b/node_modules/shiki/languages/tex.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/toml.tmLanguage.json b/node_modules/shiki/languages/toml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/tsx.tmLanguage.json b/node_modules/shiki/languages/tsx.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/turtle.tmLanguage.json b/node_modules/shiki/languages/turtle.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/twig.tmLanguage.json b/node_modules/shiki/languages/twig.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/typescript.tmLanguage.json b/node_modules/shiki/languages/typescript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/vb.tmLanguage.json b/node_modules/shiki/languages/vb.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/verilog.tmLanguage.json b/node_modules/shiki/languages/verilog.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/vhdl.tmLanguage.json b/node_modules/shiki/languages/vhdl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/viml.tmLanguage.json b/node_modules/shiki/languages/viml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/vue-html.tmLanguage.json b/node_modules/shiki/languages/vue-html.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/vue.tmLanguage.json b/node_modules/shiki/languages/vue.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/wasm.tmLanguage.json b/node_modules/shiki/languages/wasm.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/wenyan.tmLanguage.json b/node_modules/shiki/languages/wenyan.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/xml.tmLanguage.json b/node_modules/shiki/languages/xml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/xsl.tmLanguage.json b/node_modules/shiki/languages/xsl.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/yaml.tmLanguage.json b/node_modules/shiki/languages/yaml.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/languages/zenscript.tmLanguage.json b/node_modules/shiki/languages/zenscript.tmLanguage.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/Marko.sample b/node_modules/shiki/samples/Marko.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/abap.sample b/node_modules/shiki/samples/abap.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/actionscript-3.sample b/node_modules/shiki/samples/actionscript-3.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/ada.sample b/node_modules/shiki/samples/ada.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/apex.sample b/node_modules/shiki/samples/apex.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/applescript.sample b/node_modules/shiki/samples/applescript.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/asm.sample b/node_modules/shiki/samples/asm.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/astro.sample b/node_modules/shiki/samples/astro.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/awk.sample b/node_modules/shiki/samples/awk.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/ballerina.sample b/node_modules/shiki/samples/ballerina.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/bat.sample b/node_modules/shiki/samples/bat.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/berry.sample b/node_modules/shiki/samples/berry.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/bicep.sample b/node_modules/shiki/samples/bicep.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/blade.sample b/node_modules/shiki/samples/blade.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/c.sample b/node_modules/shiki/samples/c.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/cadence.sample b/node_modules/shiki/samples/cadence.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/clarity.sample b/node_modules/shiki/samples/clarity.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/clojure.sample b/node_modules/shiki/samples/clojure.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/cmake.sample b/node_modules/shiki/samples/cmake.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/cobol.sample b/node_modules/shiki/samples/cobol.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/codeql.sample b/node_modules/shiki/samples/codeql.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/coffee.sample b/node_modules/shiki/samples/coffee.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/cpp.sample b/node_modules/shiki/samples/cpp.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/crystal.sample b/node_modules/shiki/samples/crystal.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/csharp.sample b/node_modules/shiki/samples/csharp.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/css.sample b/node_modules/shiki/samples/css.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/cue.sample b/node_modules/shiki/samples/cue.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/d.sample b/node_modules/shiki/samples/d.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/dart.sample b/node_modules/shiki/samples/dart.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/diff.sample b/node_modules/shiki/samples/diff.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/dm.sample b/node_modules/shiki/samples/dm.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/docker.sample b/node_modules/shiki/samples/docker.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/elixir.sample b/node_modules/shiki/samples/elixir.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/elm.sample b/node_modules/shiki/samples/elm.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/erb.sample b/node_modules/shiki/samples/erb.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/erlang.sample b/node_modules/shiki/samples/erlang.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/fish.sample b/node_modules/shiki/samples/fish.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/fsharp.sample b/node_modules/shiki/samples/fsharp.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/fsl.sample b/node_modules/shiki/samples/fsl.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/glsl.sample b/node_modules/shiki/samples/glsl.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/go.sample b/node_modules/shiki/samples/go.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/html.sample b/node_modules/shiki/samples/html.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/java.sample b/node_modules/shiki/samples/java.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/javascript.sample b/node_modules/shiki/samples/javascript.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/jssm.sample b/node_modules/shiki/samples/jssm.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/liquid.sample b/node_modules/shiki/samples/liquid.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/prisma.sample b/node_modules/shiki/samples/prisma.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/python.sample b/node_modules/shiki/samples/python.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/rel.sample b/node_modules/shiki/samples/rel.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/ruby.sample b/node_modules/shiki/samples/ruby.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/sparql.sample b/node_modules/shiki/samples/sparql.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/stata.sample b/node_modules/shiki/samples/stata.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/tasl.sample b/node_modules/shiki/samples/tasl.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/tsx.sample b/node_modules/shiki/samples/tsx.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/turtle.sample b/node_modules/shiki/samples/turtle.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/samples/zenscript.sample b/node_modules/shiki/samples/zenscript.sample
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/css-variables.json b/node_modules/shiki/themes/css-variables.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/dark-plus.json b/node_modules/shiki/themes/dark-plus.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/dracula-soft.json b/node_modules/shiki/themes/dracula-soft.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/dracula.json b/node_modules/shiki/themes/dracula.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/github-dark-dimmed.json b/node_modules/shiki/themes/github-dark-dimmed.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/github-dark.json b/node_modules/shiki/themes/github-dark.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/github-light.json b/node_modules/shiki/themes/github-light.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/hc_light.json b/node_modules/shiki/themes/hc_light.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/light-plus.json b/node_modules/shiki/themes/light-plus.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/material-darker.json b/node_modules/shiki/themes/material-darker.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/material-default.json b/node_modules/shiki/themes/material-default.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/material-lighter.json b/node_modules/shiki/themes/material-lighter.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/material-ocean.json b/node_modules/shiki/themes/material-ocean.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/material-palenight.json b/node_modules/shiki/themes/material-palenight.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/min-dark.json b/node_modules/shiki/themes/min-dark.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/min-light.json b/node_modules/shiki/themes/min-light.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/monokai.json b/node_modules/shiki/themes/monokai.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/nord.json b/node_modules/shiki/themes/nord.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/one-dark-pro.json b/node_modules/shiki/themes/one-dark-pro.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/poimandres.json b/node_modules/shiki/themes/poimandres.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/rose-pine-dawn.json b/node_modules/shiki/themes/rose-pine-dawn.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/rose-pine-moon.json b/node_modules/shiki/themes/rose-pine-moon.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/rose-pine.json b/node_modules/shiki/themes/rose-pine.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/slack-dark.json b/node_modules/shiki/themes/slack-dark.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/slack-ochin.json b/node_modules/shiki/themes/slack-ochin.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/solarized-dark.json b/node_modules/shiki/themes/solarized-dark.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/solarized-light.json b/node_modules/shiki/themes/solarized-light.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/vitesse-dark.json b/node_modules/shiki/themes/vitesse-dark.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/shiki/themes/vitesse-light.json b/node_modules/shiki/themes/vitesse-light.json
+old mode 100644
+new mode 100755

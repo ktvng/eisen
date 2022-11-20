@@ -8,26 +8,49 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-    title: "stanza language",
+    title: "Eisen PL",
     themeConfig: {
         sidebar: [
             {
-              text: 'Section Title A',
+              text: 'Basic',
               items: [
-                { text: 'Item A', link: '/item-a' },
-                { text: 'Item B', link: '/item-b' },
+                { text: 'Types', link: '/intro/types' },
+                { text: 'Control Flow', link: '/item-b' },
+                { text: 'Functions', link: '/item-b' },
+                { text: 'Structs', link: '/item-b' },
+                { text: 'Data Structs', link: '/item-b' },
               ]
             },
             {
-              text: 'Section Title B',
+              text: 'Memory Model',
               items: [
-                { text: 'Item C', link: '/item-c' },
-                { text: 'Item D', link: '/item-d' },
+                { text: 'Variables/Pointers', link: '/item-b' },
+                { text: 'Values', link: '/item-b' },
+                { text: 'Boxes', link: '/item-b' },
+              ]
+            },
+            {
+              text: 'Inheritance Model',
+              items: [
+                { text: 'Member Functions', link: '/item-b' },
+                { text: 'Embedded Structs', link: '/item-b' },
+                { text: 'Interfaces', link: '/item-b' },
+                { text: 'Casting', link: '/item-b' },
+                { text: 'Variants', link: '/item-b' },
+              ]
+            },
+            {
+              text: 'Functional',
+              items: [
+                { text: 'Extensions', link: '/item' },
+                { text: 'Lambdas', link: '/item' },
+                { text: 'Multiple Dispatch', link: '/item' },
+                { text: 'Inline', link: '/item' },
               ]
             }
           ]
     },
     markdown: {
-        theme: 'material-ocean',
+        theme: 'vitesse-dark',
     }
 })

@@ -16,10 +16,10 @@ new mode 100755
 diff --git a/node_modules/shiki/dist/index.js b/node_modules/shiki/dist/index.js
 old mode 100644
 new mode 100755
-index 5b73412..ae8fdf8
+index 5b73412..9348cbe
 --- a/node_modules/shiki/dist/index.js
 +++ b/node_modules/shiki/dist/index.js
-@@ -555,6 +555,11 @@ const languages = [
+@@ -555,6 +555,16 @@ const languages = [
      path: "perl.tmLanguage.json",
      embeddedLangs: ["html", "xml", "css", "javascript", "sql"]
    },
@@ -27,6 +27,11 @@ index 5b73412..ae8fdf8
 +    id: "pebl",
 +    scopeName: "source.pebble",
 +    path: "pebble.tmLanguage.json"
++  },
++  {
++    id: "eisen",
++    scopeName: "source.eisen",
++    path: "eisen.tmLanguage.json"
 +  },
    {
      id: "php",
@@ -145,6 +150,159 @@ new mode 100755
 diff --git a/node_modules/shiki/languages/dream-maker.tmLanguage.json b/node_modules/shiki/languages/dream-maker.tmLanguage.json
 old mode 100644
 new mode 100755
+diff --git a/node_modules/shiki/languages/eisen.tmLanguage.json b/node_modules/shiki/languages/eisen.tmLanguage.json
+new file mode 100755
+index 0000000..0608245
+--- /dev/null
++++ b/node_modules/shiki/languages/eisen.tmLanguage.json
+@@ -0,0 +1,146 @@
++{
++    "version": "0.0.1",
++    "filetypes": [".en", ".ei"],
++    "name": "eisen",
++    "scopeName": "source.eisen",
++	"repository": {
++		"keywords": {
++			"patterns": [{
++				"name": "keyword.control.eisen",
++				"match": "\\b(if|else|while|for|return)\\b"
++			}]
++		},
++		"strings": {
++			"name": "string.quoted.double.eisen",
++			"begin": "\"",
++			"end": "\"",
++			"patterns": [
++				{
++					"name": "constant.character.escape.eisen",
++					"match": "\\\\."
++				}
++			]
++		}
++	},
++    "patterns": [
++		{
++			"include": "#keywords"
++		},
++		{
++			"include": "#strings"
++		},
++		{
++			"comment": "support.function.builtin.eisen",
++			"name": "support.function.builtin.python",
++			"match": "\\b(let|ask|print|say|consider|take|here|inherits)\\b"
++		},
++        {
++			"comment": "function/method calls, chaining",
++			"name": "meta.function.call.rust",
++			"begin": "((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(\\()",
++			"beginCaptures": {
++			  "1": {
++				"name": "entity.name.function.rust"
++			  },
++			  "2": {
++				"name": "punctuation.brackets.round.rust"
++			  }
++			},
++			"end": "\\)",
++			"endCaptures": {
++			  "0": {
++				"name": "punctuation.brackets.round.rust"
++			  }
++			},
++			"patterns": [
++			  {
++				"include": "#block-comments"
++			  },
++			  {
++				"include": "#comments"
++			  },
++			  {
++				"include": "#keywords"
++			  },
++			  {
++				"include": "#lvariables"
++			  },
++			  {
++				"include": "#constants"
++			  },
++			  {
++				"include": "#gtypes"
++			  },
++			  {
++				"include": "#functions"
++			  },
++			  {
++				"include": "#lifetimes"
++			  },
++			  {
++				"include": "#macros"
++			  },
++			  {
++				"include": "#namespaces"
++			  },
++			  {
++				"include": "#punctuation"
++			  },
++			  {
++				"include": "#strings"
++			  },
++			  {
++				"include": "#types"
++			  },
++			  {
++				"include": "#variables"
++			  }
++			]
++		  },
++        {
++          "name": "keyword.declaration.struct.rust storage.type.rust",
++          "match": "\\b(?<!\\.)(struct)\\b"
++        },
++		{
++          "comment": "fn",
++          "name": "keyword.other.fn.rust",
++          "match": "\\bfn\\b"
++        },
++        {
++          "comment": "dashrocket, skinny arrow",
++          "name": "keyword.operator.arrow.skinny.rust",
++          "match": "->"
++        },
++        {
++          "comment": "namespace operator",
++          "name": "keyword.operator.namespace.rust",
++          "match": "::"
++        },
++		{
++			"comment": "constant.numeric.eisen",
++			"match": "\\b\\d+(.?\\d*)?\\b",
++			"name": "constant.numeric.python"
++		},
++        {
++			"comment": "math operators",
++			"name": "keyword.operator.math.rust",
++			"match": "(([+%]|(\\*(?!\\w)))(?!=))|(-(?!>))|(/(?!/))"
++		},
++        {
++          "comment": "storage keywords",
++          "name": "keyword.other.rust storage.type.rust",
++          "match": "\\b(let|embed)\\b"
++        },
++		{
++			"comment": "keyword.operator.comparison.eisen",
++			"match": "<(?!<|=)|>(?!<|=|>)|<=|>=|==|!=",
++			"name": "keyword.operator.comparison.python"
++		},
++		{
++			"comment": "constant.language.eisen",
++			"match": "\\b(true|false)\\b",
++			"name": "constant.language.python"
++		}
++    ]
++  }
++  
+\ No newline at end of file
 diff --git a/node_modules/shiki/languages/elixir.tmLanguage.json b/node_modules/shiki/languages/elixir.tmLanguage.json
 old mode 100644
 new mode 100755
@@ -525,107 +683,6 @@ new mode 100755
 diff --git a/node_modules/shiki/languages/ssh-config.tmLanguage.json b/node_modules/shiki/languages/ssh-config.tmLanguage.json
 old mode 100644
 new mode 100755
-diff --git a/node_modules/shiki/languages/stanza.tmLanguage.json b/node_modules/shiki/languages/stanza.tmLanguage.json
-new file mode 100755
-index 0000000..dd4874d
---- /dev/null
-+++ b/node_modules/shiki/languages/stanza.tmLanguage.json
-@@ -0,0 +1,94 @@
-+{
-+    "version": "0.0.1",
-+    "filetypes": [".stan", ".sn"],
-+    "name": "stanza",
-+    "scopeName": "source.stanza",
-+	"repository": {
-+		"keywords": {
-+			"patterns": [{
-+				"name": "keyword.control.stanza",
-+				"match": "\\b(if|else|while|for|return)\\b"
-+			}]
-+		},
-+		"strings": {
-+			"name": "string.quoted.double.eisen",
-+			"begin": "\"",
-+			"end": "\"",
-+			"patterns": [
-+				{
-+					"name": "constant.character.escape.pebble",
-+					"match": "\\\\."
-+				}
-+			]
-+		}
-+	},
-+    "patterns": [
-+		{
-+			"include": "#keywords"
-+		},
-+		{
-+			"include": "#strings"
-+		},
-+		{
-+			"comment": "meta.definition.class.pebble",
-+			"name": "meta.class.python",
-+			"captures": {
-+				"1": {
-+					"name": "storage.type.class.python"
-+				},
-+				"2": {
-+					"name": "entity.name.type.class.python"
-+				}
-+			},
-+			"match": "(a|an)\\s+(([A-Z]\\w*))(\\(\\):)?"
-+		},
-+		{
-+			"comment": "support.function.builtin.pebble",
-+			"name": "support.function.builtin.python",
-+			"match": "\\b(let|ask|print|say|consider|take|here|inherits)\\b"
-+		},
-+		{
-+			"comment": "meta.function.pebble",
-+			"match": "\\b([A-Z]\\w*)(\\()",
-+			"captures": {
-+				"1": {
-+					"name": "entity.name.function.python"
-+				},
-+				"2": {
-+					"name": "source.python"
-+				}
-+			}
-+		},
-+		{
-+			"comment": "constant.numeric.pebble",
-+			"match": "\\b\\d+(.?\\d*)?\\b",
-+			"name": "constant.numeric.python"
-+		},
-+		{
-+			"comment": "keyword.operator.arithmetic.pebble",
-+			"match": "(%|\\*|\\+|\\-|/)",
-+			"name": "keyword.operator.arithmetic.python"
-+		},
-+		{
-+			"comment": "keyword.operator.comparison.pebble",
-+			"match": "<(?!<|=)|>(?!<|=|>)|<=|>=|==|!=",
-+			"name": "keyword.operator.comparison.python"
-+		},
-+		{
-+			"comment": "keyword.operator.assignment.pebble",
-+			"match": "(=|\\bis\\b)",
-+			"name": "keyword.operator.assignment.python"
-+		},
-+		{
-+			"comment": "keyword.operator.scope.pebble",
-+			"match": "'s",
-+			"name": "source.python"
-+		},
-+		{
-+			"comment": "constant.language.pebble",
-+			"match": "\\b(true|false)\\b",
-+			"name": "constant.language.python"
-+		}
-+    ]
-+  }
-+  
-\ No newline at end of file
 diff --git a/node_modules/shiki/languages/stata.tmLanguage.json b/node_modules/shiki/languages/stata.tmLanguage.json
 old mode 100644
 new mode 100755

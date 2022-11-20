@@ -12,6 +12,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "package.json": "^2.0.1",
     "patch-package": "^6.5.0",
     "vitepress": "^1.0.0-alpha.26"
   }

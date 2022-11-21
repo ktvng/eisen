@@ -1,5 +1,5 @@
 # Eisen, A Programming Language
-Eisen is a conceptual programming language that pushes the notions of what a programming language should be. It's low level, like C/C++, compiling to machine code and providing very minimal support for memory management. It doesn't try to do everything, but what it does try is to provide the _right_ kind of abstraction; the kind that engineers _want_ to use because they're low cost and reduce complexity.
+Eisen is a conceptual language that pushes the notions of what a programming language should be. It's low level, like C/C++, compiling to machine code and providing very minimal support for memory management. It doesn't try to do everything, but what it does try is to provide the _right_ kind of abstraction; the kind that engineers _want_ to use because they're low cost and reduce complexity.
 
 That's the fundemental drive of Eisen. Complexity leads to error; error leads to sadness; most people agree that sadness is bad. That's it.
 

@@ -10,15 +10,22 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
     title: "Eisen PL",
     themeConfig: {
+        siteTitle: "Eisen PL",
+        socialLinks: [
+          { icon: 'github', link: 'https://github.com/ktvng/eisen' },
+        ],
+        nav: [
+          { text: 'Home', link: '/' }
+        ],
         sidebar: [
             {
-              text: 'Basic',
+              text: 'Introduction',
               items: [
-                { text: 'Types', link: '/intro/types' },
-                { text: 'Control Flow', link: '/item-b' },
-                { text: 'Functions', link: '/item-b' },
-                { text: 'Structs', link: '/item-b' },
-                { text: 'Data Structs', link: '/item-b' },
+                { text: 'Syntax 101', link: '/intro/syntax' },
+                { text: 'Functions', link: '/intro/functions' },
+                { text: 'Structs', link: '/intro/structs' },
+                { text: 'Variables', link: '/intro/variables' },
+                { text: 'Data Structs', link: '/intro/data_structs.md' },
               ]
             },
             {

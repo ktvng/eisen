@@ -20,26 +20,30 @@ export default defineConfig({
         sidebar: [
             {
               text: 'Introduction',
+              collapsible: true,
               items: [
                 { text: 'Syntax 101', link: '/intro/syntax' },
                 { text: 'Functions', link: '/intro/functions' },
                 { text: 'Structs', link: '/intro/structs' },
                 { text: 'Variables', link: '/intro/variables' },
                 { text: 'Data Structs', link: '/intro/data_structs.md' },
+                { text: 'Modules', link: '/intro/modules.md' },
               ]
             },
             {
               text: 'Memory Model',
+              collapsible: true,
               items: [
-                { text: 'Variables/Pointers', link: '/item-b' },
-                { text: 'Values', link: '/item-b' },
+                { text: 'Pointers', link: '/memory/pointers.md' },
+                { text: 'Arrays', link: '/memory/arrays.md' },
                 { text: 'Boxes', link: '/item-b' },
               ]
             },
             {
               text: 'Inheritance Model',
+              collapsible: true,
               items: [
-                { text: 'Member Functions', link: '/item-b' },
+                { text: 'Member Functions', link: '/abstraction/member_functions.md' },
                 { text: 'Embedded Structs', link: '/item-b' },
                 { text: 'Interfaces', link: '/item-b' },
                 { text: 'Casting', link: '/item-b' },
@@ -48,6 +52,7 @@ export default defineConfig({
             },
             {
               text: 'Functional',
+              collapsible: true,
               items: [
                 { text: 'Extensions', link: '/item' },
                 { text: 'Lambdas', link: '/item' },

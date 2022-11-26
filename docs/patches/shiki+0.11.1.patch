@@ -152,10 +152,10 @@ old mode 100644
 new mode 100755
 diff --git a/node_modules/shiki/languages/eisen.tmLanguage.json b/node_modules/shiki/languages/eisen.tmLanguage.json
 new file mode 100755
-index 0000000..0608245
+index 0000000..7fff6c6
 --- /dev/null
 +++ b/node_modules/shiki/languages/eisen.tmLanguage.json
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,178 @@
 +{
 +    "version": "0.0.1",
 +    "filetypes": [".en", ".ei"],
@@ -178,6 +178,20 @@ index 0000000..0608245
 +					"match": "\\\\."
 +				}
 +			]
++		},
++		"comments": {
++			"patterns": [
++				{
++				"comment": "documentation comments",
++				"name": "comment.line.documentation.rust",
++				"match": "^\\s*///.*"
++				},
++				{
++				"comment": "line comments",
++				"name": "comment.line.double-slash.rust",
++				"match": "\\s*//.*"
++				}
++			]
 +		}
 +	},
 +    "patterns": [
@@ -188,10 +202,18 @@ index 0000000..0608245
 +			"include": "#strings"
 +		},
 +		{
++			"include": "#comments"
++		},
++		{
 +			"comment": "support.function.builtin.eisen",
 +			"name": "support.function.builtin.python",
-+			"match": "\\b(let|ask|print|say|consider|take|here|inherits)\\b"
++			"match": "\\b(print|println)\\b"
 +		},
++        {
++          "comment": "storage keywords",
++          "name": "keyword.other.rust storage.type.rust",
++          "match": "\\b(mod)\\b"
++        },
 +        {
 +			"comment": "function/method calls, chaining",
 +			"name": "meta.function.call.rust",
@@ -257,7 +279,7 @@ index 0000000..0608245
 +		  },
 +        {
 +          "name": "keyword.declaration.struct.rust storage.type.rust",
-+          "match": "\\b(?<!\\.)(struct)\\b"
++          "match": "\\b(?<!\\.)(struct|data struct)\\b"
 +        },
 +		{
 +          "comment": "fn",
@@ -280,20 +302,30 @@ index 0000000..0608245
 +			"name": "constant.numeric.python"
 +		},
 +        {
++          "comment": "assignment operators",
++          "name": "keyword.operator.assignment.rust",
++          "match": "(\\+=|-=|\\*=|/=|%=|\\^=|&=|\\|=|<<=|>>=)"
++        },
++        {
++          "comment": "single equal",
++          "name": "keyword.operator.assignment.equal.rust",
++          "match": "(?<![<>])=(?!=|>)"
++        },
++        {
++          "comment": "comparison operators",
++          "name": "keyword.operator.comparison.rust",
++          "match": "(=(=)?(?!>)|!=|<=|(?<!=)>=)"
++        },
++        {
 +			"comment": "math operators",
 +			"name": "keyword.operator.math.rust",
 +			"match": "(([+%]|(\\*(?!\\w)))(?!=))|(-(?!>))|(/(?!/))"
 +		},
 +        {
 +          "comment": "storage keywords",
-+          "name": "keyword.other.rust storage.type.rust",
-+          "match": "\\b(let|embed)\\b"
++		  "name": "support.function.builtin.python",
++          "match": "\\b(let|var|embed|inherits)\\b"
 +        },
-+		{
-+			"comment": "keyword.operator.comparison.eisen",
-+			"match": "<(?!<|=)|>(?!<|=|>)|<=|>=|==|!=",
-+			"name": "keyword.operator.comparison.python"
-+		},
 +		{
 +			"comment": "constant.language.eisen",
 +			"match": "\\b(true|false)\\b",

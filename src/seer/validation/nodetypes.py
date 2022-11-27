@@ -17,6 +17,24 @@ def first_child_is_token(self) -> bool:
 def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
     return self.state.get_enclosing_module().get_typeclass_by_name(self._get_name())
 
+class States:
+    class Mod(State):
+        asl_type = "mod"
+        examples = """
+        (mod name ...)
+        """
+        get_module_name = get_name_from_first_child
+        def get_entered_module(self) -> Module:
+            return self.get_node_data().enters_module
+
+        def set_entered_module(self, mod: Module):
+            self.get_node_data().enters_module = mod
+
+        def enter_module_and_apply_fn_to_child_asls(self, fn):
+            for child in self.asl[1:]:
+                fn.apply(self.but_with(
+                    asl=child,
+                    mod=self.get_entered_module())) 
 
 class Nodes():
     class AbstractNodeInterface():

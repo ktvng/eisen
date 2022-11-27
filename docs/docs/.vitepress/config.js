@@ -43,9 +43,10 @@ export default defineConfig({
               text: 'Inheritance Model',
               collapsible: true,
               items: [
+                { text: 'Overview', link: '/abstraction/overview.md' },
                 { text: 'Member Functions', link: '/abstraction/member_functions.md' },
-                { text: 'Embedded Structs', link: '/item-b' },
-                { text: 'Interfaces', link: '/item-b' },
+                { text: 'Interfaces', link: '/abstraction/interfaces.md' },
+                { text: 'Embedded Structs', link: '/abstraction/embedded_structs.md' },
                 { text: 'Casting', link: '/item-b' },
                 { text: 'Variants', link: '/item-b' },
               ]

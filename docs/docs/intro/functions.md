@@ -120,3 +120,28 @@ This is because the compiler is no longer able to identify the names/default val
 let myFunction = add_argument
 myFunction("--output", "-o", false, "output file to be written")
 ```
+
+## Extension Functions
+Functions are not defined as 'belonging' to a struct in the same way that functions 'belong' to a class. The syntax `obj.function(...)` is purely shorthand for `function(obj, ...)` which is unraveled by the Eisen compiler. This feature makes defining extension functions trivial. For instance, integers can be treated as objects themselves via extension functions.
+
+```eisen
+fn timesTryTo(n: int, f: () -> bool) {
+    for (0..n) {
+        if (f()) {
+            return
+        }
+    }
+}
+
+fn processPayment() {
+    ...
+}
+
+fn main() {
+    5.timesTryTo(processPayment)
+}
+```
+
+The ability to define the function `timesTryTo` to take the integer parameter first allows us to call it via an integer literal as if it were a function. This simple example leads some very clean, readable code.
+
+The same idea can be applied to extend functionality over structs which the developer may not have direct access over. 

@@ -2,8 +2,12 @@ from __future__ import annotations
 from functools import reduce
 from typing import Union, List
 import uuid
+from abc import ABC
 
-class CLRToken:
+class CLRElement(ABC):
+    pass
+
+class CLRToken(CLRElement):
     def __init__(self, type_chain: list[str], value: str, line_number: int = 0):
         self.type = type_chain[0]
         self.type_chain = type_chain
@@ -22,7 +26,7 @@ class CLRToken:
         else:
             return self.type
 
-class CLRList:
+class CLRList(CLRElement):
     indent = "  "
 
     def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0, guid: uuid.UUID = None, data = None):

@@ -31,3 +31,7 @@ fn main() {
     informalWelcome.getMessage()
 }
 ```
+
+The above allows us to define two different instances of the `WelcomeObject` struct with different functionalities of `getMessage`. This approach can be used to to allow for runtime polymorphism of types.
+
+Specifically, for the entities that have the same structural data; that is, different entitities with the same member attributes, we can now change functionality at runtime. The next sections shows how we can achieve a greater degree of polymorphism using interfaces.

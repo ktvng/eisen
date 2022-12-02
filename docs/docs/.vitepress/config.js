@@ -47,18 +47,8 @@ export default defineConfig({
                 { text: 'Member Functions', link: '/abstraction/member_functions.md' },
                 { text: 'Interfaces', link: '/abstraction/interfaces.md' },
                 { text: 'Embedded Structs', link: '/abstraction/embedded_structs.md' },
-                { text: 'Casting', link: '/item-b' },
-                { text: 'Variants', link: '/item-b' },
-              ]
-            },
-            {
-              text: 'Functional',
-              collapsible: true,
-              items: [
-                { text: 'Extensions', link: '/item' },
-                { text: 'Lambdas', link: '/item' },
-                { text: 'Multiple Dispatch', link: '/item' },
-                { text: 'Inline', link: '/item' },
+                { text: 'Variants', link: '/abstraction/variants.md' },
+                { text: 'Casting', link: '/abstraction/casting.md' },
               ]
             }
           ]

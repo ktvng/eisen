@@ -85,4 +85,18 @@ struct LedgerEntry implements Hashable, Debuggable {
 Eisen implements interfaces as C level structs with function pointers (i.e. a virtual function table). The interfact struct also has a pointer to the underlying object instance, which gets passed into each entry of the function table. 
 
 ## Interface Specific Methods
-Interfaces can also be written with certain methods already implemented. TBD
+Interfaces can also be written with certain methods already implemented. Because an interface represents a public set of attributes and methods, Eisen actually permits the developer to defined functions which may treat an interface as if it were a struct. When an interface is used in this way, only the attributes and methods publically comprising the interface may be used. 
+
+```eisen
+interface AuthenticationManager {
+    username: str
+    endpointUrl: str
+    isAuthorized: (Self) -> bool
+}
+
+fn generateLogMessage(manager: AuthenticationManager) -> msg: str {
+    msg = "Authenticating {username} with {endpointUrl}"
+}
+```
+
+Defining functions on interfaces allows an additional component of code reuse; all implementations of the interface will be able to use these functions. Further, as these functions are defined over the interface, they cannot be redefined a given implementation of the interface.

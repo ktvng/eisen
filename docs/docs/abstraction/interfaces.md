@@ -23,7 +23,7 @@ struct Order implements Payable {
     }
 
     fn getPaymentDate(self: Order, today: Date) -> due: Date {
-        due = min(self.orderPlacedAt.afterDays(5), today.afterDays(3)
+        due = min(self.orderPlacedAt.afterDays(5), today.afterDays(3))
     }
 
     /* constructor & destructor */

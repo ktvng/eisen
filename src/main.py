@@ -245,12 +245,30 @@ def make_runnable(txt : str):
         readable += line + "\n"
     return readable
 
+def debug():
+    config = run_and_measure("config parsed",
+        alpaca.config.parser.run,
+        filename="./src/eisen/grammar.gm")
+
+    # READ FILE TO STR
+    with open("./parsetest.txt", 'r') as f:
+        txt = f.read()
+    
+    # TOKENIZE
+    tokens = run_and_measure("tokenizer",
+        alpaca.lexer.run,
+        text=txt, config=config, callback=eisen.EisenCallback)
+    print("debugging...")
+    result = eisen.CustomParser2(config).parse(tokens)
+    print(result)
+
 
 if __name__ == "__main__":
     print(delim)
     print("-"*28, "BEGINS", "-"*28)
     print(delim)
     parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
     parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
@@ -269,6 +287,8 @@ if __name__ == "__main__":
         run(args.lang, args.input)
     elif args.build:
         eisen.TestRunner.rebuild_cache()
+    elif args.debug:
+        debug()
 
     print(delim)
     

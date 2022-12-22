@@ -53,12 +53,10 @@ class CallUnwrapper():
 
     @classmethod
     def process(cls, params: State):
-        if params.asl.type == "basic_call":
-            cls._handle_basic_call(params)
         if cls._should_unravel(params):
             cls._unravel(params)
-        else:
-            cls._construct_standard_call(params)
+            return
+        cls._construct_standard_call(params)
 
 
     # case is (raw_call (ref x) (fn run) (params )))))

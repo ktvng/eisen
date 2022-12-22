@@ -5,7 +5,7 @@ import subprocess
 import argparse
 
 import alpaca
-import seer
+import eisen
 import lamb
 import c
 
@@ -24,7 +24,7 @@ def run_lamb(filename : str):
     # fun.run(ast)
 
 def run_c(filename: str):
-    # PARSE SEER CONFIG
+    # PARSE EISEN CONFIG
     config = run_and_measure("config parsed",
         alpaca.config.parser.run,
         filename="./src/c/grammar.gm")
@@ -36,7 +36,7 @@ def run_c(filename: str):
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
-        text=txt, config=config, callback=seer.SeerCallback)
+        text=txt, config=config, callback=eisen.EisenCallback)
 
     # print("====================")
     # [print(t) for t in tokens]
@@ -61,12 +61,12 @@ def pretty_print_perf(perf: list[tuple[str, int]]):
 
     print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
 
-def run_seer(filename: str):
+def run_eisen(filename: str):
     perf = []
-    # PARSE SEER CONFIG
+    # PARSE EISEN CONFIG
     config = run_and_measure("config parsed",
         alpaca.config.parser.run,
-        filename="./src/seer/grammar.gm")
+        filename="./src/eisen/grammar.gm")
 
     # READ FILE TO STR
     with open(filename, 'r') as f:
@@ -75,7 +75,7 @@ def run_seer(filename: str):
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
-        text=txt, config=config, callback=seer.SeerCallback)
+        text=txt, config=config, callback=eisen.EisenCallback)
 
     
 
@@ -85,7 +85,7 @@ def run_seer(filename: str):
     # # CUSTOM PARSER
     # start = time.perf_counter_ns()
     # asl = run_and_measure("customparser2",
-    #     seer.CustomParser2(config).parse,
+    #     eisen.CustomParser2(config).parse,
     #     toks=tokens)
     # print(asl)
     # exit()
@@ -94,15 +94,15 @@ def run_seer(filename: str):
     # PARSE TO AST
     asl = run_and_measure("parser",
         alpaca.parser.run,
-        config=config, tokens=tokens, builder=seer.SeerBuilder(), algo="cyk")
+        config=config, tokens=tokens, builder=eisen.EisenBuilder(), algo="cyk")
 
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
     print("############ STANZA ###############")
-    params = seer.State.create_initial(config, asl, txt)
+    params = eisen.State.create_initial(config, asl, txt)
 
-    for step in seer.Workflow.steps:
+    for step in eisen.Workflow.steps:
         print(step.__name__)
         start = time.perf_counter_ns()
         step().apply(params)
@@ -117,10 +117,10 @@ def run_seer(filename: str):
     pretty_print_perf(perf)
 
     exit()
-    seer.ModuleWrangler(debug=False).apply(params)
+    eisen.ModuleWrangler(debug=False).apply(params)
     mod = params.mod
     try:
-        seer.TypeFlowWrangler(debug=False).apply(params)
+        eisen.TypeFlowWrangler(debug=False).apply(params)
     except Exception as e:
         print(params.mod)
         raise e
@@ -129,18 +129,18 @@ def run_seer(filename: str):
     print(params.asl)
 
     c_config = run_and_measure("interpreter ran",
-        seer.AstInterpreter().apply,
+        eisen.AstInterpreter().apply,
         params=params)
     exit()
 
 
 
-    asl = seer.Flattener().run(params)
+    asl = eisen.Flattener().run(params)
     print(asl)
     # exit()
-    # seer.Inspector().apply(params)
+    # eisen.Inspector().apply(params)
 
-    transmuted = seer.CTransmutation(debug=False).run(asl, params)
+    transmuted = eisen.CTransmutation(debug=False).run(asl, params)
     print("############ TRANSMUATION ###############")
 
     c_config = run_and_measure("config parsed",
@@ -148,7 +148,7 @@ def run_seer(filename: str):
         filename="./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
 
-    seer.DotDerefFilter().apply(c_asl)
+    eisen.DotDerefFilter().apply(c_asl)
     print(c_asl)
     # print("############ C_ASL ###############")
     # print(c_asl)
@@ -168,20 +168,20 @@ def run_seer(filename: str):
     exit()
 
     print("SUCCESS")
-    bits = seer.CodeTransducer().apply(params)
+    bits = eisen.CodeTransducer().apply(params)
     print("".join(bits))
     # end
 
-    params = SeerValidator.init_params(config, asl, txt)
+    params = EisenValidator.init_params(config, asl, txt)
     mod = run_and_measure("validator",
         alpaca.validator.run,
-        indexer_function=SeerIndexer(), validation_function=SeerValidator(), params=params)
+        indexer_function=EisenIndexer(), validation_function=EisenValidator(), params=params)
 
     if mod is None:
         raise Exception("Failed to validate and produce a module.")
 
     code = run_and_measure("transpiler",
-        SeerTranspiler().run,
+        EisenTranspiler().run,
         config=config, asl=asl, mod=mod)
 
     with open("build/test.c", 'w') as f:
@@ -198,8 +198,8 @@ def run_seer(filename: str):
 def run(lang: str, filename: str):
     if lang == "lamb":
         run_lamb(filename)
-    elif lang == "seer":
-        run_seer(filename)
+    elif lang == "eisen":
+        run_eisen(filename)
     elif lang == "c":
         run_c(filename)
     elif lang == "types":
@@ -219,18 +219,18 @@ def run_and_measure(name: str, f, *args, **kwargs):
     print(f"|  - {name} finished in {(endtime-starttime)/1000000} ms")
     return result;
 
-def run_seer_tests(name: str):
+def run_eisen_tests(name: str):
     if name:
-        status, msg = seer.TestRunner.run_test_by_name(name)
+        status, msg = eisen.TestRunner.run_test_by_name(name)
         if status:
             print(f"ran test '{name}' successfully")
         else:
             print(msg)
     else:
-        seer.TestRunner.run_all_tests()
-    # internal_run_tests("./src/seer/tests/validator_tests.rs", should_transpile=False)
+        eisen.TestRunner.run_all_tests()
+    # internal_run_tests("./src/eisen/tests/validator_tests.rs", should_transpile=False)
     # input()
-    # internal_run_tests("./src/seer/tests/test.rs")
+    # internal_run_tests("./src/eisen/tests/test.rs")
 
 def make_runnable(txt : str):
     lines = txt.split("\n")
@@ -257,18 +257,18 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--lang", 
         action="store", 
         type=str, 
-        choices=["seer", "lamb", "c", "types"],
-        default="seer")
+        choices=["eisen", "lamb", "c", "types"],
+        default="eisen")
 
     args = parser.parse_args()
 
     print(args.test)
     if args.test is not None:
-        run_seer_tests(args.test)
+        run_eisen_tests(args.test)
     elif args.input and args.lang:
         run(args.lang, args.input)
     elif args.build:
-        seer.TestRunner.rebuild_cache()
+        eisen.TestRunner.rebuild_cache()
 
     print(delim)
     

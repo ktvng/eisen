@@ -16,12 +16,9 @@ class Context():
             "instance": {},
             "restriction": {},
         }
-        self.typeclasses: list[TypeClass] = []
-        self.objs: dict[str, Any] = {}
 
         self.children = []
         self.parent = parent
-        self.instances: dict[str, Instance] = {}
         self.guid = uuid.uuid4()
         if parent and type == "module":
             parent._add_child(self)
@@ -29,7 +26,14 @@ class Context():
     def _add_child(self, child: Context):
         self.children.append(child)
 
-    # TODO: refactor to use add_obj instead of specialized for typeclass and stuff
+    def get_child_by_name(self, name: str) -> Context:
+        child_module_names = [m.name for m in self.children]
+        if name in child_module_names:
+            pos = child_module_names.index(name)
+            return self.children[pos]
+
+        raise Exception(f"Unable to resolve module named {name} inside module {self.name}")
+
     def add_obj(self, container_name: str, name: str, obj: Any):
         container = self.containers[container_name]
         container[name] = obj
@@ -55,30 +59,13 @@ class Context():
     def get_instance(self, name: str) -> Instance | None:
         return self.get_obj("instance", name)
 
-
-
     def add_typeclass(self, typeclass: TypeClass):
-        if typeclass not in self.typeclasses:
-            self.typeclasses.append(typeclass)
+        if typeclass.name:
+            self.add_obj("typeclass", typeclass.get_uuid_str(), typeclass)
 
-    def get_typeclass_by_name(self, name: str) -> TypeClass:
-        found_typeclass = [tc for tc in self.typeclasses if tc.name == name]
-        if len(found_typeclass) == 1:
-            return found_typeclass[0]
-        if len(found_typeclass) > 1:
-            raise Exception(f"expected exactly one typeclass, got {len(found_typeclass)}")
+    def get_typeclass(self, name: str):
+        return self.get_obj("typeclass", name)
 
-        if self.parent:
-            return self.parent.get_typeclass_by_name(name)
-        raise Exception(f"could not find typeclass {name}")
-
-    def get_child_by_name(self, name: str) -> Context:
-        child_module_names = [m.name for m in self.children]
-        if name in child_module_names:
-            pos = child_module_names.index(name)
-            return self.children[pos]
-
-        raise Exception(f"Wnable to resolve module named {name} inside module {self.name}")
 
     def __str__(self) -> str:
         sub_module_lines = []

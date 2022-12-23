@@ -146,6 +146,9 @@ class TypeClass():
     def __str__(self) -> str:
         return self._get_uuid_str()
 
+    def get_uuid_str(self) -> str:
+        return self._get_uuid_str()
+
     def get_direct_attribute_name_type_pairs(self) -> list[TypeClass]:
         return zip(self.component_names, self.components)
 

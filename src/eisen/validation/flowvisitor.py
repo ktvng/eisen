@@ -288,7 +288,7 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("type", "type?", "var_type")
     def _type1(fn, state: State) -> TypeClass:
-        typeclass = state.get_enclosing_module().get_typeclass_by_name(name=state.first_child().value)
+        typeclass = state.get_enclosing_module().get_typeclass(name=state.first_child().value)
         if state.get_asl().type == "type":
             return typeclass.with_restriction(Restriction2.for_let())
         elif state.get_asl().type == "var_type":

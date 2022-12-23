@@ -15,7 +15,7 @@ def first_child_is_token(self) -> bool:
     return isinstance(self.first_child(), CLRToken)
 
 def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
-    return self.state.get_enclosing_module().get_typeclass_by_name(self._get_name())
+    return self.state.get_enclosing_module().get_typeclass(self._get_name())
 
 class States:
     class Mod(State):
@@ -96,7 +96,7 @@ class Nodes():
             interfaces = []
             if self.implements_interfaces():
                 for child in self.get_impls_asl():
-                    interfaces.append(self.state.get_enclosing_module().get_typeclass_by_name(child.value))
+                    interfaces.append(self.state.get_enclosing_module().get_typeclass(child.value))
                     # TODO: currently we only allow the interface to be looked up in the same
                     # module as the struct. In general, we need to allow interfaces from arbitrary
                     # modules.
@@ -110,8 +110,8 @@ class Nodes():
             # module as the struct. In general, we need to allow interfaces from arbitrary
             # modules.
             if isinstance(embed_asl.first(), CLRList):
-                return [self.state.get_enclosing_module().get_typeclass_by_name(child.value) for child in embed_asl.first()]
-            return [self.state.get_enclosing_module().get_typeclass_by_name(embed_asl.first().value)]
+                return [self.state.get_enclosing_module().get_typeclass(child.value) for child in embed_asl.first()]
+            return [self.state.get_enclosing_module().get_typeclass(embed_asl.first().value)]
 
         def get_embedded_structs(self) -> list[TypeClass]:
             embedded_structs: list[TypeClass] = []

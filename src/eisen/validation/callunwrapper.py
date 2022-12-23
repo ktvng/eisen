@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.clr import CLRList
 
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.common.nodedata import NodeData
 from eisen.validation.nodetypes import Nodes
 

@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import TypeClass, TypeClassFactory
 from eisen.common import asls_of_type
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 
 class VarietyWrangler(Visitor):

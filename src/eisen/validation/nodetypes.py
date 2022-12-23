@@ -4,7 +4,7 @@ from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._typeclass import TypeClass, Restriction2
 
 from eisen.common import Module
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.common.restriction import Restriction
 
 

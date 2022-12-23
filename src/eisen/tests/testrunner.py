@@ -11,7 +11,7 @@ import alpaca
 from eisen.parsing.callback import EisenCallback
 from eisen.parsing.customparser import CustomParser
 from eisen.parsing.builder import EisenBuilder
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.validation.workflow import Workflow
 from eisen.ast_interpreter import AstInterpreter
 

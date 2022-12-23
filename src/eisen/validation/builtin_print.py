@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts import TypeClassFactory
-from eisen.common.params import State
+from eisen.common.state import State
 
 class BuiltinPrint():
     @classmethod

@@ -4,7 +4,7 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.common import asls_of_type, Utils
 
 # date structure which contains the information obtain from flattening. 

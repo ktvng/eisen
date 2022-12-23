@@ -8,7 +8,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Restriction2
 
 from eisen.common import asls_of_type
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 
 lambda_map = {

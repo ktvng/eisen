@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from eisen.common.nodedata import NodeData
 from alpaca.utils import Visitor
-from eisen.common.params import State
+from eisen.common.state import State
 
 class Initializer(Visitor):
     def apply(self, state: State) -> None:

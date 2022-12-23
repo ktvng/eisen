@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from eisen.common import EisenInstance
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeclassparser import TypeclassParser
 

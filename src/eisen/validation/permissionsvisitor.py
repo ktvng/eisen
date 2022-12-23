@@ -5,7 +5,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import Context
 
 from eisen.common import ContextTypes, binary_ops, boolean_return_ops
-from eisen.common.params import State
+from eisen.common.state import State
 from eisen.common.restriction import Restriction
 
 from eisen.validation.nodetypes import Nodes

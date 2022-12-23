@@ -1,5 +1,5 @@
 from __future__ import annotations
-from alpaca.utils._wrangler import PartialTransform, Visitor
+from alpaca.utils._visitor import PartialTransform, Visitor
 
 class Builder(Visitor):
     @classmethod

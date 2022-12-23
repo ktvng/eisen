@@ -78,11 +78,11 @@ class Writer(Visitor):
             return list(itertools.chain(*[fn.apply(child) for child in asl]))
         return []
 
-    @Visitor.covers(lambda asl: isinstance(asl, CLRToken))
+    @Visitor.for_tokens
     def token_(fn, asl: CLRToken) -> list[str]:
         return [asl.value]
 
-    @Visitor.covers(asls_of_type("start"))
+    @Visitor.for_asls("start")
     def start_(fn, asl: CLRList) -> list[str]:
         lists_for_components = [fn.apply(child) for child in asl]
 
@@ -90,30 +90,30 @@ class Writer(Visitor):
         lists_for_components = [l + ["\n"] for l in lists_for_components if l]
         return list(itertools.chain(*lists_for_components))
 
-    @Visitor.covers(asls_of_type("decl"))
+    @Visitor.for_asls("decl")
     def decl_(fn, asl: CLRList) -> list[str]:
         return [*fn.apply(asl.first()), " ", *fn.apply(asl.second())]
 
-    @Visitor.covers(asls_of_type("def"))
+    @Visitor.for_asls("def")
     def def_(fn, asl: CLRList) -> list[str]:
         parts = [*fn.apply(asl.first()), " "]
         for child in asl[1:]:
             parts.extend(fn.apply(child))
         return parts
 
-    @Visitor.covers(asls_of_type("struct_decl"))
+    @Visitor.for_asls("struct_decl")
     def struct_decl_(fn, asl: CLRList) -> list[str]:
         return ["struct ", *fn.apply(asl.first()), " ", *fn.apply(asl.second())]
 
-    @Visitor.covers(asls_of_type(["type", "call", "fn", "ref"]))
+    @Visitor.for_asls("type", "call", "fn", "ref")
     def pass_(fn, asl: CLRList) -> list[str]:
         return fn.delegate(asl)
 
-    @Visitor.covers(asls_of_type(["cond"]))
+    @Visitor.for_asls("cond")
     def cond_(fn, asl: CLRList) -> list[str]:
         return ["(", *fn.apply(asl.first()), ")", *fn.apply(asl.second())]
 
-    @Visitor.covers(asls_of_type("seq"))
+    @Visitor.for_asls("seq")
     def seq_(fn, asl: CLRList) -> list[str]:
         contexts = ["if", "while"]
         components = []
@@ -124,24 +124,24 @@ class Writer(Visitor):
                 components.append(fn.apply(child) + [";\n"])
         return [" {\n"] + list(itertools.chain(*components)) + ["}\n"]
 
-    @Visitor.covers(asls_of_type(["+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->"]))
+    @Visitor.for_asls("+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->")
     def op_(fn, asl: CLRList) -> list[str]:
         ops_which_dont_need_space = [".", "->"]
         op = asl.type if asl.type in ops_which_dont_need_space else f" {asl.type} "
         return [*fn.apply(asl.first()), op, *fn.apply(asl.second())]
 
-    @Visitor.covers(asls_of_type("ptr"))
+    @Visitor.for_asls("ptr")
     def ptr_(fn, asl: CLRList) -> list[str]:
         return fn.delegate(asl) + ["*"]
 
-    @Visitor.covers(asls_of_type("return"))
+    @Visitor.for_asls("return")
     def return_(fn, asl: CLRList) -> list[str]:
         return_value = fn.delegate(asl)
         if return_value:
             return ["return "] + return_value
         return ["return"]
 
-    @Visitor.covers(asls_of_type(["params", "args"]))
+    @Visitor.for_asls("params", "args")
     def params_(fn, asl: CLRList) -> list[str]:
         if not asl:
             return ["()"]
@@ -150,18 +150,18 @@ class Writer(Visitor):
             parts += [", "] + fn.apply(child)
         return ["("] + parts + [")"]
 
-    @Visitor.covers(asls_of_type("while"))
+    @Visitor.for_asls("while")
     def while_(fn, asl: CLRList) -> list[str]:
         return [f"while "] + fn.delegate(asl)
 
-    @Visitor.covers(asls_of_type("struct"))
+    @Visitor.for_asls("struct")
     def struct_(fn, asl: CLRList) -> list[str]:
         parts = [f"struct ", *fn.apply(asl.first()), " {\n"]
         for child in asl[1:]:
             parts += fn.apply(child) + [";\n"]
         return parts + ["};\n"]
 
-    @Visitor.covers(asls_of_type("if"))
+    @Visitor.for_asls("if")
     def if_(fn, asl: CLRList) -> list[str]:
         parts = [f"{asl.type} "] + fn.apply(asl.first())
         for child in asl[1:]:
@@ -173,10 +173,10 @@ class Writer(Visitor):
                 raise Exception(f"if_ unknown type {child.type}")
         return parts
 
-    @Visitor.covers(asls_of_type("addr"))
+    @Visitor.for_asls("addr")
     def addr_(fn, asl: CLRList) -> list[str]:
         return ["&"] + fn.delegate(asl)
     
-    @Visitor.covers(asls_of_type("deref"))
+    @Visitor.for_asls("deref")
     def deref_(fn, asl: CLRList) -> list[str]:
         return ["*"] + fn.delegate(asl)

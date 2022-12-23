@@ -153,14 +153,3 @@ class Visitor():
     @classmethod
     def for_default(cls, f):
         return DefaultTaggedTransform(f)
-
-
-    @classmethod
-    def covers(cls, predicate: Callable[[Any], bool]):
-        def decorator(f):
-            return PartialTransform(predicate, f)
-        return decorator 
-
-    @classmethod
-    def default(cls, f):
-        return DefaultTransform(f)

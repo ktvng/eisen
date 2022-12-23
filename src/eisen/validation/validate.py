@@ -125,6 +125,12 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
+    @classmethod
+    def all_names_are_unbound(cls, state: State, names: list[str]) -> ValidationResult:
+        results = [Validate.name_is_unbound(state, name) for name in names]
+        if any(result.failed() for result in results):
+            return Validate._abort_signal(state)
+        return Validate._success(return_obj=None)
 
     @classmethod
     def has_member_attribute(cls, state: State, typeclass: TypeClass, attribute_name: str) -> ValidationResult:

@@ -207,10 +207,10 @@ Token: {self.asl}
         return self.asl._list
 
     def add_restriction(self, name: str, restriction: Restriction):
-        self.context.add_obj(name, restriction)
+        self.context.add_obj("restriction", name, restriction)
     
     def get_restriction_for(self, name: str) -> Restriction:
-        return self.context.get_obj(name)
+        return self.context.get_obj("restriction", name)
 
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:

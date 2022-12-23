@@ -7,14 +7,15 @@ if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
     from alpaca.concepts._typeclass import TypeClass
 
-from alpaca.concepts._type import Type
-
-
-
 class Context():
     def __init__(self, name: str, type: str, parent: Context = None):
         self.name = name
         self.type = type
+        self.containers = {
+            "typeclass": {},
+            "instance": {},
+            "restriction": {},
+        }
         self.typeclasses: list[TypeClass] = []
         self.objs: dict[str, Any] = {}
 
@@ -28,6 +29,30 @@ class Context():
     def _add_child(self, child: Context):
         self.children.append(child)
 
+    # TODO: refactor to use add_obj instead of specialized for typeclass and stuff
+    def add_obj(self, container_name: str, name: str, obj: Any):
+        container = self.containers[container_name]
+        container[name] = obj
+
+    def get_obj(self, container_name: str, name: str) -> Any:
+        local_result = self.get_local_obj(container_name, name)
+        if local_result is not None:
+            return local_result
+        elif self.parent:
+            return self.parent.get_obj(container_name, name)
+        return None
+
+    def get_local_obj(self, container_name: str, name: str) -> Any:
+        container = self.containers[container_name]
+        if name in container:
+            return container[name]   
+        return None
+
+
+    def add_instance(self, instance: Instance) -> Instance:
+        self.instances[instance.name] = instance
+        return instance
+
     def find_instance(self, name: str) -> Instance | None:
         if name in self.instances:
             return self.instances[name]
@@ -38,20 +63,7 @@ class Context():
     def get_instance_by_name(self, name: str) -> Instance | None:
         return self.find_instance(name)
 
-    def add_instance(self, instance: Instance) -> Instance:
-        self.instances[instance.name] = instance
-        return instance
 
-    # TODO: refactor to use add_obj instead of specialized for typeclass and stuff
-    def add_obj(self, name: str, obj: Any):
-        self.objs[name] = obj
-
-    def get_obj(self, name: str) -> Any:
-        if name in self.objs:
-            return self.objs[name]
-        if self.parent:
-            return self.parent.get_obj(name)
-        return None
 
     def add_typeclass(self, typeclass: TypeClass):
         if typeclass not in self.typeclasses:

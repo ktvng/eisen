@@ -45,10 +45,13 @@ class Nodes():
             return self.state.first_child()
 
         def second_child(self):
-            return self.state.asl.second()
+            return self.state.get_asl().second()
 
         def third_child(self):
-            return self.state.asl.third()
+            return self.state.get_asl().third()
+
+        def get_line_number(self) -> int:
+            return self.state.get_asl().line_number
 
     class Mod(AbstractNodeInterface):
         asl_type = "mod"
@@ -63,7 +66,7 @@ class Nodes():
             self.state.get_node_data().enters_module = mod
 
         def enter_module_and_apply_fn_to_child_asls(self, fn):
-            for child in self.state.asl[1:]:
+            for child in self.state.get_asl()[1:]:
                 fn.apply(self.state.but_with(
                     asl=child,
                     mod=self.get_entered_module()))
@@ -82,7 +85,7 @@ class Nodes():
         get_this_typeclass = get_typeclass_for_node_that_defines_a_typeclass
 
         def implements_interfaces(self) -> bool:
-            return (len(self.state.asl) >= 2 
+            return (len(self.state.get_asl()) >= 2 
                 and isinstance(self.second_child(), CLRList) 
                 and self.second_child().type == "impls")
 
@@ -100,7 +103,7 @@ class Nodes():
             return interfaces
 
         def _get_embed_asls(self) -> list[CLRList]:
-            return [child for child in self.state.asl if child.type == "embed"]
+            return [child for child in self.state.get_asl() if child.type == "embed"]
 
         def _parse_embed_asl_for_typeclasses(self, embed_asl: CLRList) -> list[TypeClass]:
             # TODO: currently we only allow the interface to be looked up in the same
@@ -119,18 +122,18 @@ class Nodes():
             return embedded_structs
 
         def get_child_attribute_asls(self) -> list[CLRList]:
-            return [child for child in self.state.asl if child.type == ":" or child.type == ":="]
+            return [child for child in self.state.get_asl() if child.type == ":" or child.type == ":="]
 
         def get_child_attribute_names(self) -> list[str]:
             child_asls = self.get_child_attribute_asls()
             return [asl.first().value for asl in child_asls]
 
         def has_create_asl(self) -> bool:
-            create_asls = [child for child in self.state.asl if child.type == "create"]
+            create_asls = [child for child in self.state.get_asl() if child.type == "create"]
             return len(create_asls) == 1
 
         def get_create_asl(self) -> CLRList:
-            create_asls = [child for child in self.state.asl if child.type == "create"]
+            create_asls = [child for child in self.state.get_asl() if child.type == "create"]
             return create_asls[0]
 
 
@@ -148,7 +151,7 @@ class Nodes():
         get_this_typeclass = get_typeclass_for_node_that_defines_a_typeclass
 
         def get_child_attribute_asls(self) -> list[CLRList]:
-            return [child for child in self.state.asl if child.type == ":"]
+            return [child for child in self.state.get_asl() if child.type == ":"]
 
         def get_child_attribute_names(self) -> list[str]:
             child_asls = self.get_child_attribute_asls()
@@ -189,7 +192,7 @@ class Nodes():
         # of (def ...) and (create ...) asls so we can use the same code to process
         # them
         def normalize(self, struct_name: str):
-            self.state.asl._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
+            self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
     
         def get_args_asl(self) -> CLRList:
             return self.second_child()
@@ -214,7 +217,7 @@ class Nodes():
             return self.third_child()
 
         def get_seq_asl(self) -> CLRList:
-            return self.state.asl[-1]
+            return self.state.get_asl()[-1]
  
 
     class Ilet(AbstractNodeInterface):
@@ -316,6 +319,9 @@ class Nodes():
 
         get_name = get_name_from_first_child
 
+        def get_typeclass(self) -> TypeClass:
+            return self.state.get_returned_typeclass()
+
     class Scope(AbstractNodeInterface):
         asl_type = "."
         examples = """
@@ -323,6 +329,12 @@ class Nodes():
         """
 
         def get_asl_defining_restriction(self) -> CLRList:
+            return self.first_child()
+
+        def get_attribute_name(self) -> str:
+            return self.second_child().value
+
+        def get_object_asl(self) -> CLRList:
             return self.first_child()
 
     class Call(AbstractNodeInterface):
@@ -333,11 +345,11 @@ class Nodes():
         """
 
         def get_fn_asl(self) -> CLRList:
-            if self.state.asl.type != "::" and self.state.asl.type != "fn":
-                raise Exception(f"unexpected asl type of {self.state.asl.type}")
+            if self.state.get_asl().type != "::" and self.state.get_asl().type != "fn":
+                raise Exception(f"unexpected asl type of {self.state.get_asl().type}")
             if self.stateasl.type == "fn":
-                return self.state.asl
-            return self._unravel_scoping(asl=self.state.asl.second())
+                return self.state.get_asl()
+            return self._unravel_scoping(asl=self.state.get_asl().second())
 
         def get_function_return_type(self) -> TypeClass:
             return self.state.get_node_data().returned_typeclass
@@ -361,7 +373,7 @@ class Nodes():
             return node.is_print()
 
         def get_params_asl(self) -> str:
-            return self.state.asl[-1]
+            return self.state.get_asl()[-1]
 
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"
@@ -372,7 +384,7 @@ class Nodes():
 
         def get_function_type(self) -> TypeClass:
             working_mod = self.state.get_enclosing_module()
-            next_asl = self.state.asl
+            next_asl = self.state.get_asl()
             while next_asl.type == "::":
                 # the name is stored as the CLRToken in the first position
                 next_mod_name = next_asl.first().value
@@ -388,6 +400,9 @@ class Nodes():
             
             return right_child.first().value
 
+        def get_module_name(self) -> str:
+            return self.first_child().value
+
 
     class Rets(AbstractNodeInterface):
         asl_type = "rets"
@@ -399,6 +414,9 @@ class Nodes():
     class RawCall(AbstractNodeInterface):
         asl_type = "raw_call"
         examples = """
+        x.run() becomes:
+            (raw_call (ref x) (fn run) (params )) 
+
         (raw_call (ref name) (fn name) (params ...))
         (raw_call (ref name) (:: mod_name (disjoint_fn name)) (params ...))
         """
@@ -406,11 +424,22 @@ class Nodes():
         def get_ref_asl(self) -> CLRList:
             return self.first_child()
 
-        def get_fn_identifying_asl(self) -> CLRList:
+        def get_fn_asl(self) -> CLRList:
             return self.second_child()
 
         def get_params_asl(self) -> CLRList:
             return self.third_child()
+
+        def _get_typeclass_of_caller(self):
+            return Nodes.Ref(self.state.but_with(asl=self.get_ref_asl())).get_typeclass()
+        
+        def _get_function_name(self):
+            return Nodes.Fn(self.state.but_with(asl=self.get_fn_asl())).get_function_name()
+
+        def calls_member_function(self):
+            caller_typeclass = self._get_typeclass_of_caller()
+            function_name = self._get_function_name()
+            return caller_typeclass.is_struct() and caller_typeclass.has_member_attribute_with_name(function_name)
 
     class TypeLike(AbstractNodeInterface):
         asl_type = "type" 
@@ -421,8 +450,8 @@ class Nodes():
         get_name = get_name_from_first_child
 
         def get_restriction(self) -> Restriction2:
-            if self.state.asl.type == "var_type":
+            if self.state.get_asl().type == "var_type":
                 restriction = Restriction2.for_var()
-            elif self.state.asl.type == "type":
+            elif self.state.get_asl().type == "type":
                 restriction = Restriction2.for_let()
             return restriction

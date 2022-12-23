@@ -72,7 +72,7 @@ class State(AbstractParams):
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
-            objs=objs, global_mod=global_mod, 
+            objs=objs,global_mod=global_mod,
 
             # these cannot be changed by input params 
             critical_exception=self.critical_exception)
@@ -132,11 +132,11 @@ Token: {self.asl}
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
         global_mod = Context("global", type=ContextTypes.mod)
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool", global_mod=global_mod))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void", global_mod=global_mod))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int"))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str"))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt"))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool"))
+        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void"))
 
         return State(
             config=config, 
@@ -183,8 +183,13 @@ Token: {self.asl}
     def get_bool_type(self) -> TypeClass:
         return self.global_mod.get_typeclass_by_name("bool")
 
-    abort_signal = TypeClassFactory.produce_novel_type("_abort_", global_mod=None)
+    abort_signal = TypeClassFactory.produce_novel_type("_abort_")
 
+    def but_with_first_child(self) -> State:
+        return self.but_with(asl=self.first_child())
+
+    def but_with_second_child(self) -> State:
+        return self.but_with(asl=self.second_child())
 
     def first_child(self) -> CLRList:
         return self.asl.first()
@@ -212,7 +217,13 @@ Token: {self.asl}
             fn.apply(self.but_with(asl=child))
 
     def get_void_type(self) -> TypeClass:
-        return TypeClassFactory.produce_novel_type("void", global_mod=self.global_mod)
+        return TypeClassFactory.produce_novel_type("void")
+
+    def get_asl(self) -> CLRList:
+        return self.asl
+
+    def get_line_number(self) -> int:
+        return self.asl.line_number
 
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)

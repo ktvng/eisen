@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.concepts import TypeClass
 from eisen.common.params import State
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeclassparser import TypeclassParser
 from eisen.validation.validate import Validate
 
-################################################################################
-# this finalizes a proto_struct/proto_interface into a struct/interface typeclass.
-# we need to separate declaration and definition because types may refer back to
-# themselves, or to other types which have yet to be defined, but exist in the 
-# same module.
-class FinalizeProtoInterfaceWrangler(Visitor):
+class InterfaceFinalizationVisitor(Visitor):
+    """this finalizes a proto_interface into an interface typeclass.
+    we need to separate declaration and definition because types may refer back to
+    themselves, or to other types which have yet to be defined, but exist in the 
+    same module.
+    """
     def apply(self, state: State) -> None:
-        return self._route(state.asl, state)
+        return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):
@@ -42,9 +41,10 @@ class FinalizeProtoInterfaceWrangler(Visitor):
         return
 
 
-class FinalizeProtoStructWrangler(Visitor):
+class StructFinalizationVisitor(Visitor):
+    """finalization but for structs. see InterfaceFinalizationVisitor for details"""
     def apply(self, state: State) -> None:
-        return self._route(state.asl, state)
+        return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):

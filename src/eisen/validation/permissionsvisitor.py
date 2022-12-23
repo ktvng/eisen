@@ -13,12 +13,12 @@ from eisen.validation.validate import Validate
 
 class PermissionsVisitor(Visitor):
     def apply(self, state: State) -> list[Restriction]:
-        if self.debug and isinstance(state.asl, CLRList):
+        if self.debug and isinstance(state.get_asl(), CLRList):
             print("\n"*64)
             print(state.inspect())
             print("\n"*4)
             input()
-        return self._route(state.asl, state)
+        return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start", "seq", "cond")
     def start_(fn, state: State):
@@ -224,7 +224,7 @@ class PermissionsVisitor(Visitor):
     
     @Visitor.for_default
     def default_(fn, state: State) -> Restriction:
-        print("UNHANDLED", state.asl)
+        print("UNHANDLED", state.get_asl())
         return [Restriction.create_none()]
 
 

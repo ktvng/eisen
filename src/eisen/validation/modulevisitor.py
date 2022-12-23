@@ -5,11 +5,10 @@ from eisen.common import Module, ContextTypes
 from eisen.common.params import State
 from eisen.validation.nodetypes import Nodes
 
-################################################################################
-# this parses the asl and creates the module structure of the program.
 class ModuleVisitor(Visitor):
+    """this parses the asl and creates the module structure of the program"""
     def apply(self, state: State):
-        return self._route(state.asl, state)
+        return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):

@@ -238,11 +238,11 @@ class TypeClass():
 
 class TypeClassFactory():
     @classmethod
-    def produce_novel_type(cls, name: str, global_mod: Context) -> TypeClass:
+    def produce_novel_type(cls, name: str) -> TypeClass:
         return TypeClass(
             classification=TypeClass.classifications.novel, 
             name=name, 
-            mod=global_mod, 
+            mod=None, 
             components=[], 
             component_names=[], 
             inherits=[],
@@ -250,11 +250,11 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_tuple_type(cls, components: list[TypeClass], global_mod: Context) -> TypeClass:
+    def produce_tuple_type(cls, components: list[TypeClass]) -> TypeClass:
         return TypeClass(
             classification=TypeClass.classifications.tuple, 
             name="",
-            mod=global_mod, 
+            mod=None, 
             components=components, 
             component_names=[], 
             inherits=[],

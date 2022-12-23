@@ -41,7 +41,7 @@ class Validate:
         if type1 != type2:
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"'{type1}' != '{type2}'",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
         return Validate._success(type1)
 
@@ -51,7 +51,7 @@ class Validate:
         if len(lst1) != len(lst2):
             state.report_exception(Exceptions.TupleSizeMismatch(
                 msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
 
@@ -68,13 +68,13 @@ class Validate:
                 if fn_type not in given_type.embeds:
                     state.report_exception(Exceptions.TypeMismatch(
                         msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
-                        line_number=state.asl.line_number))
+                        line_number=state.get_line_number()))
                     return Validate._abort_signal(state)  
                 return Validate._success(fn_type)
             
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
         return Validate._success(fn_type)
 
@@ -86,7 +86,7 @@ class Validate:
         if instance is None:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
         return Validate._success(return_obj=instance)
 
@@ -112,7 +112,7 @@ class Validate:
         if instance is None:
             state.report_exception(Exceptions.UndefinedFunction(
                 msg=f"'{name}' is not defined",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
         return Validate._success(return_obj=instance)
     
@@ -121,7 +121,7 @@ class Validate:
         if state.context.find_instance(name) is not None:
             state.report_exception(Exceptions.RedefinedIdentifier(
                 msg=f"'{name}' is in use",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
@@ -131,7 +131,7 @@ class Validate:
         if not typeclass.has_member_attribute_with_name(attribute_name):
             state.report_exception(Exceptions.MissingAttribute(
                 f"'{typeclass}' does not have member attribute '{attribute_name}'",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
@@ -144,7 +144,7 @@ class Validate:
         if cast_into_type not in type.inherits:
             state.report_exception(Exceptions.CastIncompatibleTypes(
                 msg=f"'{type}' cannot be cast into '{cast_into_type}'",
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
@@ -163,12 +163,12 @@ class Validate:
                     encountered_exception = True
                     state.report_exception(Exceptions.AttributeMismatch(
                         msg=f"'{type}' has attribute '{name}' of '{attribute_type}', but '{required_attribute_type}' is required to inherit '{inherited_type}'",
-                        line_number=state.asl.line_number))
+                        line_number=state.get_line_number()))
             else:
                 encountered_exception = True
                 state.report_exception(Exceptions.MissingAttribute(
                     msg=f"'{type}' is missing attribute '{name}' required to inherit '{inherited_type}'",
-                    line_number=state.asl.line_number))
+                    line_number=state.get_line_number()))
 
         if encountered_exception:
             return Validate._abort_signal(state)
@@ -192,7 +192,7 @@ class Validate:
                     state.report_exception(Exceptions.EmbeddedStructCollision(
                         msg=f"attribute '{pair[0]}' received from {embedded_type} conflicts with the same "
                             + f"attribute received from '{conflicting_type}'",
-                        line_number=state.asl.line_number))
+                        line_number=state.get_line_number()))
                 else:
                     conflict_map[pair] = embedded_type
         if conflicts:
@@ -208,7 +208,7 @@ class Validate:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
                 msg=error_msg,
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
 
@@ -220,7 +220,7 @@ class Validate:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
                 msg=error_msg,
-                line_number=state.asl.line_number))
+                line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
 

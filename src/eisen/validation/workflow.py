@@ -3,7 +3,7 @@ from eisen.validation.flowvisitor import FlowVisitor
 from eisen.validation.functionvisitor import FunctionVisitor
 from eisen.validation.permissionsvisitor import PermissionsVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
-from eisen.validation.finalizationvisitor import FinalizeProtoInterfaceWrangler, FinalizeProtoStructWrangler
+from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
 from eisen.validation.initalizer import Initializer
 
 from eisen.ast_interpreter import AstInterpreter
@@ -35,8 +35,8 @@ class Workflow():
         #
         # we must finalize interfaces first because structs depend on interfaces
         # as they implement interfaces
-        FinalizeProtoInterfaceWrangler,
-        FinalizeProtoStructWrangler,
+        InterfaceFinalizationVisitor,
+        StructFinalizationVisitor,
 
         # handle execptions thrown due to interfaces/embeddings
         ExceptionsHandler,

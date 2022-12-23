@@ -1,23 +1,17 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList
 from eisen.common import EisenInstance
 from eisen.common.params import State
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeclassparser import TypeclassParser
 
-################################################################################
-# this creates the function instances from (create ...) and (def ) asls. the 
-# instances get added to the module so they can be used and called.
 class FunctionVisitor(Visitor):
+    """this creates the function instances from (create ...) and (def ) asls. the 
+    instances get added to the module so they can be used and called.
+    """
     def apply(self, state: State):
-        if self.debug and isinstance(state.asl, CLRList):
-            print("\n"*64)
-            print(state.inspect())
-            print("\n"*4)
-            input()
-        return self._route(state.asl, state)
+        return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):
@@ -52,17 +46,14 @@ class FunctionVisitor(Visitor):
             asl=node.get_assert_asl(),
             struct_name=node.get_struct_name()))
 
-
     @Visitor.for_asls("def")
     def def_(fn, state: State):
-        mod = state.get_enclosing_module()
-        state.assign_instances(mod.add_instance(
-            EisenInstance(
+        instance = EisenInstance(
                 name=Nodes.Def(state).get_function_name(),
-                type=TypeclassParser().apply(state.but_with(mod=mod)),
-                context=mod,
-                asl=state.asl)))
-
+                type=TypeclassParser().apply(state),
+                context=None,
+                asl=state.get_asl())
+        state.get_enclosing_module().add_instance(instance)
 
     @Visitor.for_asls("create")
     def create_(fn, state: State):
@@ -70,13 +61,13 @@ class FunctionVisitor(Visitor):
         # we need to normalize the create asl so it has the same structure as the 
         # def asl. see the documentation for the normalize method for more details.
         node.normalize(struct_name=state.struct_name)
-        mod = state.get_enclosing_module()
         
         # the name of the constructor is the same as the struct
-        state.assign_instances(mod.add_instance(
-            EisenInstance(
+        instance = EisenInstance(
                 name=state.struct_name,
-                type=TypeclassParser().apply(state.but_with(mod=mod)),
-                context=mod,
-                asl=state.asl,
-                is_constructor=True)))
+                type=TypeclassParser().apply(state),
+                context=None,
+                asl=state.get_asl(),
+                is_constructor=True)
+        state.get_enclosing_module().add_instance(instance)
+        

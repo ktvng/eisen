@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from alpaca.concepts import TypeClass, Context
-from eisen.common import EisenInstance, Module
+from alpaca.concepts import TypeClass, Context, Module
+from eisen.common import EisenInstance
 from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
 from eisen.common.restriction import Restriction

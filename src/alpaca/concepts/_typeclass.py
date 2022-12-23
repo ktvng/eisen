@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
-from alpaca.concepts._context import Context
+from alpaca.concepts._module import Module
 
 class Restriction2():
     var = "var"
@@ -49,7 +49,7 @@ class TypeClass():
             self,
             classification: str,
             name: str,
-            mod: Context,
+            mod: Module,
             components: list[TypeClass],
             component_names: list[str],
             inherits: list[TypeClass],
@@ -265,7 +265,7 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Context, name: str = "") -> TypeClass:
+    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Module, name: str = "") -> TypeClass:
         return TypeClass(
             classification=TypeClass.classifications.function, 
             name=name, 
@@ -277,7 +277,7 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_proto_struct_type(cls, name: str, mod: Context) -> TypeClass:
+    def produce_proto_struct_type(cls, name: str, mod: Module) -> TypeClass:
         return TypeClass(
             classification=TypeClass.classifications.proto_struct,
             name=name, 
@@ -289,7 +289,7 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_proto_interface_type(cls, name: str, mod: Context) -> TypeClass:
+    def produce_proto_interface_type(cls, name: str, mod: Module) -> TypeClass:
         return TypeClass(
             classification=TypeClass.classifications.proto_interface, 
             name=name, 

@@ -2,13 +2,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Context, TypeClassFactory, TypeClass
+from alpaca.concepts import Module, Context, TypeClassFactory, TypeClass
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from eisen.common import ContextTypes
 from eisen.common.nodedata import NodeData
-from eisen.common import Module, EisenInstance
+from eisen.common import EisenInstance
 
 if TYPE_CHECKING:
     from eisen.ast_interpreter import InterpreterObject
@@ -60,8 +60,8 @@ class State(AbstractParams):
             asl: CLRList = None,
             txt: str = None,
             context: Context = None,
-            mod: Context = None,
-            global_mod: Context = None,
+            mod: Module = None,
+            global_mod: Module = None,
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
@@ -131,7 +131,7 @@ Token: {self.asl}
 
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
-        global_mod = Context("global", type=ContextTypes.mod)
+        global_mod = Module("global", type=ContextTypes.mod)
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int"))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str"))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt"))
@@ -174,7 +174,7 @@ Token: {self.asl}
     def get_instances(self) -> list[EisenInstance]:
         return self.get_node_data().instances
 
-    def get_parent_context(self) -> Context:
+    def get_parent_context(self) -> Context | Module:
         # if no current context, use the module as the parent context
         if self.context is None:
             return self.get_enclosing_module()

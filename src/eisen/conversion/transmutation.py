@@ -3,7 +3,7 @@ from __future__ import annotations
 import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Visitor
-from alpaca.concepts import Type, Context, Instance
+from alpaca.concepts import Type, NestedContainer, Instance
 from alpaca.validator import AbstractParams
 
 from eisen.common import asls_of_type, Utils
@@ -29,8 +29,8 @@ class SharedCounter():
 class Params(AbstractParams):
     def __init__(self, 
             asl: CLRList, 
-            mod: Context,
-            global_mod: Context,
+            mod: NestedContainer,
+            global_mod: NestedContainer,
             as_ptr: bool,
             counter: SharedCounter,
             oracle: Oracle,
@@ -45,8 +45,8 @@ class Params(AbstractParams):
 
     def but_with(self,
             asl: CLRList = None,
-            mod: Context = None,
-            global_mod: Context = None,
+            mod: NestedContainer = None,
+            global_mod: NestedContainer = None,
             as_ptr: bool = None,
             counter: SharedCounter = None,
             oracle: Oracle = None,
@@ -176,7 +176,7 @@ class CTransmutation(Visitor):
     @Visitor.covers(asls_of_type("type"))
     def partial_6(fn, params: Params) -> str:
         type: Type = params.oracle.get_propagated_type(params.asl)
-        mod: Context = params.oracle.get_module_of_propagated_type(params.asl)
+        mod: NestedContainer = params.oracle.get_module_of_propagated_type(params.asl)
         if params.as_ptr:
             return f"(type (ptr {Utils.get_name_of_type(type, mod)}))"
         return f"(type {Utils.get_name_of_type(type, mod)})"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts._typeclass import TypeClass
-from alpaca.concepts._context import Context
+from alpaca.concepts._context import Context 
 from alpaca.clr._clr import CLRList
 
 class Instance():

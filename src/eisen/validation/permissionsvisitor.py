@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
-from alpaca.concepts import Context
 
 from eisen.common import ContextTypes, binary_ops, boolean_return_ops
 from eisen.common.state import State

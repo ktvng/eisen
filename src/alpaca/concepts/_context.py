@@ -38,7 +38,7 @@ class Context():
         local_result = self.get_local_obj(container_name, name)
         if local_result is not None:
             return local_result
-        elif self.parent:
+        if self.parent:
             return self.parent.get_obj(container_name, name)
         return None
 
@@ -49,19 +49,11 @@ class Context():
         return None
 
 
-    def add_instance(self, instance: Instance) -> Instance:
-        self.instances[instance.name] = instance
-        return instance
+    def add_instance(self, instance: Instance) -> None:
+        self.add_obj("instance", instance.name, instance)
 
-    def find_instance(self, name: str) -> Instance | None:
-        if name in self.instances:
-            return self.instances[name]
-        if self.parent:
-            return self.parent.find_instance(name)
-        return None
-
-    def get_instance_by_name(self, name: str) -> Instance | None:
-        return self.find_instance(name)
+    def get_instance(self, name: str) -> Instance | None:
+        return self.get_obj("instance", name)
 
 
 
@@ -92,7 +84,7 @@ class Context():
         sub_module_lines = []
         for child in self.children:
             sub_module_lines.extend(str(child).split("\n"))
-        object_lines = [str(instance) for instance in self.instances.values()]
+        object_lines = [str(instance) for instance in self.containers["instance"].values()]
         types_lines = [("::" + str(type)).split("::")[-1] for type in self.typeclasses]
         sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])

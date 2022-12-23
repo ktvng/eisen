@@ -391,7 +391,7 @@ class Nodes():
                 working_mod = working_mod.get_child_by_name(next_mod_name)
                 next_asl = next_asl.second()
 
-            return working_mod.find_instance(name=self.get_function_name()).type
+            return working_mod.get_instance(name=self.get_function_name()).type
 
         def get_function_name(self) -> str:
             right_child = self.second_child()

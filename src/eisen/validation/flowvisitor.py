@@ -58,12 +58,14 @@ class FlowVisitor(Visitor):
     @classmethod
     def add_instance_to_context(cls, name: str, typeclass: TypeClass, state: State):
         """add a new instance to the current context and return it."""
-        return state.context.add_instance(EisenInstance(
+        instance = EisenInstance(
             name=name,
             type=typeclass,
             context=state.get_context(),
             asl=state.get_asl(),
-            is_ptr=state.is_ptr))
+            is_ptr=state.is_ptr)
+        state.context.add_instance(instance)
+        return instance
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> TypeClass:

@@ -1,5 +1,85 @@
 from __future__ import annotations
 
+from alpaca.concepts import AbstractRestriction
+
+class GeneralRestriction(AbstractRestriction):
+    def is_unrestricted(self) -> bool:
+        return False
+
+    def is_var(self) -> bool:
+        return False
+
+    def is_val(self) -> bool:
+        return False
+
+    def is_let(self) -> bool:
+        return False
+
+    def is_nullable(self) -> bool:
+        return False
+
+    def is_literal(self) -> bool:
+        return False
+
+    def is_primitive(self) -> bool:
+        return False
+
+    def allows_for_reassignment(self) -> bool:
+        return False
+
+    def reassignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+        return False
+
+class VarRestriction(GeneralRestriction):
+    def is_var(self) -> bool:
+        return True
+
+    def allows_for_reassignment(self) -> bool:
+        return True
+
+    # TODO: rename to assignable to
+    def reassignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+        return other.is_var() or other.is_let() or other.is_primitive()
+
+class LetRestriction(GeneralRestriction):
+    def is_let(self) -> bool:
+        return True
+
+    def reassignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+        return isinstance(current_init_state, Initialization.NotInitialized) and (
+            other.is_let() or other.is_unrestricted())
+
+class ValRestriction(GeneralRestriction):
+    def is_val(self) -> bool:
+        return True
+
+class LiteralRestriction(GeneralRestriction):
+    def is_literal(self) -> bool:
+        return True
+
+class PrimitiveRestriction(GeneralRestriction):
+    def is_primitive(self) -> bool:
+        return True
+
+    def allows_for_reassignment(self) -> bool:
+        return True
+
+    def reassignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+        return other.is_primitive() or other.is_literal() or other.is_unrestricted() 
+
+class Initialization():
+    pass
+
+class Initializations:
+    class PossiblyNull(Initialization):
+        pass
+
+    class NotNull(Initialization):
+        pass
+
+    class NotInitialized(Initialization):
+        pass
+
 class Restriction():
     var = "var"
     nullable_var = "nullable_var"

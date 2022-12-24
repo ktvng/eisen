@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
-from alpaca.concepts import TypeClass, TypeClassFactory, Restriction2
+from alpaca.concepts import TypeClass, TypeClassFactory
 from eisen.common import EisenInstance, binary_ops, boolean_return_ops
 from eisen.common.state import State
+from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeclassparser import TypeclassParser
 from eisen.validation.validate import Validate
@@ -290,9 +291,9 @@ class FlowVisitor(Visitor):
     def _type1(fn, state: State) -> TypeClass:
         typeclass = state.get_enclosing_module().get_typeclass(name=state.first_child().value)
         if state.get_asl().type == "type":
-            return typeclass.with_restriction(Restriction2.for_let())
+            return typeclass.with_restriction(LetRestriction())
         elif state.get_asl().type == "var_type":
-            return typeclass.with_restriction(Restriction2.for_var())
+            return typeclass.with_restriction(VarRestriction())
 
     @Visitor.for_asls("=", "<-", *binary_ops)
     def binary_ops(fn, state: State) -> TypeClass:

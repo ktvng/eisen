@@ -5,7 +5,6 @@ import re
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
-from alpaca.concepts import Restriction2
 
 from eisen.common import asls_of_type
 from eisen.common.state import State

@@ -3,37 +3,8 @@ from typing import Any
 
 from alpaca.concepts._module import Module
 
-class Restriction2():
-    var = "var"
-    val = "val"
-    let = "let"
-
-    @classmethod
-    def for_var(cls) -> Restriction2:
-        return Restriction2(cls.var)
-
-    @classmethod
-    def for_val(cls) -> Restriction2:
-        return Restriction2(cls.val)
-
-    @classmethod
-    def for_let(cls) -> Restriction2:
-        return Restriction2(cls.let)
-
-    def __init__(self, type: str):
-        self.type = type
-
-    def __str__(self) -> str:
-        return self.type
-
-    def is_var(self) -> bool:
-        return self.type == self.var
-
-    def is_val(self) -> bool:
-        return self.type == self.val
-
-    def is_let(self) -> bool:
-        return self.type == self.let 
+class AbstractRestriction():
+    pass
 
 class TypeClass():
     class classifications:
@@ -54,8 +25,9 @@ class TypeClass():
             component_names: list[str],
             inherits: list[TypeClass],
             embeds: list[TypeClass],
-            restriction: Restriction2):
+            restriction: AbstractRestriction):
 
+        """a typeclass instance should only be created via the TypeclassFactory"""
         self.classification = classification 
         self.name = name
         self.mod = mod
@@ -213,10 +185,10 @@ class TypeClass():
     def is_tuple(self) -> bool:
         return self.classification == TypeClass.classifications.tuple
 
-    def with_restriction(self, restriction: Restriction2):
+    def with_restriction(self, restriction: AbstractRestriction):
         return self._copy_with_restriction(restriction)
 
-    def get_restrictions(self) -> list[Restriction2]:
+    def get_restrictions(self) -> list[AbstractRestriction]:
         if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
             or self.classification == TypeClass.classifications.interface):
             return [self.restriction]
@@ -227,7 +199,7 @@ class TypeClass():
         
         raise Exception(f"unhandled classification {self.classification}")
 
-    def _copy_with_restriction(self, restriction: Restriction2):
+    def _copy_with_restriction(self, restriction: AbstractRestriction):
         return TypeClass(
             classification=self.classification,
             name=self.name,
@@ -237,65 +209,3 @@ class TypeClass():
             inherits=self.inherits,
             embeds=self.embeds,
             restriction=restriction)
-
-
-class TypeClassFactory():
-    @classmethod
-    def produce_novel_type(cls, name: str) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.novel, 
-            name=name, 
-            mod=None, 
-            components=[], 
-            component_names=[], 
-            inherits=[],
-            embeds=[],
-            restriction=None)
-
-    @classmethod
-    def produce_tuple_type(cls, components: list[TypeClass]) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.tuple, 
-            name="",
-            mod=None, 
-            components=components, 
-            component_names=[], 
-            inherits=[],
-            embeds=[],
-            restriction=None)
-
-    @classmethod
-    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Module, name: str = "") -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.function, 
-            name=name, 
-            mod=mod, 
-            components=[arg, ret], 
-            component_names=["arg", "ret"], 
-            inherits=[],
-            embeds=[],
-            restriction=None)
-
-    @classmethod
-    def produce_proto_struct_type(cls, name: str, mod: Module) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.proto_struct,
-            name=name, 
-            mod=mod, 
-            components=[], 
-            component_names=[], 
-            inherits=[],
-            embeds=[],
-            restriction=None)
-
-    @classmethod
-    def produce_proto_interface_type(cls, name: str, mod: Module) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.proto_interface, 
-            name=name, 
-            mod=mod, 
-            components=[], 
-            component_names=[], 
-            inherits=[],
-            embeds=[],
-            restriction=None)

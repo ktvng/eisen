@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.concepts._typeclass import TypeClass, Restriction2
+from alpaca.concepts._typeclass import TypeClass
 
 from eisen.common import Module
 from eisen.common.state import State
 from eisen.common.restriction import Restriction
-
+from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
 
 def get_name_from_first_child(self) -> str:
     return self.state.first_child().value
@@ -449,9 +449,9 @@ class Nodes():
         """
         get_name = get_name_from_first_child
 
-        def get_restriction(self) -> Restriction2:
+        def get_restriction(self) -> GeneralRestriction:
             if self.state.get_asl().type == "var_type":
-                restriction = Restriction2.for_var()
+                restriction = VarRestriction()
             elif self.state.get_asl().type == "type":
-                restriction = Restriction2.for_let()
+                restriction = LetRestriction()
             return restriction

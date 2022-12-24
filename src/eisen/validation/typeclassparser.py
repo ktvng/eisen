@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.concepts import TypeClass, TypeClassFactory, Restriction2
+from alpaca.concepts import TypeClass, TypeClassFactory
 from eisen.common.state import State
+from eisen.common.restriction import LetRestriction, ValRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes
 
 class TypeclassParser(Visitor):
@@ -70,7 +71,7 @@ class TypeclassParser(Visitor):
         """
         if state.get_asl():
             return fn.apply(state.but_with(asl=state.first_child()))
-        return state.get_void_type().with_restriction(Restriction2.for_let())
+        return state.get_void_type().with_restriction(LetRestriction())
 
     @Visitor.for_asls("def", "create", ":=")
     def def_(fn, state: State) -> TypeClass:

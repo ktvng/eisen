@@ -4,7 +4,7 @@ from alpaca.concepts import TypeClass, Context, Module
 from eisen.common import EisenInstance
 from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
-from eisen.common.restriction import Restriction, EisenInstanceState
+from eisen.common.restriction import EisenInstanceState
 
 
 class ValidationResult():

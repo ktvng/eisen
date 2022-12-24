@@ -5,7 +5,6 @@ from alpaca.concepts._typeclass import TypeClass
 
 from eisen.common import Module
 from eisen.common.state import State
-from eisen.common.restriction import Restriction
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
 
 def get_name_from_first_child(self) -> str:

@@ -17,6 +17,10 @@ class EisenInstanceState(InstanceState):
     def mark_as_initialized(self):
         self.initialization = Initializations.NotNull
 
+    def __str__(self) -> str:
+        return str(self.restriction) + " " + ("notinit" if self.initialization == Initializations.NotInitialized else "init")
+
+
 class EisenAnonymousInstanceState(EisenInstanceState):
     def __init__(self, restriction: AbstractRestriction, initialzation: Initializations):
         super().__init__("", restriction, initialzation)
@@ -48,6 +52,9 @@ class GeneralRestriction(AbstractRestriction):
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
         return False
+
+    def __str__(self) -> str:
+        return str(type(self))
 
 class NoRestriction(GeneralRestriction):
     def allows_for_reassignment(self) -> bool:

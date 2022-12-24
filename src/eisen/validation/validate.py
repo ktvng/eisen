@@ -213,7 +213,7 @@ class Validate:
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg="TODO: fix error message",
+                msg=f"TODO: fix error message {left}, {right}",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
@@ -225,7 +225,7 @@ class Validate:
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg="TODO: fix error message",
+                msg=f"TODO: fix error message {left}, {right}",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()

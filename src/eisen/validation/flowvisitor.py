@@ -258,7 +258,12 @@ class FlowVisitor(Visitor):
             state.critical_exception.set(True)
             return
 
-        instances = [FlowVisitor.add_instance_to_context(name, typeclass, state)
+        if state.asl.type == "ilet":
+            restriction = LetRestriction()
+        else:
+            restriction = VarRestriction()
+
+        instances = [FlowVisitor.add_instance_to_context(name, typeclass.with_restriction(restriction), state)
             for name, typeclass in zip(names, typeclasses)]
         state.assign_instances(instances)
 
@@ -269,6 +274,7 @@ class FlowVisitor(Visitor):
         fn.apply_to_first_child_of(state)
         instances = state.but_with_first_child().get_instances()
         for instance in instances:
+            instance.type = instance.type.with_restriction(VarRestriction())
             instance.is_var = True
         state.assign_instances(instances) 
 

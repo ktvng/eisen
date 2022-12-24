@@ -317,13 +317,6 @@ class Nodes():
         (ref name)
         """
 
-        def get_restriction(self) -> Restriction:
-            instance = self.state.get_node_data().instances[0]
-            if instance.is_var:
-                return Restriction.var
-            else:
-                return Restriction.let
-
         get_name = get_name_from_first_child
 
         def get_typeclass(self) -> TypeClass:

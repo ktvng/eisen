@@ -188,6 +188,16 @@ class TypeClass():
     def with_restriction(self, restriction: AbstractRestriction):
         return self._copy_with_restriction(restriction)
 
+    def unpack_into_parts(self):
+        if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
+            or self.classification == TypeClass.classifications.interface):
+            return [self]
+        if self.classification == TypeClass.classifications.function:
+            return self.get_return_type().unpack_into_parts()
+        if self.classification == TypeClass.classifications.tuple:
+            return self.components
+        
+
     def get_restrictions(self) -> list[AbstractRestriction]:
         if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
             or self.classification == TypeClass.classifications.interface):

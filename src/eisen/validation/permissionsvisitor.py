@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
+from alpaca.concepts import TypeClass
 
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State
@@ -33,11 +34,7 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("def", "create")
     def defs_(fn, state: State) -> list[EisenInstanceState]:
-        fn_context = state.create_block_context("func") 
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                context=fn_context))
+        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
         return []
 
     @Visitor.for_asls("args", "rets", "prod_type")
@@ -52,12 +49,12 @@ class PermissionsVisitor(Visitor):
     def colon_(fn, state: State) -> list[EisenInstanceState]:
         instance = state.get_instances()[0]
         if instance.type.restriction is not None and instance.type.restriction.is_var():
-            instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
+            instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized)
         elif instance.type.is_novel():
-            instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
+            instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized)
         else:
             # pass everything else by reference (variable)
-            instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
+            instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized)
 
         state.add_instancestate(instancestate)
         return [instancestate]
@@ -96,9 +93,9 @@ class PermissionsVisitor(Visitor):
     def let_(fn, state: State) -> list[EisenInstanceState]:
         for instance in state.get_instances():
             if instance.type.is_novel():
-                instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
+                instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized)
             else:
-                instancestate = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized())
+                instancestate = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized)
             state.add_instancestate(instancestate)
         return []
 
@@ -108,9 +105,9 @@ class PermissionsVisitor(Visitor):
         right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_instancestate in zip(state.get_instances(), right_instancestates):
             if instance.type.is_novel():
-                left_instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
+                left_instancestate = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized)
             else:
-                left_instancestate = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized())
+                left_instancestate = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized)
 
             state.add_instancestate(left_instancestate)
             Validate.assignment_restrictions_met(state, left_instancestate, right_instancestate)
@@ -123,7 +120,7 @@ class PermissionsVisitor(Visitor):
     def ivar_(fn, state: State) -> list[EisenInstanceState]:
         right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_instancestate in zip(state.get_instances(), right_instancestates):
-            left_instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
+            left_instancestate = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized)
 
             state.add_instancestate(left_instancestate)
             Validate.assignment_restrictions_met(state, left_instancestate, right_instancestate)
@@ -131,12 +128,11 @@ class PermissionsVisitor(Visitor):
             left_instancestate.mark_as_initialized()
         return []
 
-    
     @Visitor.for_asls("var")
     def var_(fn, state: State) -> list[EisenInstanceState]:
         for instance in state.get_instances():
             state.add_instancestate(
-                EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized()))
+                EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized))
         return []
 
 
@@ -181,19 +177,19 @@ class PermissionsVisitor(Visitor):
         argument_converted_instancestates = []
         # handle argument instancestates
         argument_typeclass = node.get_argument_type()
-        instancestates = argument_typeclass.get_restrictions()
+        restrictions = argument_typeclass.get_restrictions()
         unpacked_argument_typeclasses = [argument_typeclass] if not argument_typeclass.is_tuple() else argument_typeclass.components
-        for r, tc in zip(instancestates, unpacked_argument_typeclasses):
+        for r, tc in zip(restrictions, unpacked_argument_typeclasses):
             if r.is_let() and tc.is_novel():
                 argument_converted_instancestates.append(
-                    EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.NotNull()))
+                    EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized))
             elif r.is_let():
                 # TODO: init should be false; should this be LET?
                 argument_converted_instancestates.append(
-                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
+                    EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized))
             elif r.is_var():
                 argument_converted_instancestates.append(
-                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
+                    EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized))
 
         
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
@@ -203,19 +199,10 @@ class PermissionsVisitor(Visitor):
 
         # handle returned restrictions
         returned_typeclass = node.get_function_return_type()
-        unpacked_return_typeclasses = [returned_typeclass] if not returned_typeclass.is_tuple() else returned_typeclass.components
-        instancestates = returned_typeclass.get_restrictions()
         converted_instancestates = []
-        for instancestate, tc in zip(instancestates, unpacked_return_typeclasses):
-            if instancestate.is_let() and tc.is_novel():
-                converted_instancestates.append(
-                    EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.NotNull()))
-            elif instancestate.is_let():
-                converted_instancestates.append(
-                    EisenAnonymousInstanceState(LetRestriction(), Initializations.NotInitialized()))
-            elif instancestate.is_var():
-                converted_instancestates.append(
-                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
+        for tc in returned_typeclass.unpack_into_parts():
+            converted_instancestates.append(
+                PermissionsVisitor.typeclass_to_instancestate(tc, Initializations.Initialized))
         return converted_instancestates
 
     @Visitor.for_asls("cast")
@@ -225,11 +212,11 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[EisenInstanceState]:
-        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull())]
+        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[EisenInstanceState]:
-        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull())]
+        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default
     def default_(fn, state: State) -> list[EisenInstanceState]:
@@ -238,9 +225,16 @@ class PermissionsVisitor(Visitor):
 
     @classmethod
     def NoRestrictionInstanceState(cls):
-        return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized())]
+        return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized)]
 
-
+    @classmethod
+    def typeclass_to_instancestate(cls, typeclass: TypeClass, init_state: Initializations) -> EisenInstanceState:
+        if typeclass.restriction.is_let() and typeclass.is_novel():
+            return EisenAnonymousInstanceState(PrimitiveRestriction(), init_state)
+        elif typeclass.restriction.is_let():
+            return EisenAnonymousInstanceState(LetRestriction(), init_state)
+        elif typeclass.restriction.is_var():
+            return EisenAnonymousInstanceState(VarRestriction(), init_state)
 
 
 

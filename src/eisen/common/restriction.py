@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from alpaca.concepts import AbstractRestriction, InstanceState, Initialization as AbstractInit
+from alpaca.concepts import AbstractRestriction, InstanceState, Initialization
 
 class EisenInstanceState(InstanceState):
     def __init__(self, 
             name: str, 
             restriction: GeneralRestriction, 
-            initialization: Initialization):
+            initialization: Initializations):
         self.name = name
         self.restriction = restriction
         self.initialization = initialization
@@ -15,10 +15,10 @@ class EisenInstanceState(InstanceState):
         return self.restriction.assignable_to(other.restriction, self.initialization)
 
     def mark_as_initialized(self):
-        self.initialization = Initializations.NotNull()
+        self.initialization = Initializations.NotNull
 
 class EisenAnonymousInstanceState(EisenInstanceState):
-    def __init__(self, restriction: AbstractRestriction, initialzation: AbstractInit):
+    def __init__(self, restriction: AbstractRestriction, initialzation: Initializations):
         super().__init__("", restriction, initialzation)
 
 class GeneralRestriction(AbstractRestriction):
@@ -75,7 +75,7 @@ class LetRestriction(GeneralRestriction):
         return True
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
-        return isinstance(current_init_state, Initializations.NotInitialized) and (
+        return (current_init_state == Initializations.NotInitialized) and (
             other.is_let() or other.is_unrestricted())
 
 class ValRestriction(GeneralRestriction):
@@ -96,18 +96,11 @@ class PrimitiveRestriction(GeneralRestriction):
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
         return other.is_primitive() or other.is_literal() or other.is_unrestricted() 
 
-class Initialization(AbstractInit):
-    pass
-
-class Initializations:
-    class PossiblyNull(Initialization):
-        pass
-
-    class NotNull(Initialization):
-        pass
-
-    class NotInitialized(Initialization):
-        pass
+class Initializations(Initialization):
+    PossiblyNull = "possiblynull"
+    NotNull = "notnull"
+    NotInitialized = "notinitialized"
+    Initialized = "initialized"
     
     # def assignable_to(self, right: Restriction) -> tuple[bool, str]:
     #     # print(self, right)

@@ -239,14 +239,7 @@ class FlowVisitor(Visitor):
     @Visitor.for_asls("def", "create", ":=")
     @returns_void_type
     def fn(fn, state: State) -> TypeClass:
-        # inside the Function, (def ...) and (create ...) asls have been
-        # normalized to have the same signature. therefore we can treat them identically
-        # here
-        shared_fn_context = state.create_block_context("func")
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child, 
-                context=shared_fn_context))
+        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
 
     @Visitor.for_asls("ilet", "ivar")
     @returns_void_type

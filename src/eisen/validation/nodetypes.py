@@ -217,6 +217,14 @@ class Nodes():
 
         def get_seq_asl(self) -> CLRList:
             return self.state.get_asl()[-1]
+
+        def enter_context_and_apply_fn(self, fn) -> None:
+            # must create fn_context here as it is shared by all children
+            fn_context = self.state.create_block_context("func") 
+            for child in self.state.get_child_asls():
+                fn.apply(self.state.but_with(
+                    asl=child,
+                    context=fn_context))
  
 
     class Ilet(AbstractNodeInterface):

@@ -219,6 +219,18 @@ class Validate:
         return Validate._success()
 
     @classmethod
+    def overwrite_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
+        # print(state.asl)
+        is_assignable = left.restriction.is_var()
+        if not is_assignable:
+            state.report_exception(Exceptions.MemoryAssignment(
+                # TODO, figure out how to pass the name of the variable here
+                msg=f"TODO: fix error message {left}, {right}",
+                line_number=state.get_line_number()))
+            return Validate._abort_signal(state)
+        return Validate._success()
+        
+    @classmethod
     def parameter_assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
         is_assignable = left.assignable_to(right)

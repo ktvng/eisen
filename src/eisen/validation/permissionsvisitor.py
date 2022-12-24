@@ -112,6 +112,19 @@ class PermissionsVisitor(Visitor):
             left_instancestate.mark_as_initialized()
         return []
 
+    @Visitor.for_asls("<-")
+    def larrow_(fn, state: State) -> list[EisenInstanceState]:
+        left_instancestates = fn.apply(state.but_with(asl=state.first_child()))
+        right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
+
+        for left_instancestate, right_instancestate in zip(left_instancestates, right_instancestates):
+            Validate.overwrite_restrictions_met(state, left_instancestate, right_instancestate)
+            # must mark as initialized after we check critera, otherwise checks may fail
+            # if this is where the first initialization occurs
+            left_instancestate.mark_as_initialized()
+        return []
+
+
     @Visitor.for_asls(".")
     def dot_(fn, state: State) -> list[EisenInstanceState]:
         # TODO: figure this out
@@ -188,8 +201,3 @@ class PermissionsVisitor(Visitor):
             return EisenInstanceState(instance.name, LetRestriction(), init_state)
         elif typeclass.restriction.is_var():
             return EisenInstanceState(instance.name, VarRestriction(), init_state) 
-
-
-
-
-

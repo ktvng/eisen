@@ -12,7 +12,7 @@ from eisen.common import EisenInstance
 
 if TYPE_CHECKING:
     from eisen.ast_interpreter import InterpreterObject
-    from eisen.common.restriction import Restriction
+    from eisen.common.restriction import Restriction, InstanceState
 
 
 class SharedBool():
@@ -206,11 +206,11 @@ Token: {self.asl}
     def get_all_children(self) -> list[CLRList]:
         return self.asl._list
 
-    def add_restriction(self, name: str, restriction: Restriction):
-        self.context.add_obj("restriction", name, restriction)
-    
-    def get_restriction_for(self, name: str) -> Restriction:
-        return self.context.get_obj("restriction", name)
+    def add_instancestate(self, instancestate: InstanceState):
+        self.context.add_instancestate(instancestate)
+
+    def get_instancestate(self, name: str) -> InstanceState:
+        return self.context.get_instancestate(name)
 
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:

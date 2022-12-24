@@ -6,6 +6,7 @@ import uuid
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
     from alpaca.concepts._typeclass import TypeClass
+    from alpaca.concepts._instancestate import InstanceState
 
 class NestedContainer():
     def __init__(self, name: str, type: str, parent: NestedContainer = None):
@@ -14,7 +15,7 @@ class NestedContainer():
         self.containers = {
             "typeclass": {},
             "instance": {},
-            "restriction": {},
+            "instance_state": {},
         }
 
         self.children = []
@@ -63,8 +64,14 @@ class NestedContainer():
         if typeclass.name:
             self.add_obj("typeclass", typeclass.get_uuid_str(), typeclass)
 
-    def get_typeclass(self, name: str):
+    def get_typeclass(self, name: str) -> TypeClass:
         return self.get_obj("typeclass", name)
+
+    def add_instancestate(self, instance_state: InstanceState) -> None:
+        self.add_obj("instance_state", instance_state.name, instance_state)
+
+    def get_instancestate(self, name: str) -> InstanceState:
+        return self.get_obj("instance_state", name)
 
 
     def __str__(self) -> str:

@@ -4,7 +4,7 @@ from alpaca.concepts import TypeClass, Context, Module
 from eisen.common import EisenInstance
 from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
-from eisen.common.restriction import Restriction
+from eisen.common.restriction import Restriction, EisenInstanceState
 
 
 class ValidationResult():
@@ -207,25 +207,25 @@ class Validate:
 
 
     @classmethod
-    def assignment_restrictions_met(cls, state: State, left_restriction: Restriction, right_restriction: Restriction):
+    def assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
-        is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
+        is_assignable = left.assignable_to(right)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg=error_msg,
+                msg="TODO: fix error message",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
 
     @classmethod
-    def parameter_assignment_restrictions_met(cls, state: State, left_restriction: Restriction, right_restriction: Restriction):
+    def parameter_assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
-        is_assignable, error_msg = left_restriction.assignable_to(right_restriction)
+        is_assignable = left.assignable_to(right)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg=error_msg,
+                msg="TODO: fix error message",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()

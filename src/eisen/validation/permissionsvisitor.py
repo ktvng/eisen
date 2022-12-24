@@ -5,13 +5,15 @@ from alpaca.clr import CLRList
 
 from eisen.common import ContextTypes, binary_ops, boolean_return_ops
 from eisen.common.state import State
-from eisen.common.restriction import Restriction
+from eisen.common.restriction import (Restriction, GeneralRestriction, VarRestriction, ValRestriction,
+    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction, EisenInstanceState,
+    EisenAnonymousInstanceState, Initializations)
 
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.validate import Validate
 
 class PermissionsVisitor(Visitor):
-    def apply(self, state: State) -> list[Restriction]:
+    def apply(self, state: State) -> list[EisenInstanceState]:
         if self.debug and isinstance(state.get_asl(), CLRList):
             print("\n"*64)
             print(state.inspect())
@@ -50,15 +52,14 @@ class PermissionsVisitor(Visitor):
     def colon_(fn, state: State) -> list[Restriction]:
         instance = state.get_instances()[0]
         if instance.type.restriction is not None and instance.type.restriction.is_var():
-            restriction = Restriction.create_var()
+            restriction = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
         elif instance.type.is_novel():
-            # pass primitives by value
-            restriction = Restriction.for_let_of_novel_type()
+            restriction = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
         else:
             # pass everything else by reference (variable)
-            restriction = Restriction.create_var()
+            restriction = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
 
-        state.add_restriction(instance.name, restriction)
+        state.add_instancestate(restriction)
         return [restriction]
 
     @Visitor.for_asls("interface")
@@ -89,16 +90,16 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[Restriction]:
-        return [state.get_restriction_for(Nodes.Ref(state).get_name())]
+        return [state.get_instancestate(Nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("let")
     def let_(fn, state: State) -> list[Restriction]:
         for instance in state.get_instances():
             if instance.type.is_novel():
-                restriction = Restriction.for_let_of_novel_type()
+                restriction = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
             else:
-                restriction = Restriction.create_let()
-            state.add_restriction(instance.name, restriction)
+                restriction = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized())
+            state.add_instancestate(restriction)
         return []
 
 
@@ -107,12 +108,13 @@ class PermissionsVisitor(Visitor):
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
             if instance.type.is_novel():
-                left_restriction = Restriction.for_let_of_novel_type()
+                left_restriction = EisenInstanceState(instance.name, PrimitiveRestriction(), Initializations.NotInitialized())
             else:
-                left_restriction = Restriction.create_let()
+                left_restriction = EisenInstanceState(instance.name, LetRestriction(), Initializations.NotInitialized())
 
-            state.add_restriction(instance.name, left_restriction)
+            state.add_instancestate(left_restriction)
             Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+            # must initialize after the validation
             left_restriction.mark_as_initialized()
         return []
 
@@ -121,19 +123,20 @@ class PermissionsVisitor(Visitor):
     def ivar_(fn, state: State) -> list[Restriction]:
         right_restrictions = fn.apply(state.but_with(asl=state.second_child()))
         for instance, right_restriction in zip(state.get_instances(), right_restrictions):
-            left_restriction = Restriction.create_var()
+            left_restriction = EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized())
 
-            state.add_restriction(instance.name, left_restriction)
+            state.add_instancestate(left_restriction)
             Validate.assignment_restrictions_met(state, left_restriction, right_restriction)
+            # must initialize after the validation
             left_restriction.mark_as_initialized()
         return []
-
 
     
     @Visitor.for_asls("var")
     def var_(fn, state: State) -> list[Restriction]:
         for instance in state.get_instances():
-            state.add_restriction(instance.name, Restriction.create_var())
+            state.add_instancestate(
+                EisenInstanceState(instance.name, VarRestriction(), Initializations.NotInitialized()))
         return []
 
 
@@ -160,7 +163,7 @@ class PermissionsVisitor(Visitor):
     @Visitor.for_asls(".")
     def dot_(fn, state: State) -> Restriction:
         # TODO: figure this out
-        return [Restriction.create_none()]
+        return PermissionsVisitor.NoRestrictionInstanceState()
         node = Nodes.Scope(state)
         # if we are accessing a primitive attribute, then remove it's restriction.
         if state.get_returned_typeclass().is_novel():
@@ -172,7 +175,7 @@ class PermissionsVisitor(Visitor):
         node = Nodes.Call(state)
 
         if node.is_print():
-            return [Restriction.create_none()]
+            return PermissionsVisitor.NoRestrictionInstanceState()
 
 
         argument_converted_restrictions = []
@@ -182,11 +185,16 @@ class PermissionsVisitor(Visitor):
         unpacked_argument_typeclasses = [argument_typeclass] if not argument_typeclass.is_tuple() else argument_typeclass.components
         for r, tc in zip(restrictions, unpacked_argument_typeclasses):
             if r.is_let() and tc.is_novel():
-                argument_converted_restrictions.append(Restriction.for_let_of_novel_type())
+                argument_converted_restrictions.append(
+                    EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.NotNull()))
             elif r.is_let():
-                argument_converted_restrictions.append(Restriction.create_var(is_init=False))
+                # TODO: init should be false; should this be LET?
+                argument_converted_restrictions.append(
+                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
             elif r.is_var():
-                argument_converted_restrictions.append(Restriction.create_var(is_init=False))
+                argument_converted_restrictions.append(
+                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
+
         
         param_restrictions = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_converted_restrictions, param_restrictions):
@@ -200,11 +208,14 @@ class PermissionsVisitor(Visitor):
         converted_restrictions = []
         for restriction, tc in zip(restrictions, unpacked_return_typeclasses):
             if restriction.is_let() and tc.is_novel():
-                converted_restrictions.append(Restriction.for_let_of_novel_type())
+                converted_restrictions.append(
+                    EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.NotNull()))
             elif restriction.is_let():
-                converted_restrictions.append(Restriction.create_let(is_init=False))
+                converted_restrictions.append(
+                    EisenAnonymousInstanceState(LetRestriction(), Initializations.NotInitialized()))
             elif restriction.is_var():
-                converted_restrictions.append(Restriction.create_var(is_init=False))
+                converted_restrictions.append(
+                    EisenAnonymousInstanceState(VarRestriction(), Initializations.NotInitialized()))
         return converted_restrictions
 
     @Visitor.for_asls("cast")
@@ -214,19 +225,20 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[Restriction]:
-        return [Restriction.create_literal()]
+        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull())]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[Restriction]:
-        return [Restriction.create_literal()]
+        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull())]
 
-    
     @Visitor.for_default
     def default_(fn, state: State) -> Restriction:
         print("UNHANDLED", state.get_asl())
-        return [Restriction.create_none()]
+        return PermissionsVisitor.NoRestrictionInstanceState()
 
-
+    @classmethod
+    def NoRestrictionInstanceState(cls):
+        return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized())]
 
 
 

@@ -12,7 +12,8 @@ class PrintFunction():
         for arg in arg_strs:
             base = tag_regex.sub(arg, base, count=1)
         if redirect is not None:
-            return(base)
+            redirect += base
+            return ""
         else:
             print(base)
             return ""

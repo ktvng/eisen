@@ -148,11 +148,8 @@ class AstInterpreter(Visitor):
 
         if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
-            if fn.redirect_output:
-                fn.stdout += PrintFunction.emulate(fn.stdout, *args)
-            else:
-                PrintFunction.emulate(None, *args)
-            
+            redirect_to = fn.stdout if fn.redirect_output else None
+            PrintFunction.emulate(redirect_to, *args)
             return []
 
         # this case is if we are looking pu the function inside a struct

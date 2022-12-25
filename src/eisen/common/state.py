@@ -152,29 +152,37 @@ Token: {self.asl}
             is_ptr=False)
 
     def get_node_data(self) -> NodeData:
+        """canonical way to access data stored in a node"""
         return self.asl.data
 
     def get_config(self) -> Config:
+        """canonical way to access the config"""
         return self.config
 
     def get_asl(self) -> CLRList:
+        """canonical way to access the current asl"""
         return self.asl
 
     def get_context(self) -> Context | Module:
+        """canonical way to access the current context"""
         if self.context is not None:
             return self.context
         return self.mod
 
     def get_enclosing_module(self) -> Module:
+        """canonical way to access the module enclosing this state"""
         return self.mod
 
     def get_struct_name(self) -> str:
+        """canonical way to access the name of the struct, if applicable"""
         return self.struct_name
 
     def get_returned_type(self) -> Type:
+        """canonical way to access the type returned from this node"""
         return self.get_node_data().returned_type
         
     def get_instances(self) -> list[EisenInstance]:
+        """canonical way to get instances stored in this node"""
         return self.get_node_data().instances       
 
     def get_bool_type(self) -> Type:
@@ -184,21 +192,26 @@ Token: {self.asl}
         return TypeFactory.produce_novel_type("_abort_")
         
     def get_child_asls(self) -> list[CLRList]:
+        """canonical way to obtain child CLRLists"""
         return [child for child in self.asl if isinstance(child, CLRList)]
 
     def get_all_children(self) -> list[CLRList]:
+        """canonical way to get all children of the current CLRList"""
         return self.asl._list
 
     def get_parent_context(self) -> Context | Module:
+        """canonical way to access the enclosing context"""
         # if no current context, use the module as the parent context
         if self.context is None:
             return self.get_enclosing_module()
         return self.context
 
     def get_instancestate(self, name: str) -> InstanceState:
+        """canoncial way to access a InstanceState by name"""
         return self.context.get_instancestate(name)
 
     def get_line_number(self) -> int:
+        """canonical way to access the line number corresponding to this state"""
         return self.asl.line_number
 
 

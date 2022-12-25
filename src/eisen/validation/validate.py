@@ -27,7 +27,7 @@ class ValidationResult():
 class Validate:
     @classmethod
     def _abort_signal(cls, state: State) -> ValidationResult:
-        return ValidationResult(result=False, return_obj=state.abort_signal)
+        return ValidationResult(result=False, return_obj=state.get_abort_signal())
 
     @classmethod
     def _success(cls, return_obj=None) -> ValidationResult:
@@ -35,7 +35,7 @@ class Validate:
 
     @classmethod
     def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
-        if any([state.abort_signal in (type1, type2)]):
+        if any([state.get_abort_signal() in (type1, type2)]):
             return Validate._abort_signal(state) 
 
         if type1 != type2:
@@ -58,7 +58,7 @@ class Validate:
 
     @classmethod
     def correct_argument_types(cls, state: State, name: str, fn_type: Type, given_type: Type) -> ValidationResult:
-        if any([state.abort_signal in (fn_type, given_type)]):
+        if any([state.get_abort_signal() in (fn_type, given_type)]):
             return Validate._abort_signal(state) 
 
         if fn_type != given_type:
@@ -144,7 +144,7 @@ class Validate:
     
     @classmethod
     def castable_types(cls, state: State, type: Type, cast_into_type: Type) -> ValidationResult:
-        if any([state.abort_signal in (type, cast_into_type)]):
+        if any([state.get_abort_signal() in (type, cast_into_type)]):
             return Validate._abort_signal(state) 
 
         if cast_into_type not in type.inherits:

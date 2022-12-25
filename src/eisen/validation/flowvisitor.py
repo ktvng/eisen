@@ -143,7 +143,7 @@ class FlowVisitor(Visitor):
 
         check = Validate.all_names_are_unbound(state, names)
         if check.failed():
-            return state.abort_signal
+            return state.get_abort_signal()
 
         instances = [FlowVisitor.add_instance_to_context(name, type, state) for name in names]
         state.assign_instances(instances)
@@ -179,8 +179,8 @@ class FlowVisitor(Visitor):
     @Visitor.for_asls("call")
     def call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
-        if fn_type == state.abort_signal:
-            return state.abort_signal
+        if fn_type == state.get_abort_signal():
+            return state.get_abort_signal()
 
         # still need to type flow through the params passed to the function
         params_type = fn.apply_to_second_child_of(state)
@@ -249,7 +249,7 @@ class FlowVisitor(Visitor):
         type_to_be_assigned = fn.apply_to_second_child_of(state)
         componentwise_types = node.unpack_assigned_types(type_to_be_assigned)
 
-        if (any(type is state.abort_signal for type in componentwise_types)
+        if (any(type is state.get_abort_signal() for type in componentwise_types)
                 or Validate.all_names_are_unbound(state, names).failed()):
             state.critical_exception.set(True)
             return

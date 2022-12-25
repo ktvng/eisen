@@ -154,6 +154,12 @@ Token: {self.asl}
     def get_node_data(self) -> NodeData:
         return self.asl.data
 
+    def get_config(self) -> Config:
+        return self.config
+
+    def get_asl(self) -> CLRList:
+        return self.asl
+
     def get_context(self) -> Context | Module:
         if self.context is not None:
             return self.context
@@ -165,19 +171,23 @@ Token: {self.asl}
     def get_struct_name(self) -> str:
         return self.struct_name
 
-    def assign_returned_type(self, type: Type):
-        self.get_node_data().returned_type = type
-
     def get_returned_type(self) -> Type:
         return self.get_node_data().returned_type
-
-    def assign_instances(self, instances: list[EisenInstance] | EisenInstance):
-        if isinstance(instances, EisenInstance):
-            instances = [instances]
-        self.get_node_data().instances = instances
-
+        
     def get_instances(self) -> list[EisenInstance]:
-        return self.get_node_data().instances
+        return self.get_node_data().instances       
+
+    def get_bool_type(self) -> Type:
+        return TypeFactory.produce_novel_type("bool")
+
+    def get_abort_signal(self) -> Type:
+        return TypeFactory.produce_novel_type("_abort_")
+        
+    def get_child_asls(self) -> list[CLRList]:
+        return [child for child in self.asl if isinstance(child, CLRList)]
+
+    def get_all_children(self) -> list[CLRList]:
+        return self.asl._list
 
     def get_parent_context(self) -> Context | Module:
         # if no current context, use the module as the parent context
@@ -185,10 +195,22 @@ Token: {self.asl}
             return self.get_enclosing_module()
         return self.context
 
-    def get_bool_type(self) -> Type:
-        return TypeFactory.produce_novel_type("bool")
+    def get_instancestate(self, name: str) -> InstanceState:
+        return self.context.get_instancestate(name)
 
-    abort_signal = TypeFactory.produce_novel_type("_abort_")
+    def get_line_number(self) -> int:
+        return self.asl.line_number
+
+
+
+    def assign_returned_type(self, type: Type):
+        self.get_node_data().returned_type = type
+
+    def assign_instances(self, instances: list[EisenInstance] | EisenInstance):
+        if isinstance(instances, EisenInstance):
+            instances = [instances]
+        self.get_node_data().instances = instances
+
 
     def but_with_first_child(self) -> State:
         return self.but_with(asl=self.first_child())
@@ -205,17 +227,8 @@ Token: {self.asl}
     def third_child(self) -> CLRList:
         return self.asl.third()
 
-    def get_child_asls(self) -> list[CLRList]:
-        return [child for child in self.asl if isinstance(child, CLRList)]
-
-    def get_all_children(self) -> list[CLRList]:
-        return self.asl._list
-
     def add_instancestate(self, instancestate: InstanceState):
         self.context.add_instancestate(instancestate)
-
-    def get_instancestate(self, name: str) -> InstanceState:
-        return self.context.get_instancestate(name)
 
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:
@@ -223,12 +236,6 @@ Token: {self.asl}
 
     def get_void_type(self) -> Type:
         return TypeFactory.produce_novel_type("void")
-
-    def get_asl(self) -> CLRList:
-        return self.asl
-
-    def get_line_number(self) -> int:
-        return self.asl.line_number
 
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)

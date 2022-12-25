@@ -28,7 +28,7 @@ class GeneralRestriction(AbstractRestriction):
     def allows_for_reassignment(self) -> bool:
         return False
 
-    def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return False
 
     def __str__(self) -> str:

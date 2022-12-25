@@ -7,6 +7,7 @@ from alpaca.concepts import Type, Instance, Module
 
 binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
 boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
+implemented_primitive_types = ["str", "int", "bool", "flt"]
 
 def asls_of_type(type: str, *args):
     def predicate(params: State):

@@ -7,10 +7,12 @@ from alpaca.clr import CLRList
 
 from eisen.common.nodedata import NodeData
 from eisen.common.eiseninstance import EisenInstance
+from eisen.common.restriction import PrimitiveRestriction
 
 if TYPE_CHECKING:
-    from eisen.ast_interpreter import InterpreterObject
-    from eisen.common.restriction import InstanceState
+    from eisen.interpretation.obj import Obj
+    from eisen.common.eiseninstancestate import EisenInstanceState
+    from eisen.common.restriction import GeneralRestriction
 
 
 class SharedBool():
@@ -37,10 +39,11 @@ class State(AbstractParams):
             struct_name: str,
             exceptions: list[AbstractException],
             is_ptr: bool,
+            inside_constructor: bool,
             critical_exception: SharedBool = SharedBool(False),
             
             # used for interpreter
-            objs: dict[str, InterpreterObject] = {},
+            objs: dict[str, Obj] = {},
             ):
 
         self.config = config
@@ -52,6 +55,7 @@ class State(AbstractParams):
         self.global_mod = global_mod
         self.exceptions = exceptions
         self.is_ptr = is_ptr
+        self.inside_constructor = inside_constructor
         self.critical_exception = critical_exception
 
         self.objs = objs
@@ -66,14 +70,15 @@ class State(AbstractParams):
             struct_name: str = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
+            inside_constructor: bool = None,
 
             # used for interpreter
-            objs: dict[str, InterpreterObject] = None,
+            objs: dict[str, Obj] = None,
             ) -> State:
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
-            objs=objs,global_mod=global_mod,
+            objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
 
             # these cannot be changed by input params 
             critical_exception=self.critical_exception)
@@ -133,10 +138,10 @@ Token: {self.asl}
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
         global_mod = Module("global")
-        global_mod.add_type(TypeFactory.produce_novel_type("int"))
-        global_mod.add_type(TypeFactory.produce_novel_type("str"))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
+        global_mod.add_type(TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction()))
         global_mod.add_type(TypeFactory.produce_novel_type("void"))
 
         return State(
@@ -148,7 +153,8 @@ Token: {self.asl}
             global_mod=global_mod,
             struct_name=None,
             exceptions=[],
-            is_ptr=False)
+            is_ptr=False,
+            inside_constructor=False)
 
     def get_node_data(self) -> NodeData:
         """canonical way to access data stored in a node"""
@@ -185,7 +191,7 @@ Token: {self.asl}
         return self.get_node_data().instances       
 
     def get_bool_type(self) -> Type:
-        return TypeFactory.produce_novel_type("bool")
+        return TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction())
 
     def get_abort_signal(self) -> Type:
         return TypeFactory.produce_novel_type("_abort_")
@@ -205,13 +211,16 @@ Token: {self.asl}
             return self.get_enclosing_module()
         return self.context
 
-    def get_instancestate(self, name: str) -> InstanceState:
+    def get_instancestate(self, name: str) -> EisenInstanceState:
         """canoncial way to access a InstanceState by name"""
         return self.context.get_instancestate(name)
 
     def get_line_number(self) -> int:
         """canonical way to access the line number corresponding to this state"""
         return self.asl.line_number
+
+    def get_restriction(self) -> GeneralRestriction:
+        return self.get_returned_type().get_restrictions()[0]
 
 
 
@@ -239,7 +248,7 @@ Token: {self.asl}
     def third_child(self) -> CLRList:
         return self.asl.third()
 
-    def add_instancestate(self, instancestate: InstanceState):
+    def add_instancestate(self, instancestate: EisenInstanceState):
         self.context.add_instancestate(instancestate)
 
     def apply_fn_to_all_children(self, fn):
@@ -256,3 +265,7 @@ Token: {self.asl}
         return Context(
             name=name,
             parent=self.get_parent_context())
+
+    def is_inside_constructor(self) -> bool:
+        return self.inside_constructor
+    

@@ -3,10 +3,10 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
-from eisen.common import binary_ops, boolean_return_ops
+from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.state import State
-from eisen.common.restriction import LetRestriction, VarRestriction
+from eisen.common.restriction import LetRestriction, VarRestriction, PrimitiveRestriction
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
@@ -14,7 +14,6 @@ from eisen.validation.callunwrapper import CallUnwrapper
 
 from eisen.validation.builtin_print import BuiltinPrint
 
-implemented_primitive_types = ["str", "int", "bool", "flt"]
 
 class FlowVisitor(Visitor):
     """this evaluates the flow of types throughout the asl, and records which 
@@ -72,7 +71,9 @@ class FlowVisitor(Visitor):
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
         if state.get_asl().type in implemented_primitive_types:
-            return TypeFactory.produce_novel_type(name=state.get_asl().type)
+            return (TypeFactory
+                .produce_novel_type(name=state.get_asl().type)
+                .with_restriction(PrimitiveRestriction()))
         raise Exception(f"unexpected token type of {state.get_asl().type}")
 
     @Visitor.for_asls("fn_type")

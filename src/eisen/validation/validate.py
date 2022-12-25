@@ -5,6 +5,7 @@ from eisen.common.eiseninstance import EisenInstance
 from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
 from eisen.common.eiseninstancestate import EisenInstanceState
+from eisen.common.initialization import Initializations
 
 
 class ValidationResult():
@@ -242,4 +243,11 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success()
 
-         
+    @classmethod
+    def instancestate_is_initialized(cls, state: State, instancestate: EisenInstanceState) -> ValidationResult:
+        if instancestate.initialization == Initializations.NotInitialized:
+            state.report_exception(Exceptions.UseBeforeInitialize(
+                msg=f"{instancestate.name} is not initialized",
+                line_number=state.get_line_number()))
+            return Validate._abort_signal(state)
+        return Validate._success()

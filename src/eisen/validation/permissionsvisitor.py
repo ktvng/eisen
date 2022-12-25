@@ -31,7 +31,6 @@ class PermissionsVisitor(Visitor):
     @classmethod
     def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
         type = instance.type
-        # TODO: novel types should have restrictions!
         if type.is_novel() and (type.restriction is None or type.restriction.is_let()):
             return EisenInstanceState(instance.name, PrimitiveRestriction(), init_state)
         elif type.restriction.is_let():
@@ -41,7 +40,7 @@ class PermissionsVisitor(Visitor):
 
     @classmethod
     def convert_argument_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
-        if tc.restriction.is_let() and tc.is_novel():
+        if tc.is_novel():
             return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
         elif tc.restriction.is_let():
             # this must be Var to allow objects be edited
@@ -51,7 +50,7 @@ class PermissionsVisitor(Visitor):
 
     @classmethod
     def convert_return_type_to_instancestate(cls, tc: Type) -> EisenInstanceState:
-        if tc.restriction.is_let() and tc.is_novel():
+        if tc.is_novel():
             return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
         elif tc.restriction.is_let():
             return EisenAnonymousInstanceState(LetRestriction(), Initializations.Initialized)
@@ -60,8 +59,16 @@ class PermissionsVisitor(Visitor):
 
         raise Exception(f"unknown way to convert type to instancestate, {tc}, {tc.restriction}")
 
+    @Visitor.for_asls("rets")
+    def _rets(fn, state: State):
+        if state.is_inside_constructor():
+            instancestate = fn.apply(state.but_with_first_child())[0]
+            instancestate.mark_as_initialized()
+        else:
+            state.apply_fn_to_all_children(fn)
+        return []
 
-    @Visitor.for_asls("start", "seq", "cond", "args", "rets", "prod_type")
+    @Visitor.for_asls("start", "seq", "cond", "args", "prod_type")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
         return []
@@ -166,8 +173,15 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State) -> list[EisenInstanceState]:
-        # TODO: figure this out
-        return PermissionsVisitor.NoRestrictionInstanceState()
+        parent_instancestate = fn.apply(state.but_with_first_child())[0]
+        result = Validate.instancestate_is_initialized(state, parent_instancestate)
+        if result.failed():
+            return PermissionsVisitor.NoRestrictionInstanceState()
+
+        branch_instancestate = state.get_restriction()
+        if branch_instancestate.is_primitive() and not parent_instancestate.restriction.is_val():
+            return [EisenAnonymousInstanceState(branch_instancestate, Initializations.Initialized)]
+        return [parent_instancestate]
 
     @Visitor.for_asls("call")
     def call_(fn, state: State) -> list[EisenInstanceState]:

@@ -3,8 +3,10 @@ from __future__ import annotations
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._type import Type, Module
 
+from eisen.common import implemented_primitive_types
 from eisen.common.state import State
-from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
+from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction,
+    PrimitiveRestriction)
 
 def get_name_from_first_child(self) -> str:
     """assumes the first child is a token containing the name"""
@@ -231,10 +233,12 @@ class Nodes():
         def enter_context_and_apply_fn(self, fn) -> None:
             # must create fn_context here as it is shared by all children
             fn_context = self.state.create_block_context("func") 
+            will_enter_constructor = self.state.asl.type == "create"
             for child in self.state.get_child_asls():
                 fn.apply(self.state.but_with(
                     asl=child,
-                    context=fn_context))
+                    context=fn_context,
+                    inside_constructor=will_enter_constructor))
  
 
     class IletIvar(AbstractNodeInterface):
@@ -497,8 +501,12 @@ class Nodes():
         get_name = get_name_from_first_child
 
         def get_restriction(self) -> GeneralRestriction:
+            # var takes precedence over primitive
             if self.state.get_asl().type == "var_type":
-                restriction = VarRestriction()
+                return VarRestriction()
+
+            if self.state.get_asl().first().value in implemented_primitive_types:
+                restriction = PrimitiveRestriction()
             elif self.state.get_asl().type == "type":
                 restriction = LetRestriction()
             return restriction

@@ -154,6 +154,8 @@ class Nodes():
         def get_rets_asl(self) -> CLRList:
             return self.third_child()
 
+        def get_seq_asl(self) -> CLRList:
+            return self.state.asl[-1]
 
     class Create(AbstractNodeInterface):
         asl_type = "create"
@@ -274,6 +276,18 @@ class Nodes():
 
         def get_type_asl(self) -> CLRList:
             return self.second_child()
+
+    class CompoundAssignment(AbstractNodeInterface):
+        asl_types = ["+=", "-=", "*=", "/="]
+        examples = """
+        (+= (ref a) 4)
+        (-= (ref b) (+ 4 9))
+        """
+        def get_name(self) -> str:
+            return Nodes.Ref(self.state.but_with_first_child()).get_name()
+
+        def get_arithmetic_operation(self) -> str:
+            return self.state.get_asl().type[0]
 
     class Assignment(AbstractNodeInterface):
         asl_type = "="

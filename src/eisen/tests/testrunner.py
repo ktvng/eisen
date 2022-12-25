@@ -13,7 +13,7 @@ from eisen.parsing.customparser import CustomParser
 from eisen.parsing.builder import EisenBuilder
 from eisen.common.state import State
 from eisen.validation.workflow import Workflow
-from eisen.ast_interpreter import AstInterpreter
+from eisen.interpretation.ast_interpreter import AstInterpreter
 
 class Test():
     testdir = "./src/eisen/tests/"
@@ -49,7 +49,7 @@ class Test():
         config.cfg.get_subgrammar_from("ACTION")
 
         params = State.create_initial(config, asl, txt=self.code)
-        for step in Workflow.steps[:-1]:
+        for step in Workflow.steps:
             step().apply(params)
 
         interpreter = AstInterpreter(redirect_output=True)

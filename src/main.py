@@ -101,8 +101,9 @@ def run_eisen(filename: str):
 
     print("############ STANZA ###############")
     params = eisen.State.create_initial(config, asl, txt)
-
-    for step in eisen.Workflow.steps:
+    workflow = eisen.Workflow.steps
+    workflow.append(eisen.AstInterpreter)
+    for step in workflow:
         print(step.__name__)
         start = time.perf_counter_ns()
         step().apply(params)

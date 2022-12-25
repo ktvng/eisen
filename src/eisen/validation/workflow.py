@@ -5,8 +5,6 @@ from eisen.validation.permissionsvisitor import PermissionsVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
 from eisen.validation.initalizer import Initializer
-
-from eisen.ast_interpreter import AstInterpreter
 from eisen.common.exceptionshandler import ExceptionsHandler
 
 # Notes:
@@ -56,9 +54,6 @@ class Workflow():
         # this handles restrictions based on let/var/val differences
         PermissionsVisitor,
         ExceptionsHandler,
-
-        # execute the augmented AST via the interpreter.
-        AstInterpreter  
 
         # note: def, create, fn, ref, ilet need instances!!
     ]

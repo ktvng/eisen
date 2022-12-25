@@ -82,7 +82,7 @@ class Validate:
     @classmethod
     def instance_exists(cls, state: State) -> ValidationResult:
         name = state.first_child().value
-        instance = state.context.get_instance(name)
+        instance = state.get_context().get_instance(name)
         if instance is None:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",
@@ -95,7 +95,7 @@ class Validate:
     def function_instance_exists_in_local_context(cls, state: State) -> ValidationResult:
         return cls._instance_exists_in_container(
             state.first_child().value,
-            state.context,
+            state.get_context(),
             state)
 
 
@@ -118,7 +118,7 @@ class Validate:
     
     @classmethod
     def name_is_unbound(cls, state: State, name: str) -> ValidationResult:
-        if state.context.get_instance(name) is not None:
+        if state.get_context().get_instance(name) is not None:
             state.report_exception(Exceptions.RedefinedIdentifier(
                 msg=f"'{name}' is in use",
                 line_number=state.get_line_number()))

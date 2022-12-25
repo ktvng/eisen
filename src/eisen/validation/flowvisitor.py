@@ -65,7 +65,7 @@ class FlowVisitor(Visitor):
             context=state.get_context(),
             asl=state.get_asl(),
             is_ptr=state.is_ptr)
-        state.context.add_instance(instance)
+        state.get_context().add_instance(instance)
         return instance
 
     @Visitor.for_tokens

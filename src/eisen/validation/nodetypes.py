@@ -8,32 +8,16 @@ from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
 
 def get_name_from_first_child(self) -> str:
+    """assumes the first child is a token containing the name"""
     return self.state.first_child().value
 
 def first_child_is_token(self) -> bool:
+    """true if the first child is a CLRToken"""
     return isinstance(self.first_child(), CLRToken)
 
 def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
+    """returns the typeclass for either a struct/interface node which defines a typeclass."""
     return self.state.get_enclosing_module().get_typeclass(self._get_name())
-
-class States:
-    class Mod(State):
-        asl_type = "mod"
-        examples = """
-        (mod name ...)
-        """
-        get_module_name = get_name_from_first_child
-        def get_entered_module(self) -> Module:
-            return self.get_node_data().enters_module
-
-        def set_entered_module(self, mod: Module):
-            self.get_node_data().enters_module = mod
-
-        def enter_module_and_apply_fn_to_child_asls(self, fn):
-            for child in self.asl[1:]:
-                fn.apply(self.but_with(
-                    asl=child,
-                    mod=self.get_entered_module())) 
 
 class Nodes():
     class AbstractNodeInterface():
@@ -187,10 +171,10 @@ class Nodes():
                 (seq ...))
         """
 
-        # adds the struct name as the first parameter. this normalizes the structure
-        # of (def ...) and (create ...) asls so we can use the same code to process
-        # them
         def normalize(self, struct_name: str):
+            """adds the struct name as the first parameter. this normalizes the structure
+            of (def ...) and (create ...) asls so we can use the same code to process
+            them"""
             self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
     
         def get_args_asl(self) -> CLRList:
@@ -198,6 +182,12 @@ class Nodes():
 
         def get_rets_asl(self) -> CLRList:
             return self.third_child()
+
+        def get_name(self) -> str:
+            """the name of the constructor is the same as the struct it constructs. this 
+            must be passed into the State as a parameter"""
+            return self.state.struct_name
+
 
     class CommonFunction(AbstractNodeInterface):
         asl_types = ["def", "create", ":="]

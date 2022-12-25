@@ -6,13 +6,12 @@ from alpaca.concepts import Module, Context, TypeClassFactory, TypeClass
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
-from eisen.common import ContextTypes
 from eisen.common.nodedata import NodeData
 from eisen.common import EisenInstance
 
 if TYPE_CHECKING:
     from eisen.ast_interpreter import InterpreterObject
-    from eisen.common.restriction import Restriction, InstanceState
+    from eisen.common.restriction import InstanceState
 
 
 class SharedBool():

@@ -27,13 +27,13 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> None:
-        node = Nodes.Struct(state)
         # we need to pass down the struct name because the (create ...) asl will 
         # take on the name of the struct. 
         #
         # for example, a struct named MyStruct will have a constructor method 
         # called via MyStruct(...), so the (create ...)  method inside the 
         # (struct MyStruct ... ) asl needs context as to the struct it is inside.
+        node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(
                 asl=node.get_create_asl(),
@@ -58,13 +58,11 @@ class FunctionVisitor(Visitor):
     @Visitor.for_asls("create")
     def create_(fn, state: State):
         node = Nodes.Create(state)
-        # we need to normalize the create asl so it has the same structure as the 
-        # def asl. see the documentation for the normalize method for more details.
         node.normalize(struct_name=state.struct_name)
         
         # the name of the constructor is the same as the struct
         instance = EisenInstance(
-                name=state.struct_name,
+                name=node.get_name(),
                 type=TypeclassParser().apply(state),
                 context=None,
                 asl=state.get_asl(),

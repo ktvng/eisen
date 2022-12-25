@@ -5,7 +5,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import TypeClass, TypeClassFactory
 from eisen.common import EisenInstance, binary_ops, boolean_return_ops
 from eisen.common.state import State
-from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
+from eisen.common.restriction import LetRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeclassparser import TypeclassParser
 from eisen.validation.validate import Validate

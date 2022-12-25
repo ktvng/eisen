@@ -9,11 +9,6 @@ from alpaca.clr import CLRList
 binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
 boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 
-class ContextTypes:
-    mod = "module"
-    fn = "fn"
-    block = "block"
-
 def asls_of_type(type: str, *args):
     def predicate(params: State):
         return params.asl.type in list(args) + [type]

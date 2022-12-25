@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from eisen.common import Module
+from alpaca.concepts import Module
 from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 

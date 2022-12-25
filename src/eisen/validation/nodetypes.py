@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.concepts._type import Type
+from alpaca.concepts._type import Type, Module
 
-from eisen.common import Module
 from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction)
 

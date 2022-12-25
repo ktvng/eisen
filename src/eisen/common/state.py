@@ -6,7 +6,7 @@ from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from eisen.common.nodedata import NodeData
-from eisen.common import EisenInstance
+from eisen.common.eiseninstance import EisenInstance
 
 if TYPE_CHECKING:
     from eisen.ast_interpreter import InterpreterObject

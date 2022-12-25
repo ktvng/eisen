@@ -3,7 +3,8 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
-from eisen.common import EisenInstance, binary_ops, boolean_return_ops
+from eisen.common import binary_ops, boolean_return_ops
+from eisen.common.eiseninstance import EisenInstance
 from eisen.common.state import State
 from eisen.common.restriction import LetRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes

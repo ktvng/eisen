@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from alpaca.concepts import Type
-from eisen.common import EisenInstance, Module
+from alpaca.concepts import Module
+from eisen.common.eiseninstance import EisenInstance
 
 class NodeData():
     def __init__(self):

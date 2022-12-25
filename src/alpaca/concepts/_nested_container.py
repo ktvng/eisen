@@ -11,9 +11,8 @@ if TYPE_CHECKING:
 class NestedContainer():
     container_names = ["typeclass", "instance", "instance_state"]
 
-    def __init__(self, name: str, type: str, parent: NestedContainer = None):
+    def __init__(self, name: str, parent: NestedContainer = None):
         self.name = name
-        self.type = type
         self.containers = {}
         self._initialize_containers()
 
@@ -84,7 +83,7 @@ class NestedContainer():
         types_lines = [("::" + str(type)).split("::")[-1] for type in self.typeclasses]
         sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
-        return f"{self.type} {self.name}\n{indented_subtext}"
+        return f"{self.name}\n{indented_subtext}"
         
     def get_full_name(self) -> str:
         # case for the global module

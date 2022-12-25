@@ -131,7 +131,7 @@ Token: {self.asl}
 
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
-        global_mod = Module("global", type=ContextTypes.mod)
+        global_mod = Module("global")
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int"))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str"))
         global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt"))
@@ -231,5 +231,4 @@ Token: {self.asl}
     def create_block_context(self, name: str) -> Context:
         return Context(
             name=name,
-            type=ContextTypes.block,
             parent=self.get_parent_context())

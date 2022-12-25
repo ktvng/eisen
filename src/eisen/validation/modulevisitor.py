@@ -18,10 +18,7 @@ class ModuleVisitor(Visitor):
     def mod_(fn, state: State) -> Module:
         node = Nodes.Mod(state)
         node.set_entered_module(
-            Module(
-                name=node.get_module_name(),
-                type=ContextTypes.mod, 
-                parent=state.mod))
+            Module(name=node.get_module_name(), parent=state.mod))
 
         node.enter_module_and_apply_fn_to_child_asls(fn)
 

@@ -58,7 +58,7 @@ class FunctionVisitor(Visitor):
     @Visitor.for_asls("create")
     def create_(fn, state: State):
         node = Nodes.Create(state)
-        node.normalize(struct_name=state.struct_name)
+        node.normalize(struct_name=state.get_struct_name())
         
         # the name of the constructor is the same as the struct
         instance = EisenInstance(

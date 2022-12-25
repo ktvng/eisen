@@ -244,27 +244,20 @@ class FlowVisitor(Visitor):
     @Visitor.for_asls("ilet", "ivar")
     @returns_void_type
     def idecls_(fn, state: State):
-        node = Nodes.Ilet(state)
+        node = Nodes.IletIvar(state)
         names = node.get_names()
-        typeclass = fn.apply_to_second_child_of(state)
+        typeclass_to_be_assigned = fn.apply_to_second_child_of(state)
+        componentwise_typeclasses = node.unpack_assigned_typeclasses(typeclass_to_be_assigned)
 
-        if node.assigns_a_tuple():
-            typeclasses = typeclass.components
-        else:
-            typeclasses = [typeclass]
-
-        if (any(typeclass is state.abort_signal for typeclass in typeclasses)
+        if (any(typeclass is state.abort_signal for typeclass in componentwise_typeclasses)
                 or Validate.all_names_are_unbound(state, names).failed()):
             state.critical_exception.set(True)
             return
 
-        if state.asl.type == "ilet":
-            restriction = LetRestriction()
-        else:
-            restriction = VarRestriction()
-
-        instances = [FlowVisitor.add_instance_to_context(name, typeclass.with_restriction(restriction), state)
-            for name, typeclass in zip(names, typeclasses)]
+        componentwise_typeclasses_with_restriction = [typeclass.with_restriction(node.get_restriction()) 
+            for typeclass in componentwise_typeclasses]
+        instances = [FlowVisitor.add_instance_to_context(name, typeclass, state)
+                for name, typeclass in zip(names, componentwise_typeclasses_with_restriction)]
         state.assign_instances(instances)
 
     @Visitor.for_asls("var")

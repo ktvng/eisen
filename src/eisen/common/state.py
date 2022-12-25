@@ -25,6 +25,9 @@ class SharedBool():
         self.value = value
 
 class State(AbstractParams):
+    attrs = ["config", "asl", "txt", "context", "mod", "global_mod",
+    "struct_name", "exceptions", "is_ptr", "critical_exception"]
+
     def __init__(self, 
             config: Config, 
             asl: CLRList, 
@@ -158,6 +161,9 @@ Token: {self.asl}
 
     def get_enclosing_module(self) -> Module:
         return self.mod
+
+    def get_struct_name(self) -> str:
+        return self.struct_name
 
     def assign_returned_typeclass(self, typeclass: TypeClass):
         self.get_node_data().returned_typeclass = typeclass

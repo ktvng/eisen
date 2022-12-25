@@ -186,7 +186,7 @@ class Nodes():
         def get_name(self) -> str:
             """the name of the constructor is the same as the struct it constructs. this 
             must be passed into the State as a parameter"""
-            return self.state.struct_name
+            return self.state.get_struct_name()
 
 
     class CommonFunction(AbstractNodeInterface):
@@ -217,8 +217,8 @@ class Nodes():
                     context=fn_context))
  
 
-    class Ilet(AbstractNodeInterface):
-        asl_type = "ilet"
+    class IletIvar(AbstractNodeInterface):
+        asl_types = ["ilet", "ivar"]
         examples = """
         1. (ilet name (call ...))
         2. (ilet name 4)
@@ -234,6 +234,21 @@ class Nodes():
 
         def assigns_a_tuple(self) -> bool:
             return isinstance(self.first_child(), CLRList)
+
+        def unpack_assigned_typeclasses(self, typeclass: TypeClass) -> list[TypeClass]:
+            """if the assigned typeclass is a tuple, unpack the components of the tuple
+            into a list of component typeclasses; otherwise returns a list with the singluar
+            typeclass as the only member"""
+            if self.assigns_a_tuple():
+                return typeclass.components
+            else:
+                return [typeclass]
+
+        def get_restriction(self) -> GeneralRestriction:
+            if self.state.asl.type == "ilet":
+                return LetRestriction()
+            else:
+                return VarRestriction()
 
     class Let(AbstractNodeInterface):
         asl_type = "let"

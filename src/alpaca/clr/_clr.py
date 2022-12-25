@@ -39,6 +39,8 @@ class CLRList(CLRElement):
         else:
             self.guid = guid
 
+    def has_no_children(self) -> bool:
+        return len(self._list) == 0
 
     def first(self) -> CLRList | CLRToken:
         if not self._list:

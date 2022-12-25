@@ -176,7 +176,7 @@ class PermissionsVisitor(Visitor):
             return PermissionsVisitor.NoRestrictionInstanceState()
 
         argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc) 
-            for tc in node.get_argument_type().unpack_into_parts()]
+            for tc in node.get_function_argument_type().unpack_into_parts()]
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_instancestates, param_instancestates):
             Validate.parameter_assignment_restrictions_met(state, left, right)

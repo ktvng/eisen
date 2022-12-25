@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
 
 from eisen.common.state import State
@@ -139,69 +138,45 @@ class AstInterpreter(Visitor):
     def return_(fn, state: State):
         return ReturnSignal()
 
+    @classmethod
+    def create_objs_for_function_arguments(cls, node: Nodes.Call) -> list[Obj]:
+        new_objs = []
+        for name, restriction in zip(node.get_param_names(), node.get_function_argument_type().get_restrictions()):
+            # create new_obj so changes inside the function don't affect the existing obj
+            new_objs.append(Obj(None, name=name, is_var=restriction.is_var()))
+        return new_objs
+
     @Visitor.for_asls("call")
     def call_(fn, state: State):
         node = Nodes.Call(state)
-        
-        # get the asl of type (fn <name>)
-        fn_asl = fn._unravel_scoping(state.asl.first())
 
-        if isinstance(fn_asl.first(), CLRToken) and fn_asl.first().value == "print":
+        if node.is_print():
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
-            redirect_to = fn.stdout if fn.redirect_output else None
-            PrintFunction.emulate(redirect_to, *args)
+            redirect_to = True if fn.redirect_output else None
+            fn.stdout += PrintFunction.emulate(redirect_to, *args)
             return []
-
-        # this case is if we are looking pu the function inside a struct
-        if fn_asl.first().type == ".":
-            obj = fn.apply(state.but_with(asl=fn_asl.first()))[0]
-            fn_instance = obj.value
-        # this case is if we are looking up a local function or a function in the closure
-        else:
-            found_fn = state.objs.get(fn_asl.first().value, None)
-            if found_fn:
-                fn_instance = found_fn.value
-            else:
-                # we need to drop into the original CLR which defines the original function
-                # in order to get the return types.
-                fn_instance = state.but_with(asl=fn_asl).get_instances()[0]
-
-        asl_defining_the_function = fn_instance.asl
 
         # enter a new object context
         fn_objs = {}
 
-        # add parameters to the context; creates a new object so we don't override the 
-        # existing object when we change it in the function.
-        param_names = fn._get_param_names(asl_defining_the_function)
-        restrictions  = (state.but_with(asl=state.first_child())
-            .get_node_data()
-            .returned_type
-            .get_argument_type()
-            .get_restrictions())
+        # evaluate the parameters and add them as new objects inside the new function context
+        param_objs_outside_of_fn = [fn.apply(node.state.but_with(asl=param))[0] for param in node.get_params()]
+        param_objs_inside_of_fn = AstInterpreter.create_objs_for_function_arguments(node)
+        for inside, outside in zip(param_objs_inside_of_fn, param_objs_outside_of_fn):
+            # add inside objects to the new fn_objs context
+            fn_objs[inside.name] = inside
+            Passer.handle_assignment(fn_objs, inside, outside)
 
-        for name, param, restriction in zip(param_names, state.asl.second(), restrictions):
-            obj = fn.apply(state.but_with(asl=param))[0]
-            new_obj = Obj(None, name=name, is_var=restriction.is_var())
-            fn_objs[name] = new_obj
-            Passer.handle_assignment(fn_objs, new_obj, obj)
-
-        # add return values to the context
-        returned_type = node.get_function_return_type()
-        restrictions = returned_type.get_restrictions()
-        return_names = fn._get_return_names(asl_defining_the_function)
-        for name, r in zip(return_names, restrictions):
-            is_var =  r.is_var()
-            if asl_defining_the_function.type == "create":
-                obj = Obj({}, name=name, is_var=is_var)
-            else:
-                obj = Obj(None, name=name, is_var=is_var)
-
+        # add return values to the new context
+        return_names = node.get_return_names()
+        for name, restriction in zip(return_names, node.get_function_return_restrictions()):
+            # use a dict in case we are creating a new struct
+            obj = Obj({}, name=name, is_var=restriction.is_var())
             fn_objs[name] = obj
 
         # call the function by invoking the seq of the asl_defining_the_function
         fn.apply(state.but_with(
-            asl=asl_defining_the_function[-1],
+            asl=Nodes.Def(state.but_with(asl=node.get_asl_defining_the_function())).get_seq_asl(),
             objs=fn_objs))
 
         # get the actual return values 
@@ -259,34 +234,3 @@ class AstInterpreter(Visitor):
                 return result
             return True
         return False
-
-    # TODO: make this shared 
-    def _unravel_scoping(self, asl: CLRList) -> CLRList:
-        if asl.type != "::" and asl.type != "disjoint_fn" and asl.type != "fn":
-            raise Exception(f"unexpected asl type of {asl.type}")
-        
-        if asl.type == "disjoint_fn" or asl.type == "fn":
-            return asl
-        return self._unravel_scoping(asl=asl.second())
-
-    def _get_param_names(self, asl: CLRList) -> list[str]:
-        # fn -> args -> first arg
-        if not asl.second():
-            return []
-
-        first_arg = asl.second().first()
-        if first_arg.type == "prod_type":
-            return [colon.first().value for colon in first_arg]
-        else:
-            return [first_arg.first().value]
-
-    def _get_return_names(self, asl: CLRList) -> list[str]:
-        # fn -> args -> first arg
-        if not asl.third():
-            return []
-
-        first_arg = asl.third().first()
-        if first_arg.type == "prod_type":
-            return [colon.first().value for colon in first_arg]
-        else:
-            return [first_arg.first().value]

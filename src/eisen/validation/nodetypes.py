@@ -157,6 +157,25 @@ class Nodes():
         def get_seq_asl(self) -> CLRList:
             return self.state.asl[-1]
 
+        def get_arg_names(self) -> list[str]:
+            return Nodes.Def._unpack_to_get_names(self.get_args_asl())
+
+        def get_ret_names(self) -> list[str]:
+            return Nodes.Def._unpack_to_get_names(self.get_rets_asl()) 
+
+        @classmethod
+        def _unpack_to_get_names(self, args_or_rets: CLRList) -> list[str]:
+            if args_or_rets.has_no_children():
+                return []
+            first_arg = args_or_rets.first()
+            if first_arg.type == "prod_type":
+                colonnodes = first_arg._list
+            else:
+                colonnodes = [first_arg]
+            
+            return [node.first().value for node in colonnodes]
+
+
     class Create(AbstractNodeInterface):
         asl_type = "create"
         examples = """
@@ -372,12 +391,8 @@ class Nodes():
         def get_function_return_type(self) -> Type:
             return self.state.get_node_data().returned_type
 
-        def get_argument_type(self) -> Type:
-            if self.first_child().type == "fn":
-                node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
-            elif self.first_child().type == "::":
-                node = Nodes.ModuleScope(self.state.but_with(asl=self.first_child()))
-            return node.get_function_type().get_argument_type()
+        def get_function_argument_type(self) -> Type:
+            return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
         def get_function_name(self) -> str:
             if self.first_child().type == "fn":
@@ -386,6 +401,9 @@ class Nodes():
                 node = Nodes.ModuleScope(self.state.but_with(asl=self.first_child()))
             return node.get_function_name()
 
+        def get_function_return_restrictions(self) -> list[GeneralRestriction]:
+            return self.get_function_return_type().get_restrictions()
+
         def is_print(self) -> str:
             node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
             return node.is_print()
@@ -393,24 +411,35 @@ class Nodes():
         def get_params_asl(self) -> str:
             return self.state.get_asl()[-1]
 
+        def get_params(self) -> list[CLRList]:
+            return self.get_params_asl()._list
+
+        def get_param_names(self) -> list[str]:
+            return Nodes.Def(self.state.but_with(asl=self.get_asl_defining_the_function())).get_arg_names()
+
+        def get_return_names(self) -> list[str]:
+            return Nodes.Def(self.state.but_with(asl=self.get_asl_defining_the_function())).get_ret_names()
+
+        def _unravel_scoping(self, asl: CLRList) -> CLRList:
+            if asl.type != "::" and asl.type != "disjoint_fn" and asl.type != "fn":
+                raise Exception(f"unexpected asl type of {asl.type}")
+            
+            if asl.type == "disjoint_fn" or asl.type == "fn":
+                return asl
+            return self._unravel_scoping(asl=asl.second())
+
+        def get_asl_defining_the_function(self) -> CLRList:
+            fn_asl = self._unravel_scoping(self.first_child())
+            fn_instance = self.state.but_with(asl=fn_asl).get_instances()[0]
+            return fn_instance.asl
+
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"
         examples = """
         (:: mod_name (disjoint_fn name))
         (:: outer (:: inner (disjoint_fn name)))
         """
-
-        def get_function_type(self) -> Type:
-            working_mod = self.state.get_enclosing_module()
-            next_asl = self.state.get_asl()
-            while next_asl.type == "::":
-                # the name is stored as the CLRToken in the first position
-                next_mod_name = next_asl.first().value
-                working_mod = working_mod.get_child_by_name(next_mod_name)
-                next_asl = next_asl.second()
-
-            return working_mod.get_instance(name=self.get_function_name()).type
-
+        
         def get_function_name(self) -> str:
             right_child = self.second_child()
             while right_child.type != "disjoint_fn":

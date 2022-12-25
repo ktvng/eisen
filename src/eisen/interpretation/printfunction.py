@@ -11,12 +11,9 @@ class PrintFunction():
         tag_regex = re.compile(r"%\w")
         for arg in arg_strs:
             base = tag_regex.sub(arg, base, count=1)
-        if redirect is not None:
-            redirect += base
-            return ""
-        else:
+        if redirect is None:
             print(base)
-            return ""
+        return base
 
     @classmethod
     def _convert_args_to_strs(cls, args: list[Obj]) -> list[str]:

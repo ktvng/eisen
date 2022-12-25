@@ -45,7 +45,7 @@ class Exceptions():
 
     class EmbeddedStructCollision(AbstractException):
         type = "EmbeddedStructCollision"
-        description = "embedded structs cannot have an attribute with the same name and typeclass as another"
+        description = "embedded structs cannot have an attribute with the same name and type as another"
 
     class MemoryAssignment(AbstractException):
         type = "MemoryAssignment"

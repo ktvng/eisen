@@ -48,8 +48,8 @@ class Workflow():
         FunctionVisitor,
         
         # evaluate the flow of types through the program. 
-        #   - the typeclass which is flowed through a node can be accessed by
-        #     params.get_returned_typeclass()
+        #   - the type which is flowed through a node can be accessed by
+        #     params.get_returned_type()
         FlowVisitor,
         ExceptionsHandler,
 

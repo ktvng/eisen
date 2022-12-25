@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.concepts._typeclass import AbstractRestriction
+from alpaca.concepts._type import AbstractRestriction
 from alpaca.concepts._initialization import Initialization
 
 class InstanceState:

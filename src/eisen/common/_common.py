@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from eisen.common.state import State
-from alpaca.concepts import TypeClass, Instance, Context, Module
+from alpaca.concepts import Type, Instance, Context, Module
 from alpaca.clr import CLRList
 
 binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
@@ -15,12 +15,12 @@ def asls_of_type(type: str, *args):
     return predicate
     
 class EisenInstance(Instance):
-    def __init__(self, name: str, type: TypeClass, context: Context, asl: CLRList, is_ptr=False, is_constructor=False):
+    def __init__(self, name: str, type: Type, context: Context, asl: CLRList, is_ptr=False, is_constructor=False):
         super().__init__(name, type, context, asl)
         self.is_ptr = is_ptr
         self.is_constructor = is_constructor
         self.is_var = False
-        self.type: TypeClass = type
+        self.type: Type = type
 
 class Utils:
     global_prefix = ""
@@ -48,7 +48,7 @@ class Utils:
         return f"{Utils.global_prefix}{prefix}{instance.name}"        
 
     @classmethod
-    def get_name_of_type(cls, type: TypeClass, mod: Module = None) -> str:
+    def get_name_of_type(cls, type: Type, mod: Module = None) -> str:
         if type.is_novel():
             return type.name
         elif type.is_struct():

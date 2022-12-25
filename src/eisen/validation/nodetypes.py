@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.concepts._typeclass import TypeClass
+from alpaca.concepts._type import Type
 
 from eisen.common import Module
 from eisen.common.state import State
@@ -15,9 +15,9 @@ def first_child_is_token(self) -> bool:
     """true if the first child is a CLRToken"""
     return isinstance(self.first_child(), CLRToken)
 
-def get_typeclass_for_node_that_defines_a_typeclass(self) ->TypeClass:
-    """returns the typeclass for either a struct/interface node which defines a typeclass."""
-    return self.state.get_enclosing_module().get_typeclass(self._get_name())
+def get_type_for_node_that_defines_a_type(self) ->Type:
+    """returns the type for either a struct/interface node which defines a type."""
+    return self.state.get_enclosing_module().get_type(self._get_name())
 
 class Nodes():
     class AbstractNodeInterface():
@@ -65,7 +65,7 @@ class Nodes():
         """
         _get_name = get_name_from_first_child
         get_struct_name = _get_name
-        get_this_typeclass = get_typeclass_for_node_that_defines_a_typeclass
+        get_this_type = get_type_for_node_that_defines_a_type
 
         def implements_interfaces(self) -> bool:
             return (len(self.state.get_asl()) >= 2 
@@ -75,11 +75,11 @@ class Nodes():
         def get_impls_asl(self) -> CLRList:
             return self.second_child()
 
-        def get_implemented_interfaces(self) -> list[TypeClass]:
+        def get_implemented_interfaces(self) -> list[Type]:
             interfaces = []
             if self.implements_interfaces():
                 for child in self.get_impls_asl():
-                    interfaces.append(self.state.get_enclosing_module().get_typeclass(child.value))
+                    interfaces.append(self.state.get_enclosing_module().get_type(child.value))
                     # TODO: currently we only allow the interface to be looked up in the same
                     # module as the struct. In general, we need to allow interfaces from arbitrary
                     # modules.
@@ -88,19 +88,19 @@ class Nodes():
         def _get_embed_asls(self) -> list[CLRList]:
             return [child for child in self.state.get_asl() if child.type == "embed"]
 
-        def _parse_embed_asl_for_typeclasses(self, embed_asl: CLRList) -> list[TypeClass]:
+        def _parse_embed_asl_for_types(self, embed_asl: CLRList) -> list[Type]:
             # TODO: currently we only allow the interface to be looked up in the same
             # module as the struct. In general, we need to allow interfaces from arbitrary
             # modules.
             if isinstance(embed_asl.first(), CLRList):
-                return [self.state.get_enclosing_module().get_typeclass(child.value) for child in embed_asl.first()]
-            return [self.state.get_enclosing_module().get_typeclass(embed_asl.first().value)]
+                return [self.state.get_enclosing_module().get_type(child.value) for child in embed_asl.first()]
+            return [self.state.get_enclosing_module().get_type(embed_asl.first().value)]
 
-        def get_embedded_structs(self) -> list[TypeClass]:
-            embedded_structs: list[TypeClass] = []
+        def get_embedded_structs(self) -> list[Type]:
+            embedded_structs: list[Type] = []
             embed_asls = self._get_embed_asls()
             for asl in embed_asls:
-                embedded_structs.extend(self._parse_embed_asl_for_typeclasses(asl))
+                embedded_structs.extend(self._parse_embed_asl_for_types(asl))
 
             return embedded_structs
 
@@ -131,7 +131,7 @@ class Nodes():
         """
         _get_name = get_name_from_first_child
         get_interface_name = _get_name
-        get_this_typeclass = get_typeclass_for_node_that_defines_a_typeclass
+        get_this_type = get_type_for_node_that_defines_a_type
 
         def get_child_attribute_asls(self) -> list[CLRList]:
             return [child for child in self.state.get_asl() if child.type == ":"]
@@ -235,14 +235,14 @@ class Nodes():
         def assigns_a_tuple(self) -> bool:
             return isinstance(self.first_child(), CLRList)
 
-        def unpack_assigned_typeclasses(self, typeclass: TypeClass) -> list[TypeClass]:
-            """if the assigned typeclass is a tuple, unpack the components of the tuple
-            into a list of component typeclasses; otherwise returns a list with the singluar
-            typeclass as the only member"""
+        def unpack_assigned_types(self, type: Type) -> list[Type]:
+            """if the assigned type is a tuple, unpack the components of the tuple
+            into a list of component types; otherwise returns a list with the singluar
+            type as the only member"""
             if self.assigns_a_tuple():
-                return typeclass.components
+                return type.components
             else:
-                return [typeclass]
+                return [type]
 
         def get_restriction(self) -> GeneralRestriction:
             if self.state.asl.type == "ilet":
@@ -312,7 +312,7 @@ class Nodes():
                 return self.state.first_child().value
             return self.first_child().second().value
 
-        def get_function_type(self) -> TypeClass:
+        def get_function_type(self) -> Type:
             return self.state.get_instances()[0].type
             
 
@@ -324,8 +324,8 @@ class Nodes():
 
         get_name = get_name_from_first_child
 
-        def get_typeclass(self) -> TypeClass:
-            return self.state.get_returned_typeclass()
+        def get_type(self) -> Type:
+            return self.state.get_returned_type()
 
     class Scope(AbstractNodeInterface):
         asl_type = "."
@@ -356,10 +356,10 @@ class Nodes():
                 return self.state.get_asl()
             return self._unravel_scoping(asl=self.state.get_asl().second())
 
-        def get_function_return_type(self) -> TypeClass:
-            return self.state.get_node_data().returned_typeclass
+        def get_function_return_type(self) -> Type:
+            return self.state.get_node_data().returned_type
 
-        def get_argument_type(self) -> TypeClass:
+        def get_argument_type(self) -> Type:
             if self.first_child().type == "fn":
                 node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
             elif self.first_child().type == "::":
@@ -387,7 +387,7 @@ class Nodes():
         (:: outer (:: inner (disjoint_fn name)))
         """
 
-        def get_function_type(self) -> TypeClass:
+        def get_function_type(self) -> Type:
             working_mod = self.state.get_enclosing_module()
             next_asl = self.state.get_asl()
             while next_asl.type == "::":
@@ -435,16 +435,16 @@ class Nodes():
         def get_params_asl(self) -> CLRList:
             return self.third_child()
 
-        def _get_typeclass_of_caller(self):
-            return Nodes.Ref(self.state.but_with(asl=self.get_ref_asl())).get_typeclass()
+        def _get_type_of_caller(self):
+            return Nodes.Ref(self.state.but_with(asl=self.get_ref_asl())).get_type()
         
         def _get_function_name(self):
             return Nodes.Fn(self.state.but_with(asl=self.get_fn_asl())).get_function_name()
 
         def calls_member_function(self):
-            caller_typeclass = self._get_typeclass_of_caller()
+            caller_type = self._get_type_of_caller()
             function_name = self._get_function_name()
-            return caller_typeclass.is_struct() and caller_typeclass.has_member_attribute_with_name(function_name)
+            return caller_type.is_struct() and caller_type.has_member_attribute_with_name(function_name)
 
     class TypeLike(AbstractNodeInterface):
         asl_type = "type" 

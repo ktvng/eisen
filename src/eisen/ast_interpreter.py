@@ -284,7 +284,7 @@ class AstInterpreter(Visitor):
         param_names = fn._get_param_names(asl_defining_the_function)
         restrictions  = (state.but_with(asl=state.first_child())
             .get_node_data()
-            .returned_typeclass
+            .returned_type
             .get_argument_type()
             .get_restrictions())
 
@@ -295,8 +295,8 @@ class AstInterpreter(Visitor):
             Passer.handle_assignment(fn_objs, new_obj, obj)
 
         # add return values to the context
-        returned_typeclass = node.get_function_return_type()
-        restrictions = returned_typeclass.get_restrictions()
+        returned_type = node.get_function_return_type()
+        restrictions = returned_type.get_restrictions()
         return_names = fn._get_return_names(asl_defining_the_function)
         for name, r in zip(return_names, restrictions):
             is_var =  r.is_var()

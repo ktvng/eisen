@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from eisen.common import EisenInstance
 from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
-from eisen.validation.typeclassparser import TypeclassParser
+from eisen.validation.typeparser import TypeParser
 
 class FunctionVisitor(Visitor):
     """this creates the function instances from (create ...) and (def ) asls. the 
@@ -50,7 +50,7 @@ class FunctionVisitor(Visitor):
     def def_(fn, state: State):
         instance = EisenInstance(
                 name=Nodes.Def(state).get_function_name(),
-                type=TypeclassParser().apply(state),
+                type=TypeParser().apply(state),
                 context=None,
                 asl=state.get_asl())
         state.get_enclosing_module().add_instance(instance)
@@ -63,7 +63,7 @@ class FunctionVisitor(Visitor):
         # the name of the constructor is the same as the struct
         instance = EisenInstance(
                 name=node.get_name(),
-                type=TypeclassParser().apply(state),
+                type=TypeParser().apply(state),
                 context=None,
                 asl=state.get_asl(),
                 is_constructor=True)

@@ -6,7 +6,7 @@ from alpaca.concepts._module import Module
 class AbstractRestriction():
     pass
 
-class TypeClass():
+class Type():
     class classifications:
         novel = "novel"
         tuple = "tuple"
@@ -21,13 +21,13 @@ class TypeClass():
             classification: str,
             name: str,
             mod: Module,
-            components: list[TypeClass],
+            components: list[Type],
             component_names: list[str],
-            inherits: list[TypeClass],
-            embeds: list[TypeClass],
+            inherits: list[Type],
+            embeds: list[Type],
             restriction: AbstractRestriction):
 
-        """a typeclass instance should only be created via the TypeclassFactory"""
+        """a type instance should only be created via the TypeclassFactory"""
         self.classification = classification 
         self.name = name
         self.mod = mod
@@ -38,18 +38,18 @@ class TypeClass():
         self.restriction = restriction 
 
     def finalize(self, 
-            components: list[TypeClass], 
+            components: list[Type], 
             component_names: list[str], 
-            inherits: list[TypeClass] = [],
-            embeds: list[TypeClass] = []):
-        if (self.classification != TypeClass.classifications.proto_interface and
-            self.classification != TypeClass.classifications.proto_struct):
-            raise Exception("can only finalize a proto* TypeClass")
+            inherits: list[Type] = [],
+            embeds: list[Type] = []):
+        if (self.classification != Type.classifications.proto_interface and
+            self.classification != Type.classifications.proto_struct):
+            raise Exception("can only finalize a proto* Type")
 
-        if self.classification == TypeClass.classifications.proto_interface:
-            self.classification = TypeClass.classifications.interface
-        elif self.classification == TypeClass.classifications.proto_struct:
-            self.classification = TypeClass.classifications.struct
+        if self.classification == Type.classifications.proto_interface:
+            self.classification = Type.classifications.interface
+        elif self.classification == Type.classifications.proto_struct:
+            self.classification = Type.classifications.struct
 
         self.components = components 
         self.component_names = component_names
@@ -83,21 +83,21 @@ class TypeClass():
 
 
     # Return the uuid string which can be hashed to obtain a proper uuid. All 
-    # typeclasses should be identified by uuid, such that muliple instances of 
-    # the same typeclass can be created that express equality to each other. This
-    # allows us to treat typeclasses as frozen literals.
+    # types should be identified by uuid, such that muliple instances of 
+    # the same type can be created that express equality to each other. This
+    # allows us to treat types as frozen literals.
     #
     # Restriction is not included in the uuid
     def _get_uuid_str(self) -> str:
-        if self.classification == TypeClass.classifications.novel:
+        if self.classification == Type.classifications.novel:
             return self._get_uuid_based_on_module_and_name()
-        elif self.classification == TypeClass.classifications.struct:
+        elif self.classification == Type.classifications.struct:
             return self._get_uuid_based_on_module_and_name() + "<struct>"
-        elif self.classification == TypeClass.classifications.interface:
+        elif self.classification == Type.classifications.interface:
             return self._get_uuid_based_on_module_and_name() + "<interface>"
-        elif self.classification == TypeClass.classifications.tuple:
+        elif self.classification == Type.classifications.tuple:
             return self._get_uuid_based_on_components()
-        elif self.classification == TypeClass.classifications.function:
+        elif self.classification == Type.classifications.function:
             return self._get_uuid_for_function()
         else:
             # this should be the case for proto entities,
@@ -121,10 +121,10 @@ class TypeClass():
     def get_uuid_str(self) -> str:
         return self._get_uuid_str()
 
-    def get_direct_attribute_name_type_pairs(self) -> list[TypeClass]:
+    def get_direct_attribute_name_type_pairs(self) -> list[Type]:
         return zip(self.component_names, self.components)
 
-    def get_all_attribute_name_type_pairs(self) -> list[TypeClass]:
+    def get_all_attribute_name_type_pairs(self) -> list[Type]:
         pairs = self.get_direct_attribute_name_type_pairs()
         for embedded_type in self.embeds:
             pairs.extend(embedded_type.get_all_attribute_name_type_pairs())
@@ -136,20 +136,20 @@ class TypeClass():
             return True
 
         # struct may also have embedded structs
-        if self.classification == TypeClass.classifications.struct:
-            for typeclass in self.embeds:
-                if typeclass.has_member_attribute_with_name(name):
+        if self.classification == Type.classifications.struct:
+            for type in self.embeds:
+                if type.has_member_attribute_with_name(name):
                     return True
         return False
             
 
 
-    def get_member_attribute_by_name(self, name: str) -> TypeClass:
-        if self.classification != TypeClass.classifications.struct and self.classification != TypeClass.classifications.interface:
+    def get_member_attribute_by_name(self, name: str) -> Type:
+        if self.classification != Type.classifications.struct and self.classification != Type.classifications.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
         if name not in self.component_names:
-            if self.classification == TypeClass.classifications.struct:
+            if self.classification == Type.classifications.struct:
                 matching_embeddings = [tc for tc in self.embeds if tc.has_member_attribute_with_name(name)]
                 if len(matching_embeddings) != 1:
                     raise Exception(f"bad embedding structure, need to be handled elswhere got {len(matching_embeddings)} matches, need 1")
@@ -161,56 +161,56 @@ class TypeClass():
         pos = self.component_names.index(name)
         return self.components[pos]
 
-    def get_return_type(self) -> TypeClass:
-        if self.classification != TypeClass.classifications.function:
+    def get_return_type(self) -> Type:
+        if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
         
         return self.components[1]
 
-    def get_argument_type(self) -> TypeClass:
-        if self.classification != TypeClass.classifications.function:
+    def get_argument_type(self) -> Type:
+        if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_argument_type on function constructions, got {self}")
         
         return self.components[0]
 
     def is_function(self) -> bool:
-        return self.classification == TypeClass.classifications.function
+        return self.classification == Type.classifications.function
 
     def is_struct(self) -> bool:
-        return self.classification == TypeClass.classifications.struct
+        return self.classification == Type.classifications.struct
 
     def is_novel(self) -> bool:
-        return self.classification == TypeClass.classifications.novel 
+        return self.classification == Type.classifications.novel 
 
     def is_tuple(self) -> bool:
-        return self.classification == TypeClass.classifications.tuple
+        return self.classification == Type.classifications.tuple
 
     def with_restriction(self, restriction: AbstractRestriction):
         return self._copy_with_restriction(restriction)
 
     def unpack_into_parts(self):
-        if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
-            or self.classification == TypeClass.classifications.interface):
+        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 
+            or self.classification == Type.classifications.interface):
             return [self]
-        if self.classification == TypeClass.classifications.function:
+        if self.classification == Type.classifications.function:
             return self.get_return_type().unpack_into_parts()
-        if self.classification == TypeClass.classifications.tuple:
+        if self.classification == Type.classifications.tuple:
             return self.components
         
 
     def get_restrictions(self) -> list[AbstractRestriction]:
-        if (self.classification == TypeClass.classifications.struct or self.classification == TypeClass.classifications.novel 
-            or self.classification == TypeClass.classifications.interface):
+        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 
+            or self.classification == Type.classifications.interface):
             return [self.restriction]
-        if self.classification == TypeClass.classifications.function:
+        if self.classification == Type.classifications.function:
             return self.get_return_type().get_restrictions()
-        if self.classification == TypeClass.classifications.tuple:
+        if self.classification == Type.classifications.tuple:
             return [elem.restriction for elem in self.components]
         
         raise Exception(f"unhandled classification {self.classification}")
 
     def _copy_with_restriction(self, restriction: AbstractRestriction):
-        return TypeClass(
+        return Type(
             classification=self.classification,
             name=self.name,
             mod=self.mod,

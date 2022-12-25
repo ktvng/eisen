@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Module, Context, TypeClassFactory, TypeClass
+from alpaca.concepts import Module, Context, TypeFactory, Type
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
@@ -108,7 +108,7 @@ class State(AbstractParams):
 
             type = "N/A"
             try:
-                type = self.get_node_data().returned_typeclass
+                type = self.get_node_data().returned_type
             except:
                 pass
 
@@ -134,11 +134,11 @@ Token: {self.asl}
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
         global_mod = Module("global")
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("int"))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("str"))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("flt"))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("bool"))
-        global_mod.add_typeclass(TypeClassFactory.produce_novel_type("void"))
+        global_mod.add_type(TypeFactory.produce_novel_type("int"))
+        global_mod.add_type(TypeFactory.produce_novel_type("str"))
+        global_mod.add_type(TypeFactory.produce_novel_type("flt"))
+        global_mod.add_type(TypeFactory.produce_novel_type("bool"))
+        global_mod.add_type(TypeFactory.produce_novel_type("void"))
 
         return State(
             config=config, 
@@ -165,11 +165,11 @@ Token: {self.asl}
     def get_struct_name(self) -> str:
         return self.struct_name
 
-    def assign_returned_typeclass(self, typeclass: TypeClass):
-        self.get_node_data().returned_typeclass = typeclass
+    def assign_returned_type(self, type: Type):
+        self.get_node_data().returned_type = type
 
-    def get_returned_typeclass(self) -> TypeClass:
-        return self.get_node_data().returned_typeclass
+    def get_returned_type(self) -> Type:
+        return self.get_node_data().returned_type
 
     def assign_instances(self, instances: list[EisenInstance] | EisenInstance):
         if isinstance(instances, EisenInstance):
@@ -185,10 +185,10 @@ Token: {self.asl}
             return self.get_enclosing_module()
         return self.context
 
-    def get_bool_type(self) -> TypeClass:
-        return TypeClassFactory.produce_novel_type("bool")
+    def get_bool_type(self) -> Type:
+        return TypeFactory.produce_novel_type("bool")
 
-    abort_signal = TypeClassFactory.produce_novel_type("_abort_")
+    abort_signal = TypeFactory.produce_novel_type("_abort_")
 
     def but_with_first_child(self) -> State:
         return self.but_with(asl=self.first_child())
@@ -221,8 +221,8 @@ Token: {self.asl}
         for child in self.asl:
             fn.apply(self.but_with(asl=child))
 
-    def get_void_type(self) -> TypeClass:
-        return TypeClassFactory.produce_novel_type("void")
+    def get_void_type(self) -> Type:
+        return TypeFactory.produce_novel_type("void")
 
     def get_asl(self) -> CLRList:
         return self.asl

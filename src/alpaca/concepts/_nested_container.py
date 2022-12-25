@@ -5,11 +5,11 @@ import uuid
 
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
-    from alpaca.concepts._typeclass import TypeClass
+    from alpaca.concepts._type import Type
     from alpaca.concepts._instancestate import InstanceState
 
 class NestedContainer():
-    container_names = ["typeclass", "instance", "instance_state"]
+    container_names = ["type", "instance", "instance_state"]
 
     def __init__(self, name: str, parent: NestedContainer = None):
         self.name = name
@@ -61,12 +61,12 @@ class NestedContainer():
     def get_instance(self, name: str) -> Instance | None:
         return self.get_obj("instance", name)
 
-    def add_typeclass(self, typeclass: TypeClass):
-        if typeclass.name:
-            self.add_obj("typeclass", typeclass.get_uuid_str(), typeclass)
+    def add_type(self, type: Type):
+        if type.name:
+            self.add_obj("type", type.get_uuid_str(), type)
 
-    def get_typeclass(self, name: str) -> TypeClass:
-        return self.get_obj("typeclass", name)
+    def get_type(self, name: str) -> Type:
+        return self.get_obj("type", name)
 
     def add_instancestate(self, instance_state: InstanceState) -> None:
         self.add_obj("instance_state", instance_state.name, instance_state)
@@ -80,7 +80,7 @@ class NestedContainer():
         for child in self.children:
             sub_module_lines.extend(str(child).split("\n"))
         object_lines = [str(instance) for instance in self.containers["instance"].values()]
-        types_lines = [("::" + str(type)).split("::")[-1] for type in self.typeclasses]
+        types_lines = [("::" + str(type)).split("::")[-1] for type in self.types]
         sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
         return f"{self.name}\n{indented_subtext}"

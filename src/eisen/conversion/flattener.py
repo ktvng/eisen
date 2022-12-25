@@ -179,11 +179,11 @@ class Flattener(Visitor):
     # TODO: fix 
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: State) -> tuple[list[str], list[str]]:
-        typeclass = params.but_with(asl=params.asl.second()).get_returned_typeclass()
+        type = params.but_with(asl=params.asl.second()).get_returned_type()
         prefix = "struct_" if type.is_struct() else ""
         type_name = Utils.get_name_of_type(
-            type=typeclass,
-            mod=typeclass.mod)
+            type=type,
+            mod=type.mod)
 
         var_name = self._produce_var_name()
         return [f"({prefix}decl (type {type_name}) {var_name})"], [f"(ref {var_name})"]

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from alpaca.concepts._typeclass import TypeClass
+from alpaca.concepts._type import Type
 from alpaca.concepts._module import Module
 
-class TypeClassFactory():
+class TypeFactory():
     @classmethod
-    def produce_novel_type(cls, name: str) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.novel, 
+    def produce_novel_type(cls, name: str) -> Type:
+        return Type(
+            classification=Type.classifications.novel, 
             name=name, 
             mod=None, 
             components=[], 
@@ -17,9 +17,9 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_tuple_type(cls, components: list[TypeClass]) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.tuple, 
+    def produce_tuple_type(cls, components: list[Type]) -> Type:
+        return Type(
+            classification=Type.classifications.tuple, 
             name="",
             mod=None, 
             components=components, 
@@ -29,9 +29,9 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_function_type(cls, arg: TypeClass, ret: TypeClass, mod: Module, name: str = "") -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.function, 
+    def produce_function_type(cls, arg: Type, ret: Type, mod: Module, name: str = "") -> Type:
+        return Type(
+            classification=Type.classifications.function, 
             name=name, 
             mod=mod, 
             components=[arg, ret], 
@@ -41,9 +41,9 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_proto_struct_type(cls, name: str, mod: Module) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.proto_struct,
+    def produce_proto_struct_type(cls, name: str, mod: Module) -> Type:
+        return Type(
+            classification=Type.classifications.proto_struct,
             name=name, 
             mod=mod, 
             components=[], 
@@ -53,9 +53,9 @@ class TypeClassFactory():
             restriction=None)
 
     @classmethod
-    def produce_proto_interface_type(cls, name: str, mod: Module) -> TypeClass:
-        return TypeClass(
-            classification=TypeClass.classifications.proto_interface, 
+    def produce_proto_interface_type(cls, name: str, mod: Module) -> Type:
+        return Type(
+            classification=Type.classifications.proto_interface, 
             name=name, 
             mod=mod, 
             components=[], 

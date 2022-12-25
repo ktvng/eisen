@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.concepts import TypeClass, Context, Module
+from alpaca.concepts import Type, Context, Module
 from eisen.common import EisenInstance
 from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
@@ -8,14 +8,14 @@ from eisen.common.restriction import EisenInstanceState
 
 
 class ValidationResult():
-    def __init__(self, result: bool, return_obj: TypeClass | EisenInstance):
+    def __init__(self, result: bool, return_obj: Type | EisenInstance):
         self.result = result
         self.return_obj = return_obj
 
     def failed(self) -> bool:
         return not self.result
 
-    def get_failure_type(self) -> TypeClass:
+    def get_failure_type(self) -> Type:
         return self.return_obj
 
     def get_found_instance(self) -> EisenInstance:
@@ -34,7 +34,7 @@ class Validate:
         return ValidationResult(result=True, return_obj=return_obj)
 
     @classmethod
-    def equivalent_types(cls, state: State, type1: TypeClass, type2: TypeClass) -> ValidationResult:
+    def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.abort_signal in (type1, type2)]):
             return Validate._abort_signal(state) 
 
@@ -57,14 +57,14 @@ class Validate:
 
 
     @classmethod
-    def correct_argument_types(cls, state: State, name: str, fn_type: TypeClass, given_type: TypeClass) -> ValidationResult:
+    def correct_argument_types(cls, state: State, name: str, fn_type: Type, given_type: Type) -> ValidationResult:
         if any([state.abort_signal in (fn_type, given_type)]):
             return Validate._abort_signal(state) 
 
         if fn_type != given_type:
             # if the given_type is a struct, we have another change to succeed if 
             # the struct embeds the expected fn_type
-            if given_type.classification == TypeClass.classifications.struct:
+            if given_type.classification == Type.classifications.struct:
                 if fn_type not in given_type.embeds:
                     state.report_exception(Exceptions.TypeMismatch(
                         msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
@@ -133,17 +133,17 @@ class Validate:
         return Validate._success(return_obj=None)
 
     @classmethod
-    def has_member_attribute(cls, state: State, typeclass: TypeClass, attribute_name: str) -> ValidationResult:
-        if not typeclass.has_member_attribute_with_name(attribute_name):
+    def has_member_attribute(cls, state: State, type: Type, attribute_name: str) -> ValidationResult:
+        if not type.has_member_attribute_with_name(attribute_name):
             state.report_exception(Exceptions.MissingAttribute(
-                f"'{typeclass}' does not have member attribute '{attribute_name}'",
+                f"'{type}' does not have member attribute '{attribute_name}'",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
     
     @classmethod
-    def castable_types(cls, state: State, type: TypeClass, cast_into_type: TypeClass) -> ValidationResult:
+    def castable_types(cls, state: State, type: Type, cast_into_type: Type) -> ValidationResult:
         if any([state.abort_signal in (type, cast_into_type)]):
             return Validate._abort_signal(state) 
 
@@ -155,12 +155,12 @@ class Validate:
         return Validate._success(return_obj=None)
 
     @classmethod
-    def all_implementations_are_complete(cls, state: State, type: TypeClass):
+    def all_implementations_are_complete(cls, state: State, type: Type):
         for interface in type.inherits:
             cls.implementation_is_complete(state, type, interface)
 
     @classmethod
-    def implementation_is_complete(cls, state: State, type: TypeClass, inherited_type: TypeClass) -> ValidationResult:
+    def implementation_is_complete(cls, state: State, type: Type, inherited_type: Type) -> ValidationResult:
         encountered_exception = False
         for name, required_attribute_type in zip(inherited_type.component_names, inherited_type.components):
             if type.has_member_attribute_with_name(name):
@@ -182,14 +182,14 @@ class Validate:
 
     
     @classmethod
-    def embeddings_dont_conflict(cls, state: State, typeclass: TypeClass):
+    def embeddings_dont_conflict(cls, state: State, type: Type):
         conflicts = False
-        conflict_map: dict[tuple[str, TypeClass], bool] = {}
+        conflict_map: dict[tuple[str, Type], bool] = {}
         
-        for attribute_pair in typeclass.get_direct_attribute_name_type_pairs():
-            conflict_map[attribute_pair] = typeclass
+        for attribute_pair in type.get_direct_attribute_name_type_pairs():
+            conflict_map[attribute_pair] = type
 
-        for embedded_type in typeclass.embeds:
+        for embedded_type in type.embeds:
             embedded_type_attribute_pairs = embedded_type.get_all_attribute_name_type_pairs()
             for pair in embedded_type_attribute_pairs:
                 conflicting_type = conflict_map.get(pair, None)

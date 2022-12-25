@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
-from alpaca.concepts import TypeClass
+from alpaca.concepts import Type
 
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State, EisenInstance
@@ -28,17 +28,17 @@ class PermissionsVisitor(Visitor):
 
     @classmethod
     def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
-        typeclass = instance.type
-        # TODO: novel typeclasses should have restrictions!
-        if typeclass.is_novel() and (typeclass.restriction is None or typeclass.restriction.is_let()):
+        type = instance.type
+        # TODO: novel types should have restrictions!
+        if type.is_novel() and (type.restriction is None or type.restriction.is_let()):
             return EisenInstanceState(instance.name, PrimitiveRestriction(), init_state)
-        elif typeclass.restriction.is_let():
+        elif type.restriction.is_let():
             return EisenInstanceState(instance.name, LetRestriction(), init_state)
-        elif typeclass.restriction.is_var():
+        elif type.restriction.is_var():
             return EisenInstanceState(instance.name, VarRestriction(), init_state) 
 
     @classmethod
-    def convert_argument_typeclass_to_instancestate(cls, tc: TypeClass) -> list[EisenInstanceState]:
+    def convert_argument_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
         if tc.restriction.is_let() and tc.is_novel():
             return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
         elif tc.restriction.is_let():
@@ -48,7 +48,7 @@ class PermissionsVisitor(Visitor):
             return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
 
     @classmethod
-    def convert_return_typeclass_to_instancestate(cls, tc: TypeClass) -> EisenInstanceState:
+    def convert_return_type_to_instancestate(cls, tc: Type) -> EisenInstanceState:
         if tc.restriction.is_let() and tc.is_novel():
             return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
         elif tc.restriction.is_let():
@@ -56,7 +56,7 @@ class PermissionsVisitor(Visitor):
         elif tc.restriction.is_var():
             return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
 
-        raise Exception(f"unknown way to convert typeclass to instancestate, {tc}, {tc.restriction}")
+        raise Exception(f"unknown way to convert type to instancestate, {tc}, {tc.restriction}")
 
 
     @Visitor.for_asls("start", "seq", "cond", "args", "rets", "prod_type")
@@ -173,14 +173,14 @@ class PermissionsVisitor(Visitor):
         if node.is_print():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        argument_instancestates = [PermissionsVisitor.convert_argument_typeclass_to_instancestate(tc) 
+        argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc) 
             for tc in node.get_argument_type().unpack_into_parts()]
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_instancestates, param_instancestates):
             Validate.parameter_assignment_restrictions_met(state, left, right)
  
         # handle returned restrictions
-        returned_instancestates = [PermissionsVisitor.convert_return_typeclass_to_instancestate(tc)
+        returned_instancestates = [PermissionsVisitor.convert_return_type_to_instancestate(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_instancestates
 

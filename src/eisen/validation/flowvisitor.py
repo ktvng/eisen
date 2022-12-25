@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
-from alpaca.concepts import TypeClass, TypeClassFactory
+from alpaca.concepts import Type, TypeFactory
 from eisen.common import EisenInstance, binary_ops, boolean_return_ops
 from eisen.common.state import State
 from eisen.common.restriction import LetRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes
-from eisen.validation.typeclassparser import TypeclassParser
+from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
 
@@ -16,15 +16,15 @@ from eisen.validation.builtin_print import BuiltinPrint
 implemented_primitive_types = ["str", "int", "bool", "flt"]
 
 class FlowVisitor(Visitor):
-    """this evaluates the flow of typeclasses throughout the asl, and records which 
-    typeclass flows up through each asl.
+    """this evaluates the flow of types throughout the asl, and records which 
+    type flows up through each asl.
     """
 
     def __init__(self, debug: bool = False):
         super().__init__(debug=debug)
         # self.debug = True
 
-    def apply(self, state: State) -> TypeClass:
+    def apply(self, state: State) -> Type:
         if self.debug and isinstance(state.get_asl(), CLRList):
             print("\n"*64)
             print(state.inspect())
@@ -38,13 +38,13 @@ class FlowVisitor(Visitor):
 
         result = self._route(state.get_asl(), state)
         if state.is_asl():
-            state.assign_returned_typeclass(result)
+            state.assign_returned_type(result)
         return result
 
-    def apply_to_first_child_of(self, state: State) -> TypeClass:
+    def apply_to_first_child_of(self, state: State) -> Type:
         return self.apply(state.but_with_first_child())
 
-    def apply_to_second_child_of(self, state: State) -> TypeClass:
+    def apply_to_second_child_of(self, state: State) -> Type:
         return self.apply(state.but_with_second_child())
 
     def returns_void_type(f):
@@ -57,11 +57,11 @@ class FlowVisitor(Visitor):
         return decorator
 
     @classmethod
-    def add_instance_to_context(cls, name: str, typeclass: TypeClass, state: State):
+    def add_instance_to_context(cls, name: str, type: Type, state: State):
         """add a new instance to the current context and return it."""
         instance = EisenInstance(
             name=name,
-            type=typeclass,
+            type=type,
             context=state.get_context(),
             asl=state.get_asl(),
             is_ptr=state.is_ptr)
@@ -69,14 +69,14 @@ class FlowVisitor(Visitor):
         return instance
 
     @Visitor.for_tokens
-    def token_(fn, state: State) -> TypeClass:
+    def token_(fn, state: State) -> Type:
         if state.get_asl().type in implemented_primitive_types:
-            return TypeClassFactory.produce_novel_type(name=state.get_asl().type)
+            return TypeFactory.produce_novel_type(name=state.get_asl().type)
         raise Exception(f"unexpected token type of {state.get_asl().type}")
 
     @Visitor.for_asls("fn_type")
-    def fn_type_(fn, state: State) -> TypeClass:
-        return TypeclassParser().apply(state)
+    def fn_type_(fn, state: State) -> Type:
+        return TypeParser().apply(state)
 
     @Visitor.for_asls("start", "return", "cond", "seq")
     @returns_void_type
@@ -89,21 +89,21 @@ class FlowVisitor(Visitor):
         Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
 
     @Visitor.for_asls("!")
-    def not_(fn, state: State) -> TypeClass:
+    def not_(fn, state: State) -> Type:
         return fn.apply_to_first_child_of(state)
 
     @Visitor.for_asls(".")
-    def dot_(fn, state: State) -> TypeClass:
+    def dot_(fn, state: State) -> Type:
         node = Nodes.Scope(state)
-        parent_typeclass = fn.apply(state.but_with(asl=node.get_object_asl()))
+        parent_type = fn.apply(state.but_with(asl=node.get_object_asl()))
         name = node.get_attribute_name()
-        result = Validate.has_member_attribute(state, parent_typeclass, name)
+        result = Validate.has_member_attribute(state, parent_type, name)
         if result.failed():
             return result.get_failure_type()
-        return parent_typeclass.get_member_attribute_by_name(name)
+        return parent_type.get_member_attribute_by_name(name)
 
     @Visitor.for_asls("::")
-    def scope_(fn, state: State) -> TypeClass:
+    def scope_(fn, state: State) -> Type:
         node = Nodes.ModuleScope(state)
         entering_into_mod = state.get_enclosing_module().get_child_by_name(node.get_module_name())
         return fn.apply(state.but_with(
@@ -111,18 +111,18 @@ class FlowVisitor(Visitor):
             mod=entering_into_mod))
 
     @Visitor.for_asls("tuple", "params", "prod_type")
-    def tuple_(fn, state: State) -> TypeClass:
+    def tuple_(fn, state: State) -> Type:
         if len(state.get_asl()) == 0:
             return state.get_void_type()
         elif len(state.get_asl()) == 1:
             # if there is only one child, then we simply pass the type back, not as a tuple
             return fn.apply_to_first_child_of(state)
-        return TypeClassFactory.produce_tuple_type(
+        return TypeFactory.produce_tuple_type(
             components=[fn.apply(state.but_with(asl=child)) for child in state.get_asl()])
 
     @Visitor.for_asls("if")
     @returns_void_type
-    def if_(fn, state: State) -> TypeClass:
+    def if_(fn, state: State) -> Type:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
                 asl=child, 
@@ -130,30 +130,30 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("while")
     @returns_void_type
-    def while_(fn, state: State) -> TypeClass:
+    def while_(fn, state: State) -> Type:
         fn.apply(state.but_with(
             asl=state.first_child(),
             context=state.create_block_context("while")))
 
     @Visitor.for_asls(":")
-    def colon_(fn, state: State) -> TypeClass:
+    def colon_(fn, state: State) -> Type:
         node = Nodes.Colon(state)
         names = node.get_names()
-        typeclass = fn.apply(state.but_with(asl=node.get_type_asl()))
+        type = fn.apply(state.but_with(asl=node.get_type_asl()))
 
         check = Validate.all_names_are_unbound(state, names)
         if check.failed():
             return state.abort_signal
 
-        instances = [FlowVisitor.add_instance_to_context(name, typeclass, state) for name in names]
+        instances = [FlowVisitor.add_instance_to_context(name, type, state) for name in names]
         state.assign_instances(instances)
-        return typeclass
+        return type
 
     @Visitor.for_asls("fn")
-    def fn_(fn, state: State) -> TypeClass:
+    def fn_(fn, state: State) -> Type:
         node = Nodes.Fn(state)
         if node.is_print():
-            return BuiltinPrint.get_typeclass_of_function(state)
+            return BuiltinPrint.get_type_of_function(state)
 
         if node.is_simple():
             result = Validate.function_instance_exists_in_local_context(state)
@@ -167,7 +167,7 @@ class FlowVisitor(Visitor):
             return fn.apply_to_first_child_of(state)
 
     @Visitor.for_asls("disjoint_fn")
-    def disjoint_ref_(fn, state: State) -> TypeClass:
+    def disjoint_ref_(fn, state: State) -> Type:
         result = Validate.function_instance_exists_in_module(state)
         if result.failed():
             return result.get_failure_type()
@@ -177,7 +177,7 @@ class FlowVisitor(Visitor):
         return instance.type
 
     @Visitor.for_asls("call")
-    def call_(fn, state: State) -> TypeClass:
+    def call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
         if fn_type == state.abort_signal:
             return state.abort_signal
@@ -195,7 +195,7 @@ class FlowVisitor(Visitor):
         return fn_type.get_return_type()
 
     @Visitor.for_asls("raw_call")
-    def raw_call(fn, state: State) -> TypeClass:
+    def raw_call(fn, state: State) -> Type:
         # e.g. (raw_call (expr ...) (fn name) (state ...))
         # because the first element can be a list itself, we need to apply the 
         # fn over it to get the flowed out type.
@@ -211,34 +211,34 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("struct")
     @returns_void_type
-    def struct(fn, state: State) -> TypeClass:
+    def struct(fn, state: State) -> Type:
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
     @Visitor.for_asls("interface", "impls")
     @returns_void_type
-    def interface_(fn, state: State) -> TypeClass:
+    def interface_(fn, state: State) -> Type:
         # no action required
         return
 
     @Visitor.for_asls("cast")
-    def cast(fn, state: State) -> TypeClass:
+    def cast(fn, state: State) -> Type:
         # (cast (ref name) (type into))
-        left_typeclass = fn.apply_to_first_child_of(state)
-        right_typeclass = fn.apply_to_second_child_of(state)
+        left_type = fn.apply_to_first_child_of(state)
+        right_type = fn.apply_to_second_child_of(state)
 
         result = Validate.castable_types(
             state=state, 
-            type=left_typeclass, 
-            cast_into_type=right_typeclass)
+            type=left_type, 
+            cast_into_type=right_type)
         if result.failed():
             return result.get_failure_type()
-        return right_typeclass
+        return right_type
 
     @Visitor.for_asls("def", "create", ":=")
     @returns_void_type
-    def fn(fn, state: State) -> TypeClass:
+    def fn(fn, state: State) -> Type:
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
 
     @Visitor.for_asls("ilet", "ivar")
@@ -246,18 +246,18 @@ class FlowVisitor(Visitor):
     def idecls_(fn, state: State):
         node = Nodes.IletIvar(state)
         names = node.get_names()
-        typeclass_to_be_assigned = fn.apply_to_second_child_of(state)
-        componentwise_typeclasses = node.unpack_assigned_typeclasses(typeclass_to_be_assigned)
+        type_to_be_assigned = fn.apply_to_second_child_of(state)
+        componentwise_types = node.unpack_assigned_types(type_to_be_assigned)
 
-        if (any(typeclass is state.abort_signal for typeclass in componentwise_typeclasses)
+        if (any(type is state.abort_signal for type in componentwise_types)
                 or Validate.all_names_are_unbound(state, names).failed()):
             state.critical_exception.set(True)
             return
 
-        componentwise_typeclasses_with_restriction = [typeclass.with_restriction(node.get_restriction()) 
-            for typeclass in componentwise_typeclasses]
-        instances = [FlowVisitor.add_instance_to_context(name, typeclass, state)
-                for name, typeclass in zip(names, componentwise_typeclasses_with_restriction)]
+        componentwise_types_with_restriction = [type.with_restriction(node.get_restriction()) 
+            for type in componentwise_types]
+        instances = [FlowVisitor.add_instance_to_context(name, type, state)
+                for name, type in zip(names, componentwise_types_with_restriction)]
         state.assign_instances(instances)
 
     @Visitor.for_asls("var")
@@ -280,15 +280,15 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
 
     @Visitor.for_asls("type", "type?", "var_type")
-    def _type1(fn, state: State) -> TypeClass:
-        typeclass = state.get_enclosing_module().get_typeclass(name=state.first_child().value)
+    def _type1(fn, state: State) -> Type:
+        type = state.get_enclosing_module().get_type(name=state.first_child().value)
         if state.get_asl().type == "type":
-            return typeclass.with_restriction(LetRestriction())
+            return type.with_restriction(LetRestriction())
         elif state.get_asl().type == "var_type":
-            return typeclass.with_restriction(VarRestriction())
+            return type.with_restriction(VarRestriction())
 
     @Visitor.for_asls("=", "<-", *binary_ops)
-    def binary_ops(fn, state: State) -> TypeClass:
+    def binary_ops(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
 
@@ -298,7 +298,7 @@ class FlowVisitor(Visitor):
         return left_type
     
     @Visitor.for_asls(*boolean_return_ops)
-    def boolean_return_ops_(fn, state: State) -> TypeClass:
+    def boolean_return_ops_(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
 
@@ -308,7 +308,7 @@ class FlowVisitor(Visitor):
         return state.get_bool_type()
 
     @Visitor.for_asls("ref")
-    def ref_(fn, state: State) -> TypeClass:
+    def ref_(fn, state: State) -> Type:
         result = Validate.instance_exists(state)
         if result.failed():
             return result.get_failure_type()
@@ -318,13 +318,13 @@ class FlowVisitor(Visitor):
         return instance.type
 
     @Visitor.for_asls("args")
-    def args_(fn, state: State) -> TypeClass:
+    def args_(fn, state: State) -> Type:
         if not state.get_asl():
             return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=False))
 
     @Visitor.for_asls("rets")
-    def rets_(fn, state: State) -> TypeClass:
+    def rets_(fn, state: State) -> Type:
         if not state.get_asl():
             return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))

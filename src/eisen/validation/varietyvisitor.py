@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
-from alpaca.concepts import TypeClass, TypeClassFactory
+from alpaca.concepts import Type, TypeFactory
 from eisen.common import asls_of_type
 from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
@@ -31,9 +31,9 @@ class VarietyWrangler(Visitor):
     @Visitor.covers(asls_of_type("variety"))
     def struct_(fn, state: State) -> None:
         node = Nodes.Variety(state)
-        variety_typeclass = TypeClassFactory.produce_variety_type(
+        variety_type = TypeFactory.produce_variety_type(
             name=node.get_name(),
             mod=state.get_enclosing_module(),
-            inherits=node.get_inherited_typeclass())
-        state.get_enclosing_module().add_typeclass(variety_typeclass)
+            inherits=node.get_inherited_type())
+        state.get_enclosing_module().add_type(variety_type)
 

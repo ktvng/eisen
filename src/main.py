@@ -110,7 +110,7 @@ def run_eisen(filename: str):
         perf.append((step.__name__, (end-start)/1000000))
 
     print("========")
-    for t in params.mod.typeclasses:
+    for t in params.mod.types:
         print(t)
     print(params.mod)
     print("========")

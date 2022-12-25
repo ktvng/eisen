@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 import re
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.utils import Visitor
 
-from eisen.common import asls_of_type
 from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 

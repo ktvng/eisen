@@ -9,28 +9,31 @@ if TYPE_CHECKING:
     from alpaca.concepts._instancestate import InstanceState
 
 class NestedContainer():
+    container_names = ["typeclass", "instance", "instance_state"]
+
     def __init__(self, name: str, type: str, parent: NestedContainer = None):
         self.name = name
         self.type = type
-        self.containers = {
-            "typeclass": {},
-            "instance": {},
-            "instance_state": {},
-        }
+        self.containers = {}
+        self._initialize_containers()
 
         self.children = []
         self.parent = parent
         self.guid = uuid.uuid4()
-        if parent and type == "module":
+        if parent is not None:
             parent._add_child(self)
+
+    def _initialize_containers(self) -> None:
+        for name in self.container_names:
+            self.containers[name] = {}
 
     def _add_child(self, child: NestedContainer):
         self.children.append(child)
 
     def get_child_by_name(self, name: str) -> NestedContainer:
-        child_module_names = [m.name for m in self.children]
-        if name in child_module_names:
-            pos = child_module_names.index(name)
+        child_container_names = [m.name for m in self.children]
+        if name in child_container_names:
+            pos = child_container_names.index(name)
             return self.children[pos]
 
         raise Exception(f"Unable to resolve module named {name} inside module {self.name}")
@@ -52,7 +55,6 @@ class NestedContainer():
         if name in container:
             return container[name]   
         return None
-
 
     def add_instance(self, instance: Instance) -> None:
         self.add_obj("instance", instance.name, instance)

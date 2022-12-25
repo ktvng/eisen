@@ -22,6 +22,43 @@ class PermissionsVisitor(Visitor):
             input()
         return self._route(state.get_asl(), state)
 
+    @classmethod
+    def NoRestrictionInstanceState(cls):
+        return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized)]
+
+    @classmethod
+    def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
+        typeclass = instance.type
+        # TODO: novel typeclasses should have restrictions!
+        if typeclass.is_novel() and (typeclass.restriction is None or typeclass.restriction.is_let()):
+            return EisenInstanceState(instance.name, PrimitiveRestriction(), init_state)
+        elif typeclass.restriction.is_let():
+            return EisenInstanceState(instance.name, LetRestriction(), init_state)
+        elif typeclass.restriction.is_var():
+            return EisenInstanceState(instance.name, VarRestriction(), init_state) 
+
+    @classmethod
+    def convert_argument_typeclass_to_instancestate(cls, tc: TypeClass) -> list[EisenInstanceState]:
+        if tc.restriction.is_let() and tc.is_novel():
+            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
+        elif tc.restriction.is_let():
+            # this must be Var to allow objects be edited
+            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
+        elif tc.restriction.is_var():
+            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
+
+    @classmethod
+    def convert_return_typeclass_to_instancestate(cls, tc: TypeClass) -> EisenInstanceState:
+        if tc.restriction.is_let() and tc.is_novel():
+            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
+        elif tc.restriction.is_let():
+            return EisenAnonymousInstanceState(LetRestriction(), Initializations.Initialized)
+        elif tc.restriction.is_var():
+            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
+
+        raise Exception(f"unknown way to convert typeclass to instancestate, {tc}, {tc.restriction}")
+
+
     @Visitor.for_asls("start", "seq", "cond", "args", "rets", "prod_type")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
@@ -130,28 +167,6 @@ class PermissionsVisitor(Visitor):
         # TODO: figure this out
         return PermissionsVisitor.NoRestrictionInstanceState()
 
-    @classmethod
-    def convert_argument_typeclass_to_instancestate(cls, tc: TypeClass) -> list[EisenInstanceState]:
-        if tc.restriction.is_let() and tc.is_novel():
-            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_let():
-            # this must be Var to let objects be edited
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_var():
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-
-    @classmethod
-    def convert_return_typeclass_to_instancestate(cls, tc: TypeClass) -> EisenInstanceState:
-        if tc.restriction.is_let() and tc.is_novel():
-            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_let():
-            return EisenAnonymousInstanceState(LetRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_var():
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-
-        raise Exception(f"unknown way to convert typeclass to instancestate, {tc}, {tc.restriction}")
-
-
     @Visitor.for_asls("call")
     def call_(fn, state: State) -> list[EisenInstanceState]:
         node = Nodes.Call(state)
@@ -186,18 +201,3 @@ class PermissionsVisitor(Visitor):
     def default_(fn, state: State) -> list[EisenInstanceState]:
         print("UNHANDLED", state.get_asl())
         return PermissionsVisitor.NoRestrictionInstanceState()
-
-    @classmethod
-    def NoRestrictionInstanceState(cls):
-        return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized)]
-
-    @classmethod
-    def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
-        typeclass = instance.type
-        # TODO: novel typeclasses should have restrictions!
-        if typeclass.is_novel() and (typeclass.restriction is None or typeclass.restriction.is_let()):
-            return EisenInstanceState(instance.name, PrimitiveRestriction(), init_state)
-        elif typeclass.restriction.is_let():
-            return EisenInstanceState(instance.name, LetRestriction(), init_state)
-        elif typeclass.restriction.is_var():
-            return EisenInstanceState(instance.name, VarRestriction(), init_state) 

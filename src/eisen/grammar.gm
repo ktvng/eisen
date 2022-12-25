@@ -64,13 +64,18 @@ SYMBOLICS
     keyword destroy     ->  destroy
     keyword var         ->  var
     keyword val         ->  val
-    keyword mut         ->  mut
     keyword null        ->  null
     keyword interface   ->  interface
-    keyword is          ->  is
-    keyword some        ->  some
+    keyword implements  ->  implements
+    keyword variant     ->  variant
+    keyword of          ->  of
     keyword as          ->  as
+    keyword is          ->  is
     keyword embed       ->  embed
+    keyword Self        ->  Self
+
+    keyword @deny       ->  @deny
+    keyword @allow      ->  @allow
 
     symbol ,            ->  ,
     symbol {            ->  \s*{\s* 
@@ -198,11 +203,44 @@ STRUCTURE
         |   STRUCT_CONTEXT
         |   MODULE_CONTEXT
         |   INTERFACE_CONTEXT
+        |   VARIANT_CONTEXT
 
     @action filter_build mod
     MODULE_CONTEXT -> 
         |   module TAG { CONTEXTS }
         |   module TAG { ENDLS CONTEXTS }
+
+    ############################################################################
+    # Variants
+
+    @action filter_build variant 
+    VARIANT_CONTEXT -> VARIANT_HEADER VARIANT_BODY
+
+    @action pool
+    VARIANT_HEADER -> variant TAG of TAG
+    VARIANT_BODY -> { VARIANT_ELEMENTS }
+    VARIANT_ELEMENTS -> 
+        |   VARIANT_ELEMENT
+        |   VARIANT_ELEMENT VARIANT_ELEMENTS
+    
+    VARIANT_ELEMENT ->
+        @action pass
+        |   VARIANT_FUNCTION_IS
+        |   VARIANT_DENY ENDLS
+        |   VARIANT_ALLOW ENDLS
+
+    @action filter_build is
+    VARIANT_FUNCTION_IS -> is ARGS_DECL RETURN_DECL CODE_BLOCK
+
+    @action filter_build deny
+    VARIANT_DENY -> 
+        |   @deny ( TAGS_TUPLE_BUILDER )
+        |   @deny ( TAG )
+
+    @action filter_build allow 
+    VARIANT_ALLOW -> 
+        |   @allow ( TAGS_TUPLE_BUILDER )
+        |   @allow ( TAG )
 
     ############################################################################
     # Interfaces
@@ -220,6 +258,22 @@ STRUCTURE
     INTERFACE_ELEMENT ->
         @action pass
         |   TYPING ENDLS
+        |   INTERFACE_TYPING ENDLS
+        
+    INTERFACE_TYPING -> 
+        @action build_operator
+        |   TAG : INTERFACE_FUNCTION_TYPE
+
+    INTERFACE_FUNCTION_TYPE ->
+        @action build iface_func
+        |   INTERFACE_FUNCTION_ARGS_DECL RETURN_DECL
+
+    @action filter_build iface_args
+    INTERFACE_FUNCTION_ARGS_DECL ->
+        |   ( Self , TYPING_TUPLE )
+        |   ( Self , TYPING )
+        |   ( Self )
+
 
     ############################################################################
     # Structs
@@ -239,8 +293,8 @@ STRUCTURE
 
     @action filter_build impls
     IMPLEMENTATIONS -> 
-        |   is TAGS_TUPLE_BUILDER
-        |   is TAG
+        |   implements TAGS_TUPLE_BUILDER
+        |   implements TAG
 
     @action pass
     STRUCT_ELEMENT -> 
@@ -249,6 +303,7 @@ STRUCTURE
         |   STRUCT_DESTRUCTOR
         |   STRUCT_DECLARATION
         |   STRUCT_EMBEDDINGS ENDLS
+        |   FUNCTION_CONTEXT
 
     @action filter_build create 
     STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
@@ -519,9 +574,6 @@ STRUCTURE
         |   EXPR . FUNCTION_CALL
         @action filter_build call
         |   FUNCTION_CALL
-
-        @action handle_call
-        |   SCOPED_VAR . FUNCTION_CALL
 
         @action pass
         |   SCOPED_VAR

@@ -24,12 +24,9 @@ variant Path of str {
         return false
     }
 
-    @deny {
-        // restrict append method as arbitrary appends
-        // may not yield a valid file Path
-        append
-        ...
-    }
+    // restrict append method as arbitrary appends
+    // may not yield a valid file Path
+    @deny (append)
 }
 
 // The append method may be redefined as the original is disabled

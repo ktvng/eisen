@@ -218,7 +218,10 @@ def debug():
         alpaca.lexer.run,
         text=txt, config=config, callback=eisen.EisenCallback)
     print("debugging...")
-    result = eisen.CustomParser2(config).parse(tokens)
+    for t in tokens:
+        print(t)
+    result = alpaca.parser.run(config, tokens, eisen.EisenBuilder())
+    # result = eisen.CustomParser2(config).parse(tokens)
     print(result)
 
 

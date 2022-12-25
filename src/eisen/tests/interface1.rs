@@ -7,7 +7,7 @@ fn el_distance(p: positionable) -> distance: int {
     distance = p.x + (p.y)
 }
 
-struct point3d is positionable {
+struct point3d implements positionable {
     x: int
     y: int
     z: int
@@ -19,7 +19,7 @@ struct point3d is positionable {
     }
 }
 
-struct vector is positionable {
+struct vector implements positionable {
     x: int
     y: int
     magnitude: int

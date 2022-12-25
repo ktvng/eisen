@@ -4,23 +4,6 @@ from alpaca.clr import CLRRawList, CLRList
 from alpaca.config import Config
 
 class EisenBuilder(CommonBuilder):
-    @CommonBuilder.for_procedure("handle_call")
-    def handle_call(
-            fn,
-            config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
-
-        # EXPR . FUNCTION_CALL
-        function_call = components[2]
-        if not isinstance(function_call, CLRList):
-            raise Exception("function call should be CLRList")
-
-        params = function_call[1]
-        params[:] = [components[0], *params]
-
-        return function_call
-
     # instead of having cases of (def ...) that may have a different number of children
     # due to the absence/presence of a (ret ...) child, we homogenize all (def ...) nodes
     # so all with have args, rets, and seq.

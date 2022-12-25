@@ -1,29 +1,7 @@
 from __future__ import annotations
 
-from alpaca.concepts import AbstractRestriction, InstanceState, Initialization
-
-class EisenInstanceState(InstanceState):
-    def __init__(self, 
-            name: str, 
-            restriction: GeneralRestriction, 
-            initialization: Initializations):
-        self.name = name
-        self.restriction = restriction
-        self.initialization = initialization
-
-    def assignable_to(self, other: EisenInstanceState):
-        return self.restriction.assignable_to(other.restriction, self.initialization)
-
-    def mark_as_initialized(self):
-        self.initialization = Initializations.NotNull
-
-    def __str__(self) -> str:
-        return str(self.restriction) + " " + ("notinit" if self.initialization == Initializations.NotInitialized else "init")
-
-
-class EisenAnonymousInstanceState(EisenInstanceState):
-    def __init__(self, restriction: AbstractRestriction, initialzation: Initializations):
-        super().__init__("", restriction, initialzation)
+from alpaca.concepts import AbstractRestriction, InstanceState
+from eisen.common.initialization import Initializations
 
 class GeneralRestriction(AbstractRestriction):
     def is_unrestricted(self) -> bool:
@@ -60,7 +38,7 @@ class NoRestriction(GeneralRestriction):
     def allows_for_reassignment(self) -> bool:
         return True
 
-    def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return True
 
     def is_unrestricted(self) -> bool:
@@ -74,14 +52,14 @@ class VarRestriction(GeneralRestriction):
         return True
 
     # TODO: rename to assignable to
-    def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return other.is_var() or other.is_let() or other.is_primitive()
 
 class LetRestriction(GeneralRestriction):
     def is_let(self) -> bool:
         return True
 
-    def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return (current_init_state == Initializations.NotInitialized) and (
             other.is_let() or other.is_unrestricted())
 
@@ -100,14 +78,9 @@ class PrimitiveRestriction(GeneralRestriction):
     def allows_for_reassignment(self) -> bool:
         return True
 
-    def assignable_to(self, other: GeneralRestriction, current_init_state: Initialization) -> bool:
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return other.is_primitive() or other.is_literal() or other.is_unrestricted() 
 
-class Initializations(Initialization):
-    PossiblyNull = "possiblynull"
-    NotNull = "notnull"
-    NotInitialized = "notinitialized"
-    Initialized = "initialized"
     
     # def assignable_to(self, right: Restriction) -> tuple[bool, str]:
     #     # print(self, right)

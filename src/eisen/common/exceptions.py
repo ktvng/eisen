@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.validator import AbstractException
+from alpaca.concepts import AbstractException
 
 class Exceptions():
     class MemoryTypeMismatch(AbstractException):

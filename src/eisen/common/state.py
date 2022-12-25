@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from alpaca.validator import AbstractParams, AbstractException
-from alpaca.concepts import Module, Context, TypeFactory, Type
+from alpaca.concepts import Module, Context, TypeFactory, Type, AbstractParams, AbstractException
 from alpaca.config import Config
 from alpaca.clr import CLRList
 

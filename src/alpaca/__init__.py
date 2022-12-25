@@ -5,6 +5,5 @@ import alpaca.grammar as grammar
 import alpaca.lexer as lexer
 import alpaca.parser as parser
 import alpaca.utils as utils
-import alpaca.validator as validator
 import alpaca.concepts as concepts
-import alpaca.types as types
+import alpaca._types as _types

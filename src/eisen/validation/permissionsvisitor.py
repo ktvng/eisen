@@ -7,8 +7,9 @@ from alpaca.concepts import Type
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State, EisenInstance
 from eisen.common.restriction import (VarRestriction, ValRestriction,
-    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction, EisenInstanceState,
-    EisenAnonymousInstanceState, Initializations)
+    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction)
+from eisen.common.initialization import Initializations
+from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.validate import Validate

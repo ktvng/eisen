@@ -143,57 +143,15 @@ def run_eisen(filename: str):
     transmuted = eisen.CTransmutation(debug=False).run(asl, params)
     print("############ TRANSMUATION ###############")
 
-    c_config = run_and_measure("config parsed",
-        alpaca.config.parser.run,
-        filename="./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
-
     eisen.DotDerefFilter().apply(c_asl)
-    print(c_asl)
-    # print("############ C_ASL ###############")
-    # print(c_asl)
-
-    print("############ C_OUTPUT ###############")
     code = c.Writer().run(c_asl)
-    with open("build/test.c", 'w') as f:
-        f.write(code)
-
-    # run tests
     subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
     x = subprocess.run(["./build/test"], capture_output=True)
     got = x.stdout.decode("utf-8") 
-
-    print("############ PROGRAM OUTPUT ###############")
-    print(got)
-    exit()
-
-    print("SUCCESS")
     bits = eisen.CodeTransducer().apply(params)
     print("".join(bits))
-    # end
-
-    params = EisenValidator.init_params(config, asl, txt)
-    mod = run_and_measure("validator",
-        alpaca.validator.run,
-        indexer_function=EisenIndexer(), validation_function=EisenValidator(), params=params)
-
-    if mod is None:
-        raise Exception("Failed to validate and produce a module.")
-
-    code = run_and_measure("transpiler",
-        EisenTranspiler().run,
-        config=config, asl=asl, mod=mod)
-
-    with open("build/test.c", 'w') as f:
-        f.write(code)
-
-    # run tests
-    subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
-    x = subprocess.run(["./build/test"], capture_output=True)
-    got = x.stdout.decode("utf-8") 
-
-    got_str = [">    " + line for line in got.split("\n")]
-    print(*got_str, sep="\n")
+    EisenTranspiler().run,
 
 def run(lang: str, filename: str):
     if lang == "lamb":

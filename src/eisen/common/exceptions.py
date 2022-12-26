@@ -54,3 +54,12 @@ class Exceptions():
     class LiteralAssignment(AbstractException):
         type = "LiteralAssignment"
         description = "an entity declared with the 'var' keyword may not be assigned to a literal"
+
+    class NilUsage(AbstractException):
+        type = "NilUsage"
+        description = "cannot use a nilable type without first casting"
+
+    class NilAssignment(AbstractException):
+        type = "NilAssignment"
+        description = "nil can only be assigned to a nilable type"
+        

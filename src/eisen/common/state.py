@@ -7,7 +7,7 @@ from alpaca.clr import CLRList
 
 from eisen.common.nodedata import NodeData
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import PrimitiveRestriction
+from eisen.common.restriction import PrimitiveRestriction, NoRestriction
 
 if TYPE_CHECKING:
     from eisen.interpretation.obj import Obj
@@ -256,7 +256,7 @@ Token: {self.asl}
             fn.apply(self.but_with(asl=child))
 
     def get_void_type(self) -> Type:
-        return TypeFactory.produce_novel_type("void")
+        return TypeFactory.produce_novel_type("void").with_restriction(NoRestriction())
 
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)

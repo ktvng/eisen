@@ -117,7 +117,9 @@ class Type():
         return hash(self._get_uuid_str())
         
     def __str__(self) -> str:
-        return self._get_uuid_str()
+        # TODO: this is an implementation dependency
+        nilable = " var?" if self.restriction and self.restriction.is_nullable() else ""
+        return self._get_uuid_str() + nilable
 
     def get_uuid_str(self) -> str:
         return self._get_uuid_str()

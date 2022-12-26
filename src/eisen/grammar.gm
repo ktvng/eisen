@@ -442,6 +442,7 @@ STRUCTURE
         |   TAG var
         @action filter_build var_type?
         |   TAG var ?
+        |   TAG ?
 
     @action filter_build types 
     TYPES -> TYPES_BUILDER

@@ -6,6 +6,7 @@ from eisen.common.state import State
 from eisen.common.exceptions import Exceptions
 from eisen.common.eiseninstancestate import EisenInstanceState
 from eisen.common.initialization import Initializations
+from eisen.validation.nilablestatus import NilableStatus
 
 
 class ValidationResult():
@@ -34,6 +35,21 @@ class Validate:
     def _success(cls, return_obj=None) -> ValidationResult:
         return ValidationResult(result=True, return_obj=return_obj)
 
+    @classmethod
+    def can_assign(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
+        if any([state.get_abort_signal() in (type1, type2)]):
+            return Validate._abort_signal(state) 
+
+        if type1.restriction.is_nullable() and type2.is_nil():
+            return Validate._success(type1) 
+        if type2.is_nil():
+            state.report_exception(Exceptions.NilAssignment(
+                msg=f"cannot assign nil to non-nilable type '{type1}'",
+                line_number=state.get_line_number()))
+            return Validate._abort_signal(state)
+        
+        return Validate.equivalent_types(state, type1, type2)
+        
     @classmethod
     def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type1, type2)]):
@@ -148,6 +164,9 @@ class Validate:
         if any([state.get_abort_signal() in (type, cast_into_type)]):
             return Validate._abort_signal(state) 
 
+        if type == cast_into_type:
+            return Validate._success()
+
         if cast_into_type not in type.inherits:
             state.report_exception(Exceptions.CastIncompatibleTypes(
                 msg=f"'{type}' cannot be cast into '{cast_into_type}'",
@@ -251,4 +270,27 @@ class Validate:
                 msg=f"{instancestate.name} is not initialized",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
+        return Validate._success()
+
+    @classmethod
+    def _generate_nil_exception_msg(cls, status: NilableStatus) -> str:
+        if status.name:
+            return f"'{status.name}' is nilable, and may be nil."
+        else:
+            return f"something may be nilable in this expession"
+
+    @classmethod
+    def both_operands_are_not_nilable(cls, state: State, left: NilableStatus, right: NilableStatus) -> ValidationResult:
+        if any([state.get_abort_signal() in (left, right)]):
+            return Validate._abort_signal(state) 
+
+        if left.is_nilable:
+            state.report_exception(Exceptions.NilUsage(
+                msg=cls._generate_nil_exception_msg(left),
+                line_number=state.get_line_number()))
+        if right.is_nilable:
+            state.report_exception(Exception.NilUsage(
+                msg=cls._generate_nil_exception_msg(right),
+                line_number=state.get_line_number()))
+
         return Validate._success()

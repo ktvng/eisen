@@ -278,7 +278,11 @@ class Nodes():
         asl_type = "let"
         examples = """
         (let (: ...))
+        (let (: (tags ...) (type ...))
         """
+
+        def get_names(self) -> list[str]:
+            return Nodes.Colon(self.state.but_with_first_child()).get_names()
 
     class Colon(AbstractNodeInterface):
         asl_type = ":"

@@ -6,6 +6,7 @@ from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
 from eisen.validation.initalizer import Initializer
 from eisen.common.exceptionshandler import ExceptionsHandler
+from eisen.validation.nilcheck import NilCheck
 
 # Notes:
 # A module is a collection of structs/functions
@@ -53,6 +54,9 @@ class Workflow():
 
         # this handles restrictions based on let/var/val differences
         PermissionsVisitor,
+        ExceptionsHandler,
+
+        NilCheck,
         ExceptionsHandler,
 
         # note: def, create, fn, ref, ilet need instances!!

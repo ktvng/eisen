@@ -309,10 +309,7 @@ class FlowVisitor(Visitor):
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
 
-        if left_type.restriction.is_nullable() and right_type.is_nil():
-            return left_type
-
-        result = Validate.equivalent_types(state, left_type, right_type)
+        result = Validate.can_assign(state, left_type, right_type)
         if result.failed():
             return result.get_failure_type()
         return left_type

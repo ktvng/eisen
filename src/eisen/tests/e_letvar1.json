@@ -1,0 +1,21 @@
+{
+    "name": "e_letvar1",
+    "info": "cannot reassign let, cannot assign let to var, cannot assign let to other let",
+    "expected": {
+        "success": false,
+        "exceptions": [
+            {
+                "type": "MemoryAssignmentException",
+                "contains": ">> 13"
+            },
+            {
+                "type": "MemoryAssignmentException",
+                "contains": ">> 16"
+            },
+            {
+                "type": "MemoryAssignmentException",
+                "contains": ">> 19"
+            } 
+        ]
+    }
+}

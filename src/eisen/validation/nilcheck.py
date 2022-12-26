@@ -23,7 +23,7 @@ class NilCheck(Visitor):
             return NilableStatus("nil", True)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
-    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "if", "cond", "while")
+    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "if", "cond", "while", "prod_type")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
@@ -77,3 +77,25 @@ class NilCheck(Visitor):
     def cast_(fn, state: State):
         return NilCheck.anonymous_nilablestatus(
             is_nilable=state.but_with_second_child().get_returned_type().restriction.is_nullable())
+
+    @Visitor.for_asls(":")
+    def colon_(fn, state: State):
+        for name in Nodes.Colon(state).get_names():
+            if Nodes.Colon(state).get_type_asl().type == "var_type?":
+                state.context.add_nilstate(name, True)
+            else:
+                state.context.add_nilstate(name, False)
+
+    @Visitor.for_asls(".")
+    def dot_(fn, state: State):
+        return NilCheck.anonymous_nilablestatus(state.get_returned_type().restriction.is_nullable())
+
+    @Visitor.for_asls("struct")
+    def struct_(fn, state: State):
+        if Nodes.Struct(state).has_create_asl():
+            fn.apply(state.but_with(asl=Nodes.Struct(state).get_create_asl()))
+
+    @Visitor.for_asls("interface")
+    def interface_(fn, state: State):
+        # nothing to do
+        return

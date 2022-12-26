@@ -1,0 +1,13 @@
+{
+    "name": "e_typemismatch",
+    "info": "type mismatches are caught",
+    "expected": {
+        "success": false,
+        "exceptions": [
+            {
+                "type": "TypeMismatchException",
+                "contains": ">> 3"
+            }
+        ]
+    }
+}

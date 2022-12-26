@@ -6,7 +6,7 @@
         "exceptions": [
             {
                 "type": "NilUsageException",
-                "contains": ">> 8"
+                "contains": ">> 7"
             }
         ]
     }

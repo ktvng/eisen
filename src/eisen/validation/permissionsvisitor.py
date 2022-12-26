@@ -85,7 +85,7 @@ class PermissionsVisitor(Visitor):
         state.add_instancestate(instancestate)
         return [instancestate]
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_asls("interface", "return")
     def none_(fn, state: State) -> list[EisenInstanceState]:
         return []
  
@@ -189,6 +189,7 @@ class PermissionsVisitor(Visitor):
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_instancestates, param_instancestates):
             Validate.parameter_assignment_restrictions_met(state, left, right)
+            Validate.instancestate_is_initialized(state, right)
  
         # handle returned restrictions
         returned_instancestates = [PermissionsVisitor.convert_return_type_to_instancestate(tc)
@@ -202,6 +203,13 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[EisenInstanceState]:
+        component_instancestates = []
+        for child in state.get_all_children():
+            component_instancestates += fn.apply(state.but_with(asl=child))
+
+        for instancestate in component_instancestates:
+            Validate.instancestate_is_initialized(state, instancestate)
+        
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens

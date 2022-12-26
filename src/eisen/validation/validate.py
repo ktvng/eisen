@@ -231,7 +231,6 @@ class Validate:
         # print(state.asl)
         is_assignable = left.assignable_to(right)
         if not is_assignable:
-            print(state.asl)
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
                 msg=f"TODO: fix error message {left}, {right}",

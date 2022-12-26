@@ -9,9 +9,8 @@ import traceback
 import alpaca
 
 from eisen.parsing.callback import EisenCallback
-from eisen.parsing.customparser import CustomParser
 from eisen.parsing.builder import EisenBuilder
-from eisen.common.state import State
+from eisen.common.state import State, Watcher
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
 
@@ -42,22 +41,33 @@ class Test():
         tokens = alpaca.lexer.run(text=self.code, config=config, callback=EisenCallback)
         return alpaca.parser.run(config, tokens, builder=EisenBuilder())
 
+    @classmethod
+    def _make_exception_error_msg(cls, e, state: State):
+        exception_type = e["type"]
+        contents = e["contains"]
+        return f"expected to encounter exception '{exception_type}' containing:\n{contents}\nbut got:\n-----\n{state.watcher.txt}\n-----\n" 
+
     def run(self) -> tuple[bool, str]:
         asl = self.parse_asl_with_cache()
         config = alpaca.config.parser.run(filename=Test.grammarfile)
         
         config.cfg.get_subgrammar_from("ACTION")
 
-        params = State.create_initial(config, asl, txt=self.code)
-        for step in Workflow.steps:
-            step().apply(params)
+        state = State.create_initial(config, asl, txt=self.code, print_to_watcher=True)
+        Workflow.execute(state)
 
-        interpreter = AstInterpreter(redirect_output=True)
-        interpreter.apply(params)
         if self.metadata["expected"]["success"]:
+            interpreter = AstInterpreter(redirect_output=True)
+            interpreter.apply(state)
             expected_output = self.metadata["expected"]["output"]
             if interpreter.stdout != expected_output:
                 return False, f"expected, got:\n{expected_output}\n-----\n{interpreter.stdout}\n-----\n"
+        else:
+            expected_exceptions = self.metadata["expected"]["exceptions"]
+            for e in expected_exceptions:
+                if e["type"] not in state.watcher.txt or e["contains"] not in state.watcher.txt:
+                    return False, Test._make_exception_error_msg(e, state)
+
         return True, "success"
 
 class TestParser():

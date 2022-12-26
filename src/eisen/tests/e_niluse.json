@@ -1,0 +1,13 @@
+{
+    "name": "failuretest",
+    "info": "tests for simple embeddings",
+    "expected": {
+        "success": false,
+        "exceptions": [
+            {
+                "type": "NilUsageException",
+                "contains": ">> 8"
+            }
+        ]
+    }
+}

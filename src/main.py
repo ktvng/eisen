@@ -12,54 +12,10 @@ import c
 delim = "="*64
 
 def run_lamb(filename : str):
-    with open(filename, 'r') as f:
-        txt = f.read()
-
-    config = alpaca.config.parser.run("./src/lamb/grammar.gm")
-    tokens = alpaca.lexer.run(txt, config, None)
-    ast = alpaca.parser.run(config, tokens, lamb.LambBuilder())
-    print(ast)
-
-    # fun = lamb.LambRunner()
-    # fun.run(ast)
+    raise Exception("deprecated")
 
 def run_c(filename: str):
-    # PARSE EISEN CONFIG
-    config = run_and_measure("config parsed",
-        alpaca.config.parser.run,
-        filename="./src/c/grammar.gm")
-
-    # READ FILE TO STR
-    with open(filename, 'r') as f:
-        txt = f.read()
-    
-    # TOKENIZE
-    tokens = run_and_measure("tokenizer",
-        alpaca.lexer.run,
-        text=txt, config=config, callback=eisen.EisenCallback)
-
-    # print("====================")
-    # [print(t) for t in tokens]
-
-    # PARSE TO AST
-    asl = run_and_measure("parser",
-        alpaca.parser.run,
-        config=config, tokens=tokens, builder=c.Builder(), algo="cyk")
-
-    asl_str = [">    " + line for line in  str(asl).split("\n")]
-    print(*asl_str, sep="\n")
-    parts = c.Writer().apply(asl)
-    txt = "".join(parts)
-    txt = alpaca.utils.formatter.indent(txt)
-    print(txt)
-
-def pretty_print_perf(perf: list[tuple[str, int]]):
-    longest_name_size = max(len(x[0]) for x in perf)
-    block_size = longest_name_size + 4
-    for name, val in perf:
-        print(" "*(block_size - len(name)), name, " ", val)
-
-    print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
+    raise Exception("deprecated")
 
 def run_eisen(filename: str):
     perf = []
@@ -77,20 +33,6 @@ def run_eisen(filename: str):
         alpaca.lexer.run,
         text=txt, config=config, callback=eisen.EisenCallback)
 
-    
-
-    # print("====================")
-    # [print(t) for t in tokens]
-
-    # # CUSTOM PARSER
-    # start = time.perf_counter_ns()
-    # asl = run_and_measure("customparser2",
-    #     eisen.CustomParser2(config).parse,
-    #     toks=tokens)
-    # print(asl)
-    # exit()
-    # perf.append(("CustomParser", (end-start)/1000000))
-
     # PARSE TO AST
     asl = run_and_measure("parser",
         alpaca.parser.run,
@@ -99,37 +41,11 @@ def run_eisen(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    print("############ STANZA ###############")
-    params = eisen.State.create_initial(config, asl, txt)
-    workflow = eisen.Workflow.steps
-    workflow.append(eisen.AstInterpreter)
-    for step in workflow:
-        print(step.__name__)
-        start = time.perf_counter_ns()
-        step().apply(params)
-        end = time.perf_counter_ns()
-        perf.append((step.__name__, (end-start)/1000000))
-
-    pretty_print_perf(perf)
+    print("############## EISEN ###############")
+    state = eisen.State.create_initial(config, asl, txt)
+    eisen.Workflow.execute_with_benchmarks(state)
 
     exit()
-    eisen.ModuleWrangler(debug=False).apply(params)
-    mod = params.mod
-    try:
-        eisen.TypeFlowWrangler(debug=False).apply(params)
-    except Exception as e:
-        print(params.mod)
-        raise e
-
-    print("############ STANZA ###############")
-    print(params.asl)
-
-    c_config = run_and_measure("interpreter ran",
-        eisen.AstInterpreter().apply,
-        params=params)
-    exit()
-
-
 
     asl = eisen.Flattener().run(params)
     print(asl)
@@ -182,22 +98,6 @@ def run_eisen_tests(name: str):
             print(msg)
     else:
         eisen.TestRunner.run_all_tests()
-    # internal_run_tests("./src/eisen/tests/validator_tests.rs", should_transpile=False)
-    # input()
-    # internal_run_tests("./src/eisen/tests/test.rs")
-
-def make_runnable(txt : str):
-    lines = txt.split("\n")
-    readable = ""
-    for line in lines:
-        if "target triple" in line:
-            readable += 'target triple = "x86_64-pc-linux-gnu"\n'
-            continue
-        elif "target datalayout" in line:
-            readable += 'target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"\n'
-            continue
-        readable += line + "\n"
-    return readable
 
 def debug():
     config = run_and_measure("config parsed",

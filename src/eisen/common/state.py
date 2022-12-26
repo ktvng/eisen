@@ -25,6 +25,13 @@ class SharedBool():
     def set(self, value: bool):
         self.value = value
 
+class Watcher():
+    def __init__(self):
+        self.txt = ""
+
+    def write(self, content: str):
+        self.txt += content
+
 class State(AbstractParams):
     attrs = ["config", "asl", "txt", "context", "mod", "global_mod",
     "struct_name", "exceptions", "is_ptr", "critical_exception"]
@@ -40,7 +47,9 @@ class State(AbstractParams):
             exceptions: list[AbstractException],
             is_ptr: bool,
             inside_constructor: bool,
+            print_to_watcher: bool = False,
             critical_exception: SharedBool = SharedBool(False),
+            watcher: Watcher = None,
             
             # used for interpreter
             objs: dict[str, Obj] = {},
@@ -57,6 +66,9 @@ class State(AbstractParams):
         self.is_ptr = is_ptr
         self.inside_constructor = inside_constructor
         self.critical_exception = critical_exception
+        
+        self.print_to_watcher = print_to_watcher
+        self.watcher = Watcher()
 
         self.objs = objs
 
@@ -81,7 +93,8 @@ class State(AbstractParams):
             objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
 
             # these cannot be changed by input params 
-            critical_exception=self.critical_exception)
+            critical_exception=self.critical_exception, watcher=self.watcher,
+            print_to_watcher=self.print_to_watcher)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)
@@ -136,7 +149,7 @@ Token: {self.asl}
 """
 
     @classmethod
-    def create_initial(cls, config: Config, asl: CLRList, txt: str) -> State:
+    def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> State:
         global_mod = Module("global")
         global_mod.add_type(TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
         global_mod.add_type(TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
@@ -154,7 +167,8 @@ Token: {self.asl}
             struct_name=None,
             exceptions=[],
             is_ptr=False,
-            inside_constructor=False)
+            inside_constructor=False,
+            print_to_watcher=print_to_watcher)
 
     def get_node_data(self) -> NodeData:
         """canonical way to access data stored in a node"""

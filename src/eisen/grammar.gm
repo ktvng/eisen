@@ -64,7 +64,7 @@ SYMBOLICS
     keyword destroy     ->  destroy
     keyword var         ->  var
     keyword val         ->  val
-    keyword null        ->  null
+    keyword nil         ->  nil
     keyword interface   ->  interface
     keyword implements  ->  implements
     keyword variant     ->  variant
@@ -174,6 +174,7 @@ STRUCTURE
         |   TAG
         @action pass
         |   MODULE_LOOKUP
+        |   nil
 
     FN  -> 
         @action convert fn
@@ -465,7 +466,6 @@ STRUCTURE
     FN_TYPE_OUT ->
         |   -> TYPE
         |   -> ( TYPES )
-        |   -> null
 
     @action filter_build arr_type
     ARR_TYPE ->
@@ -566,6 +566,10 @@ STRUCTURE
     EXPR -> 
         @action build_operator
         |   EXPR OP_BIN EXPR
+
+        @action filter_build is
+        |   EXPR is TAG
+        |   EXPR is nil
 
         @action handle_op_pref
         |   OP_PREF EXPR

@@ -51,9 +51,15 @@ class VarRestriction(GeneralRestriction):
     def allows_for_reassignment(self) -> bool:
         return True
 
-    # TODO: rename to assignable to
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return other.is_var() or other.is_let() or other.is_primitive()
+        return (other.is_var() and not other.is_nullable()) or other.is_let() or other.is_primitive()
+
+class NullableVarRestriction(VarRestriction):
+    def is_nullable(self) -> bool:
+        return True
+
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
+        return other.is_var() or other.is_let() or other.is_primitive() or other.is_unrestricted()
 
 class LetRestriction(GeneralRestriction):
     def is_let(self) -> bool:

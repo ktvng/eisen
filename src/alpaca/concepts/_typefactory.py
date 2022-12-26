@@ -63,3 +63,15 @@ class TypeFactory():
             inherits=[],
             embeds=[],
             restriction=None)
+
+    @classmethod
+    def produce_nil_type(cls) -> Type:
+        return Type(
+            classification=Type.classifications.nil,
+            name="nil",
+            mod=None,
+            components=[],
+            component_names=[],
+            inherits=[],
+            embeds=[],
+            restriction=None)

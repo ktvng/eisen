@@ -8,6 +8,7 @@ class AbstractRestriction():
 
 class Type():
     class classifications:
+        nil = "nil"
         novel = "novel"
         tuple = "tuple"
         function = "function"
@@ -184,6 +185,9 @@ class Type():
 
     def is_tuple(self) -> bool:
         return self.classification == Type.classifications.tuple
+
+    def is_nil(self) -> bool:
+        return self.classification == Type.classifications.nil
 
     def with_restriction(self, restriction: AbstractRestriction):
         return self._copy_with_restriction(restriction)

@@ -41,7 +41,7 @@ class AstInterpreter(Visitor):
     def let_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("var")
+    @Visitor.for_asls("var", "var?")
     def var_(fn, state: State):
         objs = fn.apply(state.but_with_first_child())
         for obj in objs:

@@ -6,7 +6,7 @@ from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.state import State
-from eisen.common.restriction import LetRestriction, VarRestriction, PrimitiveRestriction
+from eisen.common.restriction import LetRestriction, VarRestriction, PrimitiveRestriction, NullableVarRestriction
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
@@ -74,6 +74,8 @@ class FlowVisitor(Visitor):
             return (TypeFactory
                 .produce_novel_type(name=state.get_asl().type)
                 .with_restriction(PrimitiveRestriction()))
+        elif state.get_asl().type == "nil":
+            return TypeFactory.produce_nil_type()
         raise Exception(f"unexpected token type of {state.get_asl().type}")
 
     @Visitor.for_asls("fn_type")
@@ -256,10 +258,8 @@ class FlowVisitor(Visitor):
             state.critical_exception.set(True)
             return
 
-        componentwise_types_with_restriction = [type.with_restriction(node.get_restriction()) 
-            for type in componentwise_types]
         instances = [FlowVisitor.add_instance_to_context(name, type, state)
-                for name, type in zip(names, componentwise_types_with_restriction)]
+                for name, type in zip(names, componentwise_types)]
         state.assign_instances(instances)
 
     @Visitor.for_asls("var")
@@ -273,6 +273,17 @@ class FlowVisitor(Visitor):
             instance.is_var = True
         state.assign_instances(instances) 
 
+    @Visitor.for_asls("var?")
+    @returns_void_type
+    def var_(fn, state: State):
+        # validations occur inside the (: ...) asl 
+        fn.apply_to_first_child_of(state)
+        instances = state.but_with_first_child().get_instances()
+        for instance in instances:
+            instance.type = instance.type.with_restriction(NullableVarRestriction())
+            instance.is_var = True
+        state.assign_instances(instances) 
+
     @Visitor.for_asls("val", "mut_val", "mut_var", "let")
     @returns_void_type
     def decls_(fn, state: State):
@@ -281,18 +292,25 @@ class FlowVisitor(Visitor):
         instances = state.but_with_first_child().get_instances()
         state.assign_instances(instances)
 
-    @Visitor.for_asls("type", "type?", "var_type")
+    @Visitor.for_asls("type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
         type = state.get_enclosing_module().get_type(name=state.first_child().value)
         if state.get_asl().type == "type":
+            if state.first_child().value in implemented_primitive_types:
+                return type.with_restriction(PrimitiveRestriction())
             return type.with_restriction(LetRestriction())
         elif state.get_asl().type == "var_type":
             return type.with_restriction(VarRestriction())
+        elif state.get_asl().type == "var_type?":
+            return type.with_restriction(NullableVarRestriction())
 
     @Visitor.for_asls("=", "<-", *binary_ops)
     def binary_ops(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
+
+        if left_type.restriction.is_nullable() and right_type.is_nil():
+            return left_type
 
         result = Validate.equivalent_types(state, left_type, right_type)
         if result.failed():

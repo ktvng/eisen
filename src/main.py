@@ -110,11 +110,6 @@ def run_eisen(filename: str):
         end = time.perf_counter_ns()
         perf.append((step.__name__, (end-start)/1000000))
 
-    print("========")
-    for t in params.mod.types:
-        print(t)
-    print(params.mod)
-    print("========")
     pretty_print_perf(perf)
 
     exit()

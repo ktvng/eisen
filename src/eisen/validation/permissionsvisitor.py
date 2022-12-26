@@ -8,7 +8,8 @@ from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import (VarRestriction, ValRestriction,
-    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction)
+    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction,
+    NullableVarRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
@@ -30,13 +31,7 @@ class PermissionsVisitor(Visitor):
 
     @classmethod
     def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
-        type = instance.type
-        if type.is_novel() and (type.restriction is None or type.restriction.is_let()):
-            return EisenInstanceState(instance.name, PrimitiveRestriction(), init_state)
-        elif type.restriction.is_let():
-            return EisenInstanceState(instance.name, LetRestriction(), init_state)
-        elif type.restriction.is_var():
-            return EisenInstanceState(instance.name, VarRestriction(), init_state) 
+        return EisenInstanceState(instance.name, instance.type.restriction, init_state)
 
     @classmethod
     def convert_argument_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
@@ -120,7 +115,7 @@ class PermissionsVisitor(Visitor):
     def ref_(fn, state: State) -> list[EisenInstanceState]:
         return [state.get_instancestate(Nodes.Ref(state).get_name())]
 
-    @Visitor.for_asls("let", "var")
+    @Visitor.for_asls("let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:
         for instance in state.get_instances():
             state.add_instancestate(PermissionsVisitor.convert_instance_to_instancestate(instance, Initializations.NotInitialized))
@@ -211,6 +206,8 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[EisenInstanceState]:
+        if state.asl.value == "nil":
+            return PermissionsVisitor.NoRestrictionInstanceState()
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default

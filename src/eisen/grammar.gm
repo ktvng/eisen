@@ -435,15 +435,13 @@ STRUCTURE
         @action filter_build type
         |   TAG
         |   RESTRICTED_TYPE
-        @action filter_build type?
-        |   TAG ?
-        @action filter_build interface_type
-        |   some TAG
         @action pass
         |   FN_TYPE
         |   ARR_TYPE
         @action filter_build var_type
         |   TAG var
+        @action filter_build var_type?
+        |   TAG var ?
 
     @action filter_build types 
     TYPES -> TYPES_BUILDER
@@ -497,6 +495,8 @@ STRUCTURE
         |   let DECL_ASSIGNMENT
 
     VAR_DECL -> 
+        @action filter_build var?
+        |   var ? TYPING
         @action filter_build var
         |   var TYPING
         @action filter_build ivar

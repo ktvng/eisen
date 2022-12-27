@@ -52,7 +52,7 @@ class Workflow():
         FlowVisitor,
 
         # this handles restrictions based on let/var/val differences
-        # PermissionsVisitor,
+        PermissionsVisitor,
 
         # NilCheck,
 

@@ -152,33 +152,6 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
         return type
 
-    @Visitor.for_asls("fn")
-    def fn_(fn, state: State) -> Type:
-        node = Nodes.Fn(state)
-        if node.is_print():
-            return BuiltinPrint.get_type_of_function(state)
-
-        if node.is_simple():
-            result = Validate.function_instance_exists_in_local_context(state)
-            if result.failed():
-                return result.get_failure_type()
-
-            instance = result.get_found_instance()
-            state.assign_instances(instance)
-            return instance.type
-        else:
-            return fn.apply_to_first_child_of(state)
-
-    @Visitor.for_asls("disjoint_fn")
-    def disjoint_ref_(fn, state: State) -> Type:
-        result = Validate.function_instance_exists_in_module(state)
-        if result.failed():
-            return result.get_failure_type()
-
-        instance = result.get_found_instance()
-        state.assign_instances(instance)
-        return instance.type
-
     @Visitor.for_asls("call")
     def call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)

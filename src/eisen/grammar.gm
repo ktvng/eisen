@@ -211,15 +211,10 @@ STRUCTURE
     ############################################################################
     # Expressions
 
-    E12 ->
-        @action pass
-        |   VAR
-
     E11 ->
         @action build_operator
         |   E11 :: TAG
-        @action pass
-        |   E12
+        |   TAG :: TAG
 
     E10 -> 
         @action build_operator
@@ -231,6 +226,7 @@ STRUCTURE
         @action pass
         |   E11
         |   LITERAL
+        |   VAR
         @action filter_pass
         |   ( E0 )
 

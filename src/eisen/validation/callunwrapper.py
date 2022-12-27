@@ -44,7 +44,8 @@ class CallUnwrapper():
             return instance.type
 
         if scope_asl.type == "::":
-            pass
+            instance = Nodes.ModuleScope(state.but_with(asl=scope_asl)).get_end_instance()
+            return instance.type
 
         if scope_asl.type == ".":
             obj_type: Type = cls._follow_chain(state, scope_asl.first())

@@ -4,6 +4,7 @@ from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._type import Type, Module
 
 from eisen.common import implemented_primitive_types
+from eisen.common.eiseninstance import EisenInstance
 from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction,
     PrimitiveRestriction)
@@ -461,6 +462,31 @@ class Nodes():
 
         def get_module_name(self) -> str:
             return self.first_child().value
+
+        def _follow_chain(self, asl: CLRList) -> list[str]:
+            if isinstance(asl, CLRToken):
+                return [asl.value]
+
+            lst = self._follow_chain(asl.first())
+            lst.append(asl.second().value)
+            return lst
+
+        def _unpack_structure(self) -> tuple[str, list[str]]:
+            end = self.second_child().value
+            return end, self._follow_chain(self.first_child())
+
+        def get_end_instance(self) -> EisenInstance:
+            end, mods = self._unpack_structure()
+            current_mod = self.state.get_enclosing_module()
+            for mod_name in mods:
+                current_mod = current_mod.get_child_by_name(mod_name)
+
+            return current_mod.get_instance(end)
+            
+
+
+
+
 
 
     class Rets(AbstractNodeInterface):

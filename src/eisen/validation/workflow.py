@@ -52,9 +52,9 @@ class Workflow():
         FlowVisitor,
 
         # this handles restrictions based on let/var/val differences
-        PermissionsVisitor,
+        # PermissionsVisitor,
 
-        NilCheck,
+        # NilCheck,
 
         # note: def, create, fn, ref, ilet need instances!!
     ]

@@ -109,10 +109,9 @@ class FlowVisitor(Visitor):
     @Visitor.for_asls("::")
     def scope_(fn, state: State) -> Type:
         node = Nodes.ModuleScope(state)
-        entering_into_mod = state.get_enclosing_module().get_child_by_name(node.get_module_name())
-        return fn.apply(state.but_with(
-            asl=state.second_child(),
-            mod=entering_into_mod))
+        instance = node.get_end_instance()
+        state.assign_instances(instance)
+        return instance.type
 
     @Visitor.for_asls("tuple", "params", "prod_type")
     def tuple_(fn, state: State) -> Type:

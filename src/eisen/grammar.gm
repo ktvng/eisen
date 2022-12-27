@@ -59,7 +59,7 @@ SYMBOLICS
     keyword while       ->  while
     keyword let         ->  let
     keyword return      ->  return
-    keyword module      ->  mod
+    keyword mod         ->  mod
     keyword create      ->  create
     keyword destroy     ->  destroy
     keyword var         ->  var
@@ -72,7 +72,6 @@ SYMBOLICS
     keyword as          ->  as
     keyword is          ->  is
     keyword embed       ->  embed
-    keyword Self        ->  Self
 
     keyword @deny       ->  @deny
     keyword @allow      ->  @allow
@@ -125,11 +124,6 @@ SYMBOLICS
 
     
 STRUCTURE
-    @action filter_build start
-    START -> 
-        |   ENDLS CONTEXTS
-        |   CONTEXTS
-    
     ############################################################################
     # Aliases
 
@@ -138,29 +132,10 @@ STRUCTURE
         |   =
         |   :=
         |   <-
-
-    @action pass 
-    OP_BIN ->
-        |   +
-        |   -
-        |   /
-        |   *
-        |   <
-        |   >
-        |   <=
-        |   >=
-        |   ==
-        |   !=
         |   +=
         |   -=
         |   *=
         |   /=
-        |   or
-        |   and
-
-    @action pass
-    OP_PREF ->
-        |   !
 
     @action pass
     LITERAL ->
@@ -168,458 +143,411 @@ STRUCTURE
         |   str
         |   bool
         |   float
+        |   nil
 
     VAR ->
         @action convert ref
         |   TAG
-        @action pass
-        |   MODULE_LOOKUP
-        |   nil
-
-    FN  -> 
-        @action convert fn
-        |   TAG
-        @action pass
-        |   MODULE
-
-    @action convert disjoint_fn
-    DISJOINT_FN -> TAG
 
     @action pass
     ENDLS ->
         | endl
         | endl ENDLS
 
-    ############################################################################
-    # Contexts
-   
-    @action pool
-    CONTEXTS -> 
-        |   CONTEXT
-        |   CONTEXT CONTEXTS
-
-    @action pass
-    CONTEXT -> 
-        |   FUNCTION_CONTEXT
-        |   STRUCT_CONTEXT
-        |   MODULE_CONTEXT
-        |   INTERFACE_CONTEXT
-        |   VARIANT_CONTEXT
-
-    @action filter_build mod
-    MODULE_CONTEXT -> 
-        |   module TAG { CONTEXTS }
-        |   module TAG { ENDLS CONTEXTS }
-
-    ############################################################################
-    # Variants
-
-    @action filter_build variant 
-    VARIANT_CONTEXT -> VARIANT_HEADER VARIANT_BODY
-
-    @action pool
-    VARIANT_HEADER -> variant TAG of TAG
-    VARIANT_BODY -> { VARIANT_ELEMENTS }
-    VARIANT_ELEMENTS -> 
-        |   VARIANT_ELEMENT
-        |   VARIANT_ELEMENT VARIANT_ELEMENTS
-    
-    VARIANT_ELEMENT ->
-        @action pass
-        |   VARIANT_FUNCTION_IS
-        |   VARIANT_DENY ENDLS
-        |   VARIANT_ALLOW ENDLS
-
-    @action filter_build is
-    VARIANT_FUNCTION_IS -> is ARGS_DECL RETURN_DECL CODE_BLOCK
-
-    @action filter_build deny
-    VARIANT_DENY -> 
-        |   @deny ( TAGS_TUPLE_BUILDER )
-        |   @deny ( TAG )
-
-    @action filter_build allow 
-    VARIANT_ALLOW -> 
-        |   @allow ( TAGS_TUPLE_BUILDER )
-        |   @allow ( TAG )
-
-    ############################################################################
-    # Interfaces
-
-    @action filter_build interface
-    INTERFACE_CONTEXT -> INTERFACE_HEADER INTERFACE_BODY
-
-    @action pool
-    INTERFACE_HEADER -> interface TAG
-    INTERFACE_BODY -> { INTERFACE_ELEMENTS }
-    INTERFACE_ELEMENTS ->
-        |   INTERFACE_ELEMENT   
-        |   INTERFACE_ELEMENT INTERFACE_ELEMENTS
-
-    INTERFACE_ELEMENT ->
-        @action pass
-        |   TYPING ENDLS
-        |   INTERFACE_TYPING ENDLS
-        
-    INTERFACE_TYPING -> 
-        @action build_operator
-        |   TAG : INTERFACE_FUNCTION_TYPE
-
-    INTERFACE_FUNCTION_TYPE ->
-        @action build iface_func
-        |   INTERFACE_FUNCTION_ARGS_DECL RETURN_DECL
-
-    @action filter_build iface_args
-    INTERFACE_FUNCTION_ARGS_DECL ->
-        |   ( Self , TYPING_TUPLE )
-        |   ( Self , TYPING )
-        |   ( Self )
-
-
-    ############################################################################
-    # Structs
-
-    @action filter_build struct
-    STRUCT_CONTEXT -> STRUCT_HEADER STRUCT_BODY
-
-    @action pool
-    STRUCT_HEADER -> 
-        |   struct TAG
-        |   struct TAG IMPLEMENTATIONS
-
-    STRUCT_BODY -> { STRUCT_ELEMENTS }
-    STRUCT_ELEMENTS -> 
-        |   STRUCT_ELEMENT
-        |   STRUCT_ELEMENT STRUCT_ELEMENTS
-
-    @action filter_build impls
-    IMPLEMENTATIONS -> 
-        |   implements TAGS_TUPLE_BUILDER
-        |   implements TAG
-
-    @action pass
-    STRUCT_ELEMENT -> 
-        |   STRUCT_LINE ENDLS
-        |   STRUCT_CONSTRUCTOR
-        |   STRUCT_DESTRUCTOR
-        |   STRUCT_DECLARATION
-        |   STRUCT_EMBEDDINGS ENDLS
-        |   FUNCTION_CONTEXT
-
-    @action filter_build create 
-    STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
-
-    @action filter_build destroy
-    STRUCT_DESTRUCTOR -> destroy ARGS_DECL CODE_BLOCK
-
-    @action filter_build embed
-    STRUCT_EMBEDDINGS -> 
-        |   embed TAGS
-        |   embed TAG
-
-    STRUCT_LINE ->
-        @action pass
-        |   TYPING 
-        @action build_operator
-        |   TYPING OP_ASSIGN EXPR
-
-    @action build_operator
-    STRUCT_DECLARATION ->
-        |   TAG := ARGS_DECL CODE_BLOCK
-        |   TAG := ARGS_DECL RETURN_DECL CODE_BLOCK
-
-
-    ############################################################################
-    # Functions 
-
-    @action build_def
-    FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
-
-    @action pool
-    FUNCTION_HEADER ->
-        |   fn TAG ARGS_DECL
-        |   fn TAG ARGS_DECL RETURN_DECL
-
-    @action filter_build rets
-    RETURN_DECL -> 
-        |   -> TYPING_TUPLE
-        |   -> TYPING
-        |   -> TYPE
-
-    @action filter_build args
-    ARGS_DECL ->
-        |   ( TYPING_TUPLE , TYPING_DEFAULT_TUPLE )
-        |   ( TYPING_TUPLE , TYPING_DEFAULT )
-        |   ( TYPING_TUPLE )
-        |   ( TYPING , TYPING_DEFAULT_TUPLE )
-        |   ( TYPING , TYPING_DEFAULT )
-        |   ( TYPING )
-        |   ( TYPING_DEFAULT_TUPLE )
-        |   ( TYPING_DEFAULT )
-        |   ( )
-
-    @action pool
-    TYPING_TUPLE_BUILDER ->
-        |   TYPING , TYPING
-        |   TYPING , TYPING_TUPLE_BUILDER
-
-    @action filter_build prod_type
-    TYPING_TUPLE ->
-        |   TYPING_TUPLE_BUILDER
-        |   ( TYPING_TUPLE_BUILDER )
-
-    @action filter_build default
-    TYPING_DEFAULT -> TYPING = EXPR
-
-    @action pool
-    TYPING_DEFAULT_TUPLE_BUILDER ->
-        |   TYPING_DEFAULT , TYPING_DEFAULT
-        |   TYPING_DEFAULT , TYPING_DEFAULT_TUPLE_BUILDER
-
-    @action filter_build defaults
-    TYPING_DEFAULT_TUPLE -> TYPING_DEFAULT_TUPLE_BUILDER 
-
-
-    ############################################################################
-    # Control flow
- 
-    @action filter_build seq
-    CODE_BLOCK -> { BLOCKS }
-
-    @action pool
-    BLOCKS ->
-        |   BLOCK
-        |   BLOCK BLOCKS
-
-    @action pass
-    BLOCK ->
-        |   CONTROL
-        |   ACTION ENDLS
-
-    CONTROL ->
-        |   IF_STATEMENT
-        |   WHILE_STATEMENT
-
-    @action filter_build if
-    IF_STATEMENT -> IF_CONTEXT
-
-    @action pool
-    IF_CONTEXT ->
-        |   if CONDITIONAL_BRANCH
-        |   if CONDITIONAL_BRANCH ELSE_STATEMENT
-
-    @action pool
-    ELSE_STATEMENT ->
-        |   else CODE_BLOCK
-        |   else if CONDITIONAL_BRANCH
-        |   else if CONDITIONAL_BRANCH ELSE_STATEMENT
-
-    @action filter_build while
-    WHILE_STATEMENT -> while CONDITIONAL_BRANCH
-
-    @action filter_build cond
-    CONDITIONAL_BRANCH -> ( EXPR ) CODE_BLOCK
-
 
     ############################################################################
     # Typing
 
-    @action build_operator
-    TYPING -> 
-        |   TAGS : TYPE
-        |   TAG : TYPE
-        |   TAGS : MODULE_LOOKUP
-        |   TAG : MODULE_LOOKUP
-
-    TYPE -> 
+    TYPE ->
         @action filter_build type
         |   TAG
-        |   RESTRICTED_TYPE
-        @action pass
-        |   FN_TYPE
-        |   ARR_TYPE
         @action filter_build var_type
         |   TAG var
         @action filter_build var_type?
-        |   TAG var ?
-        |   TAG ?
+        |   TAG var?
+        |   TAG ? 
+        @action pass
+        |   FN_TYPE
 
-    @action filter_build types 
-    TYPES -> TYPES_BUILDER
+    TYPES ->
+        @action filter_build prod_type
+        |   _TYPES
 
-    @action pool
-    TYPES_BUILDER ->
+    _TYPES ->
+        @action pool
+        |   TYPE , _TYPES
         |   TYPE , TYPE
-        |   TYPE , TYPES_BUILDER
 
-    @action filter_build fn_type
-    FN_TYPE -> FN_TYPE_IN FN_TYPE_OUT
+    FN_TYPE -> 
+        @action filter_build fn_type
+        |   FN_TYPE_IN FN_TYPE_OUT
 
-    @action filter_build fn_type_in
     FN_TYPE_IN ->
+        @action filter_build fn_type_in
         |   ( TYPES )
         |   ( TYPE )
         |   ( )
 
-    @action filter_build fn_type_out
     FN_TYPE_OUT ->
+        @action filter_build fn_type_out
         |   -> TYPE
         |   -> ( TYPES )
 
-    @action filter_build arr_type
-    ARR_TYPE ->
-        |   TYPE [ ]
-        |   TYPE [ int ]
+    TYPING -> 
+        @action build_operator
+        |   TAGS : TYPE
+        |   TAG : TYPE
+
+    TYPINGS ->
+        @action pool
+        |   TYPING , TYPING
+        |   TYPING , TYPINGS
 
 
-    @action filter_build tags 
-    TAGS -> TAGS_TUPLE_BUILDER
+    ############################################################################
+    # Expressions
 
-    @action pool
-    TAGS_TUPLE_BUILDER -> 
+    E12 ->
+        @action pass
+        |   VAR
+
+    E11 ->
+        @action build_operator
+        |   E11 :: TAG
+        @action pass
+        |   E12
+
+    E10 -> 
+        @action build_operator
+        |   E10 . TAG
+        @action build raw_call
+        |   E10 PARAMS 
+        @action filter_build cast
+        |   E10 . as ( TYPE )
+        @action pass
+        |   E11
+        |   LITERAL
+        @action filter_pass
+        |   ( E0 )
+
+
+    E8 ->
+        @action build_operator
+        |   E8 * E10
+        |   E8 / E10
+        @action pass
+        |   E10
+
+    E7 -> 
+        @action build_operator
+        |   E7 + E8
+        |   E7 - E8
+        @action pass
+        |   E8
+
+    E6 -> 
+        @action build_operator
+        |   E6 < E7
+        |   E6 <= E7
+        |   E6 > E7
+        |   E6 >= E7
+        |   E6 == E7
+        |   E6 != E7
+        @action pass
+        |   E7
+
+    E5 ->
+        @action handle_op_pref
+        |   ! E5
+        @action pass
+        |   E6
+
+    E4 ->
+        @action build_operator
+        |   E4 and E5
+        |   E4 or E5
+        @action pass
+        |   E5
+
+    E3 ->
+        @action filter_build is
+        |   E3 is TAG
+        |   E3 is nil
+        @action pass
+        |   E4
+
+    E0 -> 
+        @action pass
+        |   E3
+
+
+    ############################################################################
+    # TUPLES
+
+    TAGS ->
+        @action filter_build tags
+        |   _TAGS
+
+    # tuple of tags
+    _TAGS ->
+        @action pool
         |   TAG , TAG
-        |   TAG , TAGS_TUPLE_BUILDER
+        |   TAG , _TAGS
+
+
+    # tuple of Expressions
+    E0S ->
+        @action filter_build tuple
+        |   ( _E0S )
+        |   _E0S
+
+    _E0S ->
+        @action pool
+        |   E0 , E0
+        |   E0 , _E0S
 
     ############################################################################
-    # Casting
-    @action filter_build cast
-    EXPR -> EXPR . as ( TYPE )
+    # LValues
 
+    L2 ->
+        @action pass
+        |   VAR
 
-    ############################################################################
-    # Declaration
+    L1 -> 
+        @action build_operator
+        |   L1 :: TAG
+        @action pass
+        |   L2
 
-    LET_DECL -> 
-        @action filter_build let
-        |   let TYPING
-        @action filter_build ilet
-        |   let DECL_ASSIGNMENT
+    L0 ->
+        @action build_operator
+        |   L0 . TAG
+        @action pass
+        |   L1
 
-    VAR_DECL -> 
-        @action filter_build var?
-        |   var ? TYPING
-        @action filter_build var
-        |   var TYPING
-        @action filter_build ivar
-        |   var DECL_ASSIGNMENT
-        
-        @action filter_build mut_var
-        |   mut var TYPING
-        |   mut var DECL_ASSIGNMENT
-       
-    VAL_DECL -> 
-        @action filter_build val
-        |   val TYPING
-        |   val DECL_ASSIGNMENT
-        @action filter_build mut_val
-        |   mut val TYPING
-        |   mut val DECL_ASSIGNMENT
+    L0S ->
+        @action build lvals
+        |   _L0S
 
-    @action pass
-    DECL -> 
-        |   LET_DECL
-        |   VAR_DECL
-        |   VAL_DECL
+    _L0S ->
+        @action pool
+        |   L0 , L0
+        |   L0 , _L0S
 
 
     ############################################################################
     # Assignment 
 
-    @action build_operator
     ASSIGNMENT -> 
-        |   DECL OP_ASSIGN RVALUE
-        |   VAR OP_ASSIGN RVALUE
-        |   TUPLE OP_ASSIGN RVALUE
-        |   SCOPED_VAR OP_ASSIGN RVALUE
-
-    # only used when assigning during declaration and type inference.
-    @action pool
-    DECL_ASSIGNMENT ->
-        |   TAG OP_ASSIGN RVALUE
-        |   TAGS OP_ASSIGN RVALUE
-
-    @action pass
-    RVALUE ->
-        |   EXPR
-        |   TUPLE
-
-    @action build_operator
-    SCOPED_VAR -> EXPR . TAG
-
-    MODULE ->
         @action build_operator
-        |   TAG :: MODULE
-        |   TAG :: DISJOINT_FN
+        |   L0 OP_ASSIGN E0
+        |   L0S OP_ASSIGN E0S
+        |   L0S OP_ASSIGN E0
+
+    INFERENCE ->
+        @action pool
+        |   TAGS OP_ASSIGN E0S
+        |   TAGS OP_ASSIGN E0
+        |   TAG OP_ASSIGN E0
+
 
     ############################################################################
-    # Actions/Expressions
+    # DECL
+
+    DECL ->
+        @action filter_build let
+        |   let TYPING
+        @action filter_build var
+        |   var TYPING
+        @action filter_build var?
+        |   var ? TYPING
+        @action filter_build val
+        |   val TYPING
+
+        @action filter_build ilet
+        |   let INFERENCE
+        @action filter_build ivar
+        |   var INFERENCE
+        @action filter_build ivar?
+        |   var ? INFERENCE
+
+
+    ############################################################################
+    # LINE
     
-    ACTION -> 
+    LINE -> 
         @action pass
-        |   EXPR
-        |   ASSIGNMENT
-        |   DECL
-        
-        @action filter_build return
-        |   return 
-        |   return EXPR
+        |   E0 ENDLS
+        |   ASSIGNMENT ENDLS
+        |   DECL ENDLS
+        |   return ENDLS
+        |   CONTROL
 
-    EXPR -> 
-        @action build_operator
-        |   EXPR OP_BIN EXPR
-
-        @action filter_build is
-        |   EXPR is TAG
-        |   EXPR is nil
-
-        @action handle_op_pref
-        |   OP_PREF EXPR
-
-        @action filter_build raw_call
-        |   EXPR . FUNCTION_CALL
-        @action filter_build call
-        |   FUNCTION_CALL
-
-        @action pass
-        |   SCOPED_VAR
-        |   VAR
-        |   LITERAL
-
-        @action filter_pass
-        |   ( EXPR )
-
-    @action pass
-    FUNCTION_CALL -> FN PARAMS
-
-    @action filter_build params
     PARAMS ->
+        @action filter_build params
         |   ( )
-        |   ( EXPR )
-        |   ( TUPLE_BUILDER )
-        |   ( TUPLE_BUILDER, NAMED_PARAMS )
-        |   ( NAMED_PARAMS )
-
-    @action filter_build kwarg
-    NAMED_PARAM -> TAG = EXPR
-
-    @action pool
-    NAMED_PARAMS -> 
-        |   NAMED_PARAM
-        |   NAMED_PARAM , NAMED_PARAMS
-
-    @action filter_build tuple
-    TUPLE -> 
-        |   TUPLE_BUILDER
-        |   ( TUPLE_BUILDER )
-
-    @action pool
-    TUPLE_BUILDER ->
-        |   EXPR , EXPR
-        |   EXPR , TUPLE_BUILDER
+        |   ( E0 )
+        |   ( _E0S )
 
 
     ############################################################################
-    # Testing
+    # Block
+
+    SEQ ->
+        @action filter_build seq
+        |   { }
+        |   { LINE }
+        |   { LINES }
+
+    LINES ->
+        @action pool
+        |   LINE LINE
+        |   LINE LINES
     
-    @action build start
-    START -> ACTION
+
+
+    ############################################################################
+    # Control flow
+    
+    COND -> 
+        @action filter_build cond
+        |   ( E0 ) SEQ
+
+    CONTROL -> 
+        @action filter_build if
+        |   IF_CONTEXT
+        @action filter_build while
+        |   while COND
+
+    @action pool
+    IF_CONTEXT ->
+        |   if COND 
+        |   if COND ELSES
+
+    @action pool
+    ELSES ->
+        |   else SEQ 
+        |   else if COND 
+        |   else if COND ELSES
+
+
+    ############################################################################
+    # Function Definitions
+
+    FUNC ->
+        @action build_def
+        |   fn TAG ARGS SEQ 
+        |   fn TAG ARGS RETS SEQ
+
+    ARGS ->
+        @action filter_build args
+        |   ( )
+        |   ( TYPING )
+        |   ( TYPINGS )
+
+    RETS ->
+        @action filter_build rets
+        |   -> TYPING
+        |   -> TYPINGS
+
+
+    ############################################################################
+    # Structs
+
+    STRUCT ->
+        @action filter_build struct
+        |   struct TAG IMPLS { STRUCT_ELEMS }
+        |   struct TAG { STRUCT_ELEMS }
+        |   struct TAG { }
+
+    IMPLS ->
+        @action filter_build impls
+        |   implements TAG
+        |   implements TAGS
+
+    STRUCT_ELEMS ->
+        @action pool 
+        |   STRUCT_ELEM STRUCT_ELEMS 
+        |   STRUCT_ELEM
+
+    STRUCT_ELEM ->
+        @action pool
+        |   TYPING ENDLS    
+        |   FUNC
+        @action filter_build create 
+        |   create ARGS RETS SEQ
+        @action filter_build destroy
+        |   destroy ARGS SEQ
+        @action filter_build embed
+        |   embed TAG ENDLS
+        |   embed TAGS ENDLS
+
+    
+    ############################################################################
+    # Interfaces
+
+    INTERFACE ->
+        @action filter_build interface
+        |   interface TAG { INTERFACE_ELEMS }
+
+    INTERFACE_ELEMS ->
+        @action pool
+        |   INTERFACE_ELEM INTERFACE_ELEMS
+        |   INTERFACE_ELEM
+
+    INTERFACE_ELEM ->
+        @action pool
+        |   TYPING ENDLS
+
+    
+    ############################################################################
+    # Variants
+
+    VARIANT ->
+        @action filter_build variant
+        |   variant TAG of TAG { VARIANT_ELEMS }
+
+    VARIANT_ELEMS ->
+        @action pool
+        |   VARIANT_ELEM VARIANT_ELEMS
+        |   VARIANT_ELEM
+
+    VARIANT_ELEM ->
+        @action filter_build is
+        |   is ARGS RETS SEQ
+        @action filter_build deny
+        |   @deny ( TAGS ) ENDLS
+        |   @deny ( TAG ) ENDLS
+        @action filter_build allow
+        |   @allow ( TAGS ) ENDLS
+        |   @allow ( TAG ) ENDLS
+
+    
+    ############################################################################
+    # Modules
+
+    MOD ->
+        @action filter_build mod
+        |   mod TAG { CONTEXTS }
+        |   mod TAG {  }
+
+    CONTEXTS ->
+        @action pool
+        |   CONTEXT CONTEXTS
+        |   CONTEXT
+
+    CONTEXT ->
+        @action pass
+        |   FUNC
+        |   STRUCT
+        |   INTERFACE
+        |   VARIANT
+        |   MOD
+
+    ############################################################################
+    # Program
+    
+    START -> 
+        @action build start
+        |   CONTEXTS
+

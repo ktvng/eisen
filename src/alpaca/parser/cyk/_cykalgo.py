@@ -77,6 +77,35 @@ class DpTableEntry():
 
 DpTable = List[List[List[DpTableEntry]]]
 
+class RuleQuery():
+    def __init__(self, cfg: CFG):
+        self.cfg = cfg
+        self._production_lookup_table = {}
+        self._token_lookup_table = {}
+        self._init_lookup_tables()
+
+    def _init_lookup_tables(self):
+        for rule in self.cfg.rules:
+            if len(rule.pattern) == 1:
+                key = rule.pattern[0]
+                if key in self._token_lookup_table:
+                    self._token_lookup_table[key].append(rule)
+                else:
+                    self._token_lookup_table[key] = [rule]
+            else:
+                key = (rule.pattern[0], rule.pattern[1])
+                if key in self._production_lookup_table:
+                    self._production_lookup_table[key].append(rule)
+                else:
+                    self._production_lookup_table[key] = [rule]
+        pass
+
+    def get_rules_for_token(self, tok: CLRToken) -> list[CFGRule]:
+        return self._token_lookup_table.get(tok.type, [])
+
+    def get_rules(self, lname: str, rname: str) -> list[CFGRule]:
+        return self._production_lookup_table.get((lname, rname), [])
+
 class CYKAlgo:
     def __init__(self, cfg : CFG):
         for rule in cfg.rules:
@@ -84,6 +113,7 @@ class CYKAlgo:
                 raise Exception("grammar is not normalized")
 
         self.cfg = cfg
+        self.query = RuleQuery(cfg)
 
     @classmethod
     def tokens_to_clrtoken(cls, tokens : list[Token]) -> list[CLRToken]:
@@ -125,10 +155,12 @@ class CYKAlgo:
         return [(starting_x + delta, delta) for delta in range(self.n - starting_x)]
 
     def _get_producing_rules_for_clrtoken(self, tok : CLRToken) -> list[CFGRule]:
+        return self.query.get_rules_for_token(tok)
         return [rule for rule in self.cfg.rules 
             if len(rule.pattern) == 1 and tok.type == rule.pattern[0]]
 
     def _get_producing_rules_for(self, lname : str, rname : str) -> list[CFGRule]:
+        return self.query.get_rules(lname, rname)
         return [rule for rule in self.cfg.rules 
             if len(rule.pattern) == 2 
                 and rule.pattern[0] == lname

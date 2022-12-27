@@ -1,0 +1,662 @@
+# ========================================================
+#
+# GrammarMaster (.gm) 
+#
+# ========================================================
+#
+# Define a general purpose grammar for your language and 
+# specify everything you need with a .gm file.
+# 
+# Subtleties:
+#   We leave deducing how the important bits work to the 
+#   reader! (It's intuitive, trust)
+#
+#   Two sections: 'SYMBOLICS' for lexing and 'STRUCTURE'
+#   for the context free grammar rules.
+#   
+#   'SYMBOLICS' works by alignment of the '->' symbol. 
+#       - This is defined by the line
+#               <regex> -> <type> <value>
+#         and only the position of the '->' matters.
+#
+#       - This means that indentation matters, in this
+#         section only!
+#
+#       - All values are stripped, so if you want spaces
+#         in your regex, figure it out.
+#
+#       - If no value is supplied, then the value of the
+#         regex (if matched) is used for the token.
+#
+#       - A type of 'none' will not add the token during
+#         lexing
+#
+#
+#   'STRUCTURE' uses annotations (e.g '@action ...') to 
+#   define the reversal of CFG rules during parsing.
+#       - The most recent annotation is used for each
+#         CFG rule, so you don't have to keep writing 
+#         annotations all the time.
+#
+#       - Only '@action build' takes another argument 
+#         which is the name of the node you want to build.
+#
+#       - Currently '|' bars must be multiline only. Sorry
+#         :(
+#
+#       - Indentation doesn't really matter, but do it 
+#         anyways.    
+#
+# ========================================================
+# ========================================================
+
+SYMBOLICS
+    <type>              ->  <regex>
+    keyword fn          ->  fn
+    keyword struct      ->  struct
+    keyword if          ->  if
+    keyword else        ->  else
+    keyword while       ->  while
+    keyword let         ->  let
+    keyword return      ->  return
+    keyword module      ->  mod
+    keyword create      ->  create
+    keyword destroy     ->  destroy
+    keyword var         ->  var
+    keyword val         ->  val
+    keyword nil         ->  nil
+    keyword interface   ->  interface
+    keyword implements  ->  implements
+    keyword variant     ->  variant
+    keyword of          ->  of
+    keyword as          ->  as
+    keyword is          ->  is
+    keyword embed       ->  embed
+    keyword Self        ->  Self
+
+    keyword @deny       ->  @deny
+    keyword @allow      ->  @allow
+
+    symbol ,            ->  ,
+    symbol {            ->  \s*{\s* 
+    symbol }            ->  }\s* 
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol endl         ->  \n\s*
+
+    operator =          ->  =      
+    operator :=         ->  :=     
+    operator <-         ->  <-     
+    operator +=         ->  \+=    
+    operator -=         ->  -=     
+    operator *=         ->  \*=    
+    operator /=         ->  /=     
+    operator ?          ->  \?     
+    operator ==         ->  ==     
+    operator !=         ->  !=     
+    operator +          ->  \+     
+    operator -          ->  -      
+    operator /          ->  /      
+    operator *          ->  \*     
+    operator and        ->  (&&|and)     
+    operator or         ->  (\|\||or)   
+    operator !          ->  (!|not)      
+    operator %          ->  %      
+    operator |          ->  \|     
+    operator <          ->  <      
+    operator >          ->  >      
+    operator <=         ->  <=     
+    operator >=         ->  >=     
+    operator .          ->  \.     
+    operator ::         ->  ::     
+    operator ->         ->  ->     
+    operator :          ->  :      
+
+    str                 ->  (["'])(?:(?=(\\?))\2.)*?\1
+    int                 ->  -?[0-9]+  
+    bool                ->  true|false
+    
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t]*
+    none                ->  [ \t]*\/\/.*?\n+
+    none                ->  [ \t]*\/\/[^\n]*
+
+    
+STRUCTURE
+    @action filter_build start
+    START -> 
+        |   ENDLS CONTEXTS
+        |   CONTEXTS
+    
+    ############################################################################
+    # Aliases
+
+    @action pass
+    OP_ASSIGN ->
+        |   =
+        |   :=
+        |   <-
+        |   +=
+        |   -=
+        |   *=
+        |   /=
+
+    @action pass
+    OP_PREF ->
+        |   !
+
+    @action pass
+    LITERAL ->
+        |   int
+        |   str
+        |   bool
+        |   float
+
+    VAR ->
+        @action convert ref
+        |   TAG
+        @action pass
+        |   nil
+
+    FN  -> 
+        @action convert fn
+        |   TAG
+
+    @action convert disjoint_fn
+    DISJOINT_FN -> TAG
+
+    @action pass
+    ENDLS ->
+        | endl
+        | endl ENDLS
+
+    ############################################################################
+    # Contexts
+   
+    @action pool
+    CONTEXTS -> 
+        |   CONTEXT
+        |   CONTEXT CONTEXTS
+
+    @action pass
+    CONTEXT -> 
+        |   FUNCTION_CONTEXT
+        |   STRUCT_CONTEXT
+        |   MODULE_CONTEXT
+        |   INTERFACE_CONTEXT
+        |   VARIANT_CONTEXT
+
+    @action filter_build mod
+    MODULE_CONTEXT -> 
+        |   module TAG { CONTEXTS }
+        |   module TAG { ENDLS CONTEXTS }
+
+    ############################################################################
+    # Variants
+
+    @action filter_build variant 
+    VARIANT_CONTEXT -> VARIANT_HEADER VARIANT_BODY
+
+    @action pool
+    VARIANT_HEADER -> variant TAG of TAG
+    VARIANT_BODY -> { VARIANT_ELEMENTS }
+    VARIANT_ELEMENTS -> 
+        |   VARIANT_ELEMENT
+        |   VARIANT_ELEMENT VARIANT_ELEMENTS
+    
+    VARIANT_ELEMENT ->
+        @action pass
+        |   VARIANT_FUNCTION_IS
+        |   VARIANT_DENY ENDLS
+        |   VARIANT_ALLOW ENDLS
+
+    @action filter_build is
+    VARIANT_FUNCTION_IS -> is ARGS_DECL RETURN_DECL CODE_BLOCK
+
+    @action filter_build deny
+    VARIANT_DENY -> 
+        |   @deny ( TAGS_TUPLE_BUILDER )
+        |   @deny ( TAG )
+
+    @action filter_build allow 
+    VARIANT_ALLOW -> 
+        |   @allow ( TAGS_TUPLE_BUILDER )
+        |   @allow ( TAG )
+
+    ############################################################################
+    # Interfaces
+
+    @action filter_build interface
+    INTERFACE_CONTEXT -> INTERFACE_HEADER INTERFACE_BODY
+
+    @action pool
+    INTERFACE_HEADER -> interface TAG
+    INTERFACE_BODY -> { INTERFACE_ELEMENTS }
+    INTERFACE_ELEMENTS ->
+        |   INTERFACE_ELEMENT   
+        |   INTERFACE_ELEMENT INTERFACE_ELEMENTS
+
+    INTERFACE_ELEMENT ->
+        @action pass
+        |   TYPING ENDLS
+        |   INTERFACE_TYPING ENDLS
+        
+    INTERFACE_TYPING -> 
+        @action build_operator
+        |   TAG : INTERFACE_FUNCTION_TYPE
+
+    INTERFACE_FUNCTION_TYPE ->
+        @action build iface_func
+        |   INTERFACE_FUNCTION_ARGS_DECL RETURN_DECL
+
+    @action filter_build iface_args
+    INTERFACE_FUNCTION_ARGS_DECL ->
+        |   ( Self , TYPING_TUPLE )
+        |   ( Self , TYPING )
+        |   ( Self )
+
+
+    ############################################################################
+    # Structs
+
+    @action filter_build struct
+    STRUCT_CONTEXT -> STRUCT_HEADER STRUCT_BODY
+
+    @action pool
+    STRUCT_HEADER -> 
+        |   struct TAG
+        |   struct TAG IMPLEMENTATIONS
+
+    STRUCT_BODY -> { STRUCT_ELEMENTS }
+    STRUCT_ELEMENTS -> 
+        |   STRUCT_ELEMENT
+        |   STRUCT_ELEMENT STRUCT_ELEMENTS
+
+    @action filter_build impls
+    IMPLEMENTATIONS -> 
+        |   implements TAGS_TUPLE_BUILDER
+        |   implements TAG
+
+    @action pass
+    STRUCT_ELEMENT -> 
+        |   STRUCT_LINE ENDLS
+        |   STRUCT_CONSTRUCTOR
+        |   STRUCT_DESTRUCTOR
+        |   STRUCT_DECLARATION
+        |   STRUCT_EMBEDDINGS ENDLS
+        |   FUNCTION_CONTEXT
+
+    @action filter_build create 
+    STRUCT_CONSTRUCTOR -> create ARGS_DECL RETURN_DECL CODE_BLOCK
+
+    @action filter_build destroy
+    STRUCT_DESTRUCTOR -> destroy ARGS_DECL CODE_BLOCK
+
+    @action filter_build embed
+    STRUCT_EMBEDDINGS -> 
+        |   embed TAGS
+        |   embed TAG
+
+    STRUCT_LINE ->
+        @action pass
+        |   TYPING 
+        @action build_operator
+        |   TYPING OP_ASSIGN EXPR
+
+    @action build_operator
+    STRUCT_DECLARATION ->
+        |   TAG := ARGS_DECL CODE_BLOCK
+        |   TAG := ARGS_DECL RETURN_DECL CODE_BLOCK
+
+
+    ############################################################################
+    # Functions 
+
+    @action build_def
+    FUNCTION_CONTEXT -> FUNCTION_HEADER CODE_BLOCK
+
+    @action pool
+    FUNCTION_HEADER ->
+        |   fn TAG ARGS_DECL
+        |   fn TAG ARGS_DECL RETURN_DECL
+
+    @action filter_build rets
+    RETURN_DECL -> 
+        |   -> TYPING_TUPLE
+        |   -> TYPING
+        |   -> TYPE
+
+    @action filter_build args
+    ARGS_DECL ->
+        |   ( TYPING_TUPLE , TYPING_DEFAULT_TUPLE )
+        |   ( TYPING_TUPLE , TYPING_DEFAULT )
+        |   ( TYPING_TUPLE )
+        |   ( TYPING , TYPING_DEFAULT_TUPLE )
+        |   ( TYPING , TYPING_DEFAULT )
+        |   ( TYPING )
+        |   ( TYPING_DEFAULT_TUPLE )
+        |   ( TYPING_DEFAULT )
+        |   ( )
+
+    @action pool
+    TYPING_TUPLE_BUILDER ->
+        |   TYPING , TYPING
+        |   TYPING , TYPING_TUPLE_BUILDER
+
+    @action filter_build prod_type
+    TYPING_TUPLE ->
+        |   TYPING_TUPLE_BUILDER
+        |   ( TYPING_TUPLE_BUILDER )
+
+    @action filter_build default
+    TYPING_DEFAULT -> TYPING = EXPR
+
+    @action pool
+    TYPING_DEFAULT_TUPLE_BUILDER ->
+        |   TYPING_DEFAULT , TYPING_DEFAULT
+        |   TYPING_DEFAULT , TYPING_DEFAULT_TUPLE_BUILDER
+
+    @action filter_build defaults
+    TYPING_DEFAULT_TUPLE -> TYPING_DEFAULT_TUPLE_BUILDER 
+
+
+    ############################################################################
+    # Control flow
+ 
+    @action filter_build seq
+    CODE_BLOCK -> { BLOCKS }
+
+    @action pool
+    BLOCKS ->
+        |   BLOCK
+        |   BLOCK BLOCKS
+
+    @action pass
+    BLOCK ->
+        |   CONTROL
+        |   ACTION ENDLS
+
+    CONTROL ->
+        |   IF_STATEMENT
+        |   WHILE_STATEMENT
+
+    @action filter_build if
+    IF_STATEMENT -> IF_CONTEXT
+
+    @action pool
+    IF_CONTEXT ->
+        |   if CONDITIONAL_BRANCH
+        |   if CONDITIONAL_BRANCH ELSE_STATEMENT
+
+    @action pool
+    ELSE_STATEMENT ->
+        |   else CODE_BLOCK
+        |   else if CONDITIONAL_BRANCH
+        |   else if CONDITIONAL_BRANCH ELSE_STATEMENT
+
+    @action filter_build while
+    WHILE_STATEMENT -> while CONDITIONAL_BRANCH
+
+    @action filter_build cond
+    CONDITIONAL_BRANCH -> ( EXPR ) CODE_BLOCK
+
+
+    ############################################################################
+    # Typing
+
+    @action build_operator
+    TYPING -> 
+        |   TAGS : TYPE
+        |   TAG : TYPE
+
+    TYPE -> 
+        @action filter_build type
+        |   TAG
+        |   RESTRICTED_TYPE
+        @action pass
+        |   FN_TYPE
+        |   ARR_TYPE
+        @action filter_build var_type
+        |   TAG var
+        @action filter_build var_type?
+        |   TAG var ?
+        |   TAG ?
+
+    @action filter_build types 
+    TYPES -> TYPES_BUILDER
+
+    @action pool
+    TYPES_BUILDER ->
+        |   TYPE , TYPE
+        |   TYPE , TYPES_BUILDER
+
+    @action filter_build fn_type
+    FN_TYPE -> FN_TYPE_IN FN_TYPE_OUT
+
+    @action filter_build fn_type_in
+    FN_TYPE_IN ->
+        |   ( TYPES )
+        |   ( TYPE )
+        |   ( )
+
+    @action filter_build fn_type_out
+    FN_TYPE_OUT ->
+        |   -> TYPE
+        |   -> ( TYPES )
+
+    @action filter_build arr_type
+    ARR_TYPE ->
+        |   TYPE [ ]
+        |   TYPE [ int ]
+
+
+    @action filter_build tags 
+    TAGS -> TAGS_TUPLE_BUILDER
+
+    @action pool
+    TAGS_TUPLE_BUILDER -> 
+        |   TAG , TAG
+        |   TAG , TAGS_TUPLE_BUILDER
+
+    ############################################################################
+    # Casting
+    @action filter_build cast
+    EXPR -> EXPR . as ( TYPE )
+
+
+    ############################################################################
+    # Declaration
+
+    LET_DECL -> 
+        @action filter_build let
+        |   let TYPING
+        @action filter_build ilet
+        |   let DECL_ASSIGNMENT
+
+    VAR_DECL -> 
+        @action filter_build var?
+        |   var ? TYPING
+        @action filter_build var
+        |   var TYPING
+        @action filter_build ivar
+        |   var DECL_ASSIGNMENT
+        
+        @action filter_build mut_var
+        |   mut var TYPING
+        |   mut var DECL_ASSIGNMENT
+       
+    VAL_DECL -> 
+        @action filter_build val
+        |   val TYPING
+        |   val DECL_ASSIGNMENT
+        @action filter_build mut_val
+        |   mut val TYPING
+        |   mut val DECL_ASSIGNMENT
+
+    @action pass
+    DECL -> 
+        |   LET_DECL
+        |   VAR_DECL
+        |   VAL_DECL
+
+
+    ############################################################################
+    # Assignment 
+
+    @action build_operator
+    ASSIGNMENT -> 
+        |   DECL OP_ASSIGN RVALUE
+        |   VAR OP_ASSIGN RVALUE
+        |   TUPLE OP_ASSIGN RVALUE
+        |   SCOPED_VAR OP_ASSIGN RVALUE
+
+    # only used when assigning during declaration and type inference.
+    @action pool
+    DECL_ASSIGNMENT ->
+        |   TAG OP_ASSIGN RVALUE
+        |   TAGS OP_ASSIGN RVALUE
+
+    @action pass
+    RVALUE ->
+        |   EXPR
+        |   TUPLE
+
+    @action build_operator
+    SCOPED_VAR -> EXPR . TAG
+
+    ############################################################################
+    # Actions/Expressions
+    
+    ACTION -> 
+        @action pass
+        |   EXPR
+        |   ASSIGNMENT
+        |   DECL
+        
+        @action filter_build return
+        |   return 
+        |   return EXPR
+
+        @action filter_build is
+        |   EXPR is TAG
+        |   EXPR is nil
+
+        @action pass
+        |   SCOPED_VAR
+        |   VAR
+        |   LITERAL
+
+    @action pass
+    EXPR ->
+        |   E0
+
+    @action filter_build params
+    PARAMS ->
+        |   ( )
+        |   ( EXPR )
+        |   ( TUPLE_BUILDER )
+        |   ( TUPLE_BUILDER, NAMED_PARAMS )
+        |   ( NAMED_PARAMS )
+
+    @action filter_build kwarg
+    NAMED_PARAM -> TAG = EXPR
+
+    @action pool
+    NAMED_PARAMS -> 
+        |   NAMED_PARAM
+        |   NAMED_PARAM , NAMED_PARAMS
+
+    @action filter_build tuple
+    TUPLE -> 
+        |   TUPLE_BUILDER
+        |   ( TUPLE_BUILDER )
+
+    @action pool
+    TUPLE_BUILDER ->
+        |   EXPR , EXPR
+        |   EXPR , TUPLE_BUILDER
+
+
+    ############################################################################
+    # Expressions
+
+    @action pass
+    E12 ->
+        |   VAR
+        |   LITERAL
+
+    E11 ->
+        @action build_operator
+        |   E11 :: TAG
+        @action pass
+        |   E12
+
+    E10 -> 
+        @action build_operator
+        |   E10 . TAG
+        @action pass
+        |   E11
+
+    E9 -> 
+        @action build raw_call
+        |   E9 PARAMS 
+        @action pass
+        |   E10
+
+    E8 ->
+        @action build_operator
+        |   E8 * E9
+        |   E8 / E9
+        @action pass
+        |   E9  
+
+
+    E7 -> 
+        @action build_operator
+        |   E7 + E8
+        |   E7 - E8
+        @action pass
+        |   E8
+
+    E6 -> 
+        @action build_operator
+        |   E6 < E7
+        |   E6 <= E7
+        |   E6 > E7
+        |   E6 >= E7
+        |   E6 == E7
+        |   E6 != E7
+        @action pass
+        |   E7
+
+    E5 ->
+        @action handle_op_pref
+        |   ! E5
+        @action pass
+        |   E6
+
+    E4 ->
+        @action build_operator
+        |   E4 and E5
+        |   E4 or E5
+        @action pass
+        |   E5
+
+    
+
+    
+
+    @action pass
+    E0 -> 
+        |   E4
+        |   ( E4 )
+
+    
+
+    ############################################################################
+    # Testing
+    
+    @action build start
+    START -> EXPR

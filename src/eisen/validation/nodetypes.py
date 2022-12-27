@@ -367,6 +367,9 @@ class Nodes():
         def get_type(self) -> Type:
             return self.state.get_returned_type()
 
+        def is_print(self) -> bool:
+            return self.first_child().value == "print"
+
     class Scope(AbstractNodeInterface):
         asl_type = "."
         examples = """
@@ -437,6 +440,7 @@ class Nodes():
             return self._unravel_scoping(asl=asl.second())
 
         def get_asl_defining_the_function(self) -> CLRList:
+            return self.state.but_with_first_child().get_instances()[0].asl
             fn_asl = self._unravel_scoping(self.first_child())
             fn_instance = self.state.but_with(asl=fn_asl).get_instances()[0]
             return fn_instance.asl

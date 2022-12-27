@@ -52,11 +52,10 @@ class Test():
         asl = self.parse_asl_with_cache()
         config = alpaca.config.parser.run(filename=Test.grammarfile)
 
-        return True, "success"
-        config.cfg.get_subgrammar_from("ACTION")
-
         state = State.create_initial(config, asl, txt=self.code, print_to_watcher=True)
-        Workflow.execute(state)
+        if not Workflow.execute(state):
+            print(state.watcher.txt)
+            return False, "test failed due to exception"
 
         if self.metadata["expected"]["success"]:
             interpreter = AstInterpreter(redirect_output=True)

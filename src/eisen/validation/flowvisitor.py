@@ -200,11 +200,6 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
-        # e.g. (raw_call (expr ...) (fn name) (state ...))
-        # because the first element can be a list itself, we need to apply the 
-        # fn over it to get the flowed out type.
-        fn.apply_to_first_child_of(state)
-
         # this will actually change the asl inplace, converting (raw_call ...) into (call ...)
         CallUnwrapper.process(state)
         # print(state.get_asl())
@@ -325,7 +320,9 @@ class FlowVisitor(Visitor):
         return state.get_bool_type()
 
     @Visitor.for_asls("ref")
-    def ref_(fn, state: State) -> Type:
+    def ref_(fn, state: State) -> Type: 
+        if Nodes.Ref(state).is_print():
+            return BuiltinPrint.get_type_of_function(state)
         result = Validate.instance_exists(state)
         if result.failed():
             return result.get_failure_type()

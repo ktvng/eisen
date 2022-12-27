@@ -198,6 +198,10 @@ STRUCTURE
         |   TAGS : TYPE
         |   TAG : TYPE
 
+    TEMPORARY_FIX1 ->
+        @action filter_build prod_type
+        |   TYPINGS
+
     TYPINGS ->
         @action pool
         |   TYPING , TYPING
@@ -443,12 +447,12 @@ STRUCTURE
         @action filter_build args
         |   ( )
         |   ( TYPING )
-        |   ( TYPINGS )
+        |   ( TEMPORARY_FIX1 )
 
     RETS ->
         @action filter_build rets
         |   -> TYPING
-        |   -> TYPINGS
+        |   -> TEMPORARY_FIX1
 
 
     ############################################################################

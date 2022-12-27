@@ -54,9 +54,9 @@ class Workflow():
         # this handles restrictions based on let/var/val differences
         PermissionsVisitor,
 
-        # NilCheck,
+        NilCheck,
 
-        # note: def, create, fn, ref, ilet need instances!!
+        # note: def, create, fn, ref, ilet, :: need instances!!
     ]
 
     @classmethod
@@ -105,4 +105,3 @@ class Workflow():
     @classmethod
     def should_stop_execution(cls, state: State):
         return state.exceptions
-

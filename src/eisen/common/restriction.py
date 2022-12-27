@@ -87,7 +87,7 @@ class PrimitiveRestriction(GeneralRestriction):
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return other.is_primitive() or other.is_literal() or other.is_unrestricted() 
 
-    
+    # TODO: recover the error messages again 
     # def assignable_to(self, right: Restriction) -> tuple[bool, str]:
     #     # print(self, right)
     #     assignable = False

@@ -26,10 +26,7 @@ class InterfaceFinalizationVisitor(Visitor):
     @Visitor.for_asls("interface")
     def interface_(fn, state: State) -> None:
         node = Nodes.Interface(state)
-        this_interface_type = node.get_this_type()
-        
-        # TODO: consider whether or not to allow interfaces to inherit from other interfaces
-        this_interface_type.finalize(
+        node.get_this_type().finalize(
             components=[TypeParser().apply(state.but_with(asl=child)) 
                 for child in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),

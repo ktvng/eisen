@@ -15,6 +15,7 @@ from eisen.common.state import State
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
 
+# TODO: refactor this
 class Test():
     testdir = "./src/eisen/tests/"
     cachedir = "./src/eisen/tests/cache/"
@@ -56,6 +57,7 @@ class Test():
         if self.metadata["expected"]["success"]:
             if failed_compile:
                 print(state.watcher.txt)
+                print(state.asl)
                 return False, "test failed due to exception"
             interpreter = AstInterpreter(redirect_output=True)
             interpreter.apply(state)

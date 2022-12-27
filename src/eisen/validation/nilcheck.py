@@ -43,7 +43,8 @@ class NilCheck(Visitor):
 
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
-    @Visitor.for_asls("=")
+    # TODO: fix this
+    @Visitor.for_asls("=", "<-")
     def assigns_(fn, state: State):
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 

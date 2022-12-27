@@ -63,7 +63,16 @@ class PermissionsVisitor(Visitor):
             state.apply_fn_to_all_children(fn)
         return []
 
-    @Visitor.for_asls("start", "seq", "cond", "args", "prod_type")
+    # TODO: Refactor this
+    @Visitor.for_asls("args", "prod_type")
+    def args_(fn, state: State):
+        for child in state.get_all_children():
+            instancestates = fn.apply(state.but_with(asl=child))
+            for instancestate in instancestates:
+                instancestate.mark_as_initialized()
+        return []
+
+    @Visitor.for_asls("start", "seq", "cond")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
         return []

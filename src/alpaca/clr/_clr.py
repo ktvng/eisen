@@ -62,23 +62,6 @@ class CLRList(CLRElement):
         if lst is not None:
             self._list = lst
 
-    # TODO: deprecate
-    def head(self) -> CLRList | CLRToken:
-        if not self._list:
-            raise Exception("list is empty; head does not exist")
-
-        return self._list[0]
-
-    # TODO: deprecate
-    # The head of a CLRList is the first element; if that element is a token, then
-    # head_value will return the value of that CLRToken
-    def head_value(self) -> str:
-        if not isinstance(self._list[0], CLRToken):
-            raise Exception(
-                f"expected first element of CLRList to be a CLRToken. Got:\n {str(self)}")
-        
-        return self._list[0].value
-
     def items(self) -> list[CLRList | CLRToken]:
         return self._list
 

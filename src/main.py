@@ -41,7 +41,6 @@ def run_eisen(filename: str):
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    exit()
     print("############## EISEN ###############")
     state = eisen.State.create_initial(config, asl, txt)
     eisen.Workflow.steps.append(eisen.AstInterpreter)

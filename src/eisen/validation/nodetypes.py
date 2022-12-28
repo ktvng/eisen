@@ -121,8 +121,6 @@ class Nodes():
             create_asls = [child for child in self.state.get_asl() if child.type == "create"]
             return create_asls[0]
 
-
-
     class Interface(AbstractNodeInterface):
         asl_type = "interface"
         examples = """
@@ -331,45 +329,46 @@ class Nodes():
         def is_single_assignment(self) -> bool:
             return first_child_is_token(self) or self.first_child().type != "tuple"
 
-    class Fn(AbstractNodeInterface):
-        asl_type = "fn"
-        examples = """
-        1. simple 
-            (fn name)
-        2. module
-            (fn (:: mod name))
-        3. attribute 
-            (fn (. (ref obj) name))
-        """
-        
-        def is_print(self) -> bool:
-            return self.is_simple() and self.first_child().value == "print"
-
-        def is_simple(self) -> bool:
-            return isinstance(self.first_child(), CLRToken)
-
-        def get_function_name(self) -> str:
-            if self.is_simple():
-                return self.state.first_child().value
-            return self.first_child().second().value
-
-        def get_function_type(self) -> Type:
-            return self.state.get_instances()[0].type
-            
-
     class Ref(AbstractNodeInterface):
         asl_type = "ref"
         examples = """
         (ref name)
         """
 
-        get_name = get_name_from_first_child
+        def is_simple(self) -> bool:
+            return isinstance(self.first_child(), CLRToken)
+
+        def get_name(self) -> str:
+            if self.is_simple():
+                return self.first_child().value
+            elif self.first_child().type == "::":
+                return Nodes.ModuleScope(self.state).get_end_name()
+            elif self.first_child().type == ".":
+                return Nodes.Scope(self.state).get_attribute_name()
+
+            raise Exception("unknown type")
+
+        def get_instance(self) -> EisenInstance | None:
+            return self.state.context.get_instance(self.get_name())
+
+        def lookup_function_instance(self, type: Type=None) -> EisenInstance | None:
+            type = self.state.get_returned_type().get_argument_type() if type is None else type
+            return self.state.lookup_function_instance(
+                name=self.get_name(), 
+                type=type)
+
+        def lookup_all_function_instances_by_name(self, name: str) -> list[EisenInstance]:
+            return self.state.get_enclosing_module().get_all_function_instances_with_name(name)
+    
+
 
         def get_type(self) -> Type:
             return self.state.get_returned_type()
 
         def is_print(self) -> bool:
-            return self.first_child().value == "print"
+            if self.is_simple():
+                return self.first_child().value == "print"
+            return False
 
     class Scope(AbstractNodeInterface):
         asl_type = "."
@@ -407,17 +406,13 @@ class Nodes():
             return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
         def get_function_name(self) -> str:
-            if self.first_child().type == "fn":
-                node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
-            elif self.first_child().type == "::":
-                node = Nodes.ModuleScope(self.state.but_with(asl=self.first_child()))
-            return node.get_function_name()
+            return Nodes.Ref(self.state.but_with_first_child()).get_name()
 
         def get_function_return_restrictions(self) -> list[GeneralRestriction]:
             return self.get_function_return_type().get_restrictions()
 
         def is_print(self) -> str:
-            node = Nodes.Fn(self.state.but_with(asl=self.first_child()))
+            node = Nodes.Ref(self.state.but_with(asl=self.first_child()))
             return node.is_print()
 
         def get_params_asl(self) -> str:
@@ -432,33 +427,15 @@ class Nodes():
         def get_return_names(self) -> list[str]:
             return Nodes.Def(self.state.but_with(asl=self.get_asl_defining_the_function())).get_ret_names()
 
-        def _unravel_scoping(self, asl: CLRList) -> CLRList:
-            if asl.type != "::" and asl.type != "disjoint_fn" and asl.type != "fn":
-                raise Exception(f"unexpected asl type of {asl.type}")
-            
-            if asl.type == "disjoint_fn" or asl.type == "fn":
-                return asl
-            return self._unravel_scoping(asl=asl.second())
-
         def get_asl_defining_the_function(self) -> CLRList:
             return self.state.but_with_first_child().get_instances()[0].asl
-            fn_asl = self._unravel_scoping(self.first_child())
-            fn_instance = self.state.but_with(asl=fn_asl).get_instances()[0]
-            return fn_instance.asl
 
     class ModuleScope(AbstractNodeInterface):
         asl_type = "::"
         examples = """
-        (:: mod_name (disjoint_fn name))
-        (:: outer (:: inner (disjoint_fn name)))
+        (:: mod_name name))
+        (:: outer (:: inner name)))
         """
-        
-        def get_function_name(self) -> str:
-            right_child = self.second_child()
-            while right_child.type != "disjoint_fn":
-                right_child = right_child.second()
-            
-            return right_child.first().value
 
         def get_module_name(self) -> str:
             return self.first_child().value
@@ -481,13 +458,16 @@ class Nodes():
             for mod_name in mods:
                 current_mod = current_mod.get_child_by_name(mod_name)
 
-            return current_mod.get_instance(end)
+            instance = current_mod.get_instance(end)
+            if instance is None:
+                instances = current_mod.get_all_function_instances_with_name(end)
+                return instances[0]
+            return instance
+
+        def get_end_name(self) -> str:
+            end, _ = self._unpack_structure()
+            return end
             
-
-
-
-
-
 
     class Rets(AbstractNodeInterface):
         asl_type = "rets"
@@ -500,31 +480,16 @@ class Nodes():
         asl_type = "raw_call"
         examples = """
         x.run() becomes:
-            (raw_call (ref x) (fn run) (params )) 
+            (raw_call (ref (. x run)) (params )) 
 
-        (raw_call (ref name) (fn name) (params ...))
-        (raw_call (ref name) (:: mod_name (disjoint_fn name)) (params ...))
+        (raw_call (ref name) (params ...))
         """
 
         def get_ref_asl(self) -> CLRList:
             return self.first_child()
 
-        def get_fn_asl(self) -> CLRList:
-            return self.second_child()
-
         def get_params_asl(self) -> CLRList:
             return self.third_child()
-
-        def _get_type_of_caller(self):
-            return Nodes.Ref(self.state.but_with(asl=self.get_ref_asl())).get_type()
-        
-        def _get_function_name(self):
-            return Nodes.Fn(self.state.but_with(asl=self.get_fn_asl())).get_function_name()
-
-        def calls_member_function(self):
-            caller_type = self._get_type_of_caller()
-            function_name = self._get_function_name()
-            return caller_type.is_struct() and caller_type.has_member_attribute_with_name(function_name)
 
     class TypeLike(AbstractNodeInterface):
         asl_type = "type" 

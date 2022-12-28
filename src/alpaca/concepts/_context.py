@@ -2,7 +2,7 @@ from __future__ import annotations
 from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
-    container_names = ["type", "instance", "instance_state", "nilstate"]
+    container_names = ["type", "instance", "instance_state", "nilstate", "function_instance"]
 
     def _add_child(self, child: NestedContainer):
         return

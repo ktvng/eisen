@@ -74,38 +74,36 @@ class Validate:
 
 
     @classmethod
-    def correct_argument_types(cls, state: State, name: str, fn_type: Type, given_type: Type) -> ValidationResult:
-        if any([state.get_abort_signal() in (fn_type, given_type)]):
+    def correct_argument_types(cls, state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
+        if any([state.get_abort_signal() in (arg_type, given_type)]):
             return Validate._abort_signal(state) 
 
-        if fn_type != given_type:
+        if arg_type != given_type:
             # if the given_type is a struct, we have another change to succeed if 
             # the struct embeds the expected fn_type
             if given_type.classification == Type.classifications.struct:
-                if fn_type not in given_type.embeds:
+                if arg_type not in given_type.embeds:
                     state.report_exception(Exceptions.TypeMismatch(
-                        msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
+                        msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                         line_number=state.get_line_number()))
                     return Validate._abort_signal(state)  
-                return Validate._success(fn_type)
+                return Validate._success(arg_type)
             
             state.report_exception(Exceptions.TypeMismatch(
-                msg=f"function '{name}' takes '{fn_type}' but was given '{given_type}'",
+                msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
-        return Validate._success(fn_type)
+        return Validate._success(arg_type)
 
 
     @classmethod
-    def instance_exists(cls, state: State) -> ValidationResult:
-        name = state.first_child().value
-        instance = state.get_context().get_instance(name)
+    def instance_exists(cls, state: State, name: str, instance: EisenInstance) -> ValidationResult:
         if instance is None:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
-        return Validate._success(return_obj=instance)
+        return Validate._success()
 
 
     @classmethod

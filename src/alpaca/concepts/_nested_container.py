@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from alpaca.concepts._instancestate import InstanceState
 
 class NestedContainer():
-    container_names = ["type", "instance", "instance_state"]
+    container_names = ["type", "instance", "instance_state", "function_instance"]
 
     def __init__(self, name: str, parent: NestedContainer = None):
         self.name = name
@@ -61,6 +61,27 @@ class NestedContainer():
     def get_instance(self, name: str) -> Instance | None:
         return self.get_obj("instance", name)
 
+    def _get_function_instance_key(self, name: str, type: Type) -> str:
+        return name + "." + type.get_uuid_str()
+
+    def add_function_instance(self, instance: Instance) -> None:
+        self.add_obj("function_instance", 
+            self._get_function_instance_key(
+                instance.name, instance.type.get_argument_type()), 
+            instance)
+
+    def get_function_instance(self, name: str, type: Type) -> Instance | None:
+        return self.get_obj("function_instance", self._get_function_instance_key(name, type))
+
+    def get_all_function_instances_with_name(self, name: str) -> list[Instance]:
+        container = self.containers["function_instance"]
+        function_instances = container.values()
+        local_matching_instances = [fi for fi in function_instances if fi.name == name]
+        if self.parent is None:
+            return local_matching_instances
+        return local_matching_instances + self.parent.get_all_function_instances_with_name(name)
+
+         
     def add_type(self, type: Type):
         if type.name:
             self.add_obj("type", type.get_uuid_str(), type)

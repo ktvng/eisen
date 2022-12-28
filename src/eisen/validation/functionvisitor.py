@@ -53,7 +53,7 @@ class FunctionVisitor(Visitor):
                 type=TypeParser().apply(state),
                 context=None,
                 asl=state.get_asl())
-        state.get_enclosing_module().add_instance(instance)
+        state.add_function_instance_to_module(instance)
 
     @Visitor.for_asls("create")
     def create_(fn, state: State):
@@ -67,5 +67,5 @@ class FunctionVisitor(Visitor):
                 context=None,
                 asl=state.get_asl(),
                 is_constructor=True)
-        state.get_enclosing_module().add_instance(instance)
+        state.add_function_instance_to_module(instance)
         

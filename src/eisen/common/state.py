@@ -226,7 +226,7 @@ Token: {self.asl}
         return self.context
 
     def get_instancestate(self, name: str) -> EisenInstanceState:
-        """canoncial way to access a InstanceState by name"""
+        """canonical way to access a InstanceState by name"""
         return self.context.get_instancestate(name)
 
     def get_line_number(self) -> int:
@@ -237,6 +237,9 @@ Token: {self.asl}
         return self.get_returned_type().get_restrictions()[0]
 
 
+    def lookup_function_instance(self, name: str, type: Type) -> EisenInstance | None:
+        """canonical way to lookup a instance for a defined function"""
+        return self.get_enclosing_module().get_function_instance(name, type)
 
     def assign_returned_type(self, type: Type):
         self.get_node_data().returned_type = type
@@ -264,6 +267,9 @@ Token: {self.asl}
 
     def add_instancestate(self, instancestate: EisenInstanceState):
         self.context.add_instancestate(instancestate)
+
+    def add_function_instance_to_module(self, instance: EisenInstance):
+        self.get_enclosing_module().add_function_instance(instance)
 
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:

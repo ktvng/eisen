@@ -76,6 +76,8 @@ class FlowVisitor(Visitor):
                 .with_restriction(PrimitiveRestriction()))
         elif state.get_asl().type == "nil":
             return TypeFactory.produce_nil_type()
+
+        # debug only
         raise Exception(f"unexpected token type of {state.get_asl().type}")
 
     @Visitor.for_asls("fn_type")
@@ -100,11 +102,11 @@ class FlowVisitor(Visitor):
     def dot_(fn, state: State) -> Type:
         node = Nodes.Scope(state)
         parent_type = fn.apply(state.but_with(asl=node.get_object_asl()))
-        name = node.get_attribute_name()
-        result = Validate.has_member_attribute(state, parent_type, name)
+        attr_name = node.get_attribute_name()
+        result = Validate.has_member_attribute(state, parent_type, attr_name)
         if result.failed():
             return result.get_failure_type()
-        return parent_type.get_member_attribute_by_name(name)
+        return parent_type.get_member_attribute_by_name(attr_name)
 
     @Visitor.for_asls("::")
     def scope_(fn, state: State) -> Type:
@@ -152,33 +154,36 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
         return type
 
-    @Visitor.for_asls("call")
-    def call_(fn, state: State) -> Type:
+    def call_(fn, state: State, params_type: Type) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
         if fn_type == state.get_abort_signal():
             return state.get_abort_signal()
 
-        # still need to type flow through the params passed to the function
-        params_type = fn.apply_to_second_child_of(state)
+        fn_node = Nodes.Ref(state.but_with_first_child())
+        if fn_node.is_print():
+            return BuiltinPrint.get_type_of_function(state).get_return_type()
 
-        fn_node = Nodes.Fn(state.but_with_first_child())
-        if not fn_node.is_print():
-            fn_in_type = fn_type.get_argument_type()
-            result = Validate.correct_argument_types(state, fn_node.get_function_name(), fn_in_type, params_type)
-            if result.failed():
-                return result.get_failure_type()
+        # still need to type flow through the params passed to the function
+        result = Validate.correct_argument_types(state, 
+            name=fn_node.get_name(), 
+            arg_type=fn_type.get_argument_type(),
+            given_type=params_type)
+
+        if result.failed():
+            return result.get_failure_type()
 
         return fn_type.get_return_type()
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
         # this will actually change the asl inplace, converting (raw_call ...) into (call ...)
-        CallUnwrapper.process(state)
+        guessed_params_type = fn.apply_to_second_child_of(state)
+        params_type = CallUnwrapper.process(state, guessed_params_type, fn)
         # print(state.get_asl())
 
         # now we have converted the (raw_call ...) into a normal (call ...) asl 
         # so we can apply fn to the state again with the new asl.
-        return fn.apply(state)
+        return fn.call_(state, params_type)
 
     @Visitor.for_asls("struct")
     @returns_void_type
@@ -293,13 +298,20 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> Type: 
-        if Nodes.Ref(state).is_print():
+        node = Nodes.Ref(state)
+        if node.is_print():
             return BuiltinPrint.get_type_of_function(state)
-        result = Validate.instance_exists(state)
+
+        name = node.get_name() 
+        instance = node.get_instance()
+        if instance is None:
+            instances = node.lookup_all_function_instances_by_name(name)
+            instance = instances[0]
+
+        result = Validate.instance_exists(state, name, instance)
         if result.failed():
             return result.get_failure_type()
 
-        instance = result.get_found_instance()
         state.assign_instances(instance)
         return instance.type
 

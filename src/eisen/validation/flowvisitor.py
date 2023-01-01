@@ -11,6 +11,7 @@ from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
+from eisen.validation.lookupmanager import LookupManager
 
 from eisen.validation.builtin_print import BuiltinPrint
 
@@ -155,24 +156,30 @@ class FlowVisitor(Visitor):
         return type
 
     def call_(fn, state: State, params_type: Type) -> Type:
-        fn_type = fn.apply_to_first_child_of(state)
-        if fn_type == state.get_abort_signal():
-            return state.get_abort_signal()
-
         fn_node = Nodes.Ref(state.but_with_first_child())
         if fn_node.is_print():
             return BuiltinPrint.get_type_of_function(state).get_return_type()
 
+        fn_instance = fn_node.resolve_function_instance(params_type)
+        if fn_instance is None:
+            print(state.asl)
+            print(fn_node.get_name(), params_type, "is not a thing")
+            exit()
+        fn_node.state.assign_instances(fn_instance)
+        # fn_type = fn.apply_to_first_child_of(state)
+        # if fn_type == state.get_abort_signal():
+        #     return state.get_abort_signal()
+
         # still need to type flow through the params passed to the function
-        result = Validate.correct_argument_types(state, 
-            name=fn_node.get_name(), 
-            arg_type=fn_type.get_argument_type(),
-            given_type=params_type)
+        # result = Validate.correct_argument_types(state, 
+        #     name=fn_node.get_name(), 
+        #     arg_type=fn_type.get_argument_type(),
+        #     given_type=params_type)
 
-        if result.failed():
-            return result.get_failure_type()
+        # if result.failed():
+        #     return result.get_failure_type()
 
-        return fn_type.get_return_type()
+        return fn_instance.type.get_return_type()
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:

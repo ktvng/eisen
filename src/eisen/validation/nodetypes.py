@@ -9,6 +9,8 @@ from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction,
     PrimitiveRestriction)
 
+from eisen.validation.lookupmanager import LookupManager
+
 def get_name_from_first_child(self) -> str:
     """assumes the first child is a token containing the name"""
     return self.state.first_child().value
@@ -342,9 +344,9 @@ class Nodes():
             if self.is_simple():
                 return self.first_child().value
             elif self.first_child().type == "::":
-                return Nodes.ModuleScope(self.state).get_end_name()
+                return Nodes.ModuleScope(self.state.but_with_first_child()).get_end_name()
             elif self.first_child().type == ".":
-                return Nodes.Scope(self.state).get_attribute_name()
+                return Nodes.Scope(self.state.but_with_first_child()).get_attribute_name()
 
             raise Exception("unknown type")
 
@@ -359,8 +361,17 @@ class Nodes():
 
         def lookup_all_function_instances_by_name(self, name: str) -> list[EisenInstance]:
             return self.state.get_enclosing_module().get_all_function_instances_with_name(name)
-    
 
+        def resolve_function_instance(self, argument_type: Type) -> EisenInstance:
+            return LookupManager.resolve_function_reference_by_signature(
+                name=self.get_name(),
+                argument_type=argument_type,
+                mod=self.get_module())
+
+        def get_module(self):
+            if not self.is_simple() and self.first_child().type == "::":
+                return Nodes.ModuleScope(self.state.but_with_first_child()).get_module()
+            return self.state.get_enclosing_module()
 
         def get_type(self) -> Type:
             return self.state.get_returned_type()
@@ -403,6 +414,7 @@ class Nodes():
             return self.state.get_node_data().returned_type
 
         def get_function_argument_type(self) -> Type:
+            return self.state.but_with_first_child().get_instances()[0].type.get_argument_type()
             return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
         def get_function_name(self) -> str:
@@ -467,7 +479,13 @@ class Nodes():
         def get_end_name(self) -> str:
             end, _ = self._unpack_structure()
             return end
-            
+
+        def get_module(self) -> Module:
+            _, mods = self._unpack_structure()
+            current_mod = self.state.get_enclosing_module()
+            for mod_name in mods:
+                current_mod = current_mod.get_child_by_name(mod_name)
+            return current_mod
 
     class Rets(AbstractNodeInterface):
         asl_type = "rets"

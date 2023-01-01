@@ -11,7 +11,6 @@ from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
-from eisen.validation.lookupmanager import LookupManager
 
 from eisen.validation.builtin_print import BuiltinPrint
 
@@ -155,22 +154,18 @@ class FlowVisitor(Visitor):
         state.assign_instances(instances)
         return type
 
-    def call_(fn, state: State, params_type: Type) -> Type:
-        fn_node = Nodes.Ref(state.but_with_first_child())
-        if fn_node.is_print():
+    @Visitor.for_asls("raw_call")
+    def raw_call(fn, state: State) -> Type:
+        # this will actually change the asl inplace, converting (raw_call ...) 
+        # into (call (ref ...) (params ...))
+        guessed_params_type = fn.apply_to_second_child_of(state)
+        params_type = CallUnwrapper.process(state, guessed_params_type, fn)
+        ref_node = Nodes.RefLike(state.but_with_first_child())
+        if ref_node.is_print():
             return BuiltinPrint.get_type_of_function(state).get_return_type()
 
-        fn_instance = fn_node.resolve_function_instance(params_type)
-        if fn_instance is None:
-            print(state.asl)
-            print(fn_node.get_name(), params_type, "is not a thing")
-            exit()
-        fn_node.state.assign_instances(fn_instance)
-        # fn_type = fn.apply_to_first_child_of(state)
-        # if fn_type == state.get_abort_signal():
-        #     return state.get_abort_signal()
-
-        # still need to type flow through the params passed to the function
+        fn_instance = ref_node.resolve_function_instance(params_type)
+        ref_node.state.assign_instances(fn_instance)
         # result = Validate.correct_argument_types(state, 
         #     name=fn_node.get_name(), 
         #     arg_type=fn_type.get_argument_type(),
@@ -180,17 +175,6 @@ class FlowVisitor(Visitor):
         #     return result.get_failure_type()
 
         return fn_instance.type.get_return_type()
-
-    @Visitor.for_asls("raw_call")
-    def raw_call(fn, state: State) -> Type:
-        # this will actually change the asl inplace, converting (raw_call ...) into (call ...)
-        guessed_params_type = fn.apply_to_second_child_of(state)
-        params_type = CallUnwrapper.process(state, guessed_params_type, fn)
-        # print(state.get_asl())
-
-        # now we have converted the (raw_call ...) into a normal (call ...) asl 
-        # so we can apply fn to the state again with the new asl.
-        return fn.call_(state, params_type)
 
     @Visitor.for_asls("struct")
     @returns_void_type
@@ -309,13 +293,8 @@ class FlowVisitor(Visitor):
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state)
 
-        name = node.get_name() 
-        instance = node.get_instance()
-        if instance is None:
-            instances = node.lookup_all_function_instances_by_name(name)
-            instance = instances[0]
-
-        result = Validate.instance_exists(state, name, instance)
+        instance = node.resolve_instance()
+        result = Validate.instance_exists(state, node.get_name(), instance)
         if result.failed():
             return result.get_failure_type()
 

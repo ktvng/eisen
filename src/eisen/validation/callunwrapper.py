@@ -16,12 +16,7 @@ class CallUnwrapper():
     @classmethod
     def process(cls, state: State, guessed_params_type: Type, fn: FlowVisitor) -> Type:
         if cls._chains_to_correct_function(state, guessed_params_type):
-            ref_asl = state.get_asl().first()
-            if ref_asl.type != "ref":
-                new_ref_asl = CLRList("ref", [ref_asl], line_number=state.get_line_number(), data=NodeData())
-            else:
-                new_ref_asl = ref_asl
-            state.get_asl().update(type="call", lst=[new_ref_asl, state.get_asl()[-1]])
+            state.get_asl().update(type="call")
             return guessed_params_type
         else:
             # TODO: update type of params asl
@@ -50,7 +45,7 @@ class CallUnwrapper():
             node = Nodes.Ref(state.but_with_first_child())
             if node.is_print():
                 return BuiltinPrint.get_type_of_function(state)
-            instance = node.lookup_function_instance(type=guessed_params_type)
+            instance = node.resolve_function_instance(argument_type=guessed_params_type)
             return instance.type.is_function()
         type = cls._follow_chain(state, state.asl.first())
         if type is None:

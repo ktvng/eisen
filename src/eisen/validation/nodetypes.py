@@ -331,36 +331,27 @@ class Nodes():
         def is_single_assignment(self) -> bool:
             return first_child_is_token(self) or self.first_child().type != "tuple"
 
-    class Ref(AbstractNodeInterface):
-        asl_type = "ref"
-        examples = """
-        (ref name)
-        """
-
-        def is_simple(self) -> bool:
-            return isinstance(self.first_child(), CLRToken)
-
+    class RefLike(AbstractNodeInterface):
+        asl_types = ["ref", "::", "."]
+        
+        def is_print(self) -> bool:
+            return self.state.get_asl().type == "ref" and Nodes.Ref(self.state).is_print()
+        
         def get_name(self) -> str:
-            if self.is_simple():
-                return self.first_child().value
-            elif self.first_child().type == "::":
-                return Nodes.ModuleScope(self.state.but_with_first_child()).get_end_name()
-            elif self.first_child().type == ".":
-                return Nodes.Scope(self.state.but_with_first_child()).get_attribute_name()
+            type = self.state.get_asl().type
+            if type == "ref":
+                return Nodes.Ref(self.state).get_name()
+            elif type == "::":
+                return Nodes.ModuleScope(self.state).get_end_name()
+            elif type == ".":
+                return Nodes.Scope(self.state).get_attribute_name()
 
             raise Exception("unknown type")
 
-        def get_instance(self) -> EisenInstance | None:
-            return self.state.context.get_instance(self.get_name())
-
-        def lookup_function_instance(self, type: Type=None) -> EisenInstance | None:
-            type = self.state.get_returned_type().get_argument_type() if type is None else type
-            return self.state.lookup_function_instance(
-                name=self.get_name(), 
-                type=type)
-
-        def lookup_all_function_instances_by_name(self, name: str) -> list[EisenInstance]:
-            return self.state.get_enclosing_module().get_all_function_instances_with_name(name)
+        def get_module(self):
+            if self.state.get_asl().type == "::":
+                return Nodes.ModuleScope(self.state).get_module()
+            return self.state.get_enclosing_module() 
 
         def resolve_function_instance(self, argument_type: Type) -> EisenInstance:
             return LookupManager.resolve_function_reference_by_signature(
@@ -368,18 +359,41 @@ class Nodes():
                 argument_type=argument_type,
                 mod=self.get_module())
 
+        def resolve_instance(self) -> EisenInstance:
+            return LookupManager.resolve_reference(
+                name=self.get_name(),
+                context=self.state.get_context(),
+                mod=self.get_module()) 
+
+    class Ref(AbstractNodeInterface):
+        asl_type = "ref"
+        examples = """
+        (ref name)
+        """
+
+        def get_name(self) -> str:
+            return self.first_child().value
+
+        def resolve_function_instance(self, argument_type: Type) -> EisenInstance:
+            return LookupManager.resolve_function_reference_by_signature(
+                name=self.get_name(),
+                argument_type=argument_type,
+                mod=self.get_module())
+
+        def resolve_instance(self) -> EisenInstance:
+            return LookupManager.resolve_reference(
+                name=self.get_name(),
+                context=self.state.get_context(),
+                mod=self.state.get_enclosing_module())
+
         def get_module(self):
-            if not self.is_simple() and self.first_child().type == "::":
-                return Nodes.ModuleScope(self.state.but_with_first_child()).get_module()
             return self.state.get_enclosing_module()
 
         def get_type(self) -> Type:
             return self.state.get_returned_type()
 
         def is_print(self) -> bool:
-            if self.is_simple():
-                return self.first_child().value == "print"
-            return False
+            return self.first_child().value == "print"
 
     class Scope(AbstractNodeInterface):
         asl_type = "."
@@ -418,13 +432,13 @@ class Nodes():
             return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
         def get_function_name(self) -> str:
-            return Nodes.Ref(self.state.but_with_first_child()).get_name()
+            return Nodes.RefLike(self.state.but_with_first_child()).get_name()
 
         def get_function_return_restrictions(self) -> list[GeneralRestriction]:
             return self.get_function_return_type().get_restrictions()
 
         def is_print(self) -> str:
-            node = Nodes.Ref(self.state.but_with(asl=self.first_child()))
+            node = Nodes.RefLike(self.state.but_with(asl=self.first_child()))
             return node.is_print()
 
         def get_params_asl(self) -> str:

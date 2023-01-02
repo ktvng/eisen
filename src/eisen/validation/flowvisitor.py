@@ -160,19 +160,19 @@ class FlowVisitor(Visitor):
         # into (call (ref ...) (params ...))
         guessed_params_type = fn.apply_to_second_child_of(state)
         params_type = CallUnwrapper.process(state, guessed_params_type, fn)
-        ref_node = Nodes.RefLike(state.but_with_first_child())
-        if ref_node.is_print():
+        fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
+        node = Nodes.RefLike(state.but_with_first_child())
+        if node.is_print():
             return BuiltinPrint.get_type_of_function(state).get_return_type()
 
-        fn_instance = ref_node.resolve_function_instance(params_type)
-        ref_node.state.assign_instances(fn_instance)
-        # result = Validate.correct_argument_types(state, 
-        #     name=fn_node.get_name(), 
-        #     arg_type=fn_type.get_argument_type(),
-        #     given_type=params_type)
-
-        # if result.failed():
-        #     return result.get_failure_type()
+        fn_instance = node.resolve_function_instance(params_type)
+        node.assign_instance(fn_instance)
+        result = Validate.correct_argument_types(state, 
+            name=node.get_name(), 
+            arg_type=fn_instance.type.get_argument_type(),
+            given_type=params_type)
+        if result.failed():
+            return result.get_failure_type()
 
         return fn_instance.type.get_return_type()
 

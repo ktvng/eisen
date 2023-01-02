@@ -8,3 +8,6 @@ class EisenInstance(Instance):
         self.is_constructor = is_constructor
         self.is_var = False
         self.type: Type = type
+
+class EisenFunctionInstance(EisenInstance):
+    pass

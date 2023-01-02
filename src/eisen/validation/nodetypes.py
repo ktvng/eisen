@@ -4,7 +4,7 @@ from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._type import Type, Module
 
 from eisen.common import implemented_primitive_types
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import EisenInstance, EisenFunctionInstance
 from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction,
     PrimitiveRestriction)
@@ -353,7 +353,7 @@ class Nodes():
                 return Nodes.ModuleScope(self.state).get_module()
             return self.state.get_enclosing_module() 
 
-        def resolve_function_instance(self, argument_type: Type) -> EisenInstance:
+        def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
             return LookupManager.resolve_function_reference_by_signature(
                 name=self.get_name(),
                 argument_type=argument_type,
@@ -365,6 +365,11 @@ class Nodes():
                 context=self.state.get_context(),
                 mod=self.get_module()) 
 
+        def assign_instance(self, instance: EisenInstance):
+            type = self.state.get_asl().type
+            if  type == "ref" or type == "::":
+                self.state.assign_instances(instance)
+
     class Ref(AbstractNodeInterface):
         asl_type = "ref"
         examples = """
@@ -374,7 +379,7 @@ class Nodes():
         def get_name(self) -> str:
             return self.first_child().value
 
-        def resolve_function_instance(self, argument_type: Type) -> EisenInstance:
+        def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
             return LookupManager.resolve_function_reference_by_signature(
                 name=self.get_name(),
                 argument_type=argument_type,
@@ -384,7 +389,8 @@ class Nodes():
             return LookupManager.resolve_reference(
                 name=self.get_name(),
                 context=self.state.get_context(),
-                mod=self.state.get_enclosing_module())
+                mod=self.state.get_enclosing_module(),
+                argument_type=self.state.get_arg_type())
 
         def get_module(self):
             return self.state.get_enclosing_module()
@@ -428,7 +434,6 @@ class Nodes():
             return self.state.get_node_data().returned_type
 
         def get_function_argument_type(self) -> Type:
-            return self.state.but_with_first_child().get_instances()[0].type.get_argument_type()
             return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
         def get_function_name(self) -> str:

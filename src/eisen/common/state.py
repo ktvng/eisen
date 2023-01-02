@@ -44,6 +44,7 @@ class State(AbstractParams):
             mod: Module,
             global_mod: Module,
             struct_name: str,
+            arg_type: Type,
             exceptions: list[AbstractException],
             is_ptr: bool,
             inside_constructor: bool,
@@ -61,6 +62,7 @@ class State(AbstractParams):
         self.context = context
         self.mod = mod
         self.struct_name = struct_name
+        self.arg_type = arg_type
         self.global_mod = global_mod
         self.exceptions = exceptions
         self.is_ptr = is_ptr
@@ -80,6 +82,7 @@ class State(AbstractParams):
             mod: Module = None,
             global_mod: Module = None,
             struct_name: str = None,
+            arg_type: Type = None,
             exceptions: list[AbstractException] = None,
             is_ptr: bool = None,
             inside_constructor: bool = None,
@@ -90,6 +93,7 @@ class State(AbstractParams):
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
+            arg_type=arg_type,
             objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
 
             # these cannot be changed by input params 
@@ -165,6 +169,7 @@ Token: {self.asl}
             mod=global_mod,
             global_mod=global_mod,
             struct_name=None,
+            arg_type=None,
             exceptions=[],
             is_ptr=False,
             inside_constructor=False,
@@ -204,6 +209,9 @@ Token: {self.asl}
         """canonical way to get instances stored in this node"""
         return self.get_node_data().instances       
 
+    def get_arg_type(self) -> Type | None:
+        return self.arg_type
+
     def get_bool_type(self) -> Type:
         return TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction())
 
@@ -220,9 +228,8 @@ Token: {self.asl}
 
     def get_parent_context(self) -> Context | Module:
         """canonical way to access the enclosing context"""
-        # if no current context, use the module as the parent context
         if self.context is None:
-            return self.get_enclosing_module()
+            return None
         return self.context
 
     def get_instancestate(self, name: str) -> EisenInstanceState:

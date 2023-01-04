@@ -23,11 +23,11 @@ class NilCheck(Visitor):
             return NilableStatus("nil", True)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
-    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "if", "cond", "while", "prod_type")
+    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "if", "cond", "while", "prod_type", "is")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("def", "create")
+    @Visitor.for_asls("def", "create", "is_fn")
     def fns_(fn, state: State):
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
@@ -100,3 +100,7 @@ class NilCheck(Visitor):
     def interface_(fn, state: State):
         # nothing to do
         return
+
+    @Visitor.for_asls("variant")
+    def variant_(fn, state: State):
+        fn.apply(state.but_with(asl=Nodes.Variant(state).get_is_asl()))

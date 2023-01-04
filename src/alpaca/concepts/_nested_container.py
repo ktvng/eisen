@@ -81,14 +81,6 @@ class NestedContainer():
             return local_matching_instances
         return local_matching_instances + self.parent.get_all_function_instances_with_name(name)
 
-         
-    def add_type(self, type: Type):
-        if type.name:
-            self.add_obj("type", type.get_uuid_str(), type)
-
-    def get_type(self, name: str) -> Type:
-        return self.get_obj("type", name)
-
     def add_instancestate(self, instance_state: InstanceState) -> None:
         self.add_obj("instance_state", instance_state.name, instance_state)
 

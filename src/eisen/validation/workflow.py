@@ -7,7 +7,7 @@ from eisen.validation.flowvisitor import FlowVisitor
 from eisen.validation.functionvisitor import FunctionVisitor
 from eisen.validation.permissionsvisitor import PermissionsVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
-from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
+from eisen.validation.finalizationvisitor import FinalizationVisitor
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
@@ -38,8 +38,7 @@ class Workflow():
         #
         # we must finalize interfaces first because structs depend on interfaces
         # as they implement interfaces
-        InterfaceFinalizationVisitor,
-        StructFinalizationVisitor,
+        FinalizationVisitor,
 
         # adds types for and constructs the functions. this also normalizes the
         # (def ...) and (create ...) asls so they have the same child structure,

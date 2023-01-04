@@ -62,7 +62,8 @@ class LookupManager():
 
     @classmethod
     def resolve_function_reference_type_by_signature(cls, name: str, argument_type: Type, mod: Module) -> Type:
-        return mod.get_function_instance(name, argument_type).type
+        function_instance = mod.get_function_instance(name, argument_type)
+        return function_instance.type if function_instance is not None else None
 
     @classmethod
     def resolve_reference_type(cls, name: str, context: Context, mod: Module, argument_type: Type = None) -> Type:

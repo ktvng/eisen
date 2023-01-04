@@ -22,8 +22,8 @@ class TypeParser(Visitor):
         (var_type int)
         """
         node = Nodes.TypeLike(state)
-        restriction = node.get_restriction()
         found_type = state.get_defined_type(node.get_name())
+        restriction = node.get_restriction(found_type)
         if found_type:
             return found_type.with_restriction(restriction)
         raise Exception(f"unknown type! {node.get_name()}")
@@ -73,7 +73,7 @@ class TypeParser(Visitor):
             return fn.apply(state.but_with(asl=state.first_child()))
         return state.get_void_type().with_restriction(LetRestriction())
 
-    @Visitor.for_asls("def", "create", ":=")
+    @Visitor.for_asls("def", "create", ":=", "is_fn")
     def def_(fn, state: State) -> Type:
         """
         (def name (args ...) (rets ...) (seq ...))

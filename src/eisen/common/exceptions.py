@@ -18,6 +18,10 @@ class Exceptions():
     class UndefinedFunction(AbstractException):
         type = "UndefinedFunction"
         description = "function is not defined"
+
+    class UnderfinedType(AbstractException):
+        type = "UndefiedType"
+        description = "type is not defined"
     
     class RedefinedIdentifier(AbstractException):
         type = "RedefinedIdentifier"

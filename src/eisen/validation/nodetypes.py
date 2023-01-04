@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRToken, CLRList
-from alpaca.concepts._type import Type, Module
+from alpaca.concepts._type import Type
+from alpaca.concepts._module import Module
+from alpaca.concepts._typefactory import TypeFactory
 
 from eisen.common import implemented_primitive_types
 from eisen.common.eiseninstance import EisenInstance, EisenFunctionInstance
@@ -145,6 +147,32 @@ class Nodes():
             child_asls = self.get_child_attribute_asls()
             return [asl.first().value for asl in child_asls]
 
+    class Variant(AbstractNodeInterface):
+        asl_type = "variant"
+        examples = """
+        (variant name
+            (is ...)
+            (@allow ...)
+            (@deny ...))
+        """
+        _get_name = get_name_from_first_child
+        get_variant_name = _get_name
+        get_this_type = get_type_for_node_that_defines_a_type
+
+        def get_token_defining_parent(self) -> CLRToken:
+            return self.state.second_child()
+
+        def get_parent_type(self) -> Type:
+            parent_type_name = self.get_token_defining_parent().value
+            return self.state.get_defined_type(parent_type_name)
+
+        def get_is_asl(self) -> CLRList:
+            for child in self.state.get_child_asls():
+                if child.type == "is_fn":
+                    return child
+            raise Exception(f"expected an 'is_fn' asl for variant: {self.get_variant_name()}")
+
+
     class Def(AbstractNodeInterface):
         asl_type = "def"
         examples = """
@@ -214,6 +242,22 @@ class Nodes():
             must be passed into the State as a parameter"""
             return self.state.get_struct_name()
 
+    class IsFn(AbstractNodeInterface):
+        asl_type = "is_fn"
+        examples = """
+        1. wild
+            (is 
+                (args ...)
+                (rets ...)
+                (seq ...))
+        """
+
+        def normalize(self, variant_name: str):
+            self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value="is_" + variant_name))
+
+        def get_name(self) -> str:
+            return "is_" + self.state.get_variant_name()
+
 
     class CommonFunction(AbstractNodeInterface):
         asl_types = ["def", "create", ":="]
@@ -243,6 +287,33 @@ class Nodes():
                     asl=child,
                     context=fn_context,
                     inside_constructor=will_enter_constructor))
+
+    class Is(AbstractNodeInterface):
+        asl_type = "is"
+        examples = """
+        (is (expr ...) TAG)
+        """
+
+        def get_type_name(self) -> str:
+            return self.second_child().value
+
+        def get_considered_type(self) -> Type:
+            return self.state.get_defined_type(self.get_type_name())
+
+        def _get_name_of_is_function(self) -> str:
+            return "is_" + self.get_type_name()
+
+        def _get_type_of_is_function(self) -> Type:
+            parent_type = self.get_considered_type().parent_type
+            # TODO: function types should not need modules
+            return TypeFactory.produce_function_type(parent_type, self.state.get_bool_type(), mod=None)
+
+        def get_is_function_instance(self) -> EisenFunctionInstance:
+            LookupManager.resolve_function_reference_type_by_signature(
+                name=self._get_name_of_is_function(),
+                type=self._get_type_of_is_function(),
+                mod=self.state.get_enclosing_module())
+
     
     class LetVarVal(AbstractNodeInterface):
         asl_types = ["let", "var", "val", "var?"]
@@ -412,7 +483,7 @@ class Nodes():
                 argument_type=argument_type,
                 mod=self.get_module())
 
-        def resolve_reference_type(self) -> EisenInstance:
+        def resolve_reference_type(self) -> Type:
             return LookupManager.resolve_reference_type(
                 name=self.get_name(),
                 context=self.state.get_context(),
@@ -570,9 +641,12 @@ class Nodes():
         """
         get_name = get_name_from_first_child
 
-        def get_restriction(self) -> GeneralRestriction:
+        def get_restriction(self, type: Type) -> GeneralRestriction:
             # var takes precedence over primitive
             if self.state.get_asl().type == "var_type":
+                return VarRestriction()
+
+            if type.classification == Type.classifications.variant:
                 return VarRestriction()
 
             if self.state.get_asl().first().value in implemented_primitive_types:

@@ -6,14 +6,14 @@ from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 
-class InterfaceFinalizationVisitor(Visitor):
-    """this finalizes a proto_interface into an interface type.
+class FinalizationVisitor(Visitor):
+    """this finalizes proto types into the fully built-out type.
     we need to separate declaration and definition because types may refer back to
     themselves, or to other types which have yet to be defined, but exist in the 
     same module.
     """
     def apply(self, state: State) -> None:
-        return self._route(state.get_asl(), state)
+        self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):
@@ -32,25 +32,6 @@ class InterfaceFinalizationVisitor(Visitor):
             component_names=node.get_child_attribute_names(),
             inherits=[])
 
-    @Visitor.for_default
-    def default_(fn, state: State) -> None:
-        # nothing to do by default
-        return
-
-
-class StructFinalizationVisitor(Visitor):
-    """finalization but for structs. see InterfaceFinalizationVisitor for details"""
-    def apply(self, state: State) -> None:
-        return self._route(state.get_asl(), state)
-
-    @Visitor.for_asls("start")
-    def start_(fn, state: State):
-        state.apply_fn_to_all_children(fn)
-
-    @Visitor.for_asls("mod")
-    def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
- 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> None:
         node = Nodes.Struct(state)
@@ -66,8 +47,13 @@ class StructFinalizationVisitor(Visitor):
         Validate.embeddings_dont_conflict(state, this_struct_type)
         Validate.all_implementations_are_complete(state, this_struct_type)
 
+    @Visitor.for_asls("variant")
+    def variant_(fn, state: State) -> None:
+        node = Nodes.Variant(state)
+        this_variant_type = node.get_this_type()
+        this_variant_type.finalize_variant(parent_type=node.get_parent_type())
+
     @Visitor.for_default
     def default_(fn, state: State) -> None:
         # nothing to do by default
         return
-    

@@ -46,6 +46,13 @@ class DeclarationVisitor(Visitor):
             name=Nodes.Interface(state).get_interface_name(),
             mod=state.get_enclosing_module())
 
+    @Visitor.for_asls("variant")
+    @adds_type_to_module
+    def variant_(fn, state: State) -> Type:
+        return TypeFactory.produce_proto_variant_type(
+            name=Nodes.Variant(state).get_variant_name(),
+            mod=state.get_enclosing_module())
+
     @Visitor.for_default
     def default_(fn, state: State):
         # nothing to do by default

@@ -200,6 +200,9 @@ Token: {self.asl}
         """canonical way to access the name of the struct, if applicable"""
         return self.struct_name
 
+    def get_variant_name(self) -> str:
+        return self.struct_name
+
     def get_returned_type(self) -> Type:
         """canonical way to access the type returned from this node"""
         return self.get_node_data().returned_type

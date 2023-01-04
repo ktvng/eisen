@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList
+from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.nodedata import NodeData
 from eisen.common.state import State
 from eisen.common.restriction import LetRestriction, VarRestriction, PrimitiveRestriction, NullableVarRestriction
 from eisen.validation.nodetypes import Nodes
@@ -143,6 +143,10 @@ class FlowVisitor(Visitor):
 
         # TODO: move this logic to the instance visitor
         fn_instance = node.resolve_function_instance(params_type)
+        result = Validate.instance_exists(state, node.get_name(), fn_instance)
+        if result.failed():
+            return result.get_failure_type()
+            
         node.assign_instance(fn_instance)
         result = Validate.correct_argument_types(state, 
             name=node.get_name(), 
@@ -159,6 +163,12 @@ class FlowVisitor(Visitor):
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
+
+    @Visitor.for_asls("variant")
+    @returns_void_type
+    def variant_(fn, state: State) -> Type:
+        node = Nodes.Variant(state)
+        fn.apply(state.but_with(asl=node.get_is_asl()))
 
     @Visitor.for_asls("interface", "impls")
     @returns_void_type
@@ -180,7 +190,31 @@ class FlowVisitor(Visitor):
             return result.get_failure_type()
         return right_type
 
-    @Visitor.for_asls("def", "create", ":=")
+    @Visitor.for_asls("is")
+    def is_(fn, state: State) -> Type:
+        node = Nodes.Is(state)
+
+        if node.get_type_name() != "nil":
+            params_type = node.get_considered_type().parent_type
+            RestructureIsStatement.run(state)
+            # TODO: merge this logic with raw_call
+            fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
+            fn.apply(state.but_with_second_child())
+            node = Nodes.RefLike(state.but_with_first_child())
+
+            # TODO: move this logic to the instance visitor
+            fn_instance = node.resolve_function_instance(params_type)
+            node.assign_instance(fn_instance)
+            result = Validate.correct_argument_types(state, 
+                name=node.get_name(), 
+                arg_type=fn_instance.type.get_argument_type(),
+                given_type=params_type)
+            if result.failed():
+                return result.get_failure_type()
+
+        return state.get_bool_type()
+
+    @Visitor.for_asls("def", "create", ":=", "is_fn")
     @returns_void_type
     def fn(fn, state: State) -> Type:
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
@@ -226,7 +260,12 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
-        type = state.get_defined_type(name=state.first_child().value)
+        name = state.first_child().value
+        type = state.get_defined_type(name)
+        result = Validate.type_exists(state, name, type)
+        if result.failed():
+            return result.get_failure_type()
+
         if state.get_asl().type == "type":
             if state.first_child().value in implemented_primitive_types:
                 return type.with_restriction(PrimitiveRestriction())
@@ -281,3 +320,14 @@ class FlowVisitor(Visitor):
         if not state.get_asl():
             return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
+
+
+class RestructureIsStatement():
+    @classmethod
+    def run(cls, state: State):
+        node = Nodes.Is(state)
+        is_asl = state.get_asl()
+        new_token = CLRToken(type_chain=["TAG"], value="is_" + node.get_type_name())
+        new_ref = CLRList(type="ref", lst=[new_token], line_number=is_asl.line_number, data=NodeData())
+        new_params = CLRList(type="params", lst=[is_asl.first()], line_number=is_asl.line_number, data=NodeData())
+        is_asl.update(type="call", lst=[new_ref, new_params])

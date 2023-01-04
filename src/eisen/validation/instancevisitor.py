@@ -94,7 +94,7 @@ class InstanceVisitor(Visitor):
             context=state.create_block_context("while"))) 
         return []
 
-    @Visitor.for_asls("def", "create", ":=")
+    @Visitor.for_asls("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
         return []

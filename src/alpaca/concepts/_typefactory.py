@@ -14,7 +14,8 @@ class TypeFactory():
             component_names=[], 
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)
 
     @classmethod
     def produce_tuple_type(cls, components: list[Type]) -> Type:
@@ -26,8 +27,10 @@ class TypeFactory():
             component_names=[], 
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)
 
+    # TODO: function types should not need modules, unless they are named
     @classmethod
     def produce_function_type(cls, arg: Type, ret: Type, mod: Module, name: str = "") -> Type:
         return Type(
@@ -38,7 +41,8 @@ class TypeFactory():
             component_names=["arg", "ret"], 
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)
 
     @classmethod
     def produce_proto_struct_type(cls, name: str, mod: Module) -> Type:
@@ -50,7 +54,8 @@ class TypeFactory():
             component_names=[], 
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)
 
     @classmethod
     def produce_proto_interface_type(cls, name: str, mod: Module) -> Type:
@@ -62,7 +67,21 @@ class TypeFactory():
             component_names=[], 
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)
+
+    @classmethod
+    def produce_proto_variant_type(cls, name: str, mod: Module) -> Type:
+        return Type(
+            classification=Type.classifications.proto_variant,
+            name=name,
+            mod=mod,
+            components=[],
+            component_names=[],
+            inherits=[],
+            embeds=[],
+            restriction=None,
+            parent_type=None)
 
     @classmethod
     def produce_nil_type(cls) -> Type:
@@ -74,4 +93,5 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
-            restriction=None)
+            restriction=None,
+            parent_type=None)

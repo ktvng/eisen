@@ -39,20 +39,20 @@ class FunctionVisitor(Visitor):
                 asl=node.get_create_asl(),
                 struct_name=node.get_struct_name()))
 
-    @Visitor.for_asls("variety")
-    def variety_(fn, state: State) -> None:
-        node = Nodes.Variety(state)
+    @Visitor.for_asls("variant")
+    def variant_(fn, state: State) -> None:
+        node = Nodes.Variant(state)
         fn.apply(state.but_with(
-            asl=node.get_assert_asl(),
-            struct_name=node.get_struct_name()))
+            asl=node.get_is_asl(),
+            struct_name=node.get_variant_name()))
 
     @Visitor.for_asls("def")
     def def_(fn, state: State):
         instance = EisenInstance(
-                name=Nodes.Def(state).get_function_name(),
-                type=TypeParser().apply(state),
-                context=None,
-                asl=state.get_asl())
+            name=Nodes.Def(state).get_function_name(),
+            type=TypeParser().apply(state),
+            context=state.get_enclosing_module(),
+            asl=state.get_asl())
         state.add_function_instance_to_module(instance)
 
     @Visitor.for_asls("create")
@@ -62,10 +62,22 @@ class FunctionVisitor(Visitor):
         
         # the name of the constructor is the same as the struct
         instance = EisenInstance(
-                name=node.get_name(),
-                type=TypeParser().apply(state),
-                context=None,
-                asl=state.get_asl(),
-                is_constructor=True)
+            name=node.get_name(),
+            type=TypeParser().apply(state),
+            context=state.get_enclosing_module(),
+            asl=state.get_asl(),
+            is_constructor=True)
+        state.add_function_instance_to_module(instance)
+
+    @Visitor.for_asls("is_fn")
+    def is_(fn, state: State):
+        node = Nodes.IsFn(state)
+        node.normalize(variant_name=state.get_variant_name())
+
+        instance = EisenInstance(
+            name=node.get_name(),
+            type=TypeParser().apply(state),
+            context=state.get_enclosing_module(),
+            asl=state.get_asl())
         state.add_function_instance_to_module(instance)
         

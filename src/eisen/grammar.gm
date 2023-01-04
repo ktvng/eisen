@@ -513,7 +513,7 @@ STRUCTURE
         |   VARIANT_ELEM
 
     VARIANT_ELEM ->
-        @action filter_build is
+        @action filter_build is_fn
         |   is ARGS RETS SEQ
         @action filter_build deny
         |   @deny ( TAGS ) ENDLS

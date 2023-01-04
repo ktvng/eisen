@@ -72,7 +72,6 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success()
 
-
     @classmethod
     def correct_argument_types(cls, state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (arg_type, given_type)]):
@@ -103,6 +102,15 @@ class Validate:
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state) 
+        return Validate._success()
+
+    @classmethod
+    def type_exists(cls, state: State, name: str, type: Type) -> ValidationResult:
+        if type is None:
+            state.report_exception(Exceptions.UnderfinedType(
+                msg=f"'{name}' is not defined",
+                line_number=state.get_line_number()))
+            return Validate._abort_signal(state)
         return Validate._success()
 
 
@@ -163,6 +171,9 @@ class Validate:
             return Validate._abort_signal(state) 
 
         if type == cast_into_type:
+            return Validate._success()
+
+        if type.parent_type == cast_into_type or cast_into_type.parent_type == type:
             return Validate._success()
 
         if cast_into_type not in type.inherits:

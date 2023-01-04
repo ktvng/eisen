@@ -80,7 +80,7 @@ class PermissionsVisitor(Visitor):
         Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
         return []
 
-    @Visitor.for_asls("def", "create")
+    @Visitor.for_asls("def", "create", "is_fn")
     def defs_(fn, state: State) -> list[EisenInstanceState]:
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
         return []
@@ -101,6 +101,12 @@ class PermissionsVisitor(Visitor):
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
+        return []
+
+    @Visitor.for_asls("variant")
+    def variant_(fn, state: State) -> list[EisenInstance]:
+        node = Nodes.Variant(state)
+        fn.apply(state.but_with(asl=node.get_is_asl()))
         return []
 
     @Visitor.for_asls("if")
@@ -193,6 +199,7 @@ class PermissionsVisitor(Visitor):
 
         argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc) 
             for tc in node.get_function_argument_type().unpack_into_parts()]
+
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_instancestates, param_instancestates):
             Validate.parameter_assignment_restrictions_met(state, left, right)

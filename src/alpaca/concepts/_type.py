@@ -14,8 +14,10 @@ class Type():
         function = "function"
         struct = "struct"
         interface = "interface"
+        variant = "variant"
         proto_struct = "proto_struct"
         proto_interface = "proto_interface"
+        proto_variant = "proto_variant"
 
     def __init__(
             self,
@@ -26,7 +28,8 @@ class Type():
             component_names: list[str],
             inherits: list[Type],
             embeds: list[Type],
-            restriction: AbstractRestriction):
+            restriction: AbstractRestriction,
+            parent_type: Type):
 
         """a type instance should only be created via the TypeclassFactory"""
         self.classification = classification 
@@ -37,6 +40,7 @@ class Type():
         self.inherits = inherits
         self.embeds = embeds
         self.restriction = restriction 
+        self.parent_type = parent_type
 
     def finalize(self, 
             components: list[Type], 
@@ -56,6 +60,13 @@ class Type():
         self.component_names = component_names
         self.inherits = inherits
         self.embeds = embeds
+
+    def finalize_variant(self, parent_type: Type):
+        self.classification = Type.classifications.variant
+        self.parent_type = parent_type
+        self.inherits = []
+        self.embeds = []
+        self.components = []
 
     def _get_module_prefix_for_uuid(self) -> str:
         mod_str = self.mod.get_full_name() if self.mod else ""
@@ -143,11 +154,16 @@ class Type():
             for type in self.embeds:
                 if type.has_member_attribute_with_name(name):
                     return True
-        return False
-            
 
+        if self.classification == Type.classifications.variant:
+            return self.parent_type.has_member_attribute_with_name(name)
+
+        return False
 
     def get_member_attribute_by_name(self, name: str) -> Type:
+        if self.classification == Type.classifications.variant:
+            return self.parent_type.get_member_attribute_by_name(name)
+
         if self.classification != Type.classifications.struct and self.classification != Type.classifications.interface:
             raise Exception(f"Can only get_member_attribute_by_name on struct constructions, got {self}")
 
@@ -204,7 +220,10 @@ class Type():
             return self.get_return_type().unpack_into_parts()
         if self.classification == Type.classifications.tuple:
             return self.components
-        
+        if self.classification == Type.classifications.variant:
+            return [self]
+
+        raise Exception(f"unhandled classification {self.classification}")
 
     def get_restrictions(self) -> list[AbstractRestriction]:
         if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 
@@ -214,6 +233,8 @@ class Type():
             return self.get_return_type().get_restrictions()
         if self.classification == Type.classifications.tuple:
             return [elem.restriction for elem in self.components]
+        if self.classification == Type.classifications.variant:
+            return [self.restriction]
         
         raise Exception(f"unhandled classification {self.classification}")
 
@@ -226,4 +247,5 @@ class Type():
             component_names=self.component_names,
             inherits=self.inherits,
             embeds=self.embeds,
-            restriction=restriction)
+            restriction=restriction,
+            parent_type=self.parent_type)

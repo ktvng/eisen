@@ -21,7 +21,7 @@ def first_child_is_token(self) -> bool:
 
 def get_type_for_node_that_defines_a_type(self) ->Type:
     """returns the type for either a struct/interface node which defines a type."""
-    return self.state.get_enclosing_module().get_type(self._get_name())
+    return self.state.get_enclosing_module().get_defined_type(self._get_name())
 
 class Nodes():
     class AbstractNodeInterface():
@@ -83,7 +83,7 @@ class Nodes():
             interfaces = []
             if self.implements_interfaces():
                 for child in self.get_impls_asl():
-                    interfaces.append(self.state.get_enclosing_module().get_type(child.value))
+                    interfaces.append(self.state.get_defined_type(child.value))
                     # TODO: currently we only allow the interface to be looked up in the same
                     # module as the struct. In general, we need to allow interfaces from arbitrary
                     # modules.
@@ -97,8 +97,8 @@ class Nodes():
             # module as the struct. In general, we need to allow interfaces from arbitrary
             # modules.
             if isinstance(embed_asl.first(), CLRList):
-                return [self.state.get_enclosing_module().get_type(child.value) for child in embed_asl.first()]
-            return [self.state.get_enclosing_module().get_type(embed_asl.first().value)]
+                return [self.state.get_defined_type(child.value) for child in embed_asl.first()]
+            return [self.state.get_defined_type(embed_asl.first().value)]
 
         def get_embedded_structs(self) -> list[Type]:
             embedded_structs: list[Type] = []

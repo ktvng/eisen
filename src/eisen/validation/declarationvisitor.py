@@ -21,7 +21,7 @@ class DeclarationVisitor(Visitor):
         the enclosing module"""
         def decorator(fn, state: State) -> None:
             result: Type = f(fn, state)
-            state.get_enclosing_module().add_type(result)
+            state.add_defined_type(result)
         return decorator
 
     @Visitor.for_asls("start")

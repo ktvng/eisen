@@ -57,22 +57,22 @@ class NilCheck(Visitor):
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
         node = Nodes.Ref(state)
-        return NilableStatus(node.get_name(), state.context.get_nilstatate(node.get_name()))
+        return NilableStatus(node.get_name(), state.get_nilstate(node.get_name()))
 
     @Visitor.for_asls("var?")
     def nullable_var_(fn, state: State):
         for name in Nodes.Let(state).get_names():
-            state.context.add_nilstate(name, True)
+            state.add_nilstate(name, True)
 
     @Visitor.for_asls("let", "var", "val")
     def let_(fn, state: State):
         for name in Nodes.Let(state).get_names():
-            state.context.add_nilstate(name, False)
+            state.add_nilstate(name, False)
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
         for name in Nodes.IletIvar(state).get_names():
-            state.context.add_nilstate(name, False)
+            state.add_nilstate(name, False)
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State):
@@ -83,9 +83,9 @@ class NilCheck(Visitor):
     def colon_(fn, state: State):
         for name in Nodes.Colon(state).get_names():
             if Nodes.Colon(state).get_type_asl().type == "var_type?":
-                state.context.add_nilstate(name, True)
+                state.add_nilstate(name, True)
             else:
-                state.context.add_nilstate(name, False)
+                state.add_nilstate(name, False)
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State):

@@ -23,7 +23,7 @@ class TypeParser(Visitor):
         """
         node = Nodes.TypeLike(state)
         restriction = node.get_restriction()
-        found_type = state.get_enclosing_module().get_type(node.get_name())
+        found_type = state.get_defined_type(node.get_name())
         if found_type:
             return found_type.with_restriction(restriction)
         raise Exception(f"unknown type! {node.get_name()}")

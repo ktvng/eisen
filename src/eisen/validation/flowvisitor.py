@@ -257,7 +257,7 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
-        type = state.get_enclosing_module().get_type(name=state.first_child().value)
+        type = state.get_defined_type(name=state.first_child().value)
         if state.get_asl().type == "type":
             if state.first_child().value in implemented_primitive_types:
                 return type.with_restriction(PrimitiveRestriction())

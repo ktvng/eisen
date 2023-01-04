@@ -8,6 +8,7 @@ from alpaca.clr import CLRList
 from eisen.common.nodedata import NodeData
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
+from eisen.validation.lookupmanager import LookupManager
 
 if TYPE_CHECKING:
     from eisen.interpretation.obj import Obj
@@ -155,11 +156,11 @@ Token: {self.asl}
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> State:
         global_mod = Module("global")
-        global_mod.add_type(TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
-        global_mod.add_type(TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
-        global_mod.add_type(TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))
-        global_mod.add_type(TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction()))
-        global_mod.add_type(TypeFactory.produce_novel_type("void"))
+        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
+        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
+        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))
+        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction()))
+        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
 
         return State(
             config=config, 
@@ -189,9 +190,7 @@ Token: {self.asl}
 
     def get_context(self) -> Context | Module:
         """canonical way to access the current context"""
-        if self.context is not None:
-            return self.context
-        return self.mod
+        return self.context
 
     def get_enclosing_module(self) -> Module:
         """canonical way to access the module enclosing this state"""
@@ -208,6 +207,15 @@ Token: {self.asl}
     def get_instances(self) -> list[EisenInstance]:
         """canonical way to get instances stored in this node"""
         return self.get_node_data().instances       
+
+    def get_nilstate(self, name) -> bool:
+        return self.get_context().get_nilstate(name)
+
+    def add_nilstate(self, name: str, nilstate: bool):
+        self.get_context().add_nilstate(name, nilstate)
+
+    def get_defined_type(self, name: str) -> Type:
+        return LookupManager.resolve_defined_type(name, self.get_enclosing_module())
 
     def get_arg_type(self) -> Type | None:
         return self.arg_type
@@ -226,12 +234,6 @@ Token: {self.asl}
         """canonical way to get all children of the current CLRList"""
         return self.asl._list
 
-    def get_parent_context(self) -> Context | Module:
-        """canonical way to access the enclosing context"""
-        if self.context is None:
-            return None
-        return self.context
-
     def get_instancestate(self, name: str) -> EisenInstanceState:
         """canonical way to access a InstanceState by name"""
         return self.context.get_instancestate(name)
@@ -242,7 +244,6 @@ Token: {self.asl}
 
     def get_restriction(self) -> GeneralRestriction:
         return self.get_returned_type().get_restrictions()[0]
-
 
     def lookup_function_instance(self, name: str, type: Type) -> EisenInstance | None:
         """canonical way to lookup a instance for a defined function"""
@@ -272,6 +273,9 @@ Token: {self.asl}
     def third_child(self) -> CLRList:
         return self.asl.third()
 
+    def add_defined_type(self, type: Type):
+        self.get_enclosing_module().add_defined_type(type.name, type)
+
     def add_instancestate(self, instancestate: EisenInstanceState):
         self.context.add_instancestate(instancestate)
 
@@ -291,7 +295,7 @@ Token: {self.asl}
     def create_block_context(self, name: str) -> Context:
         return Context(
             name=name,
-            parent=self.get_parent_context())
+            parent=self.get_context())
 
     def is_inside_constructor(self) -> bool:
         return self.inside_constructor

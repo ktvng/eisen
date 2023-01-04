@@ -15,16 +15,19 @@ class CFGNormalizer():
         self.connectors = {} 
         self.rules = []
 
-        self.starting_rule_name = "START"
-
     def run(self, cfg : CFG) -> CFG:
+        # reset state
+        self.rules_for_literals = {}
+        self.n_rules_for_literals = 0
+        self.n_connector_rules = 0
+        self.connectors = {}
+        self.rules = []
+
         self.original_cfg = cfg
         for rule in cfg.rules:
             self._expand_rule(rule)
 
         new_cfg = CFG(self.rules, self.original_cfg.terminals)
-        # new_cfg.set_start(self.starting_rule_name)
-
         return new_cfg
 
     @classmethod 

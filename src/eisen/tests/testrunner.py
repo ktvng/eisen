@@ -11,9 +11,15 @@ from alpaca.concepts import AbstractException
 
 from eisen.parsing.callback import EisenCallback
 from eisen.parsing.builder import EisenBuilder
+from eisen.parsing.customparser2 import SuperParser
 from eisen.common.state import State
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
+
+class StaticParser():
+    grammarfile = "./src/eisen/grammar.gm"
+    config = alpaca.config.parser.run(filename=grammarfile)
+    parser = SuperParser(config)
 
 # TODO: refactor this
 class Test():
@@ -39,9 +45,12 @@ class Test():
         return self.parse_asl()
 
     def parse_asl(self): 
-        config = alpaca.config.parser.run(filename=Test.grammarfile)
-        tokens = alpaca.lexer.run(text=self.code, config=config, callback=EisenCallback)
-        return alpaca.parser.run(config, tokens, builder=EisenBuilder())
+        # config = alpaca.config.parser.run(filename=Test.grammarfile)
+        tokens = alpaca.lexer.run(text=self.code, config=StaticParser.config, callback=EisenCallback)
+        # asl = alpaca.parser.run(config, tokens, builder=EisenBuilder())
+        # asl = SuperParser(config).parse(tokens)
+        asl = StaticParser.parser.parse(tokens)
+        return asl
 
     @classmethod
     def _make_exception_error_msg(cls, e, state: State):

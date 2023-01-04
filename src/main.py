@@ -18,6 +18,7 @@ def run_c(filename: str):
     raise Exception("deprecated")
 
 def run_eisen(filename: str):
+    global_start = time.perf_counter_ns()
     perf = []
     # PARSE EISEN CONFIG
     config = run_and_measure("config parsed",
@@ -33,20 +34,28 @@ def run_eisen(filename: str):
         alpaca.lexer.run,
         text=txt, config=config, callback=eisen.EisenCallback)
 
-    # PARSE TO AST
-    asl = run_and_measure("parser",
-        alpaca.parser.run,
-        config=config, tokens=tokens, builder=eisen.EisenBuilder(), algo="cyk")
+    start = time.perf_counter_ns()
+    parser = eisen.SuperParser(config)
+    asl = parser.parse(tokens)
+    end = time.perf_counter_ns()
+    print(f"parsed in {(end-start)/1000000}")
+
+
+    # # PARSE TO AST
+    # asl = run_and_measure("parser",
+    #     alpaca.parser.run,
+    #     config=config, tokens=tokens, builder=eisen.EisenBuilder(), algo="cyk")
 
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
-    exit()
     print("############## EISEN ###############")
     state = eisen.State.create_initial(config, asl, txt)
     eisen.Workflow.steps.append(eisen.AstInterpreter)
     eisen.Workflow.execute_with_benchmarks(state)
 
+    global_end = time.perf_counter_ns()
+    print(f"elapsed in {(global_end-global_start)/1000000}")
     exit()
 
     asl = eisen.Flattener().run(params)

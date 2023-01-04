@@ -56,18 +56,6 @@ class FlowVisitor(Visitor):
             return state.get_void_type()
         return decorator
 
-    @classmethod
-    def add_instance_to_context(cls, name: str, type: Type, state: State):
-        """add a new instance to the current context and return it."""
-        instance = EisenInstance(
-            name=name,
-            type=type,
-            context=state.get_context(),
-            asl=state.get_asl(),
-            is_ptr=state.is_ptr)
-        state.get_context().add_instance(instance)
-        return instance
-
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
         if state.get_asl().type in implemented_primitive_types:
@@ -153,6 +141,7 @@ class FlowVisitor(Visitor):
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state).get_return_type()
 
+        # TODO: move this logic to the instance visitor
         fn_instance = node.resolve_function_instance(params_type)
         node.assign_instance(fn_instance)
         result = Validate.correct_argument_types(state, 

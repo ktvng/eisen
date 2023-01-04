@@ -9,7 +9,7 @@ import eisen
 import lamb
 import c
 
-delim = "="*64
+delim = "="*28
 
 def run_lamb(filename : str):
     raise Exception("deprecated")
@@ -127,13 +127,12 @@ def debug():
     for t in tokens:
         print(t)
     result = alpaca.parser.run(config, tokens, eisen.EisenBuilder())
-    # result = eisen.CustomParser2(config).parse(tokens)
     print(result)
 
 
 if __name__ == "__main__":
     print(delim)
-    print("-"*28, "BEGINS", "-"*28)
+    print("-"*10, "BEGINS", "-"*10)
     print(delim)
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true")

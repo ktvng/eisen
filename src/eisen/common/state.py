@@ -245,6 +245,9 @@ Token: {self.asl}
     def get_restriction(self) -> GeneralRestriction:
         return self.get_returned_type().get_restrictions()[0]
 
+    def add_reference_type(self, name: str, type: Type):
+        self.get_context().add_reference_type(name, type)
+
     def lookup_function_instance(self, name: str, type: Type) -> EisenInstance | None:
         """canonical way to lookup a instance for a defined function"""
         return self.get_enclosing_module().get_function_instance(name, type)
@@ -257,6 +260,8 @@ Token: {self.asl}
             instances = [instances]
         self.get_node_data().instances = instances
 
+    def set_instances(self, instances: list[EisenInstance]):
+        self.get_node_data().instances = instances
 
     def but_with_first_child(self) -> State:
         return self.but_with(asl=self.first_child())

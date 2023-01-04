@@ -191,8 +191,10 @@ class Type():
     def is_nil(self) -> bool:
         return self.classification == Type.classifications.nil
 
-    def with_restriction(self, restriction: AbstractRestriction):
-        return self._copy_with_restriction(restriction)
+    def with_restriction(self, restriction: AbstractRestriction = None):
+        if restriction is not None:
+            return self._copy_with_restriction(restriction)
+        return self
 
     def unpack_into_parts(self):
         if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 

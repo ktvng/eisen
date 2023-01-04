@@ -112,7 +112,6 @@ class FlowVisitor(Visitor):
     def scope_(fn, state: State) -> Type:
         node = Nodes.ModuleScope(state)
         instance = node.get_end_instance()
-        state.assign_instances(instance)
         return instance.type
 
     @Visitor.for_asls("tuple", "params", "prod_type")
@@ -140,26 +139,15 @@ class FlowVisitor(Visitor):
             asl=state.first_child(),
             context=state.create_block_context("while")))
 
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State) -> Type:
-        node = Nodes.Colon(state)
-        names = node.get_names()
-        type = fn.apply(state.but_with(asl=node.get_type_asl()))
-
-        check = Validate.all_names_are_unbound(state, names)
-        if check.failed():
-            return state.get_abort_signal()
-
-        instances = [FlowVisitor.add_instance_to_context(name, type, state) for name in names]
-        state.assign_instances(instances)
-        return type
-
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
         # this will actually change the asl inplace, converting (raw_call ...) 
         # into (call (ref ...) (params ...))
         guessed_params_type = fn.apply_to_second_child_of(state)
         params_type = CallUnwrapper.process(state, guessed_params_type, fn)
+
+        # need to change the params type to the correct one
+        state.but_with_second_child().get_node_data().returned_type = params_type
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
         node = Nodes.RefLike(state.but_with_first_child())
         if node.is_print():
@@ -209,7 +197,6 @@ class FlowVisitor(Visitor):
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
 
     @Visitor.for_asls("ilet", "ivar")
-    @returns_void_type
     def idecls_(fn, state: State):
         node = Nodes.IletIvar(state)
         names = node.get_names()
@@ -221,39 +208,32 @@ class FlowVisitor(Visitor):
             state.critical_exception.set(True)
             return
 
-        instances = [FlowVisitor.add_instance_to_context(name, type, state)
-                for name, type in zip(names, componentwise_types)]
-        state.assign_instances(instances)
+        for name, type in zip(names, componentwise_types):
+            state.add_reference_type(name, type)
+        return type_to_be_assigned
 
-    @Visitor.for_asls("var")
-    @returns_void_type
-    def var_(fn, state: State):
-        # validations occur inside the (: ...) asl 
-        fn.apply_to_first_child_of(state)
-        instances = state.but_with_first_child().get_instances()
-        for instance in instances:
-            instance.type = instance.type.with_restriction(VarRestriction())
-            instance.is_var = True
-        state.assign_instances(instances) 
+    @classmethod
+    def _create_references(cls, state: State, names: list[str], type: Type):
+        check = Validate.all_names_are_unbound(state, names)
+        if check.failed():
+            return state.get_abort_signal()
+        for name in names:
+            state.add_reference_type(name, type)
+        return type
 
-    @Visitor.for_asls("var?")
-    @returns_void_type
-    def var_(fn, state: State):
-        # validations occur inside the (: ...) asl 
-        fn.apply_to_first_child_of(state)
-        instances = state.but_with_first_child().get_instances()
-        for instance in instances:
-            instance.type = instance.type.with_restriction(NullableVarRestriction())
-            instance.is_var = True
-        state.assign_instances(instances) 
+    @Visitor.for_asls(":")
+    def colon_(fn, state: State) -> Type:
+        node = Nodes.Colon(state)
+        names = node.get_names()
+        type = fn.apply(state.but_with(asl=node.get_type_asl()))
+        return FlowVisitor._create_references(state, names, type)
 
-    @Visitor.for_asls("val", "mut_val", "mut_var", "let")
-    @returns_void_type
+    @Visitor.for_asls("val", "var", "var?", "let")
     def decls_(fn, state: State):
-        # validations occur inside the (: ...) asl 
-        fn.apply_to_first_child_of(state)
-        instances = state.but_with_first_child().get_instances()
-        state.assign_instances(instances)
+        node = Nodes.LetVarVal(state)
+        names = node.get_names()
+        type = fn.apply(state.but_with(asl=node.get_types_asl())).with_restriction(node.get_restriction())
+        return FlowVisitor._create_references(state, names, type)
 
     @Visitor.for_asls("type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
@@ -293,13 +273,13 @@ class FlowVisitor(Visitor):
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state)
 
-        instance = node.resolve_instance()
-        result = Validate.instance_exists(state, node.get_name(), instance)
-        if result.failed():
-            return result.get_failure_type()
+        type = node.resolve_reference_type()
+        # TODO: validate lookup succeeded
+        # result = Validate.instance_exists(state, node.get_name(), type)
+        # if result.failed():
+        #     return result.get_failure_type()
 
-        state.assign_instances(instance)
-        return instance.type
+        return type
 
     @Visitor.for_asls("args")
     def args_(fn, state: State) -> Type:

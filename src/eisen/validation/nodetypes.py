@@ -7,7 +7,7 @@ from eisen.common import implemented_primitive_types
 from eisen.common.eiseninstance import EisenInstance, EisenFunctionInstance
 from eisen.common.state import State
 from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRestriction,
-    PrimitiveRestriction)
+    PrimitiveRestriction, NullableVarRestriction)
 
 from eisen.validation.lookupmanager import LookupManager
 
@@ -39,6 +39,9 @@ class Nodes():
 
         def get_line_number(self) -> int:
             return self.state.get_asl().line_number
+
+        def get_node_type(self) -> str:
+            return self.state.get_asl().type
 
     class Mod(AbstractNodeInterface):
         asl_type = "mod"
@@ -240,7 +243,31 @@ class Nodes():
                     asl=child,
                     context=fn_context,
                     inside_constructor=will_enter_constructor))
- 
+    
+    class LetVarVal(AbstractNodeInterface):
+        asl_types = ["let", "var", "val", "var?"]
+        examples = """
+        (var (: name (type int)))
+        """
+
+        def get_names(self) -> list[str]:
+            return Nodes.Colon(self.state.but_with_first_child()).get_names()
+
+        def get_types_asl(self) -> CLRList:
+            return Nodes.Colon(self.state.but_with_first_child()).get_type_asl()
+
+        def get_restriction(self) -> GeneralRestriction:
+            if self.get_node_type() == "var":
+                return VarRestriction()
+            elif self.get_node_type() == "var?":
+                return NullableVarRestriction()
+            return None
+
+        def get_is_var(self) -> bool:
+            node_type = self.get_node_type()
+            return node_type == "var" or node_type == "var?"
+
+
 
     class IletIvar(AbstractNodeInterface):
         asl_types = ["ilet", "ivar"]
@@ -384,6 +411,13 @@ class Nodes():
                 name=self.get_name(),
                 argument_type=argument_type,
                 mod=self.get_module())
+
+        def resolve_reference_type(self) -> EisenInstance:
+            return LookupManager.resolve_reference_type(
+                name=self.get_name(),
+                context=self.state.get_context(),
+                mod=self.state.get_enclosing_module(),
+                argument_type=self.state.get_arg_type())
 
         def resolve_instance(self) -> EisenInstance:
             return LookupManager.resolve_reference(

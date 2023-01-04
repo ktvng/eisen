@@ -10,6 +10,7 @@ from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
+from eisen.validation.instancevisitor import InstanceVisitor
 
 # Notes:
 # A module is a collection of structs/functions
@@ -50,6 +51,8 @@ class Workflow():
         #   - the type which is flowed through a node can be accessed by
         #     params.get_returned_type()
         FlowVisitor,
+
+        InstanceVisitor,
 
         # this handles restrictions based on let/var/val differences
         PermissionsVisitor,

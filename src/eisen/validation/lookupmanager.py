@@ -20,7 +20,6 @@ class LookupManager():
         return mod.get_defined_type(name)
 
 
-
     @classmethod
     def resolve_local_reference(cls, name: str, context: Context) -> Instance | None:
         return context.get_instance(name)

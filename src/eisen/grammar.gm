@@ -73,9 +73,7 @@ SYMBOLICS
     keyword is          ->  is
     keyword embed       ->  embed
 
-    keyword @deny       ->  @deny
-    keyword @allow      ->  @allow
-
+    symbol @            ->  @
     symbol ,            ->  ,
     symbol {            ->  \s*{\s*
     symbol }            ->  }\s*
@@ -515,12 +513,10 @@ STRUCTURE
     VARIANT_ELEM ->
         @action filter_build is_fn
         |   is ARGS RETS SEQ
-        @action filter_build deny
-        |   @deny ( TAGS ) ENDLS
-        |   @deny ( TAG ) ENDLS
-        @action filter_build allow
-        |   @allow ( TAGS ) ENDLS
-        |   @allow ( TAG ) ENDLS
+        @action filter_build @
+        |   @ TAG ( TAGS ) ENDLS
+        |   @ TAG ( TAG ) ENDLS
+        |   @ TAG ( ) ENDLS
 
 
     # ====================================================

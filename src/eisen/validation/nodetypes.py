@@ -407,11 +407,8 @@ class Nodes():
         asl_types = ["+=", "-=", "*=", "/="]
         examples = """
         (+= (ref a) 4)
-        (-= (ref b) (+ 4 9))
+        (-= (. (ref b) c) (+ 4 9))
         """
-        def get_name(self) -> str:
-            return Nodes.Ref(self.state.but_with_first_child()).get_name()
-
         def get_arithmetic_operation(self) -> str:
             return self.state.get_asl().type[0]
 

@@ -88,9 +88,7 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls("+=", "-=", "/=", "*=")
     def asseqs_(fn, state: State):
         node = Nodes.CompoundAssignment(state)
-        name = node.get_name()
-
-        left = state.objs[name]
+        left = fn.apply(state.but_with_first_child())[0]
         right = fn.apply(state.but_with_second_child())[0]
         new_obj = Obj.apply_binary_operation(node.get_arithmetic_operation(), left, right)
 

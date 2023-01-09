@@ -61,12 +61,12 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("var?")
     def nullable_var_(fn, state: State):
-        for name in Nodes.Let(state).get_names():
+        for name in Nodes.Decl(state).get_names():
             state.add_nilstate(name, True)
 
     @Visitor.for_asls("let", "var", "val")
     def let_(fn, state: State):
-        for name in Nodes.Let(state).get_names():
+        for name in Nodes.Decl(state).get_names():
             state.add_nilstate(name, False)
 
     @Visitor.for_asls("ilet", "ivar")
@@ -81,8 +81,8 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls(":")
     def colon_(fn, state: State):
-        for name in Nodes.Colon(state).get_names():
-            if Nodes.Colon(state).get_type_asl().type == "var_type?":
+        for name in Nodes.Decl(state).get_names():
+            if Nodes.Decl(state).get_type_asl().type == "var_type?":
                 state.add_nilstate(name, True)
             else:
                 state.add_nilstate(name, False)

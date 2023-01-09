@@ -354,13 +354,13 @@ STRUCTURE
     # DECL
 
     DECL ->
-        @action filter_build let
+        @action convert_decl let
         |   let TYPING
-        @action filter_build var
+        @action convert_decl var
         |   var TYPING
-        @action filter_build var?
+        @action convert_decl var?
         |   var ? TYPING
-        @action filter_build val
+        @action convert_decl val
         |   val TYPING
 
         @action filter_build ilet

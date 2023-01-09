@@ -315,31 +315,6 @@ class Nodes():
                 mod=self.state.get_enclosing_module())
 
 
-    class LetVarVal(AbstractNodeInterface):
-        asl_types = ["let", "var", "val", "var?"]
-        examples = """
-        (var (: name (type int)))
-        """
-
-        def get_names(self) -> list[str]:
-            return Nodes.Colon(self.state.but_with_first_child()).get_names()
-
-        def get_types_asl(self) -> CLRList:
-            return Nodes.Colon(self.state.but_with_first_child()).get_type_asl()
-
-        def get_restriction(self) -> GeneralRestriction:
-            if self.get_node_type() == "var":
-                return VarRestriction()
-            elif self.get_node_type() == "var?":
-                return NullableVarRestriction()
-            return None
-
-        def get_is_var(self) -> bool:
-            node_type = self.get_node_type()
-            return node_type == "var" or node_type == "var?"
-
-
-
     class IletIvar(AbstractNodeInterface):
         asl_types = ["ilet", "ivar"]
         examples = """
@@ -373,26 +348,28 @@ class Nodes():
             else:
                 return VarRestriction()
 
-    class Let(AbstractNodeInterface):
-        asl_type = "let"
-        examples = """
-        (let (: ...))
-        (let (: (tags ...) (type ...))
-        """
 
-        def get_names(self) -> list[str]:
-            return Nodes.Colon(self.state.but_with_first_child()).get_names()
-
-    class Colon(AbstractNodeInterface):
-        asl_type = ":"
+    class Decl(AbstractNodeInterface):
+        asl_types = ["let", "var", "val", "var?", ":"]
         examples = """
         1. multiple assignment
-            (: (tags ...) (type ...))
+            (ASL_TYPE (tags ...) (type ...))
         2. single_assignment
-            (: name (type ...))
+            (ASL_TYPE name (type ...))
         """
-
         is_single_assignment = first_child_is_token
+
+        def get_restriction(self) -> GeneralRestriction:
+            if self.get_node_type() == "var":
+                return VarRestriction()
+            elif self.get_node_type() == "var?":
+                return NullableVarRestriction()
+            return None
+
+        def get_is_var(self) -> bool:
+            node_type = self.get_node_type()
+            return node_type == "var" or node_type == "var?"
+
 
         def get_names(self) -> list[str]:
             if self.is_single_assignment():

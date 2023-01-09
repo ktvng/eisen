@@ -85,13 +85,6 @@ class PermissionsVisitor(Visitor):
         Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
         return []
 
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State) -> list[EisenInstanceState]:
-        instance = state.get_instances()[0]
-        instancestate = PermissionsVisitor.convert_instance_to_instancestate(instance, Initializations.NotInitialized)
-        state.add_instancestate(instancestate)
-        return [instancestate]
-
     @Visitor.for_asls("interface", "return")
     def none_(fn, state: State) -> list[EisenInstanceState]:
         return []
@@ -128,11 +121,13 @@ class PermissionsVisitor(Visitor):
     def ref_(fn, state: State) -> list[EisenInstanceState]:
         return [state.get_instancestate(Nodes.Ref(state).get_name())]
 
-    @Visitor.for_asls("let", "var", "var?")
+    @Visitor.for_asls(":", "let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:
-        for instance in state.get_instances():
-            state.add_instancestate(PermissionsVisitor.convert_instance_to_instancestate(instance, Initializations.NotInitialized))
-        return []
+        instancestates = [PermissionsVisitor.convert_instance_to_instancestate(instance, Initializations.NotInitialized)
+            for instance in state.get_instances()]
+        for instancestate in instancestates:
+            state.add_instancestate(instancestate)
+        return instancestates
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:

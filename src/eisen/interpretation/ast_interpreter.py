@@ -37,24 +37,24 @@ class AstInterpreter(Visitor):
         right = fn.apply(state.but_with_second_child())[0]
         return [Obj.apply_binary_operation(op=state.get_asl().type, obj1=left, obj2=right)]
 
-    @Visitor.for_asls("let")
-    def let_(fn, state: State):
-        return fn.apply(state.but_with_first_child())
-
-    @Visitor.for_asls("var", "var?")
-    def var_(fn, state: State):
-        objs = fn.apply(state.but_with_first_child())
-        for obj in objs:
-            obj.is_var = True
-        return objs
-
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State):
-        node = Nodes.Colon(state)
+    @classmethod
+    def _handle_colon_like(cls, state: State):
+        node = Nodes.Decl(state)
         names = node.get_names()
         objs = [Obj(None, name=name) for name in names]
         for name, obj in zip(names, objs):
             state.objs[name] = obj
+        return objs
+
+    @Visitor.for_asls("let", ":")
+    def let_(fn, state: State):
+        return AstInterpreter._handle_colon_like(state)
+
+    @Visitor.for_asls("var", "var?")
+    def var_(fn, state: State):
+        objs = AstInterpreter._handle_colon_like(state)
+        for obj in objs:
+            obj.is_var = True
         return objs
 
     @Visitor.for_asls("<-")

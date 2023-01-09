@@ -55,16 +55,9 @@ class InstanceVisitor(Visitor):
         node = Nodes.ModuleScope(state)
         return [node.get_end_instance()]
 
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State) -> list[EisenInstance]:
-        node = Nodes.Colon(state)
-        type = state.get_returned_type()
-        return [InstanceVisitor.create_instance_inside_context(name, type, state)
-            for name in node.get_names()]
-
-    @Visitor.for_asls("var", "var?", "let", "val")
+    @Visitor.for_asls(":", "var", "var?", "let", "val")
     def alloc_(fn, state: State) -> list[EisenInstance]:
-        node = Nodes.LetVarVal(state)
+        node = Nodes.Decl(state)
         type = state.get_returned_type()
         return [InstanceVisitor.create_instance_inside_context(name, type, state)
             for name in node.get_names()]

@@ -244,18 +244,11 @@ class FlowVisitor(Visitor):
             state.add_reference_type(name, type)
         return type
 
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State) -> Type:
-        node = Nodes.Colon(state)
-        names = node.get_names()
-        type = fn.apply(state.but_with(asl=node.get_type_asl()))
-        return FlowVisitor._create_references(state, names, type)
-
-    @Visitor.for_asls("val", "var", "var?", "let")
+    @Visitor.for_asls(":", "val", "var", "var?", "let")
     def decls_(fn, state: State):
-        node = Nodes.LetVarVal(state)
+        node = Nodes.Decl(state)
         names = node.get_names()
-        type = fn.apply(state.but_with(asl=node.get_types_asl())).with_restriction(node.get_restriction())
+        type = fn.apply(state.but_with(asl=node.get_type_asl())).with_restriction(node.get_restriction())
         return FlowVisitor._create_references(state, names, type)
 
     @Visitor.for_asls("type", "var_type", "var_type?")

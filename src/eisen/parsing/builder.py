@@ -19,22 +19,6 @@ class EisenBuilder(CommonBuilder):
             newCLRList._list.insert(2, CLRList(type="rets", lst=[]))
         return [newCLRList]
 
-    @CommonBuilder.for_procedure("promote")
-    def promote_(
-            fn,
-            config : Config,
-            components : CLRRawList,
-            type_name : str,
-            *args) -> CLRRawList:
-
-        matches = [x for x in components if x.type[-1] == type_name]
-        if len(matches) != 1:
-            raise Exception("multiple matches during promote_")
-
-        captain = matches[0]
-        captain[:] = [x for x in components if x != captain]
-        return [captain]
-
     @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(
             fn,
@@ -50,3 +34,17 @@ class EisenBuilder(CommonBuilder):
             type=flattened_comps[0].type,
             lst=[flattened_comps[1]],
             line_number=flattened_comps[0].line_number)]
+
+    @CommonBuilder.for_procedure("convert_decl")
+    def convert_decl_(
+            fn,
+            config: Config,
+            components: CLRRawList,
+            name: str,
+            *args) -> CLRRawList:
+        """this converts (let (: A B)) into (let A B) to remove
+        the extraneous (: ...) """
+
+        typing_component = components[-1]
+        typing_component.type = name
+        return [typing_component]

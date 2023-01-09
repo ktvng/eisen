@@ -118,7 +118,9 @@ class CommonBuilder(Builder):
             *args) -> CLRRawList:
 
         if len(components) != 1:
-            raise Exception("expects size of 1")
+            for c in components:
+                print(c)
+            raise Exception(f"expects size of 1 but got {len(components)}")
 
         if isinstance(components[0], CLRList):
             components[0].set_type(name)

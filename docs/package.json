@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "documentation for the stanza programming language",
   "scripts": {
-    "postinstall": "patch-package",
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
     "serve": "vitepress serve docs"
@@ -12,8 +11,16 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "package.json": "^2.0.1",
-    "patch-package": "^6.5.0",
     "vitepress": "^1.0.0-alpha.26"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "shiki@0.12.1": "patches/shiki@0.12.1.patch"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "@algolia/client-search"
+      ]
+    }
   }
 }

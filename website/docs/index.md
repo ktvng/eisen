@@ -17,12 +17,12 @@ Eisen draws inspiration from Rust, Go, and many other languages out there. We tr
 ## Get Started
 Currently, the Eisen compiler is written in Python (... yes I know, deal with it). You can play around with it by cloning the repository and following the readme there.
 ```sh
-git clone https://github.com/ktvng/eisen.git
+$ git clone https://github.com/ktvng/eisen.git
 ```
 
 You can run the tests with the following command
 ```sh
-python ./src/main.py -t
+$ python ./src/main.py -t
 ```
 
 ## Vision

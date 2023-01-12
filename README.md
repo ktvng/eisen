@@ -2,19 +2,21 @@
 
 Visit: [https://eisen-lang.org/](https://eisen-lang.org/)
 
-## Run a program
+## How to use
+
+### Run a program
 
 ```sh
 python ./src/main.py path/to/file
 ```
 
-## Run tests
+### Run tests
 
 ```sh
 python ./src/main.py --test
 ```
 
-## More options
+### More options
 
 ```sh
 python ./src/main.py --help

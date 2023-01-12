@@ -104,7 +104,7 @@ fn max(a: int, b: int) -> r: int {
 ```eisen
 let x = 0
 while (x < 10) {
-    print(x)
+    print("%i", x)
     x += 1
 }
 ```

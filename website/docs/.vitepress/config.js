@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress';
 
 export default defineConfig({
   title: 'Eisen PL',
+  description: 'A modern take on a C++ with a focus on clean and useful abstractions',
   themeConfig: {
     siteTitle: 'Eisen PL',
     socialLinks: [{ icon: 'github', link: 'https://github.com/ktvng/eisen' }],

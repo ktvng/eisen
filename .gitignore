@@ -12,4 +12,3 @@ notes.txt
 *.log
 idea.rs
 test*.rs
-node_modules/

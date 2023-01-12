@@ -1,0 +1,5 @@
+# copied from https://vitepress.new/
+node_modules
+dist
+.temp
+cache

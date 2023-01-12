@@ -5,8 +5,8 @@ from alpaca.concepts._initialization import Initialization
 
 class InstanceState:
     def __init__(
-            self, name: str, 
-            restriction: AbstractRestriction, 
+            self, name: str,
+            restriction: AbstractRestriction,
             initialization: Initialization) -> None:
         self.name = name
         self.restriction = restriction

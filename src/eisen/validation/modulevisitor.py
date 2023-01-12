@@ -25,4 +25,3 @@ class ModuleVisitor(Visitor):
     @Visitor.for_default
     def default_(fn, state: State):
         return
-    

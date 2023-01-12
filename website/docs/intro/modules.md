@@ -1,5 +1,5 @@
 # Modules
-Code is organized logically into modules. A module may contain one or more other module(s), struct(s), function(s), or top level constant(s). 
+Code is organized logically into modules. A module may contain one or more other module(s), struct(s), function(s), or top level constant(s).
 
 ```eisen
 mod math {

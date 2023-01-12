@@ -34,7 +34,7 @@ If we were instead given this function header below, we find ourselves missing c
 
 ```python
 def range(numbers: list[int]) -> int, int:
-    # implementation 
+    # implementation
 ```
 
 Instead, in Eisen, naming the return values provides more context that allows us to understand what's actually going on.
@@ -76,7 +76,7 @@ void main() {
 }
 ```
 
-If we were to use `makeBigObject2` (and this is the Java) way, then what we're doing is constructing a _second_ `BigObj` inside of `makeBigObject2` (named `internalObj`) and in the main method, we'd be copying `internalObj` into `obj`. 
+If we were to use `makeBigObject2` (and this is the Java) way, then what we're doing is constructing a _second_ `BigObj` inside of `makeBigObject2` (named `internalObj`) and in the main method, we'd be copying `internalObj` into `obj`.
 
 In most cases, the compiler should be smart enough to detect and optimize out this extra allocation and copy, but as C++ developers, we don't trust the compiler.
 
@@ -86,17 +86,17 @@ So the convention in C++ is to pass anything you need to construct into the meth
 2. It obscures the intent of a function. Without carefully examining the signature of the method, we can't be sure what's going on.
 3. It just looks kinda bad.
 
-Instead, by requiring return values to be named, Eisen allows us to obtain the performance advantage of this C++ convention cleanly. Return values are never contructed inside a function! They're being passed into the function (as if by reference), 
+Instead, by requiring return values to be named, Eisen allows us to obtain the performance advantage of this C++ convention cleanly. Return values are never contructed inside a function! They're being passed into the function (as if by reference),
 
 ## Parameters <Badge type="info" text="In Development" />
 A function can be defined with default arguments.
 
 ```eisen
 fn add_argument(
-    name: str, 
+    name: str,
     shorthand: str,
     required = false,
-    help = "") -> loweredStr: str 
+    help = "") -> loweredStr: str
 { ... }
 
 ```
@@ -110,7 +110,7 @@ add_argument(
     help = "input file to be processed")
 ```
 
-But if a function with optional parameters is assigned to a function object, neither defaults arguments nor named arguments are supported. 
+But if a function with optional parameters is assigned to a function object, neither defaults arguments nor named arguments are supported.
 
 ::: info
 This is because the compiler is no longer able to identify the names/default values of the arguments passed into a function object. In the example below, the type of `myFunction` is purely the method signature of `add_argument`, that is, `(str, str, bool, str) -> void`, with none of the necessary annotations to determine argument names/defaults.
@@ -144,4 +144,4 @@ fn main() {
 
 The ability to define the function `timesTryTo` to take the integer parameter first allows us to call it via an integer literal as if it were a function. This simple example leads some very clean, readable code.
 
-The same idea can be applied to extend functionality over structs which the developer may not have direct access over. 
+The same idea can be applied to extend functionality over structs which the developer may not have direct access over.

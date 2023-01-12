@@ -97,7 +97,7 @@ class CLRList(CLRElement):
                 return f"({self.type} {parts_str})"
 
             return f"({self.type}\n{parts_str})"
-        
+
         else:
             total_len = reduce(lambda sum, s: sum + len(s.strip()), str_reps, 0)
             if total_len < 64:

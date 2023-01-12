@@ -34,7 +34,7 @@ class Obj:
     def get_debug_str(self) -> str:
         return f"{self.name}:{self.value}"
 
-    def get(self, key: str): 
+    def get(self, key: str):
         if not isinstance(self.value, dict):
             raise Exception(f"Interpreter object must be a dict (for struct), but got {type(self.value)}")
         found = self.value.get(key, None)

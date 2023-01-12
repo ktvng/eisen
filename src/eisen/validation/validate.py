@@ -38,28 +38,28 @@ class Validate:
     @classmethod
     def can_assign(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
 
         if type1.restriction.is_nullable() and type2.is_nil():
-            return Validate._success(type1) 
+            return Validate._success(type1)
         if type2.is_nil():
             state.report_exception(Exceptions.NilAssignment(
                 msg=f"cannot assign nil to non-nilable type '{type1}'",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
-        
+
         return Validate.equivalent_types(state, type1, type2)
-        
+
     @classmethod
     def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
 
         if type1 != type2:
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"'{type1}' != '{type2}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
         return Validate._success(type1)
 
 
@@ -75,23 +75,23 @@ class Validate:
     @classmethod
     def correct_argument_types(cls, state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (arg_type, given_type)]):
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
 
         if arg_type != given_type:
-            # if the given_type is a struct, we have another change to succeed if 
+            # if the given_type is a struct, we have another change to succeed if
             # the struct embeds the expected fn_type
             if given_type.classification == Type.classifications.struct:
                 if arg_type not in given_type.embeds:
                     state.report_exception(Exceptions.TypeMismatch(
                         msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                         line_number=state.get_line_number()))
-                    return Validate._abort_signal(state)  
+                    return Validate._abort_signal(state)
                 return Validate._success(arg_type)
-            
+
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
         return Validate._success(arg_type)
 
 
@@ -101,7 +101,7 @@ class Validate:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
         return Validate._success()
 
     @classmethod
@@ -136,9 +136,9 @@ class Validate:
             state.report_exception(Exceptions.UndefinedFunction(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
         return Validate._success(return_obj=instance)
-    
+
     @classmethod
     def name_is_unbound(cls, state: State, name: str) -> ValidationResult:
         if state.get_context().get_instance(name) is not None:
@@ -164,11 +164,11 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success(return_obj=None)
 
-    
+
     @classmethod
     def castable_types(cls, state: State, type: Type, cast_into_type: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type, cast_into_type)]):
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
 
         if type == cast_into_type:
             return Validate._success()
@@ -209,12 +209,12 @@ class Validate:
             return Validate._abort_signal(state)
         return Validate._success()
 
-    
+
     @classmethod
     def embeddings_dont_conflict(cls, state: State, type: Type):
         conflicts = False
         conflict_map: dict[tuple[str, Type], bool] = {}
-        
+
         for attribute_pair in type.get_direct_attribute_name_type_pairs():
             conflict_map[attribute_pair] = type
 
@@ -258,7 +258,7 @@ class Validate:
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
-        
+
     @classmethod
     def parameter_assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
@@ -290,7 +290,7 @@ class Validate:
     @classmethod
     def both_operands_are_not_nilable(cls, state: State, left: NilableStatus, right: NilableStatus) -> ValidationResult:
         if any([state.get_abort_signal() in (left, right)]):
-            return Validate._abort_signal(state) 
+            return Validate._abort_signal(state)
 
         if left.is_nilable:
             state.report_exception(Exceptions.NilUsage(

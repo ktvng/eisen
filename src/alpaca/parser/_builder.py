@@ -7,7 +7,7 @@ class Builder(Visitor):
         def decorator(f):
             predicate = lambda n: n == matching_name
             return PartialTransform(predicate, f)
-        return decorator 
+        return decorator
 
     def apply(self, type_name: str, config, components: list[ASTNode | list[ASTNode]], *args):
         return self._apply(

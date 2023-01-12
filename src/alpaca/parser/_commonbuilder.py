@@ -6,8 +6,8 @@ from alpaca.parser._builder import Builder
 class CommonBuilder(Builder):
     @classmethod
     def _filter(cls, config: Config, components: CLRRawList) -> CLRRawList:
-        return [c for c in components 
-            if  (isinstance(c, CLRToken) 
+        return [c for c in components
+            if  (isinstance(c, CLRToken)
                     and not c.is_classified_as("keyword")
                     and not c.is_classified_as("symbol")
                     and not c.is_classified_as("operator"))
@@ -47,8 +47,8 @@ class CommonBuilder(Builder):
     def filter_build_(
             fn,
             config: Config,
-            components: CLRRawList, 
-            *args) -> CLRRawList: 
+            components: CLRRawList,
+            *args) -> CLRRawList:
 
         newCLRList = CommonBuilder.build(fn, config, components, *args)[0]
         filtered_children = CommonBuilder._filter(config, newCLRList)
@@ -69,8 +69,8 @@ class CommonBuilder(Builder):
     def build(
             fn,
             config: Config,
-            components: CLRRawList, 
-            build_name: str, 
+            components: CLRRawList,
+            build_name: str,
             *args) -> CLRRawList:
 
         flattened_components = CommonBuilder.flatten_components(components)
@@ -83,8 +83,8 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("pool")
     def pool_(
             fn,
-            config: Config, 
-            components: CLRRawList, 
+            config: Config,
+            components: CLRRawList,
             *args) -> CLRRawList:
 
         pass_up_list = []
@@ -102,8 +102,8 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("pass")
     def pass_(
             fn,
-            config: Config, 
-            components: CLRRawList, 
+            config: Config,
+            components: CLRRawList,
             *args) -> CLRRawList:
 
         return components
@@ -112,9 +112,9 @@ class CommonBuilder(Builder):
     @Builder.for_procedure("convert")
     def convert_(
             fn,
-            config: Config, 
-            components: CLRRawList, 
-            name: str, 
+            config: Config,
+            components: CLRRawList,
+            name: str,
             *args) -> CLRRawList:
 
         if len(components) != 1:

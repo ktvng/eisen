@@ -13,7 +13,7 @@ class EisenBuilder(CommonBuilder):
             config : Config,
             components : CLRRawList,
             *args) -> CLRRawList:
-        
+
         newCLRList = EisenBuilder.filter_build_(fn, config, components, "def")[0]
         if len(newCLRList) == 3:
             newCLRList._list.insert(2, CLRList(type="rets", lst=[]))
@@ -23,14 +23,14 @@ class EisenBuilder(CommonBuilder):
     def promote_(
             fn,
             config : Config,
-            components : CLRRawList, 
-            type_name : str, 
+            components : CLRRawList,
+            type_name : str,
             *args) -> CLRRawList:
 
         matches = [x for x in components if x.type[-1] == type_name]
         if len(matches) != 1:
             raise Exception("multiple matches during promote_")
-        
+
         captain = matches[0]
         captain[:] = [x for x in components if x != captain]
         return [captain]
@@ -47,6 +47,6 @@ class EisenBuilder(CommonBuilder):
             raise Exception("expected size 2 for handle_op_pref")
 
         return [CLRList(
-            type=flattened_comps[0].type, 
-            lst=[flattened_comps[1]], 
+            type=flattened_comps[0].type,
+            lst=[flattened_comps[1]],
             line_number=flattened_comps[0].line_number)]

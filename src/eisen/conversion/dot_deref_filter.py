@@ -6,7 +6,7 @@ from alpaca.utils import Visitor
 class DotDerefFilter(Visitor):
     def apply(self, asl: CLRList) -> CLRList:
         return self._apply([asl], [asl])
-    
+
     def is_dot_deref(asl: CLRList):
         return (isinstance(asl, CLRList)
             and asl.type == "."
@@ -29,7 +29,7 @@ class DotDerefFilter(Visitor):
         ref_child = fn.apply(asl.first().first())
         tag_child = asl.second()
         return CLRList(
-            type="->", 
+            type="->",
             lst=[ref_child, tag_child],
             line_number=asl.line_number,
             guid=asl.guid)

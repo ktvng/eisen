@@ -83,7 +83,7 @@ class InstanceVisitor(Visitor):
     def if_(fn, state: State) -> Type:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
-                asl=child, 
+                asl=child,
                 context=state.create_block_context("if")))
         return []
 
@@ -91,7 +91,7 @@ class InstanceVisitor(Visitor):
     def while_(fn, state: State) -> Type:
         fn.apply(state.but_with(
             asl=state.first_child(),
-            context=state.create_block_context("while"))) 
+            context=state.create_block_context("while")))
         return []
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
@@ -104,7 +104,7 @@ class InstanceVisitor(Visitor):
         node = Nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
-    
+
     @Visitor.for_asls("call")
     def raw_call(fn, state: State) -> Type:
         params_type = state.but_with_second_child().get_returned_type()

@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from eisen.common.state import State
 from alpaca.concepts import Type, Instance, Module
 
-binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="] 
+binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="]
 boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 implemented_primitive_types = ["str", "int", "bool", "flt"]
 
@@ -27,7 +27,7 @@ class Utils:
             prefix = f"{current_mod.name}_" + prefix
             current_mod = current_mod.parent
 
-        return f"{Utils.global_prefix}{prefix}{name}"     
+        return f"{Utils.global_prefix}{prefix}{name}"
 
     @classmethod
     def get_full_name_of_function(cls, instance: Instance) -> str:
@@ -37,7 +37,7 @@ class Utils:
             prefix = f"{current_context.name}_" + prefix
             current_context = current_context.parent
 
-        return f"{Utils.global_prefix}{prefix}{instance.name}"        
+        return f"{Utils.global_prefix}{prefix}{instance.name}"
 
     @classmethod
     def get_name_of_type(cls, type: Type, mod: Module = None) -> str:

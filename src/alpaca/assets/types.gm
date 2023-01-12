@@ -11,13 +11,13 @@ SYMBOLICS
     symbol (            ->  \(
     symbol )            ->  \)
     symbol <            ->  <
-    symbol >            ->  >    
+    symbol >            ->  >
     symbol #            ->  #
     symbol [            ->  \[
     symbol ]            ->  \]
     symbol ->           ->  ->
     symbol :=           ->  :=
-    
+
     TAG                 ->  [_a-zA-Z]\w*
     none                ->  [ \t\n]*
 
@@ -28,19 +28,19 @@ STRUCTURE
     @action pass
     __TYPE ->
         |   __FUNC_TYPE
-        |   __TUPL_TYPE 
+        |   __TUPL_TYPE
         |   __MAYB_TYPE
         |   __NOVL_TYPE
         |   __STRUCT_TYPE
-        
-    @action filter_build :func 
+
+    @action filter_build :func
     __FUNC_TYPE -> ( :func __TYPE __TYPE )
 
     @action filter_build :tupl
     __TUPL_TYPE -> ( :tupl __TYPES )
 
     @action pool
-    __TYPES -> 
+    __TYPES ->
         |   __TYPE __TYPE
         |   __TYPE __TYPES
 
@@ -48,12 +48,12 @@ STRUCTURE
     __TERM -> ( : TAG __TYPE )
 
     @action pool
-    __TERMS -> 
+    __TERMS ->
         |   __TERM __TERM
         |   __TERM __TERMS
 
     @action filter_build :struct
-    __STRUCT_TYPE -> 
+    __STRUCT_TYPE ->
         |   ( :struct __TERM )
         |   ( :struct __TERMS )
 
@@ -61,5 +61,5 @@ STRUCTURE
     __NOVL_TYPE -> ( :novl TAG )
 
     @action filter_build :mayb
-    __MAYB_TYPE -> 
+    __MAYB_TYPE ->
         |   ( :mayb __TYPES )

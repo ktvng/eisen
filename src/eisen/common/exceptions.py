@@ -22,11 +22,11 @@ class Exceptions():
     class UnderfinedType(AbstractException):
         type = "UndefiedType"
         description = "type is not defined"
-    
+
     class RedefinedIdentifier(AbstractException):
         type = "RedefinedIdentifier"
         description = "identifier is already in use"
-        
+
     class TypeMismatch(AbstractException):
         type = "TypeMismatch"
         description = "type different from expected"
@@ -41,7 +41,7 @@ class Exceptions():
 
     class MissingAttribute(AbstractException):
         type = "MissingAttribute"
-        description = "missing a required attribute" 
+        description = "missing a required attribute"
 
     class AttributeMismatch(AbstractException):
         type = "AttributeMismatch"
@@ -66,4 +66,3 @@ class Exceptions():
     class NilAssignment(AbstractException):
         type = "NilAssignment"
         description = "nil can only be assigned to a nilable type"
-        

@@ -47,7 +47,7 @@ class AstInterpreter(Visitor):
         for obj in objs:
             obj.is_var = True
         return objs
-    
+
     @Visitor.for_asls(":")
     def colon_(fn, state: State):
         node = Nodes.Colon(state)
@@ -63,7 +63,7 @@ class AstInterpreter(Visitor):
         right = fn.apply(state.but_with_second_child())
         for l, r in zip(left, right):
             Passer.pass_by_value(state.objs, l, r)
-        return [] 
+        return []
 
     @Visitor.for_asls("=")
     def eqs_(fn, state: State):
@@ -88,11 +88,11 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls("+=", "-=", "/=", "*=")
     def asseqs_(fn, state: State):
         node = Nodes.CompoundAssignment(state)
-        name = node.get_name() 
+        name = node.get_name()
 
         left = state.objs[name]
         right = fn.apply(state.but_with_second_child())[0]
-        new_obj = Obj.apply_binary_operation(node.get_arithmetic_operation(), left, right) 
+        new_obj = Obj.apply_binary_operation(node.get_arithmetic_operation(), left, right)
 
         Passer.handle_assignment(state.objs, left, new_obj)
         return []
@@ -179,7 +179,7 @@ class AstInterpreter(Visitor):
             asl=Nodes.Def(state.but_with(asl=node.get_asl_defining_the_function())).get_seq_asl(),
             objs=fn_objs))
 
-        # get the actual return values 
+        # get the actual return values
         return_values = []
         for name in return_names:
             return_values.append(fn_objs[name])
@@ -225,7 +225,7 @@ class AstInterpreter(Visitor):
         if isinstance(result, ReturnSignal):
             return ReturnSignal()
         return []
- 
+
     def _handle_cond(fn, state: State):
         condition = fn.apply(state.but_with_first_child())[0]
         if condition.value:

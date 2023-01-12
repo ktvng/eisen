@@ -55,7 +55,7 @@ struct vector {
 Unlike primitive types, Eisen restricts the reassignment of constructed types in order to correctly manage the lifetime of the heap allocated memory.
 
 ## Functions
-The standard approach for defining a function in Eisen requires a user to provide the a complete return clause after the `->` symbol which includes both the return type, but also a name for the returned parameter. 
+The standard approach for defining a function in Eisen requires a user to provide the a complete return clause after the `->` symbol which includes both the return type, but also a name for the returned parameter.
 
 In the example below, `sum` must be fully initialized within the function, after which the function is allowed to return, either by specifying and empty `return` keyword, or by reaching the end of the function. For more details about why we chose this approach, see [Functions](/intro/functions).
 

@@ -69,7 +69,7 @@ else {
 myPath.getDirectory()
 ```
 
-Note that variants do not create a new memory allocation. Using variants is equivalent to casting an existing pointer to a pointer of the variant's type. Again, we cannot emphasize this enough, it is the responsibility of the programmer to ensure that variant preconditions are never violated. 
+Note that variants do not create a new memory allocation. Using variants is equivalent to casting an existing pointer to a pointer of the variant's type. Again, we cannot emphasize this enough, it is the responsibility of the programmer to ensure that variant preconditions are never violated.
 
 When this may be difficult, it may be necessary to check the variant condition explicitly
 

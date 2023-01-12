@@ -18,10 +18,10 @@ STRUCTURE
     START -> LINES
 
     @action pool
-    LINES ->    
+    LINES ->
         |   LINE
         |   LINE LINES
-    
+
     @action pass
     LINE ->
         |   DEF ;
@@ -34,10 +34,9 @@ STRUCTURE
         @action filter_build lambda
         |   LAMBDA TAG . EXPR
         @action filter_build apply
-        |   EXPR EXPR 
+        |   EXPR EXPR
         @action pass
         |   ( EXPR )
         |   TAG
         @action filter_build print
         |   FUNC EXPR
-    

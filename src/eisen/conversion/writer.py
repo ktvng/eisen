@@ -42,13 +42,13 @@ class Writer(Visitor):
             parts += fn.apply(child) + ["\n"]
         parts += ["}\n"]
         return parts
- 
+
     @Visitor.covers(asls_of_type(":"))
     def colon_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), 
+        return [*fn.apply(asl.first()),
             ": ",
             *fn.apply(asl.second())]
- 
+
     @Visitor.covers(asls_of_type("create"))
     def create_(fn, asl: CLRList):
         return ["create(",
@@ -62,7 +62,7 @@ class Writer(Visitor):
         if not asl:
             return []
         return fn.apply(asl.first())
- 
+
     @Visitor.covers(asls_of_type("prod_type", "params"))
     def prod_type(fn, asl: CLRList):
         parts = []
@@ -71,7 +71,7 @@ class Writer(Visitor):
         for child in asl[1:]:
             parts += [", ", *fn.apply(child)]
         return parts
- 
+
     @Visitor.covers(asls_of_type("def"))
     def def_(fn, asl: CLRList):
         return ["fn ",
@@ -81,14 +81,14 @@ class Writer(Visitor):
             ") -> ",
             *fn.apply(asl.third()),
             *fn.apply(asl[-1])]
-    
+
     @Visitor.covers(asls_of_type("fn_type"))
     def fn_type_(fn, asl: CLRList):
         return ["(",
             *fn.apply(asl.first()),
             ") -> ",
             *fn.apply(asl.second())]
-    
+
     @Visitor.covers(asls_of_type("ilet"))
     def ilet(fn, asl: CLRList):
         return ["let ", *fn.apply(asl.first()), " = ", *fn.apply(asl.second())]
@@ -96,22 +96,22 @@ class Writer(Visitor):
     @Visitor.covers(asls_of_type("let"))
     def let_(fn, asl: CLRList):
         return ["let ", *fn.apply(asl.first())]
- 
+
     @Visitor.covers(asls_of_type("while"))
     def while_(fn, asl: CLRList):
         return ["while ", *fn.apply(asl.first())]
- 
+
     @Visitor.covers(asls_of_type("seq"))
     def seq_(fn, asl: CLRList):
         parts = []
         for child in asl:
             parts += fn.apply(child) + ["\n"]
         return ["{\n", *parts, "}\n"]
- 
+
     @Visitor.covers(asls_of_type("cond"))
     def cond_(fn, asl: CLRList):
         return ["(", *fn.apply(asl.first()), ") ", *fn.apply(asl.second())]
-      
+
     @Visitor.covers(asls_of_type(["<", ">", "<=", ">=", "+", "-", "/", "*", "+=", "=", "==", ".", "::"]))
     def bin_op_(fn, asl: CLRList):
         if asl.type in [".", "::"]:
@@ -119,11 +119,11 @@ class Writer(Visitor):
         else:
             operator = f" {asl.type} "
         return [*fn.apply(asl.first()), operator, *fn.apply(asl.second())]
- 
+
     @Visitor.covers(asls_of_type("call"))
     def call_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), "(", *fn.apply(asl.second()), ")"]
-    
+
     # TODO: need to work with elseif
     @Visitor.covers(asls_of_type("if"))
     def if_(fn, asl: CLRList):
@@ -132,4 +132,3 @@ class Writer(Visitor):
     @Visitor.covers(asls_of_type("return"))
     def return_(fn, asl: CLRList):
         return ["return"]
-  

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 class formatter:
-    # max number of characters which can appear on a line (not including the indent 
+    # max number of characters which can appear on a line (not including the indent
     # at the beginning of the line, or any closing parentheses from earlier statements)
     max_line_size = 64
 
@@ -16,10 +16,10 @@ class formatter:
     # matches any content (not strings and not list denotations)
     content_regex = re.compile(r"[^\(\)\"']+")
 
-    # matches one or more list closure paren and any whitespace inbetween successive 
+    # matches one or more list closure paren and any whitespace inbetween successive
     # list closures
     list_end_regex = re.compile(r"\)")
-    
+
     @classmethod
     def _chunk_with_balanced_parens(cls, clr: str) -> tuple[str, str]:
         provided_clr = clr
@@ -50,10 +50,10 @@ class formatter:
                 else:
                     raise Exception(f"unexpected value found in clr {clr}")
 
-                # remove the leading paren and continue 
+                # remove the leading paren and continue
                 clr = clr[1:]
                 continue
-            
+
             matched = match.group(0)
             chunk += matched
             clr = clr[len(matched):]
@@ -71,7 +71,7 @@ class formatter:
         level = 0
         formatted_clr = ""
         while clr:
-            # any non-list (token) content at the head of a list will be appended at the 
+            # any non-list (token) content at the head of a list will be appended at the
             # correct indent level
             match = cls.content_regex.match(clr)
             if match:
@@ -98,8 +98,8 @@ class formatter:
                 continue
             else:
                 formatted_clr += "\n" + cls.indent_str * level + chunk
-                clr = rest 
-            
+                clr = rest
+
         # remove the "\n" at the beginning
         return formatted_clr[1:]
 

@@ -9,7 +9,7 @@ from eisen.validation.validate import Validate
 class FinalizationVisitor(Visitor):
     """this finalizes proto types into the fully built-out type.
     we need to separate declaration and definition because types may refer back to
-    themselves, or to other types which have yet to be defined, but exist in the 
+    themselves, or to other types which have yet to be defined, but exist in the
     same module.
     """
     def apply(self, state: State) -> None:
@@ -27,7 +27,7 @@ class FinalizationVisitor(Visitor):
     def interface_(fn, state: State) -> None:
         node = Nodes.Interface(state)
         node.get_this_type().finalize(
-            components=[TypeParser().apply(state.but_with(asl=child)) 
+            components=[TypeParser().apply(state.but_with(asl=child))
                 for child in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),
             inherits=[])
@@ -37,7 +37,7 @@ class FinalizationVisitor(Visitor):
         node = Nodes.Struct(state)
         this_struct_type = node.get_this_type()
         this_struct_type.finalize(
-            components=[TypeParser().apply(state.but_with(asl=asl)) 
+            components=[TypeParser().apply(state.but_with(asl=asl))
                 for asl in node.get_child_attribute_asls()],
             component_names=node.get_child_attribute_names(),
             inherits=node.get_implemented_interfaces(),

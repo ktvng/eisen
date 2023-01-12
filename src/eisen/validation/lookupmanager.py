@@ -14,7 +14,7 @@ class LookupManager():
     def resolve_module_from_local(cls, current_module: Module, module_asl: CLRList):
         pass
 
-    
+
     @classmethod
     def resolve_type_in_module(cls, name: str, mod: Module):
         return mod.get_defined_type(name)

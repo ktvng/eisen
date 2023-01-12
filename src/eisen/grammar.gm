@@ -1,20 +1,20 @@
 # ========================================================
 #
-# GrammarMaster (.gm) 
+# GrammarMaster (.gm)
 #
 # ========================================================
 #
-# Define a general purpose grammar for your language and 
+# Define a general purpose grammar for your language and
 # specify everything you need with a .gm file.
-# 
+#
 # Subtleties:
-#   We leave deducing how the important bits work to the 
+#   We leave deducing how the important bits work to the
 #   reader! (It's intuitive, trust)
 #
 #   Two sections: 'SYMBOLICS' for lexing and 'STRUCTURE'
 #   for the context free grammar rules.
-#   
-#   'SYMBOLICS' works by alignment of the '->' symbol. 
+#
+#   'SYMBOLICS' works by alignment of the '->' symbol.
 #       - This is defined by the line
 #               <regex> -> <type> <value>
 #         and only the position of the '->' matters.
@@ -32,20 +32,20 @@
 #         lexing
 #
 #
-#   'STRUCTURE' uses annotations (e.g '@action ...') to 
+#   'STRUCTURE' uses annotations (e.g '@action ...') to
 #   define the reversal of CFG rules during parsing.
 #       - The most recent annotation is used for each
-#         CFG rule, so you don't have to keep writing 
+#         CFG rule, so you don't have to keep writing
 #         annotations all the time.
 #
-#       - Only '@action build' takes another argument 
+#       - Only '@action build' takes another argument
 #         which is the name of the node you want to build.
 #
 #       - Currently '|' bars must be multiline only. Sorry
 #         :(
 #
-#       - Indentation doesn't really matter, but do it 
-#         anyways.    
+#       - Indentation doesn't really matter, but do it
+#         anyways.
 #
 # ========================================================
 # ========================================================
@@ -77,52 +77,52 @@ SYMBOLICS
     keyword @allow      ->  @allow
 
     symbol ,            ->  ,
-    symbol {            ->  \s*{\s* 
-    symbol }            ->  }\s* 
+    symbol {            ->  \s*{\s*
+    symbol }            ->  }\s*
     symbol [            ->  \[
     symbol ]            ->  \]
     symbol (            ->  \(
     symbol )            ->  \)
     symbol endl         ->  \n\s*
 
-    operator =          ->  =      
-    operator :=         ->  :=     
-    operator <-         ->  <-     
-    operator +=         ->  \+=    
-    operator -=         ->  -=     
-    operator *=         ->  \*=    
-    operator /=         ->  /=     
-    operator ?          ->  \?     
-    operator ==         ->  ==     
-    operator !=         ->  !=     
-    operator +          ->  \+     
-    operator -          ->  -      
-    operator /          ->  /      
-    operator *          ->  \*     
-    operator and        ->  (&&|and)     
-    operator or         ->  (\|\||or)   
-    operator !          ->  (!|not)      
-    operator %          ->  %      
-    operator |          ->  \|     
-    operator <          ->  <      
-    operator >          ->  >      
-    operator <=         ->  <=     
-    operator >=         ->  >=     
-    operator .          ->  \.     
-    operator ::         ->  ::     
-    operator ->         ->  ->     
-    operator :          ->  :      
+    operator =          ->  =
+    operator :=         ->  :=
+    operator <-         ->  <-
+    operator +=         ->  \+=
+    operator -=         ->  -=
+    operator *=         ->  \*=
+    operator /=         ->  /=
+    operator ?          ->  \?
+    operator ==         ->  ==
+    operator !=         ->  !=
+    operator +          ->  \+
+    operator -          ->  -
+    operator /          ->  /
+    operator *          ->  \*
+    operator and        ->  (&&|and)
+    operator or         ->  (\|\||or)
+    operator !          ->  (!|not)
+    operator %          ->  %
+    operator |          ->  \|
+    operator <          ->  <
+    operator >          ->  >
+    operator <=         ->  <=
+    operator >=         ->  >=
+    operator .          ->  \.
+    operator ::         ->  ::
+    operator ->         ->  ->
+    operator :          ->  :
 
     str                 ->  (["'])(?:(?=(\\?))\2.)*?\1
-    int                 ->  -?[0-9]+  
+    int                 ->  -?[0-9]+
     bool                ->  true|false
-    
+
     TAG                 ->  [_a-zA-Z]\w*
     none                ->  [ \t]*
     none                ->  [ \t]*\/\/.*?\n+
     none                ->  [ \t]*\/\/[^\n]*
 
-    
+
 STRUCTURE
     # ====================================================
     # Aliases
@@ -165,7 +165,7 @@ STRUCTURE
         |   TAG var
         @action filter_build var_type?
         |   TAG var?
-        |   TAG ? 
+        |   TAG ?
         @action pass
         |   FN_TYPE
 
@@ -178,7 +178,7 @@ STRUCTURE
         |   TYPE , _TYPES
         |   TYPE , TYPE
 
-    FN_TYPE -> 
+    FN_TYPE ->
         @action filter_build fn_type
         |   FN_TYPE_IN FN_TYPE_OUT
 
@@ -193,7 +193,7 @@ STRUCTURE
         |   -> TYPE
         |   -> ( TYPES )
 
-    TYPING -> 
+    TYPING ->
         @action build_operator
         |   TAGS : TYPE
         |   TAG : TYPE
@@ -216,11 +216,11 @@ STRUCTURE
         |   E11 :: TAG
         |   TAG :: TAG
 
-    E10 -> 
+    E10 ->
         @action build_operator
         |   E10 . TAG
         @action build raw_call
-        |   E10 PARAMS 
+        |   E10 PARAMS
         @action filter_build cast
         |   E10 . as ( TYPE )
         @action pass
@@ -238,14 +238,14 @@ STRUCTURE
         @action pass
         |   E10
 
-    E7 -> 
+    E7 ->
         @action build_operator
         |   E7 + E8
         |   E7 - E8
         @action pass
         |   E8
 
-    E6 -> 
+    E6 ->
         @action build_operator
         |   E6 < E7
         |   E6 <= E7
@@ -276,7 +276,7 @@ STRUCTURE
         @action pass
         |   E4
 
-    E0 -> 
+    E0 ->
         @action pass
         |   E3
 
@@ -314,7 +314,7 @@ STRUCTURE
         @action pass
         |   VAR
 
-    L1 -> 
+    L1 ->
         @action build_operator
         |   L1 :: TAG
         @action pass
@@ -337,9 +337,9 @@ STRUCTURE
 
 
     # ====================================================
-    # Assignment 
+    # Assignment
 
-    ASSIGNMENT -> 
+    ASSIGNMENT ->
         @action build_operator
         |   L0 OP_ASSIGN E0
         |   L0S OP_ASSIGN E0S
@@ -375,8 +375,8 @@ STRUCTURE
 
     # ====================================================
     # LINE
-    
-    LINE -> 
+
+    LINE ->
         @action pass
         |   E0 ENDLS
         |   ASSIGNMENT ENDLS
@@ -404,16 +404,16 @@ STRUCTURE
         @action pool
         |   LINE LINE
         |   LINE LINES
-    
+
 
     # ====================================================
     # Control flow
-    
-    COND -> 
+
+    COND ->
         @action filter_build cond
         |   ( E0 ) SEQ
 
-    CONTROL -> 
+    CONTROL ->
         @action filter_build if
         |   IF_CONTEXT
         @action filter_build while
@@ -421,13 +421,13 @@ STRUCTURE
 
     IF_CONTEXT ->
         @action pool
-        |   if COND 
+        |   if COND
         |   if COND ELSES
 
     ELSES ->
         @action pool
-        |   else SEQ 
-        |   else if COND 
+        |   else SEQ
+        |   else if COND
         |   else if COND ELSES
 
 
@@ -436,7 +436,7 @@ STRUCTURE
 
     FUNC ->
         @action build_def
-        |   fn TAG ARGS SEQ 
+        |   fn TAG ARGS SEQ
         |   fn TAG ARGS RETS SEQ
 
     ARGS ->
@@ -466,15 +466,15 @@ STRUCTURE
         |   implements TAGS
 
     STRUCT_ELEMS ->
-        @action pool 
-        |   STRUCT_ELEM STRUCT_ELEMS 
+        @action pool
+        |   STRUCT_ELEM STRUCT_ELEMS
         |   STRUCT_ELEM
 
     STRUCT_ELEM ->
         @action pool
-        |   TYPING ENDLS    
+        |   TYPING ENDLS
         |   FUNC
-        @action filter_build create 
+        @action filter_build create
         |   create ARGS RETS SEQ
         @action filter_build destroy
         |   destroy ARGS SEQ
@@ -482,7 +482,7 @@ STRUCTURE
         |   embed TAG ENDLS
         |   embed TAGS ENDLS
 
-    
+
     # ====================================================
     # Interfaces
 
@@ -499,7 +499,7 @@ STRUCTURE
         @action pool
         |   TYPING ENDLS
 
-    
+
     # ====================================================
     # Variants
 
@@ -522,7 +522,7 @@ STRUCTURE
         |   @allow ( TAGS ) ENDLS
         |   @allow ( TAG ) ENDLS
 
-    
+
     # ====================================================
     # Modules
 
@@ -547,7 +547,7 @@ STRUCTURE
 
     # ====================================================
     # Program
-    
-    START -> 
+
+    START ->
         @action build start
         |   CONTEXTS

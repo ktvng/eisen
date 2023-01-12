@@ -21,7 +21,7 @@ class Lexer():
         while text:
             match_tuples = [rule.match(text) for rule in config.regex_rules]
             longest_match = reduce(
-                lambda a, b: a if a[1] >= b[1] else b, 
+                lambda a, b: a if a[1] >= b[1] else b,
                 match_tuples)
 
             token_value, match_len, rule = longest_match
@@ -32,7 +32,7 @@ class Lexer():
                 raise Exception(f"Error: no regex matches, head of input: {text[0:10]}")
 
             if rule.type == "none":
-                continue 
+                continue
 
             # apply a processing function based on the rule.type
             if callback is not None:

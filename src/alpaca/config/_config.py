@@ -9,4 +9,3 @@ class Config():
         self.cfg_rules = cfg_rules
         terminals = list(set(map(lambda x: x.type, regex_rules)))
         self.cfg = CFG(cfg_rules, terminals)
-    

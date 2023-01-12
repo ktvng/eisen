@@ -51,7 +51,7 @@ class Writer(Visitor):
     def filter_extraneous_newlines(self, txt: str) -> str:
         prev_line_empty = False
 
-        filtered_txt = "" 
+        filtered_txt = ""
         for line in txt.split("\n"):
             if not line.strip():
                 prev_line_empty = True
@@ -176,7 +176,7 @@ class Writer(Visitor):
     @Visitor.for_asls("addr")
     def addr_(fn, asl: CLRList) -> list[str]:
         return ["&"] + fn.delegate(asl)
-    
+
     @Visitor.for_asls("deref")
     def deref_(fn, asl: CLRList) -> list[str]:
         return ["*"] + fn.delegate(asl)

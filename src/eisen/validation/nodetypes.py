@@ -66,10 +66,10 @@ class Nodes():
     class Struct(AbstractNodeInterface):
         asl_type = "struct"
         examples = """
-        (struct name 
-            (impls ...) 
-            (: ...) 
-            (: ...) 
+        (struct name
+            (impls ...)
+            (: ...)
+            (: ...)
             (create ...))
         """
         _get_name = get_name_from_first_child
@@ -77,8 +77,8 @@ class Nodes():
         get_this_type = get_type_for_node_that_defines_a_type
 
         def implements_interfaces(self) -> bool:
-            return (len(self.state.get_asl()) >= 2 
-                and isinstance(self.second_child(), CLRList) 
+            return (len(self.state.get_asl()) >= 2
+                and isinstance(self.second_child(), CLRList)
                 and self.second_child().type == "impls")
 
         def get_impls_asl(self) -> CLRList:
@@ -131,10 +131,10 @@ class Nodes():
     class Interface(AbstractNodeInterface):
         asl_type = "interface"
         examples = """
-        (interface name 
-            (impls ...) 
-            (: ...) 
-            (: ...) 
+        (interface name
+            (impls ...)
+            (: ...)
+            (: ...)
         """
         _get_name = get_name_from_first_child
         get_interface_name = _get_name
@@ -195,7 +195,7 @@ class Nodes():
             return Nodes.Def._unpack_to_get_names(self.get_args_asl())
 
         def get_ret_names(self) -> list[str]:
-            return Nodes.Def._unpack_to_get_names(self.get_rets_asl()) 
+            return Nodes.Def._unpack_to_get_names(self.get_rets_asl())
 
         @classmethod
         def _unpack_to_get_names(self, args_or_rets: CLRList) -> list[str]:
@@ -206,7 +206,7 @@ class Nodes():
                 colonnodes = first_arg._list
             else:
                 colonnodes = [first_arg]
-            
+
             return [node.first().value for node in colonnodes]
 
 
@@ -230,7 +230,7 @@ class Nodes():
             of (def ...) and (create ...) asls so we can use the same code to process
             them"""
             self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
-    
+
         def get_args_asl(self) -> CLRList:
             return self.second_child()
 
@@ -238,7 +238,7 @@ class Nodes():
             return self.third_child()
 
         def get_name(self) -> str:
-            """the name of the constructor is the same as the struct it constructs. this 
+            """the name of the constructor is the same as the struct it constructs. this
             must be passed into the State as a parameter"""
             return self.state.get_struct_name()
 
@@ -246,7 +246,7 @@ class Nodes():
         asl_type = "is_fn"
         examples = """
         1. wild
-            (is 
+            (is
                 (args ...)
                 (rets ...)
                 (seq ...))
@@ -280,7 +280,7 @@ class Nodes():
 
         def enter_context_and_apply_fn(self, fn) -> None:
             # must create fn_context here as it is shared by all children
-            fn_context = self.state.create_block_context("func") 
+            fn_context = self.state.create_block_context("func")
             will_enter_constructor = self.state.asl.type == "create"
             for child in self.state.get_child_asls():
                 fn.apply(self.state.but_with(
@@ -314,7 +314,7 @@ class Nodes():
                 type=self._get_type_of_is_function(),
                 mod=self.state.get_enclosing_module())
 
-    
+
     class LetVarVal(AbstractNodeInterface):
         asl_types = ["let", "var", "val", "var?"]
         examples = """
@@ -386,7 +386,7 @@ class Nodes():
     class Colon(AbstractNodeInterface):
         asl_type = ":"
         examples = """
-        1. multiple assignment 
+        1. multiple assignment
             (: (tags ...) (type ...))
         2. single_assignment
             (: name (type ...))
@@ -418,7 +418,7 @@ class Nodes():
     class Assignment(AbstractNodeInterface):
         asl_type = "="
         examples = """
-        1. single assignment 
+        1. single assignment
             (= (ref name) 4)
         2. multiple assignment
             (= (tuple (ref name1) (ref name2)) (tuple 4 4))
@@ -431,10 +431,10 @@ class Nodes():
 
     class RefLike(AbstractNodeInterface):
         asl_types = ["ref", "::", "."]
-        
+
         def is_print(self) -> bool:
             return self.state.get_asl().type == "ref" and Nodes.Ref(self.state).is_print()
-        
+
         def get_name(self) -> str:
             type = self.state.get_asl().type
             if type == "ref":
@@ -449,7 +449,7 @@ class Nodes():
         def get_module(self):
             if self.state.get_asl().type == "::":
                 return Nodes.ModuleScope(self.state).get_module()
-            return self.state.get_enclosing_module() 
+            return self.state.get_enclosing_module()
 
         def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
             return LookupManager.resolve_function_reference_by_signature(
@@ -461,7 +461,7 @@ class Nodes():
             return LookupManager.resolve_reference(
                 name=self.get_name(),
                 context=self.state.get_context(),
-                mod=self.get_module()) 
+                mod=self.get_module())
 
         def assign_instance(self, instance: EisenInstance):
             type = self.state.get_asl().type
@@ -622,7 +622,7 @@ class Nodes():
         asl_type = "raw_call"
         examples = """
         x.run() becomes:
-            (raw_call (ref (. x run)) (params )) 
+            (raw_call (ref (. x run)) (params ))
 
         (raw_call (ref name) (params ...))
         """
@@ -634,7 +634,7 @@ class Nodes():
             return self.third_child()
 
     class TypeLike(AbstractNodeInterface):
-        asl_type = "type" 
+        asl_type = "type"
         examples = """
         (type name)
         (var_type name)

@@ -17,12 +17,12 @@ class Logger():
     def _log(self, msg: str, level: str) -> None:
         with open(self.log_dir + self.file + ".log", 'a') as f:
             f.write(self._line_header(level) + msg + "\n")
- 
+
 
     def log(self, msg: str):
         if self.should_log_at_level("info"):
             self._log(msg, "INF")
-    
+
     def log_error(self, msg: str):
         if self.should_log_at_level("error"):
             self._log(msg, "ERR")
@@ -32,7 +32,7 @@ class Logger():
     def log_debug(self, msg: str):
         if self.should_log_at_level("debug"):
             self._log(msg, "DEB")
-    
+
     def raise_exception(self, msg: str):
         self.log_error(msg)
         raise Exception(msg)

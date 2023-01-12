@@ -7,7 +7,7 @@ from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 
 class FunctionVisitor(Visitor):
-    """this creates the function instances from (create ...) and (def ) asls. the 
+    """this creates the function instances from (create ...) and (def ) asls. the
     instances get added to the module so they can be used and called.
     """
     def apply(self, state: State):
@@ -27,11 +27,11 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> None:
-        # we need to pass down the struct name because the (create ...) asl will 
-        # take on the name of the struct. 
+        # we need to pass down the struct name because the (create ...) asl will
+        # take on the name of the struct.
         #
-        # for example, a struct named MyStruct will have a constructor method 
-        # called via MyStruct(...), so the (create ...)  method inside the 
+        # for example, a struct named MyStruct will have a constructor method
+        # called via MyStruct(...), so the (create ...)  method inside the
         # (struct MyStruct ... ) asl needs context as to the struct it is inside.
         node = Nodes.Struct(state)
         if node.has_create_asl():
@@ -59,7 +59,7 @@ class FunctionVisitor(Visitor):
     def create_(fn, state: State):
         node = Nodes.Create(state)
         node.normalize(struct_name=state.get_struct_name())
-        
+
         # the name of the constructor is the same as the struct
         instance = EisenInstance(
             name=node.get_name(),
@@ -80,4 +80,3 @@ class FunctionVisitor(Visitor):
             context=state.get_enclosing_module(),
             asl=state.get_asl())
         state.add_function_instance_to_module(instance)
-        

@@ -15,7 +15,7 @@
             {
                 "type": "MemoryAssignmentException",
                 "contains": ">> 19"
-            } 
+            }
         ]
     }
 }

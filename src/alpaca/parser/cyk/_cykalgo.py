@@ -7,7 +7,7 @@ from alpaca.lexer import Token
 from alpaca.clr import CLRToken
 
 class DpTableEntry():
-    def __init__(self, 
+    def __init__(self,
             rule : CFGRule,
             x : int,
             y : int,
@@ -25,7 +25,7 @@ class DpTableEntry():
             self.is_main_diagonal = True
         else:
             self.is_main_diagonal = False
-        
+
         self.delta = delta
         self.lname = lname
         self.rname = rname
@@ -37,7 +37,7 @@ class DpTableEntry():
         unique_entries = []
         for entry in entries:
             if entry.rule not in [e.rule for e in unique_entries]:
-                unique_entries.append(entry) 
+                unique_entries.append(entry)
 
         return unique_entries
 
@@ -47,7 +47,7 @@ class DpTableEntry():
         entries = dp_table[lcx][lcy]
         matching_entries = [e for e in entries if e.name == self.lname]
         unique_entries = self._get_unique_rules(matching_entries)
-        
+
         if not unique_entries:
             raise Exception("reached point in gramatical tree with no children??")
         if len(unique_entries) > 1:
@@ -72,7 +72,7 @@ class DpTableEntry():
             random.shuffle(unique_entries)
             print(self.rname)
             print(self.name)
-    
+
         return unique_entries[0]
 
 DpTable = List[List[List[DpTableEntry]]]
@@ -139,7 +139,7 @@ class CYKAlgo:
             self._fill_diagonal(i)
         # can't call do_parse b/c filling first row is different
         # self._do_parse()
-    
+
     def parse(self, tokens : list[Token]):
         self.n = len(tokens)
         self.tokens = CYKAlgo.tokens_to_clrtoken(tokens)
@@ -156,13 +156,13 @@ class CYKAlgo:
 
     def _get_producing_rules_for_clrtoken(self, tok : CLRToken) -> list[CFGRule]:
         return self.query.get_rules_for_token(tok)
-        return [rule for rule in self.cfg.rules 
+        return [rule for rule in self.cfg.rules
             if len(rule.pattern) == 1 and tok.type == rule.pattern[0]]
 
     def _get_producing_rules_for(self, lname : str, rname : str) -> list[CFGRule]:
         return self.query.get_rules(lname, rname)
-        return [rule for rule in self.cfg.rules 
-            if len(rule.pattern) == 2 
+        return [rule for rule in self.cfg.rules
+            if len(rule.pattern) == 2
                 and rule.pattern[0] == lname
                 and rule.pattern[1] == rname]
 
@@ -188,7 +188,7 @@ class CYKAlgo:
                 for l_and_r_names in itertools.product(lrule_names, rrule_names):
                     producing_rules = self._get_producing_rules_for(*l_and_r_names)
                     self.dp_table[x][y] += \
-                        [DpTableEntry(rule, *point, delta, *l_and_r_names) 
+                        [DpTableEntry(rule, *point, delta, *l_and_r_names)
                             for rule in producing_rules]
 
     @classmethod
@@ -203,4 +203,3 @@ class CYKAlgo:
     @classmethod
     def is_main_diagonal(cls, x : int, y : int) -> bool:
         return x == y
-                    

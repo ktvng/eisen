@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.config import Config
-from alpaca.parser._builder import Builder 
+from alpaca.parser._builder import Builder
 from alpaca.clr._clr import CLRList
 from alpaca.parser.cyk._cykalgo import CYKAlgo
 from alpaca.parser.cyk._astbuilder import AstBuilder

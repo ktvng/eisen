@@ -95,7 +95,7 @@ class PermissionsVisitor(Visitor):
     @Visitor.for_asls("interface", "return")
     def none_(fn, state: State) -> list[EisenInstanceState]:
         return []
- 
+
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> list[EisenInstanceState]:
         node = Nodes.Struct(state)
@@ -113,7 +113,7 @@ class PermissionsVisitor(Visitor):
     def if_(fn, state: State) -> list[EisenInstanceState]:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
-                asl=child, 
+                asl=child,
                 context=state.create_block_context("if")))
         return []
 
@@ -136,7 +136,7 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:
-        left_instancestates = [PermissionsVisitor.convert_instance_to_instancestate(i, Initializations.NotInitialized) 
+        left_instancestates = [PermissionsVisitor.convert_instance_to_instancestate(i, Initializations.NotInitialized)
             for i in state.get_instances()]
         right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
         for left, right in zip(left_instancestates, right_instancestates):
@@ -153,7 +153,7 @@ class PermissionsVisitor(Visitor):
         for child in state.get_all_children():
             instancestates += fn.apply(state.but_with(asl=child))
         return instancestates
-    
+
     @Visitor.for_asls("=")
     def equals_(fn, state: State) -> list[EisenInstanceState]:
         left_instancestates = fn.apply(state.but_with(asl=state.first_child()))
@@ -197,14 +197,14 @@ class PermissionsVisitor(Visitor):
         if node.is_print():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc) 
+        argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
         for left, right in zip(argument_instancestates, param_instancestates):
             Validate.parameter_assignment_restrictions_met(state, left, right)
             Validate.instancestate_is_initialized(state, right)
- 
+
         # handle returned restrictions
         returned_instancestates = [PermissionsVisitor.convert_return_type_to_instancestate(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
@@ -223,7 +223,7 @@ class PermissionsVisitor(Visitor):
 
         for instancestate in component_instancestates:
             Validate.instancestate_is_initialized(state, instancestate)
-        
+
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens

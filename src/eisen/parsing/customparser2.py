@@ -21,9 +21,9 @@ class ContextParser():
     def parse(self, tokens: list[Token]):
         self.algo.parse(tokens)
         ast = self.builder.run(
-            self.config, 
-            self.algo.tokens, 
-            self.algo.dp_table, 
+            self.config,
+            self.algo.tokens,
+            self.algo.dp_table,
             self.extended_builder,
             self.context_name)
         return ast
@@ -81,7 +81,7 @@ class SuperParser():
         self.interface_parser = ContextParser(config, "INTERFACE")
         self.variant_parser = ContextParser(config, "VARIANT")
         self.mod_parser = ModParser([
-            self.func_parser, 
+            self.func_parser,
             self.struct_parser,
             self.interface_parser,
             self.variant_parser

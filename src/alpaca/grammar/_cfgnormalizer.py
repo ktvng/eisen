@@ -11,8 +11,8 @@ class CFGNormalizer():
         self.n_rules_for_literals = 0
         self.n_connector_rules = 0
 
-        # maps from ruleA:ruleB 
-        self.connectors = {} 
+        # maps from ruleA:ruleB
+        self.connectors = {}
         self.rules = []
 
     def run(self, cfg : CFG) -> CFG:
@@ -30,7 +30,7 @@ class CFGNormalizer():
         new_cfg = CFG(self.rules, self.original_cfg.terminals)
         return new_cfg
 
-    @classmethod 
+    @classmethod
     def is_connector(cls, name : str) -> bool:
         return "_CONNECTOR" in name and name[-1] == "_"
 
@@ -84,22 +84,22 @@ class CFGNormalizer():
 
         return existing_rule
 
-    # in the case that [rule] produces a pattern consiting of a single production_symbol, substitute 
+    # in the case that [rule] produces a pattern consiting of a single production_symbol, substitute
     # the pattern of that production_symbol in for it and expand the resulting temporary rule
     def _handle_single_prod_rule_case(self, rule : CFGRule) -> None:
         substitute_production_symbol = rule.pattern[0]
-        substitutions = [r for r in self.original_cfg.rules 
+        substitutions = [r for r in self.original_cfg.rules
             if r.production_symbol == substitute_production_symbol]
 
         for rule_to_sub in substitutions:
             pattern_to_sub = rule_to_sub.pattern_str
-            
+
             # rule_to_sub.reverse with should be executed before the original rule
             steps_to_reverse_both_rules = [*rule_to_sub.actions, *rule.actions]
-            
+
             temp_rule = CFGRule(
-                rule.production_symbol, 
-                pattern_to_sub, 
+                rule.production_symbol,
+                pattern_to_sub,
                 steps_to_reverse_both_rules)
 
             self._expand_rule(temp_rule)
@@ -107,22 +107,22 @@ class CFGNormalizer():
     def _expand_rule(self, rule : CFGRule):
         if CFGNormalizer.is_cnf_rule(self.original_cfg, rule):
             self.rules.append(CFGRule(
-                rule.production_symbol, 
-                rule.pattern_str, 
+                rule.production_symbol,
+                rule.pattern_str,
                 rule.actions))
 
             return
-        
+
         if len(rule.pattern) == 1:
             self._handle_single_prod_rule_case(rule)
             return
 
         # working pattern is a list of CFG production_symbols
-        working_pattern = [part if self.original_cfg.is_production_symbol(part) 
+        working_pattern = [part if self.original_cfg.is_production_symbol(part)
             else self._get_rule_for_literal(part).production_symbol
             for part in rule.pattern]
 
-        # merges the last two production_symbols into a connector, and proceeds forward 
+        # merges the last two production_symbols into a connector, and proceeds forward
         # until the list has only 2 production symbols
         while len(working_pattern) > 2:
             # order because popping occurs as stack

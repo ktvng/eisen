@@ -26,8 +26,8 @@ class SharedCounter():
         self.n = val
 
 class Params(AbstractParams):
-    def __init__(self, 
-            asl: CLRList, 
+    def __init__(self,
+            asl: CLRList,
             mod: NestedContainer,
             global_mod: NestedContainer,
             as_ptr: bool,
@@ -56,11 +56,11 @@ class Params(AbstractParams):
 
     def inspect(self) -> str:
         if isinstance(self.asl, CLRList):
-            try: 
+            try:
                 instances = self.get_instances(self.asl)
             except:
                 instances = None
-            instance_strs = ("N/A" if instances is None 
+            instance_strs = ("N/A" if instances is None
                 else ", ".join([str(i) for i in instances]))
 
             children_strs = []
@@ -135,11 +135,11 @@ class CTransmutation(Visitor):
     @Visitor.covers(asls_of_type("struct"))
     def partial_3(fn, params: Params) -> str:
         full_name = Utils.get_full_name_of_struct(
-            name=params.asl.first().value, 
+            name=params.asl.first().value,
             context=params.get_module())
         attributes = [child for child in params.asl[1:] if child.type == ":"]
         attribute_strs = " ".join([fn.apply(params.but_with(asl=attr)) for attr in attributes])
-        
+
         methods = [child for child in params.asl[1:] if child not in attributes]
         method_strs = " ".join([fn.apply(params.but_with(asl=meth)) for meth in methods])
 

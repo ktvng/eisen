@@ -12,7 +12,7 @@ fn as(in: typeA, type: Types) -> out: type {
 
 With this model in mind, the syntax for casting follows very naturally:
 
-```eisen 
+```eisen
 let myA = typeA()
 val myB = myA.as(typeB)
 ```
@@ -42,5 +42,5 @@ Some primitives support cast operations. By default there is no implicit casting
 
 ```eisen
 let myInt = 4
-let myFlt = myInt.as(flt) 
+let myFlt = myInt.as(flt)
 ```

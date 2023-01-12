@@ -13,4 +13,3 @@ class Initializer(Visitor):
         state.get_asl().data = NodeData()
         for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child))
-        

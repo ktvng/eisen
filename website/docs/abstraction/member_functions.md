@@ -5,9 +5,9 @@ Functions may be defined over structs, externally, and this allows all instances
 struct WelcomeMessage {
     name: str
     getMessage: (self: WelcomeMessage) -> msg: str
-    
+
     create(
-        name: str, 
+        name: str,
         getMessage: (WelcomeMessage) -> str
     ) -> self: WelcomeMessage {
         self.name = name

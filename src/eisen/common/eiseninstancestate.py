@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from eisen.common.restriction import GeneralRestriction
 
 class EisenInstanceState(InstanceState):
-    def __init__(self, 
-            name: str, 
-            restriction: GeneralRestriction, 
+    def __init__(self,
+            name: str,
+            restriction: GeneralRestriction,
             initialization: Initializations):
         self.name = name
         self.restriction = restriction

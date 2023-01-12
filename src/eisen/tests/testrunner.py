@@ -44,7 +44,7 @@ class Test():
         #     return alpaca.clr.CLRParser.run(config, asl_str)
         return self.parse_asl()
 
-    def parse_asl(self): 
+    def parse_asl(self):
         # config = alpaca.config.parser.run(filename=Test.grammarfile)
         tokens = alpaca.lexer.run(text=self.code, config=StaticParser.config, callback=EisenCallback)
         # asl = alpaca.parser.run(config, tokens, builder=EisenBuilder())
@@ -56,7 +56,7 @@ class Test():
     def _make_exception_error_msg(cls, e, state: State):
         exception_type = e["type"]
         contents = e["contains"]
-        return f"expected to encounter exception '{exception_type}' containing:\n{contents}\nbut got:\n-----\n{state.watcher.txt}\n-----\n" 
+        return f"expected to encounter exception '{exception_type}' containing:\n{contents}\nbut got:\n-----\n{state.watcher.txt}\n-----\n"
 
     def run(self) -> tuple[bool, str]:
         asl = self.parse_asl_with_cache()
@@ -125,19 +125,19 @@ class TestRunner():
     @classmethod
     def run_test_by_name(cls, name: str):
         test = Test(name)
-        try: 
+        try:
             status, msg = test.run()
         except Exception as e:
-            try: 
+            try:
                 status, msg = False, f"unhandled exception: {e} {traceback.format_exc()}\n" + str(test.parse_asl())
             except:
                 status, msg = False, f"!! could not parse asl"
-        return status, msg  
-    
+        return status, msg
+
     @classmethod
     def get_all_test_names(cls) -> list[str]:
         filenames = next(walk(TestRunner.testdir), (None, None, []))[2]
-        test_files = [f for f in filenames if f.endswith(".json")] 
+        test_files = [f for f in filenames if f.endswith(".json")]
         return [t.split(".")[0] for t in test_files]
 
     @classmethod
@@ -147,7 +147,7 @@ class TestRunner():
         tests = cls.get_all_test_names()
         for testname in tests:
             status, msg = cls.run_test_by_name(testname)
-            
+
             if status:
                 successes += 1
             else:
@@ -178,5 +178,5 @@ class TestRunner():
             asl_str = str(test.parse_asl())
             with open(cls.cachedir + testname, 'w') as f:
                 f.write(asl_str)
-        
-        
+
+

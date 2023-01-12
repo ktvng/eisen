@@ -53,8 +53,7 @@ class AbstractException():
 
         for i in range(start, end):
             c = ">>" if i == index_of_line_number else "  "
-            line = f"       {c} {i+1} \t| {lines[i]}\n" 
+            line = f"       {c} {i+1} \t| {lines[i]}\n"
             str_rep += line
-            
-        return str_rep   
-        
+
+        return str_rep

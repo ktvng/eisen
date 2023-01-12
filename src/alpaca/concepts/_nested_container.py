@@ -52,7 +52,7 @@ class NestedContainer():
     def get_local_obj(self, container_name: str, name: str) -> Any:
         container = self.containers[container_name]
         if name in container:
-            return container[name]   
+            return container[name]
         return None
 
     def add_instance(self, instance: Instance) -> None:
@@ -65,9 +65,9 @@ class NestedContainer():
         return name + "." + type.get_uuid_str()
 
     def add_function_instance(self, instance: Instance) -> None:
-        self.add_obj("function_instance", 
+        self.add_obj("function_instance",
             self._get_function_instance_key(
-                instance.name, instance.type.get_argument_type()), 
+                instance.name, instance.type.get_argument_type()),
             instance)
 
     def get_function_instance(self, name: str, type: Type) -> Instance | None:
@@ -97,7 +97,7 @@ class NestedContainer():
         sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
         return f"{self.name}\n{indented_subtext}"
-        
+
     def get_full_name(self) -> str:
         # case for the global module
         if self.parent is None:

@@ -7,8 +7,8 @@ class LambBuilder(alpaca.parser.CommonBuilder):
     def filter_build_(
             fn,
             config : alpaca.config.Config,
-            components : alpaca.clr.CLRRawList, 
-            *args) -> alpaca.clr.CLRRawList: 
+            components : alpaca.clr.CLRRawList,
+            *args) -> alpaca.clr.CLRRawList:
 
         newCLRList = LambBuilder.build(fn, config, components, *args)[0]
         filtered_children = LambBuilder._filter(config, newCLRList)
@@ -51,7 +51,7 @@ class LambRunner():
 #         return astnode.value
 #     elif astnode.match_with() == "apply":
 #         return f"({ts(astnode.children[0], closure)} {ts(astnode.children[1], closure)})"
-        
+
 # def obj_ts(obj):
 #     if obj["type"] == "lambda":
 #         return f"\L {obj['binds']['name']}.{ts(obj['body'], obj['closure'])}"
@@ -87,23 +87,23 @@ class LambRunner():
 #     def visit(self, astnode: ASTNode, cx: AbstractContext):
 #         name = visit(astnode.children[0], cx)
 #         return {
-#             "type": "lambda", 
-#             "closure": { **cx.params["scope"] }, 
-#             "binds": name, 
+#             "type": "lambda",
+#             "closure": { **cx.params["scope"] },
+#             "binds": name,
 #             "body": astnode.children[1]}
 
 # class tag_(AbstractVisitor2):
 #     matches = ["TAG"]
-    
+
 #     def visit(self, astnode: ASTNode, cx: AbstractContext):
 #         found_value = cx.params["scope"].get(astnode.value, None)
 #         if found_value is not None:
 #             return found_value
 
 #         return {
-#             "type": "tag", 
+#             "type": "tag",
 #             "name": astnode.value}
-    
+
 # class def_(AbstractVisitor2):
 #     matches = ["def"]
 
@@ -114,7 +114,7 @@ class LambRunner():
 #             "body": astnode.children[1]}
 #         cx.params["scope"][name] = obj
 #         return obj
-    
+
 # class apply_(AbstractVisitor2):
 #     matches = ['apply']
 
@@ -171,4 +171,3 @@ class LambRunner():
 #         for child in astnode.children:
 #             self._add_visitors(child)
 
-        

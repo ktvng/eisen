@@ -7,7 +7,7 @@ from eisen.validation.nodetypes import Nodes
 
 class DeclarationVisitor(Visitor):
     """parses (struct ...) and (interface ...) asls into a instances of the
-    proto_struct/proto_interface type, respectively,  which represents the 
+    proto_struct/proto_interface type, respectively,  which represents the
     declaration of the type without the actual definition.
 
     see FinalizationVisitor for more details.
@@ -17,7 +17,7 @@ class DeclarationVisitor(Visitor):
         return self._route(state.get_asl(), state)
 
     def adds_type_to_module(f):
-        """adds the returned type to the list of known typesclasses in 
+        """adds the returned type to the list of known typesclasses in
         the enclosing module"""
         def decorator(fn, state: State) -> None:
             result: Type = f(fn, state)

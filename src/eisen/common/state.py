@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class SharedBool():
     def __init__(self, value: bool):
         self.value = value
-    
+
     def __bool__(self) -> bool:
         return self.value
 
@@ -37,9 +37,9 @@ class State(AbstractParams):
     attrs = ["config", "asl", "txt", "context", "mod", "global_mod",
     "struct_name", "exceptions", "is_ptr", "critical_exception"]
 
-    def __init__(self, 
-            config: Config, 
-            asl: CLRList, 
+    def __init__(self,
+            config: Config,
+            asl: CLRList,
             txt: str,
             context: Context,
             mod: Module,
@@ -52,7 +52,7 @@ class State(AbstractParams):
             print_to_watcher: bool = False,
             critical_exception: SharedBool = SharedBool(False),
             watcher: Watcher = None,
-            
+
             # used for interpreter
             objs: dict[str, Obj] = {},
             ):
@@ -69,7 +69,7 @@ class State(AbstractParams):
         self.is_ptr = is_ptr
         self.inside_constructor = inside_constructor
         self.critical_exception = critical_exception
-        
+
         self.print_to_watcher = print_to_watcher
         self.watcher = Watcher()
 
@@ -92,12 +92,12 @@ class State(AbstractParams):
             objs: dict[str, Obj] = None,
             ) -> State:
 
-        return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod, 
+        return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
             arg_type=arg_type,
             objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
 
-            # these cannot be changed by input params 
+            # these cannot be changed by input params
             critical_exception=self.critical_exception, watcher=self.watcher,
             print_to_watcher=self.print_to_watcher)
 
@@ -114,8 +114,8 @@ class State(AbstractParams):
                 instances = self.get_instances(self.asl)
             except:
                 pass
-            
-            instance_strs = ("N/A" if instances is None 
+
+            instance_strs = ("N/A" if instances is None
                 else ", ".join([str(i) for i in instances]))
 
             children_strs = []
@@ -163,7 +163,7 @@ Token: {self.asl}
         global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
 
         return State(
-            config=config, 
+            config=config,
             asl=asl,
             txt=txt,
             context=None,
@@ -206,10 +206,10 @@ Token: {self.asl}
     def get_returned_type(self) -> Type:
         """canonical way to access the type returned from this node"""
         return self.get_node_data().returned_type
-        
+
     def get_instances(self) -> list[EisenInstance]:
         """canonical way to get instances stored in this node"""
-        return self.get_node_data().instances       
+        return self.get_node_data().instances
 
     def get_nilstate(self, name) -> bool:
         return self.get_context().get_nilstate(name)
@@ -228,7 +228,7 @@ Token: {self.asl}
 
     def get_abort_signal(self) -> Type:
         return TypeFactory.produce_novel_type("_abort_")
-        
+
     def get_child_asls(self) -> list[CLRList]:
         """canonical way to obtain child CLRLists"""
         return [child for child in self.asl if isinstance(child, CLRList)]
@@ -307,4 +307,3 @@ Token: {self.asl}
 
     def is_inside_constructor(self) -> bool:
         return self.inside_constructor
-    

@@ -1,7 +1,7 @@
 # Interfaces
 While storing member functions as attributes inside a struct allows us to achieve polymorphism between different entities with the same structural data (i.e. same attributes), interfaces add a second degree of polymorphism for entities which may differ in structural data.
 
-An interface is a specification of required functionality. Any struct which implements an interface must implement this set of functionality, but there are no restrictions placed on the member attributes of a struct. 
+An interface is a specification of required functionality. Any struct which implements an interface must implement this set of functionality, but there are no restrictions placed on the member attributes of a struct.
 
 An interface may also be defined as to specify certain member attributes which must be implemented by any struct which implements the interface.
 
@@ -82,10 +82,10 @@ struct LedgerEntry implements Hashable, Debuggable {
 ```
 
 ## Low-Cost implementation
-Eisen implements interfaces as C level structs with function pointers (i.e. a virtual function table). The interfact struct also has a pointer to the underlying object instance, which gets passed into each entry of the function table. 
+Eisen implements interfaces as C level structs with function pointers (i.e. a virtual function table). The interfact struct also has a pointer to the underlying object instance, which gets passed into each entry of the function table.
 
 ## Interface Specific Methods
-Interfaces can also be written with certain methods already implemented. Because an interface represents a public set of attributes and methods, Eisen actually permits the developer to defined functions which may treat an interface as if it were a struct. When an interface is used in this way, only the attributes and methods publically comprising the interface may be used. 
+Interfaces can also be written with certain methods already implemented. Because an interface represents a public set of attributes and methods, Eisen actually permits the developer to defined functions which may treat an interface as if it were a struct. When an interface is used in this way, only the attributes and methods publically comprising the interface may be used.
 
 ```eisen
 interface AuthenticationManager {

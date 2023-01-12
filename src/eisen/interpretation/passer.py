@@ -20,7 +20,7 @@ class Passer():
     @classmethod
     def add_var(cls, context: dict, name: str, val: Obj):
         context[name] = val
-    
+
     @classmethod
     def add_let(cls, context: dict, name: str, val: Obj):
         l = Obj(None, name=name)

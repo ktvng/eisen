@@ -7,13 +7,13 @@ SYMBOLICS
     symbol (            ->  \(
     symbol )            ->  \)
     symbol <            ->  <
-    symbol >            ->  >    
+    symbol >            ->  >
     symbol #            ->  #
     symbol [            ->  \[
     symbol ]            ->  \]
     symbol ->           ->  ->
     symbol :=           ->  :=
-    
+
     TAG                 ->  [_a-zA-Z]\w*
     none                ->  [ \t]*
 
@@ -24,12 +24,12 @@ STRUCTURE
         |   TYPE_DECL
 
     @action filter_build term
-    TERM_DECL ->  
+    TERM_DECL ->
         |   TAG : TYPE
         |   TAGS : TYPE
 
     @action pool
-    TAGS -> 
+    TAGS ->
         |   TAG , TAG
         |   TAG , TAGS
 
@@ -44,7 +44,7 @@ STRUCTURE
         |   COPR_TYPE
 
     @action filter_build simple
-    TYPE -> 
+    TYPE ->
         |   TAG
         |   ( TAG )
         |   ( TYPE )
@@ -60,7 +60,7 @@ STRUCTURE
         |   DEP_PROD_TYPE COPR_TYPE -> TYPE
 
     @action filter_build eval
-    TYPE -> 
+    TYPE ->
         |   TYPE [ TAG ]
         |   TYPE [ TAGS ]
 
@@ -80,10 +80,10 @@ STRUCTURE
     PROD_TYPE -> ( TUPLE )
 
     @action filter_build depd
-    DEP_PROD_TYPE -> 
+    DEP_PROD_TYPE ->
         |   < TERM_TUPLE >
         |   < TERM_DECL >
-    
+
     @action filter_build copr
     COPR_TYPE ->
         |   ( TYPE | TYPE )

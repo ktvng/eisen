@@ -12,4 +12,3 @@ class Token():
         padding = max(0, self.type_print_len - len(self.type))
         clean_value = self.value.replace('\n', '\\n')
         return f"{self.line_number}\t{self.type}{' ' * padding}{clean_value}"
-        

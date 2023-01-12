@@ -58,7 +58,7 @@ class CLRParser():
                     elif txt[idx] == ")":
                         net_parens -= 1
                     idx += 1
-                
+
                 part = txt[0 : idx]
                 parts.append(part)
                 txt = txt[len(part):]

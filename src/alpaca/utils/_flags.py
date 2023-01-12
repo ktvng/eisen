@@ -15,6 +15,6 @@ class AbstractFlags:
 
     def but_with(self, *args) -> AbstractFlags:
         return AbstractFlags(list(set(list(args) + self._flags)))
-    
+
     def but_without(self, *args) -> AbstractFlags:
         return AbstractFlags([f for f in self._flags if f not in args])

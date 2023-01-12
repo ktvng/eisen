@@ -32,19 +32,19 @@ class Type():
             parent_type: Type):
 
         """a type instance should only be created via the TypeclassFactory"""
-        self.classification = classification 
+        self.classification = classification
         self.name = name
         self.mod = mod
         self.components = components
         self.component_names = component_names
         self.inherits = inherits
         self.embeds = embeds
-        self.restriction = restriction 
+        self.restriction = restriction
         self.parent_type = parent_type
 
-    def finalize(self, 
-            components: list[Type], 
-            component_names: list[str], 
+    def finalize(self,
+            components: list[Type],
+            component_names: list[str],
             inherits: list[Type] = [],
             embeds: list[Type] = []):
         if (self.classification != Type.classifications.proto_interface and
@@ -56,7 +56,7 @@ class Type():
         elif self.classification == Type.classifications.proto_struct:
             self.classification = Type.classifications.struct
 
-        self.components = components 
+        self.components = components
         self.component_names = component_names
         self.inherits = inherits
         self.embeds = embeds
@@ -73,11 +73,11 @@ class Type():
         return mod_str + "::" if mod_str else ""
 
 
-    # struct and novel types must be identified by the module they reside in and 
+    # struct and novel types must be identified by the module they reside in and
     # their name. For novel types, this is required because we don't have any other
     # information to use. For struct types, this is required to avoid a circular
     # dependencies where some attribute of the struct may refer to that same struct.
-    # Therefore we avoid consideration of the uuid for struct attributes, and 
+    # Therefore we avoid consideration of the uuid for struct attributes, and
     # instead enforce the condition that a struct must be uniquely defined based
     # on it's name.
     def _get_uuid_based_on_module_and_name(self) -> str:
@@ -85,17 +85,17 @@ class Type():
 
     def _get_uuid_based_on_components(self) -> str:
         name_str = self.name if self.name else ""
-        member_strs = [member._get_uuid_str() for member in self.components] 
-        return self._get_module_prefix_for_uuid() + f"{name_str}({', '.join(member_strs)})" 
+        member_strs = [member._get_uuid_str() for member in self.components]
+        return self._get_module_prefix_for_uuid() + f"{name_str}({', '.join(member_strs)})"
 
     def _get_uuid_for_function(self) -> str:
         name_str = self.name if self.name else ""
-        member_strs = [member._get_uuid_str() for member in self.components] 
-        return self._get_module_prefix_for_uuid() + f"{name_str}({member_strs[0]} -> {member_strs[1]})" 
+        member_strs = [member._get_uuid_str() for member in self.components]
+        return self._get_module_prefix_for_uuid() + f"{name_str}({member_strs[0]} -> {member_strs[1]})"
 
 
-    # Return the uuid string which can be hashed to obtain a proper uuid. All 
-    # types should be identified by uuid, such that muliple instances of 
+    # Return the uuid string which can be hashed to obtain a proper uuid. All
+    # types should be identified by uuid, such that muliple instances of
     # the same type can be created that express equality to each other. This
     # allows us to treat types as frozen literals.
     #
@@ -116,9 +116,9 @@ class Type():
             return self._get_uuid_based_on_module_and_name()
 
     def _equiv(self, u : list, v : list) -> bool:
-        return (u is not None 
-            and v is not None 
-            and len(u) == len(v) 
+        return (u is not None
+            and v is not None
+            and len(u) == len(v)
             and all([x == y for x, y in zip(u, v)]))
 
     def __eq__(self, o: Any) -> bool:
@@ -126,7 +126,7 @@ class Type():
 
     def __hash__(self) -> int:
         return hash(self._get_uuid_str())
-        
+
     def __str__(self) -> str:
         # TODO: this is an implementation dependency
         nilable = " var?" if self.restriction and self.restriction.is_nullable() else ""
@@ -143,7 +143,7 @@ class Type():
         for embedded_type in self.embeds:
             pairs.extend(embedded_type.get_all_attribute_name_type_pairs())
         return pairs
-    
+
 
     def has_member_attribute_with_name(self, name: str) -> bool:
         if name in self.component_names:
@@ -183,13 +183,13 @@ class Type():
     def get_return_type(self) -> Type:
         if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
-        
+
         return self.components[1]
 
     def get_argument_type(self) -> Type:
         if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_argument_type on function constructions, got {self}")
-        
+
         return self.components[0]
 
     def is_function(self) -> bool:
@@ -199,7 +199,7 @@ class Type():
         return self.classification == Type.classifications.struct
 
     def is_novel(self) -> bool:
-        return self.classification == Type.classifications.novel 
+        return self.classification == Type.classifications.novel
 
     def is_tuple(self) -> bool:
         return self.classification == Type.classifications.tuple
@@ -213,7 +213,7 @@ class Type():
         return self
 
     def unpack_into_parts(self):
-        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 
+        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel
             or self.classification == Type.classifications.interface):
             return [self]
         if self.classification == Type.classifications.function:
@@ -226,7 +226,7 @@ class Type():
         raise Exception(f"unhandled classification {self.classification}")
 
     def get_restrictions(self) -> list[AbstractRestriction]:
-        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel 
+        if (self.classification == Type.classifications.struct or self.classification == Type.classifications.novel
             or self.classification == Type.classifications.interface):
             return [self.restriction]
         if self.classification == Type.classifications.function:
@@ -235,7 +235,7 @@ class Type():
             return [elem.restriction for elem in self.components]
         if self.classification == Type.classifications.variant:
             return [self.restriction]
-        
+
         raise Exception(f"unhandled classification {self.classification}")
 
     def _copy_with_restriction(self, restriction: AbstractRestriction):

@@ -27,11 +27,11 @@ class CallUnwrapper():
                 type="ref",
                 lst=[state.asl.first().second()],
                 line_number=state.get_line_number(),
-                data=NodeData()) 
+                data=NodeData())
 
             state.get_asl().update(type="call", lst=[fn_asl, params_asl])
 
-            # Need to get the type of the first parameter 
+            # Need to get the type of the first parameter
             first_param_type = fn.apply(state.but_with(asl=first_param_asl))
             if len(params_asl) == 1:
                 return  first_param_type

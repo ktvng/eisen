@@ -16,7 +16,7 @@ from eisen.validation.builtin_print import BuiltinPrint
 
 
 class FlowVisitor(Visitor):
-    """this evaluates the flow of types throughout the asl, and records which 
+    """this evaluates the flow of types throughout the asl, and records which
     type flows up through each asl.
     """
 
@@ -48,7 +48,7 @@ class FlowVisitor(Visitor):
         return self.apply(state.but_with_second_child())
 
     def returns_void_type(f):
-        """this signifies that the void type should be returned. abstracted so if 
+        """this signifies that the void type should be returned. abstracted so if
         the void_type is changed, we can easily configure it here.
         """
         def decorator(fn, state: State):
@@ -117,7 +117,7 @@ class FlowVisitor(Visitor):
     def if_(fn, state: State) -> Type:
         for child in state.get_child_asls():
             fn.apply(state.but_with(
-                asl=child, 
+                asl=child,
                 context=state.create_block_context("if")))
 
     @Visitor.for_asls("while")
@@ -129,7 +129,7 @@ class FlowVisitor(Visitor):
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
-        # this will actually change the asl inplace, converting (raw_call ...) 
+        # this will actually change the asl inplace, converting (raw_call ...)
         # into (call (ref ...) (params ...))
         guessed_params_type = fn.apply_to_second_child_of(state)
         params_type = CallUnwrapper.process(state, guessed_params_type, fn)
@@ -146,10 +146,10 @@ class FlowVisitor(Visitor):
         result = Validate.instance_exists(state, node.get_name(), fn_instance)
         if result.failed():
             return result.get_failure_type()
-            
+
         node.assign_instance(fn_instance)
-        result = Validate.correct_argument_types(state, 
-            name=node.get_name(), 
+        result = Validate.correct_argument_types(state,
+            name=node.get_name(),
             arg_type=fn_instance.type.get_argument_type(),
             given_type=params_type)
         if result.failed():
@@ -183,8 +183,8 @@ class FlowVisitor(Visitor):
         right_type = fn.apply_to_second_child_of(state)
 
         result = Validate.castable_types(
-            state=state, 
-            type=left_type, 
+            state=state,
+            type=left_type,
             cast_into_type=right_type)
         if result.failed():
             return result.get_failure_type()
@@ -205,8 +205,8 @@ class FlowVisitor(Visitor):
             # TODO: move this logic to the instance visitor
             fn_instance = node.resolve_function_instance(params_type)
             node.assign_instance(fn_instance)
-            result = Validate.correct_argument_types(state, 
-                name=node.get_name(), 
+            result = Validate.correct_argument_types(state,
+                name=node.get_name(),
                 arg_type=fn_instance.type.get_argument_type(),
                 given_type=params_type)
             if result.failed():
@@ -284,7 +284,7 @@ class FlowVisitor(Visitor):
         if result.failed():
             return result.get_failure_type()
         return left_type
-    
+
     @Visitor.for_asls(*boolean_return_ops)
     def boolean_return_ops_(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
@@ -296,7 +296,7 @@ class FlowVisitor(Visitor):
         return state.get_bool_type()
 
     @Visitor.for_asls("ref")
-    def ref_(fn, state: State) -> Type: 
+    def ref_(fn, state: State) -> Type:
         node = Nodes.Ref(state)
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state)

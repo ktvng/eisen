@@ -19,21 +19,21 @@ from eisen.validation.instancevisitor import InstanceVisitor
 # for use as instances)
 # They are implemented the same.
 
-class Workflow():   
+class Workflow():
     steps = [
         # initialize the .data attribute for all asls with empty NodeData instances
         Initializer,
 
         # create the module structure of the program.
         #   - the module of a node can be accessed by params.asl_get_mod()
-        ModuleVisitor, 
+        ModuleVisitor,
 
-        # add proto types for struct/interfaces, which are the representation 
+        # add proto types for struct/interfaces, which are the representation
         # of struct declaration without definition.
         DeclarationVisitor,
 
         # finalizes the proto types (which moves from declaration to definition)
-        # TODO: for now, interfaces can only be implemented from the same module 
+        # TODO: for now, interfaces can only be implemented from the same module
         # in which they are defined.
         #
         # we must finalize interfaces first because structs depend on interfaces
@@ -42,11 +42,11 @@ class Workflow():
 
         # adds types for and constructs the functions. this also normalizes the
         # (def ...) and (create ...) asls so they have the same child structure,
-        # which allows us to process them identically later in the 
+        # which allows us to process them identically later in the
         # TypeClassFlowWrangler.
         FunctionVisitor,
-        
-        # evaluate the flow of types through the program. 
+
+        # evaluate the flow of types through the program.
         #   - the type which is flowed through a node can be accessed by
         #     params.get_returned_type()
         FlowVisitor,
@@ -88,7 +88,7 @@ class Workflow():
                     end = time.perf_counter_ns()
                     perf.append((step.__name__, (end-start)/1000000))
             return decorated_step
-        
+
         decorated_workflow = [step_decorator(step) for step in steps]
         result = cls.execute(state, steps=decorated_workflow)
         if not result:
@@ -103,7 +103,7 @@ class Workflow():
             print(" "*(block_size - len(name)), name, " ", val)
 
         print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
-            
+
     @classmethod
     def should_stop_execution(cls, state: State):
         return state.exceptions

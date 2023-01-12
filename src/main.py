@@ -28,7 +28,7 @@ def run_eisen(filename: str):
     # READ FILE TO STR
     with open(filename, 'r') as f:
         txt = f.read()
-    
+
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
@@ -71,7 +71,7 @@ def run_eisen(filename: str):
     code = c.Writer().run(c_asl)
     subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
     x = subprocess.run(["./build/test"], capture_output=True)
-    got = x.stdout.decode("utf-8") 
+    got = x.stdout.decode("utf-8")
     bits = eisen.CodeTransducer().apply(params)
     print("".join(bits))
     EisenTranspiler().run,
@@ -89,7 +89,7 @@ def run(lang: str, filename: str):
 def run_types(filename: str):
     with open(filename, 'r') as f:
         txt = f.read()
-    
+
     asl = alpaca.types.parser.run(txt)
     print(asl)
 
@@ -118,7 +118,7 @@ def debug():
     # READ FILE TO STR
     with open("./parsetest.txt", 'r') as f:
         txt = f.read()
-    
+
     # TOKENIZE
     tokens = run_and_measure("tokenizer",
         alpaca.lexer.run,
@@ -139,9 +139,9 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
     parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
-    parser.add_argument("-l", "--lang", 
-        action="store", 
-        type=str, 
+    parser.add_argument("-l", "--lang",
+        action="store",
+        type=str,
         choices=["eisen", "lamb", "c", "types"],
         default="eisen")
 
@@ -158,4 +158,3 @@ if __name__ == "__main__":
         debug()
 
     print(delim)
-    

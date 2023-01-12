@@ -28,12 +28,12 @@ myStatus.setMessage("success")
 myStatus.print()
 ```
 
-By using the variable `myStatus`, we can refer to the memory allocation of `status`, and we can invoke all of the same functionality we could when using the original reference to that allocation. Unlike C/C++ where a pointer must be dereferenced before use (either `(*ptr).attr` or `ptr->attr`), Eisen variables have the same syntactic usage as the original `let` defined object. 
+By using the variable `myStatus`, we can refer to the memory allocation of `status`, and we can invoke all of the same functionality we could when using the original reference to that allocation. Unlike C/C++ where a pointer must be dereferenced before use (either `(*ptr).attr` or `ptr->attr`), Eisen variables have the same syntactic usage as the original `let` defined object.
 
 By default, all structs are passed by constant reference, and all data structs are passed by value. This avoids unnecessary memory copying, and in general, and gives us the same behavior as Java and other higher level languages.
 
 ## Values
-A value is a type of constant pointer. Whereas variables can be assigned and reassigned without restriction, a value can only be initialized, after which, reassignment is prohibited. 
+A value is a type of constant pointer. Whereas variables can be assigned and reassigned without restriction, a value can only be initialized, after which, reassignment is prohibited.
 
 ```eisen
 let status = Exception()
@@ -60,7 +60,7 @@ let _status = Exception()
 val status = _status
 ```
 
-In this way, the programmer can convey the information that `_status` is not to be used in a clear and precise way. 
+In this way, the programmer can convey the information that `_status` is not to be used in a clear and precise way.
 
 To date, feel that a separate keyword or additional syntactic sugar for this paradigm is not necessary.
 
@@ -69,7 +69,7 @@ The usage `let`, `val`, and `var` is summarized below:
 - `var` can be used to create a pointer to an existing memory allocation. It is fully unrestricted and can be reassigned (made to point to a different memory allocation) or even used to modify the memory allocation it points to.
 - `val` can be likewise be used to create a pointer to an existing memory allocation. It is restricted in that once assigned, it cannot be reassigned, and it cannot be used to modify the existing memory allocation.
 
-#### Proposed Modifier: ref <Badge type="info" text="In Development" /> 
+#### Proposed Modifier: ref <Badge type="info" text="In Development" />
 It may be necessary to introduce another reference class; this would allow the value to be reassgined, but the memory allocation it points to to be immutable. This is useful if ever we need to assign over various `val` references.
 
 ### Shortcoming <Badge type="info" text="In Development" />
@@ -77,8 +77,8 @@ Consider the scenario where we need to find an element in an array. We want to w
 
 ```eisen
 fn findFirst(
-    items: vec[Obj], 
-    criteria: (Obj) -> bool) -> firstMatch: Obj var? 
+    items: vec[Obj],
+    criteria: (Obj) -> bool) -> firstMatch: Obj var?
 {
     firstMatch = nil
     for (obj in items) {
@@ -131,8 +131,8 @@ Probably this is not decidable. Instead of solving this, possible the programmer
 
 ```eisen
 fn findFirst(
-    var items: vec[Obj], 
-    criteria: (Obj) -> bool) -> firstMatch: Obj var? 
+    var items: vec[Obj],
+    criteria: (Obj) -> bool) -> firstMatch: Obj var?
 {
     firstMatch = nil
     for (obj in items) {

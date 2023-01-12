@@ -7,7 +7,7 @@ from alpaca.clr import CLRList, CLRToken
 from eisen.common.state import State
 from eisen.common import asls_of_type, Utils
 
-# date structure which contains the information obtain from flattening. 
+# date structure which contains the information obtain from flattening.
 class FlatteningPacket:
     def __init__(self, asl: CLRList, auxillary: list[CLRList | CLRToken]):
         # the actual asl propagated up.
@@ -147,9 +147,9 @@ class Flattener(Visitor):
         decls.append(packet.asl)
         decls.append(Flattener._make_code_token_for(")"))
 
-        # finally, add any declarations from flattening the (params ...) component of 
-        # this call list before the declarations for this call list. this order is 
-        # important as auxillary statements from flattening (params ...) are hard 
+        # finally, add any declarations from flattening the (params ...) component of
+        # this call list before the declarations for this call list. this order is
+        # important as auxillary statements from flattening (params ...) are hard
         # dependencies for this call list.
         decls = packet.aux + decls
         return decls, refs
@@ -161,13 +161,13 @@ class Flattener(Visitor):
     def _unravel_scoping(self, asl: CLRList) -> CLRList:
         if asl.type != "::" and asl.type != "fn":
             raise Exception(f"unexpected asl type of {asl.type}")
-        
+
         if asl.type == "fn":
             return asl
         return self._unravel_scoping(asl=asl.second())
 
     # return a tuple of two lists. the first list contains the code for the declaration
-    # of any temporary variables. the second list contains the code for the return 
+    # of any temporary variables. the second list contains the code for the return
     # variables of the function
     def _unpack_function_return_type(self, params: State) -> tuple[list[str], list[str]]:
         if params.asl.first().type == "prod_type":
@@ -176,7 +176,7 @@ class Flattener(Visitor):
             decls, refs = self._unpack_type(params.but_with(asl=params.asl.first()))
         return decls, refs
 
-    # TODO: fix 
+    # TODO: fix
     # type actually looks like (: n (type int))
     def _unpack_type(self, params: State) -> tuple[list[str], list[str]]:
         type = params.but_with(asl=params.asl.second()).get_returned_type()

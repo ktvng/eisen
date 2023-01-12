@@ -12,7 +12,7 @@ fn main() {
     after()
     print("%i ", x)
     let y = sum(x, x)
-    
+
     // test that y is correctly updated and x is unchanged
     print("%i %i", x, y)
 }

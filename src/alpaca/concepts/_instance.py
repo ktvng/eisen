@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts._type import Type
-from alpaca.concepts._context import Context 
+from alpaca.concepts._context import Context
 from alpaca.clr._clr import CLRList
 
 class Instance():
@@ -13,4 +13,3 @@ class Instance():
 
     def __str__(self) -> str:
         return f"{self.name}{self.type}"
-        

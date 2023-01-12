@@ -12,20 +12,20 @@ class parser():
     def run(cls, filename: str) -> Config:
         with open(filename, 'r') as f:
             txt = f.read()
-        return StateMachine().run(txt) 
+        return StateMachine().run(txt)
 
 # a symbolics mask encapsulates line headers of the following sort:
 #       <type>              ->  <regex>
-# this can be applied to to each following line (provided a second mask is not 
+# this can be applied to to each following line (provided a second mask is not
 # defined to override this) to parse the line into a TokenRule. effectively, all
-# space separated characters on the left of the '->' get split and stripped, and 
+# space separated characters on the left of the '->' get split and stripped, and
 # turned into the token type. The regex on the right side of the '->' gets stripped
 # and turned into the regex identifying rule.
 class SymbolicMask():
     def __init__(self, line: str):
         if not StateMachine.symbolics_mask_regex.match(line):
             raise Exception(f"Line '{line}' is not of the form '<type> -> <regex>'")
-        
+
         pos = line.find("->")
         self.type_end = pos
         self.regex_start = pos + len("->")
@@ -99,8 +99,8 @@ class StateMachine:
         if state_function is None:
             raise Exception(f"No transition matches state '{p.state}'")
 
-        # update the state in the parameters with the value obtained from the 
-        # state function 
+        # update the state in the parameters with the value obtained from the
+        # state function
         p.state = state_function(p)
         if p.state is None:
             raise Exception(
@@ -123,13 +123,13 @@ class StateMachine:
         if StateMachine.comment_regex.match(p.current_line):
             p.transition_to_next_line()
             return state("start")
-        return None 
+        return None
 
-    @transition 
+    @transition
     def symbolics_section(p: Params) -> str:
         should_pass_line = (StateMachine.empty_line_regex.match(p.current_line)
             or StateMachine.comment_regex.match(p.current_line))
-        
+
         if should_pass_line:
             p.transition_to_next_line()
             return state("symbolics_section")
@@ -139,7 +139,7 @@ class StateMachine:
         if StateMachine.structure_section_regex.match(p.current_line):
             p.transition_to_next_line()
             return state("structure_section")
-        
+
         rule = p.symbolics_mask.apply(p.current_line)
         p.tokenrules.append(rule)
         p.transition_to_next_line()
@@ -158,7 +158,7 @@ class StateMachine:
 
         should_pass_line = (StateMachine.empty_line_regex.match(p.current_line)
             or StateMachine.comment_regex.match(p.current_line))
-        
+
         if should_pass_line:
             p.transition_to_next_line()
             return state("structure_section")
@@ -174,12 +174,12 @@ class StateMachine:
         if StateMachine.production_pattern_definition_regex.match(p.current_line):
             # no transition to next line
             return state("structure_rule_definition")
-        
+
     @transition
     def structure_annotation_action(p: Params) -> str:
         parts = p.current_line.strip().split(' ')
         p.current_action = Action(
-            type=parts[1], 
+            type=parts[1],
             value=parts[2] if len(parts) == 3 else "")
 
         p.transition_to_next_line()
@@ -206,6 +206,6 @@ class StateMachine:
         match = StateMachine.production_pattern_definition_regex.match(p.current_line)
         p.production_rules.append(
             CFGRule(p.current_production_symbol, match.group(1), p.current_action))
-        
+
         p.transition_to_next_line()
         return state("structure_section")

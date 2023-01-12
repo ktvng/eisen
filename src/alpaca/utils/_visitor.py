@@ -14,12 +14,12 @@ class TaggedTransform():
 
 class DefaultTaggedTransform(TaggedTransform):
     def __init__(self, f) -> None:
-        self.f = f 
+        self.f = f
         self.handles_types = None
 
 class TokenTaggedTransform(TaggedTransform):
     def __init__(self, f) -> None:
-        self.f = f 
+        self.f = f
         self.handles_types = None
 
 
@@ -47,7 +47,7 @@ class DefaultTransform():
         return self.f(*args)
 
     def __call__(self, *args, **kwargs):
-        return self.f(*args, **kwargs) 
+        return self.f(*args, **kwargs)
 
 class Visitor():
     max_depth = 100
@@ -58,7 +58,7 @@ class Visitor():
 
         # logger for use with debugging
         self.logger = Logger(
-            file="wrangler", 
+            file="wrangler",
             tag=type(self).__name__)
 
         self.logger.log("#" * 20 + " Init " + "#" * 20)
@@ -70,7 +70,7 @@ class Visitor():
         attrs = dir(self)
         self.partial_transforms: list[PartialTransform] = [getattr(self, k) for k in attrs
             if isinstance(getattr(self, k), PartialTransform)]
-        
+
         has_default_transform_attr = [getattr(self, k) for k in attrs
             if isinstance(getattr(self, k), DefaultTransform)]
 
@@ -134,7 +134,7 @@ class Visitor():
             if self.token_transform is None:
                 raise Exception(f"{self._get_loggable_name()} has no transform for CLRTokens")
             result = self.token_transform(self, state)
-            
+
         return result
 
     def _get_loggable_name(self) -> str:

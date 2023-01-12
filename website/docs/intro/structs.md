@@ -17,7 +17,7 @@ struct Document {
 }
 ```
 
-The constructor is required to return a type of the defined struct. By convention, this is given the name `self`. 
+The constructor is required to return a type of the defined struct. By convention, this is given the name `self`.
 
 In addition, if the defined struct manages any heap allocated memory, an option destructor may need to be defined to cleanup any memory used internally by the struct.
 
@@ -48,9 +48,9 @@ fn main() {
 }
 ```
 
-In the example above, `getArea` is defined as a global method which takes in a `Circle` as its first parameter. The convention for struct methods is to name the "parent object" `self`. 
+In the example above, `getArea` is defined as a global method which takes in a `Circle` as its first parameter. The convention for struct methods is to name the "parent object" `self`.
 
-Calling `getArea` cand be done in the C style convention, or by using the `.` operator after a `Circle` instance. This latter syntax is simply shorthand for the C style convention, but gives us the benefit of conceptualizing the global method as an instance method. 
+Calling `getArea` cand be done in the C style convention, or by using the `.` operator after a `Circle` instance. This latter syntax is simply shorthand for the C style convention, but gives us the benefit of conceptualizing the global method as an instance method.
 
 ## Member Functions
 Functions are also treated as first-class entities by Eisen, and structs may also be written where the "data" stored by the struct is itself a function
@@ -68,10 +68,10 @@ fn dijkstrasAlgo() { ... }
 fn depthFirstSearch() { ... }
 
 fn run(
-    self: ShortestPathSolver, 
-    g: Graph, 
-    start: Node, 
-    end: Node) -> shortestPathLen: int 
+    self: ShortestPathSolver,
+    g: Graph,
+    start: Node,
+    end: Node) -> shortestPathLen: int
 {
     shortestPathLen = self.impl(g, start, end)
 }
@@ -83,7 +83,7 @@ fn main() {
 
 ```
 
-In the example above, the `ShortestPathSolver` may be created with some implementation of the actual algorithm to use. That algorithm is stored as the `impl` field, and can be invoked using the familiar syntax of `self.impl(...)`. 
+In the example above, the `ShortestPathSolver` may be created with some implementation of the actual algorithm to use. That algorithm is stored as the `impl` field, and can be invoked using the familiar syntax of `self.impl(...)`.
 
 The compiler is able to resolve any ambiguity if `impl` is a global method (which should take as its first argument, some instance of `ShortestPathSolver`) or if `impl` is a member function of the `ShortestPathSolver` struct. In the event of ambiguity, the compiler will throw an error and the developer must resolve the naming conflict.
 
@@ -117,10 +117,10 @@ let doc1 = readDocument("./doc1")
 doc1 = readDocument("./doc2")
 ```
 
-In this case, `doc1` initially gets populated with a heap allocated byte buffer corresponding to `"./doc1"`. But upon reassigning, what happens to this data? To avoid a memory leak, we'd need to free it, which means we'd need an implicit call to the destructor. 
+In this case, `doc1` initially gets populated with a heap allocated byte buffer corresponding to `"./doc1"`. But upon reassigning, what happens to this data? To avoid a memory leak, we'd need to free it, which means we'd need an implicit call to the destructor.
 
 While C++ allows this operation for objects, it requires copy/move constructors, and this adds [complexity](https://en.cppreference.com/w/cpp/language/rule_of_three). Semantically, reassignment of structs is often a logical error: in higher level languages like Java, reassignment of this sort is cannonical; objects are pointers and it makes sense to reassign pointers. Reassignment, semantically, states that _this pointer refer to the object of this other pointer_.
 
-But if the reference that's being reassigned refers to the actual memory allocation of some object, then semantically it does not make sense to say that _this memory allocation should now refer to this other memory allocation_. 
+But if the reference that's being reassigned refers to the actual memory allocation of some object, then semantically it does not make sense to say that _this memory allocation should now refer to this other memory allocation_.
 
 For this reason, Eisen prohibits the reassignment of struct entities. Instead, the concept of Variables is introduced.

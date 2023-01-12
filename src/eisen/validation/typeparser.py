@@ -8,7 +8,7 @@ from eisen.validation.nodetypes import Nodes
 
 class TypeParser(Visitor):
     """this parses the asl into a type. certain asls define types. these are:
-        type, interface_type, prod_type, types, 
+        type, interface_type, prod_type, types,
         fn_type_in, fn_type_out, fn_type, args, rets
         def, create, struct, interface
     """
@@ -51,7 +51,7 @@ class TypeParser(Visitor):
         (fn_type_out (type/s ...))
         """
         if len(state.get_asl()) == 0:
-            return state.get_void_type() 
+            return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("fn_type")
@@ -66,7 +66,7 @@ class TypeParser(Visitor):
 
     @Visitor.for_asls("args", "rets")
     def args_(fn, state: State) -> Type:
-        """ 
+        """
         (args (type ...))
         """
         if state.get_asl():

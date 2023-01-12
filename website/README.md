@@ -1,6 +1,6 @@
 # Website for Eisen
 
-Powered by [https://vitepress.vuejs.org/](https://vitepress.vuejs.org/) and
+Powered by [VitePress](https://vitepress.vuejs.org/) and
 automatically deployed to [Netlify](https://netlify.app/).
 
 To install and run locally:

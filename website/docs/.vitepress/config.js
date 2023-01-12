@@ -36,7 +36,7 @@ export default defineConfig({
               items: [
                 { text: 'Pointers', link: '/memory/pointers.md' },
                 { text: 'Arrays', link: '/memory/arrays.md' },
-                { text: 'Boxes', link: '/item-b' },
+                { text: 'Boxes', link: '/memory/boxes.md' },
               ]
             },
             {

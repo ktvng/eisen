@@ -2,7 +2,7 @@ lockfileVersion: 5.4
 
 patchedDependencies:
   shiki@0.12.1:
-    hash: tutwjxyfxgvxvtowktmdiuwzgi
+    hash: tn4s37srwozxu7nkip2hawykdq
     path: patches/shiki@0.12.1.patch
 
 specifiers:
@@ -656,7 +656,7 @@ packages:
       fsevents: 2.3.2
     dev: false
 
-  /shiki/0.12.1_tutwjxyfxgvxvtowktmdiuwzgi:
+  /shiki/0.12.1_tn4s37srwozxu7nkip2hawykdq:
     resolution: {integrity: sha512-aieaV1m349rZINEBkjxh2QbBvFFQOlgqYTNtCal82hHj4dDZ76oMlQIX+C7ryerBTDiga3e5NfH6smjdJ02BbQ==}
     dependencies:
       jsonc-parser: 3.2.0
@@ -733,7 +733,7 @@ packages:
       '@vue/devtools-api': 6.4.5
       '@vueuse/core': 9.10.0_vue@3.2.45
       body-scroll-lock: 4.0.0-beta.0
-      shiki: 0.12.1_tutwjxyfxgvxvtowktmdiuwzgi
+      shiki: 0.12.1_tn4s37srwozxu7nkip2hawykdq
       vite: 4.0.4
       vue: 3.2.45
     transitivePeerDependencies:

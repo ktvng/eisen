@@ -9,6 +9,16 @@ from alpaca.clr import CLRRawList, CLRList, CLRToken
 from alpaca.config import Config
 import alpaca.utils
 
+class Callback(alpaca.lexer.AbstractCallback):
+    @classmethod
+    def string(cls, string : str) -> str:
+        return string.replace('\\n', '\n')[1 : -1]
+
+    @classmethod
+    def str(cls, string : str) -> str:
+        return string.replace('\\n', '\n')[1 : -1]
+
+
 class Builder(CommonBuilder):
     @CommonBuilder.for_procedure("handle_call")
     def handle_call(
@@ -64,7 +74,7 @@ class Writer(Visitor):
         return filtered_txt
 
     def apply(self, asl: CLRList) -> list[str]:
-        return self._apply([asl], [asl])
+        return self._route(asl, asl)
 
     def asls_of_type(types: str | list[str]):
         if isinstance(types, str):

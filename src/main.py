@@ -15,7 +15,15 @@ def run_lamb(filename : str):
     raise Exception("deprecated")
 
 def run_c(filename: str):
-    raise Exception("deprecated")
+    config = alpaca.config.parser.run("./src/c/grammar.gm")
+    with open(filename, 'r') as f:
+        txt = f.read()
+    tokens = alpaca.lexer.run(text=txt, config=config, callback=c.Callback)
+    asl = alpaca.parser.run(config=config, tokens=tokens, builder=c.Builder())
+    print(asl)
+    recovered_txt = c.Writer().run(asl)
+    print()
+    print(recovered_txt)
 
 def run_eisen(filename: str):
     global_start = time.perf_counter_ns()
@@ -146,8 +154,6 @@ if __name__ == "__main__":
         default="eisen")
 
     args = parser.parse_args()
-
-    print(args.test)
     if args.test is not None:
         run_eisen_tests(args.test)
     elif args.input and args.lang:

@@ -144,7 +144,7 @@ class AstInterpreter(Visitor):
             new_objs.append(Obj(None, name=name, is_var=restriction.is_var()))
         return new_objs
 
-    @Visitor.for_asls("call")
+    @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
         node = Nodes.Call(state)
 

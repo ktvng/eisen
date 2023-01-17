@@ -48,7 +48,7 @@ class NilCheck(Visitor):
     def assigns_(fn, state: State):
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
-    @Visitor.for_asls("call")
+    @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
         fn.apply(state.but_with(asl=Nodes.Call(state).get_params_asl()))
         return NilCheck.anonymous_nilablestatus(

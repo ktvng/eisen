@@ -186,7 +186,7 @@ class PermissionsVisitor(Visitor):
             return [EisenAnonymousInstanceState(branch_instancestate, Initializations.Initialized)]
         return [parent_instancestate]
 
-    @Visitor.for_asls("call")
+    @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State) -> list[EisenInstanceState]:
         node = Nodes.Call(state)
         if node.is_print():

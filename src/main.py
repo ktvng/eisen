@@ -64,6 +64,10 @@ def run_eisen(filename: str):
 
     global_end = time.perf_counter_ns()
     print(f"elapsed in {(global_end-global_start)/1000000}")
+
+    input()
+    print(asl)
+    print(eisen.Writer().run(asl))
     exit()
 
     asl = eisen.Flattener().run(params)

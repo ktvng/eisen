@@ -53,6 +53,7 @@ class FunctionVisitor(Visitor):
             type=TypeParser().apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl())
+        state.get_node_data().instances = [instance]
         state.add_function_instance_to_module(instance)
 
     @Visitor.for_asls("create")
@@ -67,6 +68,7 @@ class FunctionVisitor(Visitor):
             context=state.get_enclosing_module(),
             asl=state.get_asl(),
             is_constructor=True)
+        state.get_node_data().instances = [instance]
         state.add_function_instance_to_module(instance)
 
     @Visitor.for_asls("is_fn")
@@ -79,4 +81,5 @@ class FunctionVisitor(Visitor):
             type=TypeParser().apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl())
+        state.get_node_data().instances = [instance]
         state.add_function_instance_to_module(instance)

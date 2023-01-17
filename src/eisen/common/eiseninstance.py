@@ -9,5 +9,9 @@ class EisenInstance(Instance):
         self.is_var = False
         self.type: Type = type
 
+    def get_c_name(self):
+        return self.context.get_full_name() + "_" + self.name
+
+
 class EisenFunctionInstance(EisenInstance):
     pass

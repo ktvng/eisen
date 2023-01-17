@@ -48,12 +48,6 @@ def run_eisen(filename: str):
     end = time.perf_counter_ns()
     print(f"parsed in {(end-start)/1000000}")
 
-
-    # # PARSE TO AST
-    # asl = run_and_measure("parser",
-    #     alpaca.parser.run,
-    #     config=config, tokens=tokens, builder=eisen.EisenBuilder(), algo="cyk")
-
     asl_str = [">    " + line for line in  str(asl).split("\n")]
     print(*asl_str, sep="\n")
 
@@ -66,27 +60,28 @@ def run_eisen(filename: str):
     print(f"elapsed in {(global_end-global_start)/1000000}")
 
     input()
-    print(asl)
-    print(eisen.Writer().run(asl))
-    exit()
+    asl = eisen.Flattener().run(state)
+    state.asl = asl
+    # print(state.asl)
+    transmuted = eisen.CTransmutation(debug=False).run(asl, state)
+    print(transmuted)
 
-    asl = eisen.Flattener().run(params)
-    print(asl)
-    # exit()
-    # eisen.Inspector().apply(params)
-
-    transmuted = eisen.CTransmutation(debug=False).run(asl, params)
-    print("############ TRANSMUATION ###############")
-
+    # generate c code
+    c_config = alpaca.config.parser.run("./src/c/grammar.gm")
     c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
-    eisen.DotDerefFilter().apply(c_asl)
+    c_asl = eisen.DotDerefFilter().apply(c_asl)
     code = c.Writer().run(c_asl)
+    code = "#include <stdio.h> \n" + code
+    # print(code)
+    with open("./build/test.c", 'w') as f:
+        f.write(code)
+
+    # run c code
     subprocess.run(["gcc", "./build/test.c", "-o", "./build/test"])
     x = subprocess.run(["./build/test"], capture_output=True)
     got = x.stdout.decode("utf-8")
-    bits = eisen.CodeTransducer().apply(params)
-    print("".join(bits))
-    EisenTranspiler().run,
+    print(got)
+
 
 def run(lang: str, filename: str):
     if lang == "lamb":

@@ -21,13 +21,7 @@ class Utils:
     # get_name_of_type
     @classmethod
     def get_full_name_of_struct(cls, name: str, mod: Module):
-        prefix = ""
-        current_mod = mod
-        while current_mod:
-            prefix = f"{current_mod.name}_" + prefix
-            current_mod = current_mod.parent
-
-        return f"{Utils.global_prefix}{prefix}{name}"
+        return mod.get_full_name() + "_" + name
 
     @classmethod
     def get_full_name_of_function(cls, instance: Instance) -> str:

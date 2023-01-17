@@ -501,9 +501,11 @@ class Nodes():
         (call (fn ...) (params ... ))
         (call (:: mod (fn name)) (params ...)))))
         """
+        def get_fn_instance(self) -> EisenFunctionInstance:
+            return self.state.but_with_first_child().get_instances()[0]
 
         def get_fn_asl(self) -> CLRList:
-            if self.state.get_asl().type != "::" and self.state.get_asl().type != "fn":
+            if self.state.but_with_first_child().get_asl().type != "::" and self.state.get_asl().type != "fn":
                 raise Exception(f"unexpected asl type of {self.state.get_asl().type}")
             if self.stateasl.type == "fn":
                 return self.state.get_asl()

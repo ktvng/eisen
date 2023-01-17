@@ -29,7 +29,7 @@ class CLRParser():
     def is_list_itself(cls, txt: str):
         return "(" == txt.strip()[0]
 
-    word_regex = r"[^\s-]+"
+    word_regex = r"[^\s]+"
     space_regex = r"\s+"
     string_regex  = r"([\"'])(?:(?=(\\?))\2.)*?\1"
     @classmethod

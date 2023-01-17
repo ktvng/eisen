@@ -4,8 +4,9 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
+from eisen.validation.nodetypes import Nodes
 from eisen.common.state import State
-from eisen.common import asls_of_type, Utils
+from eisen.common._common import Utils
 
 # date structure which contains the information obtain from flattening.
 class FlatteningPacket:
@@ -29,18 +30,18 @@ class Flattener(Visitor):
         return self.apply(params.but_with(params.asl)).asl
 
     def apply(self, params: State) -> FlatteningPacket:
-        return self._apply([params], [params])
+        return self._route(params.asl, params)
 
     # TODO: allow the reuse of old variables of the same type if they are freed up
     def _produce_var_name(self) -> str:
         self.counter += 1
         return f"__var{self.counter}__"
 
-    @Visitor.covers(lambda x: isinstance(x, CLRToken))
+    @Visitor.for_tokens
     def leaf_(fn, params: State) -> FlatteningPacket:
         return FlatteningPacket(params.asl, [])
 
-    @Visitor.default
+    @Visitor.for_default
     def default_(fn, params: State) -> FlatteningPacket:
         children = []
         auxillary = []
@@ -83,11 +84,11 @@ class Flattener(Visitor):
                 data=params.asl.data),
             auxillary=auxillary)
 
-    @Visitor.covers(asls_of_type("seq"))
+    @Visitor.for_asls("seq")
     def seq_(fn, params: State) -> tuple[CLRList, list[CLRList]]:
         children = []
         for child in params.asl:
-            if child.type == "call":
+            if child.type == "call" and not Nodes.Call(params.but_with(asl=child)).is_print():
                 decls_and_call, _ = fn._flatten_call(params.but_with(asl=child))
                 children += decls_and_call
             else:
@@ -109,16 +110,13 @@ class Flattener(Visitor):
     # note, we do not need the wrangler to cover asls_of_type "call" because
     # all (call ...) lists should be caught and handled in their containing list
     def _flatten_call(fn, params: State) -> tuple[list[CLRList], list[CLRList]]:
+
         # this will flatten the (params ...) component of the (call ...) list.
         packet = fn.apply(params.but_with(asl=params.asl.second()))
 
         # get the asl of type (fn <name>)
-        fn_asl = fn._unravel_scoping(params.asl.first())
-
-        # we need to drop into the original CLR which defines the original function
-        # in order to get the return types.
-        fn_instance = params.but_with(asl=fn_asl).get_instances()[0]
-        asl_defining_the_function = fn_instance.asl
+        node = Nodes.Call(params)
+        asl_defining_the_function = node.get_asl_defining_the_function()
 
         # the third child is (rets ...)
         asl_defining_the_function_return_type = asl_defining_the_function.third()
@@ -137,11 +135,12 @@ class Flattener(Visitor):
         for ref in refs:
             packet.asl._list.append(Flattener._make_code_token_for(f"(addr {ref.value})"))
 
-        fn_name = Utils.get_full_name_of_function(instance=
-            params.but_with(asl=fn_asl).get_instances()[0])
+        fn_instance = node.get_fn_instance()
+        fn_name = fn_instance.get_c_name()
 
         # missing a close paren as we need to add the (params ...) which is added as
         # an asl, not a token, because we don't yet have the ability to transmute it.
+        # TODO:
         suffix = "_constructor" if fn_instance.is_constructor else ""
         decls.append(Flattener._make_code_token_for(f"(call (fn {fn_name}{suffix})"))
         decls.append(packet.asl)
@@ -196,4 +195,3 @@ class Flattener(Visitor):
             all_refs.extend(refs)
 
         return all_decls, all_refs
-

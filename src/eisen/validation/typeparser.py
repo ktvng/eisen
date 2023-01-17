@@ -25,7 +25,9 @@ class TypeParser(Visitor):
         found_type = state.get_defined_type(node.get_name())
         restriction = node.get_restriction(found_type)
         if found_type:
-            return found_type.with_restriction(restriction)
+            type = found_type.with_restriction(restriction)
+            state.get_node_data().returned_type = type
+            return type
         raise Exception(f"unknown type! {node.get_name()}")
 
     @Visitor.for_asls(":")

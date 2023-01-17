@@ -33,6 +33,23 @@ class Watcher():
     def write(self, content: str):
         self.txt += content
 
+class SharedCounter():
+    def __init__(self, n: int):
+        self.value = n
+
+    def __add__(self, other):
+        return self.value + other
+
+    def __iadd__(self, other):
+        self.value += other
+        return self
+
+    def __str__(self):
+        return str(self.value)
+
+    def set(self, val: int):
+        self.n = val
+
 class State(AbstractParams):
     attrs = ["config", "asl", "txt", "context", "mod", "global_mod",
     "struct_name", "exceptions", "is_ptr", "critical_exception"]
@@ -52,6 +69,8 @@ class State(AbstractParams):
             print_to_watcher: bool = False,
             critical_exception: SharedBool = SharedBool(False),
             watcher: Watcher = None,
+            counter: SharedCounter = SharedCounter(0),
+            as_ptr: bool = False,
 
             # used for interpreter
             objs: dict[str, Obj] = {},
@@ -72,6 +91,8 @@ class State(AbstractParams):
 
         self.print_to_watcher = print_to_watcher
         self.watcher = Watcher()
+        self.counter = counter
+        self.as_ptr = as_ptr
 
         self.objs = objs
 
@@ -90,6 +111,9 @@ class State(AbstractParams):
 
             # used for interpreter
             objs: dict[str, Obj] = None,
+
+            # used for transmutation
+            as_ptr: bool = None,
             ) -> State:
 
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod,
@@ -97,9 +121,12 @@ class State(AbstractParams):
             arg_type=arg_type,
             objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
 
+            as_ptr=as_ptr,
+
             # these cannot be changed by input params
             critical_exception=self.critical_exception, watcher=self.watcher,
-            print_to_watcher=self.print_to_watcher)
+            print_to_watcher=self.print_to_watcher,
+            counter=self.counter)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)

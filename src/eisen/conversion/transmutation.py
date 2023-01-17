@@ -1,142 +1,59 @@
 from __future__ import annotations
 
 import alpaca
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import CLRList
 from alpaca.utils import Visitor
-from alpaca.concepts import Type, NestedContainer, AbstractParams
 
-from eisen.common import asls_of_type, Utils
-from eisen.common.state import State as Params0
+from eisen.common._common import Utils
 
-class SharedCounter():
-    def __init__(self, n: int):
-        self.value = n
-
-    def __add__(self, other):
-        return self.value + other
-
-    def __iadd__(self, other):
-        self.value += other
-        return self
-
-    def __str__(self):
-        return str(self.value)
-
-    def set(self, val: int):
-        self.n = val
-
-class Params(AbstractParams):
-    def __init__(self,
-            asl: CLRList,
-            mod: NestedContainer,
-            global_mod: NestedContainer,
-            as_ptr: bool,
-            counter: SharedCounter,
-            oracle: Oracle,
-            ):
-
-        self.asl = asl
-        self.mod = mod
-        self.global_mod = global_mod
-        self.as_ptr = as_ptr
-        self.counter = counter
-        self.oracle = oracle
-
-    def but_with(self,
-            asl: CLRList = None,
-            mod: NestedContainer = None,
-            global_mod: NestedContainer = None,
-            as_ptr: bool = None,
-            counter: SharedCounter = None,
-            oracle: Oracle = None,
-            ):
-
-        return self._but_with(asl=asl, mod=mod, global_mod=global_mod, as_ptr=as_ptr, counter=counter,
-            oracle=oracle)
-
-    def inspect(self) -> str:
-        if isinstance(self.asl, CLRList):
-            try:
-                instances = self.get_instances(self.asl)
-            except:
-                instances = None
-            instance_strs = ("N/A" if instances is None
-                else ", ".join([str(i) for i in instances]))
-
-            children_strs = []
-            for child in self.asl:
-                if isinstance(child, CLRList):
-                    children_strs.append(f"({child.type} )")
-                else:
-                    children_strs.append(str(child))
-            asl_info_str = f"({self.asl.type} {' '.join(children_strs)})"
-            if len(asl_info_str) > 64:
-                asl_info_str = asl_info_str[:64] + "..."
-
-            return f"""
-INSPECT ==================================================
-----------------------------------------------------------
-ASL: {asl_info_str}
-{self.asl}
-
-----------------------------------------------------------
-Module: {self.mod.name} {self.mod.type}
-{self.mod}
-
-Type: {self.oracle.get_propagated_type(self.asl)}
-Instances: {instance_strs}
-"""
-        else:
-            return f"""
-INSPECT ==================================================
-Token: {self.asl}
-"""
+from eisen.common.state import State
 
 class CTransmutation(Visitor):
     global_prefix = ""
-    def run(self, asl: CLRList, params: Params0) -> str:
-        txt = alpaca.utils.formatter.format_clr(self.apply(
-            Params(asl, params.mod, params.mod, False, SharedCounter(0), params.oracle)))
+    def run(self, asl: CLRList, state: State) -> str:
+        txt = alpaca.utils.formatter.format_clr(self.apply(state))
         return txt
 
-    def apply(self, params: Params) -> str:
+    def apply(self, params: State) -> str:
         if self.debug and isinstance(params.asl, CLRList):
             print("\n"*64)
             print(params.inspect())
             print("\n"*4)
             input()
-        return self._apply([params], [params])
+        return self._route(params.asl, params)
 
     # TESTING
-    @Visitor.default
-    def default_(fn, params: Params) -> str:
+    @Visitor.for_default
+    def default_(fn, params: State) -> str:
         return f"#{params.asl.type}"
 
     @classmethod
     def _main_method(cls) -> str:
-        return "(def (type void) main (args ) (seq (call (fn global_main) (params ))))"
+        return "(def (type int) main (args ) (seq (call (fn _main) (params )) (return 0)))"
 
-    def transmute(fn, asls: list[CLRList], params: Params) -> str:
+    def transmute(fn, asls: list[CLRList], params: State) -> str:
         return " ".join([fn.apply(params.but_with(asl=asl)) for asl in asls])
 
     # TODO: need to make this struct name by modules
-    @Visitor.covers(lambda params: isinstance(params.asl, CLRToken))
-    def token_(fn, params: Params) -> str:
+    @Visitor.for_tokens
+    def token_(fn, params: State) -> str:
+        if params.asl.type == "str":
+            return '"' + params.asl.value + '"'
         return params.asl.value
 
-    @Visitor.covers(asls_of_type("start"))
-    def partial_1(fn, params: Params) -> str:
+    @Visitor.for_asls("start")
+    def partial_1(fn, params: State) -> str:
         return f"(start {fn.transmute(params.asl.items(), params)} {fn._main_method()})"
 
-    @Visitor.covers(asls_of_type("mod"))
-    def partial_2(fn, params: Params) -> str:
+    @Visitor.for_asls("mod")
+    def partial_2(fn, params: State) -> str:
         return f"{fn.transmute(params.asl.items()[1:], params)}"
 
-    @Visitor.covers(asls_of_type("struct"))
-    def partial_3(fn, params: Params) -> str:
+    @Visitor.for_asls("struct")
+    def partial_3(fn, params: State) -> str:
         full_name = Utils.get_full_name_of_struct(
             name=params.asl.first().value,
-            context=params.get_module())
+            mod=params.get_enclosing_module())
         attributes = [child for child in params.asl[1:] if child.type == ":"]
         attribute_strs = " ".join([fn.apply(params.but_with(asl=attr)) for attr in attributes])
 
@@ -146,15 +63,15 @@ class CTransmutation(Visitor):
         code = f"(struct {full_name} {attribute_strs}) {method_strs}"
         return code
 
-    @Visitor.covers(asls_of_type(
+    @Visitor.for_asls(
         "args", "seq", "+", "-", "*", "/", "<", ">", "<=", ">=", "==", "!=",
         "+=", "-=", "*=", "/=",
-        "params", "if", "while", "cond", "return", "call"))
-    def partial_4(fn, params: Params) -> str:
+        "params", "if", "while", "cond", "return", "call")
+    def partial_4(fn, params: State) -> str:
         return f"({params.asl.type} {fn.transmute(params.asl.items(), params)})"
 
-    @Visitor.covers(asls_of_type(":"))
-    def partial_5(fn, params: Params) -> str:
+    @Visitor.for_asls(":")
+    def partial_5(fn, params: State) -> str:
         # hotfix, formalize tuples
         if (isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tags"
             and params.asl.second().type == "type"):
@@ -165,57 +82,54 @@ class CTransmutation(Visitor):
         type = fn.apply(params.but_with(asl=params.asl.second()))
         strs = []
         for name in names:
-            if params.oracle.get_propagated_type(asl=params.asl.second()).is_struct():
+            if params.but_with_second_child().get_returned_type().is_struct():
                 strs.append(f"(struct_decl {type} {name})")
             else:
                 strs.append(f"(decl {type} {name})")
         return " ".join(strs)
 
     # TODO make real type
-    @Visitor.covers(asls_of_type("type"))
-    def partial_6(fn, params: Params) -> str:
-        type: Type = params.oracle.get_propagated_type(params.asl)
-        mod: NestedContainer = params.oracle.get_module_of_propagated_type(params.asl)
+    @Visitor.for_asls("type")
+    def partial_6(fn, params: State) -> str:
+        type = params.get_returned_type()
+        mod = params.get_enclosing_module()
         if params.as_ptr:
             return f"(type (ptr {Utils.get_name_of_type(type, mod)}))"
         return f"(type {Utils.get_name_of_type(type, mod)})"
 
-    @Visitor.covers(asls_of_type("prod_type"))
-    def partial_7(fn, params: Params) -> str:
+    @Visitor.for_asls("prod_type")
+    def partial_7(fn, params: State) -> str:
         return fn.transmute(params.asl.items(), params)
 
-    @Visitor.covers(asls_of_type("def"))
-    def partial_8(fn, params: Params) -> str:
-        instances = params.get_instances()
-        name = Utils.get_full_name_of_function(instances[0])
+    @Visitor.for_asls("def")
+    def partial_8(fn, params: State) -> str:
+        instance = params.get_instances()[0]
+        name = instance.get_c_name()
         args = fn.apply(params.but_with(asl=params.asl.second()))
         rets = fn.apply(params.but_with(asl=params.asl.third()))
         seq = fn.apply(params.but_with(asl=params.asl[-1]))
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
-    @Visitor.covers(asls_of_type("create"))
-    def partial_17(fn, params: Params) -> str:
+    @Visitor.for_asls("create")
+    def partial_17(fn, params: State) -> str:
         instances = params.get_instances()
         # get the type returned by the create object, as this is the type of the struct.
-        type = instances[0].type.get_return_type()
-        mod = params.oracle.get_module_of_propagated_type(params.asl)
-
-        name = Utils.get_full_name_of_struct(type.name, mod) + "_constructor"
+        name = instances[0].get_c_name() + "_constructor"
         args = fn.apply(params.but_with(asl=params.asl.second()))
         rets = fn.apply(params.but_with(asl=params.asl.third()))
         seq = fn.apply(params.but_with(asl=params.asl[-1]))
         signature = args[:-1] + rets + ")"
         return f"(def (type void) {name} {signature} {seq})"
 
-    @Visitor.covers(asls_of_type("let"))
-    def partial_9(fn, params: Params) -> str:
+    @Visitor.for_asls("let")
+    def partial_9(fn, params: State) -> str:
         return fn.apply(params.but_with(asl=params.asl.first()))
 
-    @Visitor.covers(asls_of_type("ilet"))
-    def partial_(fn, params: Params) -> str:
+    @Visitor.for_asls("ilet")
+    def partial_(fn, params: State) -> str:
         instance = params.get_instances()[0]
-        mod = params.oracle.get_module_of_propagated_type(params.asl)
+        mod = params.get_enclosing_module()
         type_name = Utils.get_name_of_type(instance.type, mod)
         name = params.asl.first().value
         value = fn.apply(params.but_with(asl=params.asl.second()))
@@ -223,33 +137,28 @@ class CTransmutation(Visitor):
             return f"(struct_decl (type {type_name}) {name}) (= {name} {value})"
         return f"(decl (type {type_name}) {name}) (= {name} {value})"
 
-    @Visitor.covers(asls_of_type("::"))
-    def partial_11(fn, params: Params) -> str:
+    @Visitor.for_asls("::")
+    def partial_11(fn, params: State) -> str:
         return fn.apply(params.but_with(asl=params.asl.second()))
 
-    @Visitor.covers(asls_of_type("fn"))
-    def partial_12(fn, params: Params) -> str:
-        if (params.asl.first().value == "print"):
-            return f"(fn print)"
-        # TODO: will have to change this
-        instances = params.get_instances()
-        return f"({params.asl.type} {Utils.get_full_name_of_function(instances[0])})"
-
-    @Visitor.covers(asls_of_type("rets"))
-    def partial_13(fn, params: Params) -> str:
+    @Visitor.for_asls("rets")
+    def partial_13(fn, params: State) -> str:
         if not params.asl:
             return ""
         return fn.apply(params.but_with(asl=params.asl.first(), as_ptr=True))
 
-    @Visitor.covers(asls_of_type("ref"))
-    def partial_14(fn, params: Params) -> str:
+    @Visitor.for_asls("ref")
+    def partial_14(fn, params: State) -> str:
+        if (params.asl.first().value == "print"):
+            return f"(fn printf)"
+
         instances = params.get_instances()
         if instances[0].is_ptr:
             return f"(deref (ref {fn.apply(params.but_with(asl=params.asl.first()))}))"
         return f"(ref {fn.apply(params.but_with(asl=params.asl.first()))})"
 
-    @Visitor.covers(asls_of_type("="))
-    def partial_15(fn, params: Params) -> str:
+    @Visitor.for_asls("=")
+    def partial_15(fn, params: State) -> str:
         # hotfix, formalize tuples
         if len(params.asl) == 2 and isinstance(params.asl.first(), CLRList) and params.asl.first().type == "tuple":
             l_parts = [fn.apply(params.but_with(asl=child)) for child in params.asl.first()]
@@ -257,12 +166,8 @@ class CTransmutation(Visitor):
             strs = [f"({params.asl.type} {l} {r})" for l, r in zip (l_parts, r_parts)]
             return " ".join(strs)
 
-        if params.asl.second().type == "call":
-            # TODO: remove this as this should never be the case.
-            raise Exception("Not implemented in case of call")
-
         return f"(= {fn.transmute(params.asl.items(), params)})"
 
-    @Visitor.covers(asls_of_type("."))
-    def partial_16(fn, params: Params) -> str:
+    @Visitor.for_asls(".")
+    def partial_16(fn, params: State) -> str:
         return f"(. {fn.transmute(params.asl.items(), params)})"

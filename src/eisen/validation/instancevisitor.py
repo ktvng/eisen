@@ -24,7 +24,8 @@ class InstanceVisitor(Visitor):
             type=type,
             context=state.get_context(),
             asl=state.get_asl(),
-            is_ptr=state.is_ptr)
+            # TODO: fix this abuse of as_ptr
+            is_ptr=state.is_ptr or (state.as_ptr and not type.is_novel()))
         state.get_context().add_instance(instance)
         return instance
 
@@ -49,6 +50,18 @@ class InstanceVisitor(Visitor):
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstance]:
         return [Nodes.Ref(state).resolve_instance()]
+
+    @Visitor.for_asls("rets")
+    def rets_(fn, state: State) -> list[EisenInstance]:
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(asl=child, is_ptr=True))
+        return []
+
+    @Visitor.for_asls("args")
+    def rets_(fn, state: State) -> list[EisenInstance]:
+        for child in state.get_child_asls():
+            fn.apply(state.but_with(asl=child, as_ptr=True))
+        return []
 
     @Visitor.for_asls("::")
     def scope_(fn, state: State) -> list[EisenInstance]:

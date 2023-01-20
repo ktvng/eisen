@@ -242,7 +242,7 @@ class Validate:
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO: fix error message {left}, {right}",
+                msg=f"TODO:assignment_restrictions_met fix error message {left}, {right}: {state.asl}",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
@@ -254,19 +254,19 @@ class Validate:
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO: fix error message {left}, {right}",
+                msg=f"TODO:overwrite_restrictions_met fix error message {left}, {right}",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()
 
     @classmethod
-    def parameter_assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
+    def parameter_assignment_restrictions_met(cls, state: State, argument_requires: EisenInstanceState, given: EisenInstanceState):
         # print(state.asl)
-        is_assignable = left.assignable_to(right)
+        is_assignable = argument_requires.assignable_to(given)
         if not is_assignable:
             state.report_exception(Exceptions.MemoryAssignment(
                 # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO: fix error message {left}, {right}",
+                msg=f"argument requires '{argument_requires.restriction}', but given '{given.restriction}': {state.asl}",
                 line_number=state.get_line_number()))
             return Validate._abort_signal(state)
         return Validate._success()

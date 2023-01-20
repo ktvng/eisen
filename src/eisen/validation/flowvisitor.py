@@ -56,6 +56,16 @@ class FlowVisitor(Visitor):
             return state.get_void_type()
         return decorator
 
+    @classmethod
+    def update_to_primitive_restriction_if_needed(cls, type: Type):
+        """for novel types with let restrictions, we must change the restriction to
+        primitive."""
+        if type.is_novel() and type.restriction.is_let():
+            return type.with_restriction(PrimitiveRestriction())
+        if type.is_tuple() and all([c.is_novel() and c.restriction.is_let() for c in type.components]):
+            return type.with_restriction(PrimitiveRestriction())
+        return type
+
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
         if state.get_asl().type in implemented_primitive_types:
@@ -223,7 +233,8 @@ class FlowVisitor(Visitor):
     def idecls_(fn, state: State):
         node = Nodes.IletIvar(state)
         names = node.get_names()
-        type_to_be_assigned = fn.apply_to_second_child_of(state)
+        type_to_be_assigned = fn.apply_to_second_child_of(state).with_restriction(node.get_restriction())
+        type_to_be_assigned = FlowVisitor.update_to_primitive_restriction_if_needed(type_to_be_assigned)
         componentwise_types = node.unpack_assigned_types(type_to_be_assigned)
 
         if (any(type is state.get_abort_signal() for type in componentwise_types)
@@ -249,24 +260,18 @@ class FlowVisitor(Visitor):
         node = Nodes.Decl(state)
         names = node.get_names()
         type = fn.apply(state.but_with(asl=node.get_type_asl())).with_restriction(node.get_restriction())
+        type = FlowVisitor.update_to_primitive_restriction_if_needed(type)
         return FlowVisitor._create_references(state, names, type)
 
     @Visitor.for_asls("type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
-        name = state.first_child().value
+        node = Nodes.TypeLike(state)
+        name = node.get_name()
         type = state.get_defined_type(name)
         result = Validate.type_exists(state, name, type)
         if result.failed():
             return result.get_failure_type()
-
-        if state.get_asl().type == "type":
-            if state.first_child().value in implemented_primitive_types:
-                return type.with_restriction(PrimitiveRestriction())
-            return type.with_restriction(LetRestriction())
-        elif state.get_asl().type == "var_type":
-            return type.with_restriction(VarRestriction())
-        elif state.get_asl().type == "var_type?":
-            return type.with_restriction(NullableVarRestriction())
+        return type.with_restriction(node.get_restriction(type))
 
     @Visitor.for_asls("=", "<-", *binary_ops)
     def binary_ops(fn, state: State) -> Type:
@@ -302,18 +307,14 @@ class FlowVisitor(Visitor):
 
         return type
 
-    @Visitor.for_asls("args")
+    @Visitor.for_asls("args", "rets")
     def args_(fn, state: State) -> Type:
+        node = Nodes.ArgsRets(state)
         if not state.get_asl():
             return state.get_void_type()
-        return fn.apply(state.but_with(asl=state.first_child(), is_ptr=False))
-
-    @Visitor.for_asls("rets")
-    def rets_(fn, state: State) -> Type:
-        if not state.get_asl():
-            return state.get_void_type()
-        return fn.apply(state.but_with(asl=state.first_child(), is_ptr=True))
-
+        type = fn.apply(state.but_with(asl=state.first_child()))
+        node.convert_let_args_to_var(type)
+        return type
 
 class RestructureIsStatement():
     @classmethod

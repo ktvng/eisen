@@ -34,25 +34,8 @@ class PermissionsVisitor(Visitor):
         return EisenInstanceState(instance.name, instance.type.restriction, init_state)
 
     @classmethod
-    def convert_argument_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
-        if tc.is_novel():
-            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_let():
-            # this must be Var to allow objects be edited
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_var():
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-
-    @classmethod
-    def convert_return_type_to_instancestate(cls, tc: Type) -> EisenInstanceState:
-        if tc.is_novel():
-            return EisenAnonymousInstanceState(PrimitiveRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_let():
-            return EisenAnonymousInstanceState(LetRestriction(), Initializations.Initialized)
-        elif tc.restriction.is_var():
-            return EisenAnonymousInstanceState(VarRestriction(), Initializations.Initialized)
-
-        raise Exception(f"unknown way to convert type to instancestate, {tc}, {tc.restriction}")
+    def convert_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
+        return EisenAnonymousInstanceState(tc.restriction, Initializations.Initialized)
 
     @Visitor.for_asls("rets")
     def _rets(fn, state: State):
@@ -192,16 +175,16 @@ class PermissionsVisitor(Visitor):
         if node.is_print():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        argument_instancestates = [PermissionsVisitor.convert_argument_type_to_instancestate(tc)
+        argument_instancestates = [PermissionsVisitor.convert_type_to_instancestate(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
         param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
-        for left, right in zip(argument_instancestates, param_instancestates):
-            Validate.parameter_assignment_restrictions_met(state, left, right)
-            Validate.instancestate_is_initialized(state, right)
+        for argument_requires, given in zip(argument_instancestates, param_instancestates):
+            Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
+            Validate.instancestate_is_initialized(state, given)
 
         # handle returned restrictions
-        returned_instancestates = [PermissionsVisitor.convert_return_type_to_instancestate(tc)
+        returned_instancestates = [PermissionsVisitor.convert_type_to_instancestate(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_instancestates
 

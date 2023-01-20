@@ -366,6 +366,9 @@ class Nodes():
                 return NullableVarRestriction()
             return None
 
+        def get_is_nullable(self) -> bool:
+            return self.get_node_type() == "var?"
+
         def get_is_var(self) -> bool:
             node_type = self.get_node_type()
             return node_type == "var" or node_type == "var?"
@@ -587,12 +590,31 @@ class Nodes():
                 current_mod = current_mod.get_child_by_name(mod_name)
             return current_mod
 
-    class Rets(AbstractNodeInterface):
-        asl_type = "rets"
+    class ArgsRets(AbstractNodeInterface):
+        asl_types = ["rets", "args"]
         examples = """
         (rets (: ...))
         (rets (prod_type ...))
         """
+
+        def get_names(self) -> list[str]:
+            if self.state.asl.has_no_children():
+                return []
+            if self.first_child().type == ":":
+                return Nodes.Decl(self.state.but_with_first_child()).get_names()
+            return [Nodes.Decl(self.state.but_with(asl=child)).get_names()[0] for child in self.first_child()]
+
+        def convert_let_args_to_var(self, type: Type):
+            """For function arguments, if the declared type is unspecified, we should
+            convert this to let types for structs"""
+            if self.get_node_type() == "args":
+                if type.is_tuple():
+                    for component in type.components:
+                        if component.is_struct():
+                            component.restriction = VarRestriction()
+                elif type.is_struct():
+                    type.restriction = VarRestriction()
+
 
     class RawCall(AbstractNodeInterface):
         asl_type = "raw_call"
@@ -619,8 +641,10 @@ class Nodes():
 
         def get_restriction(self, type: Type) -> GeneralRestriction:
             # var takes precedence over primitive
-            if self.state.get_asl().type == "var_type":
+            if self.get_node_type() == "var_type":
                 return VarRestriction()
+            elif self.get_node_type() == "var_type?":
+                return NullableVarRestriction()
 
             if type.classification == Type.classifications.variant:
                 return VarRestriction()

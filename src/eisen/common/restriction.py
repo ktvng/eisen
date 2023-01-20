@@ -67,7 +67,7 @@ class LetRestriction(GeneralRestriction):
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         return (current_init_state == Initializations.NotInitialized) and (
-            other.is_let() or other.is_unrestricted())
+            other.is_let() or other.is_unrestricted() or other.is_literal())
 
 class ValRestriction(GeneralRestriction):
     def is_val(self) -> bool:

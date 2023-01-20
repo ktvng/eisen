@@ -13,6 +13,7 @@ from eisen.validation.finalizationvisitor import FinalizationVisitor
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
+from eisen.memory.memcheck import PublicCheck
 
 # Notes:
 # A module is a collection of structs/functions
@@ -59,6 +60,7 @@ class Workflow():
         PermissionsVisitor,
 
         NilCheck,
+        PublicCheck,
 
         # note: def, create, fn, ref, ilet, :: need instances!!
     ]

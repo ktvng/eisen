@@ -66,3 +66,7 @@ class Exceptions():
     class NilAssignment(AbstractException):
         type = "NilAssignment"
         description = "nil can only be assigned to a nilable type"
+
+    class ObjectLifetime(AbstractException):
+        type = "ObjectLifetime"
+        description = "cannot assign an object to a reference when the object has a shorter lifetime than the reference"

@@ -66,10 +66,22 @@ class TypeParser(Visitor):
             ret=fn.apply(state.but_with(asl=state.second_child())),
             mod=None)
 
-    @Visitor.for_asls("args", "rets")
+    @Visitor.for_asls("args")
     def args_(fn, state: State) -> Type:
         """
         (args (type ...))
+        """
+        if state.get_asl():
+            node = Nodes.ArgsRets(state)
+            type = fn.apply(state.but_with(asl=state.first_child()))
+            node.convert_let_args_to_var(type)
+            return type
+        return state.get_void_type().with_restriction(LetRestriction())
+
+    @Visitor.for_asls("rets")
+    def rets_(fn ,state: State) -> Type:
+        """
+        (rets (type ...))
         """
         if state.get_asl():
             return fn.apply(state.but_with(asl=state.first_child()))

@@ -219,6 +219,21 @@ class Type():
         return self.classification == Type.classifications.nil
 
     def with_restriction(self, restriction: AbstractRestriction = None):
+        # TODO: fix restrictions
+        if self.is_tuple() and restriction is not None:
+            # TODO: refactor this
+            # restriction applys parameter wise
+            return Type(
+                classification=self.classification,
+                name=self.name,
+                mod=self.mod,
+                components=[c._copy_with_restriction(restriction) for c in self.components],
+                component_names=self.component_names,
+                inherits=self.inherits,
+                embeds=self.embeds,
+                restriction=restriction,
+                parent_type=self.parent_type)
+
         if restriction is not None:
             return self._copy_with_restriction(restriction)
         return self

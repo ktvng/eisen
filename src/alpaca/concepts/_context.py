@@ -7,7 +7,8 @@ if TYPE_CHECKING:
 from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
-    container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type"]
+    container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type",
+    "depth"]
 
     def _add_child(self, child: NestedContainer):
         return
@@ -23,3 +24,9 @@ class Context(NestedContainer):
 
     def get_reference_type(self, name: str) -> Type:
         return self.get_obj("reference_type", name)
+
+    def add_depth(self, name: str, value: int):
+        self.add_obj("depth", name, value)
+
+    def get_depth(self, name: str):
+        return self.get_obj("depth", name)

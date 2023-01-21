@@ -8,7 +8,7 @@ from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
     container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type",
-    "depth"]
+    "depth", "spread"]
 
     def _add_child(self, child: NestedContainer):
         return
@@ -30,3 +30,9 @@ class Context(NestedContainer):
 
     def get_depth(self, name: str):
         return self.get_obj("depth", name)
+
+    def add_spread(self, name: str, value: int):
+        self.add_obj("spread", name, value)
+
+    def get_spread(self, name: str):
+        return self.get_obj("spread", name)

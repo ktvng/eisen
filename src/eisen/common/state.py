@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from eisen.interpretation.obj import Obj
     from eisen.common.eiseninstancestate import EisenInstanceState
     from eisen.common.restriction import GeneralRestriction
-
+    from eisen.memory.memcheck import Spread
 
 class SharedBool():
     def __init__(self, value: bool):
@@ -352,3 +352,9 @@ Token: {self.asl}
 
     def is_inside_constructor(self) -> bool:
         return self.inside_constructor
+
+    def get_spread(self, name: str) -> Spread:
+        return self.get_context().get_spread(name)
+
+    def add_spread(self, name: str, spread: Spread):
+        self.get_context().add_spread(name, spread)

@@ -197,6 +197,12 @@ class Nodes():
         def get_ret_names(self) -> list[str]:
             return Nodes.Def._unpack_to_get_names(self.get_rets_asl())
 
+        def has_return_value(self) -> list[str]:
+            return not self.get_rets_asl().has_no_children()
+
+        def get_function_instance(self) -> EisenFunctionInstance:
+            return self.state.get_instances()[0]
+
         @classmethod
         def _unpack_to_get_names(self, args_or_rets: CLRList) -> list[str]:
             if args_or_rets.has_no_children():
@@ -405,6 +411,11 @@ class Nodes():
 
         def is_single_assignment(self) -> bool:
             return first_child_is_token(self) or self.first_child().type != "tuple"
+
+        def get_names(self):
+            if self.first_child().type == "ref":
+                return [Nodes.Ref(self.state.but_with_first_child()).get_name()]
+            return [child.value for child in self.first_child()]
 
     class RefLike(AbstractNodeInterface):
         asl_types = ["ref", "::", "."]

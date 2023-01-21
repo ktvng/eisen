@@ -164,9 +164,13 @@ class PermissionsVisitor(Visitor):
         if result.failed():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        branch_instancestate = state.get_restriction()
-        if branch_instancestate.is_primitive() and not parent_instancestate.restriction.is_val():
-            return [EisenAnonymousInstanceState(branch_instancestate, Initializations.Initialized)]
+        branch_restricton = state.get_restriction()
+        if branch_restricton.is_var() and not parent_instancestate.restriction.is_val():
+            return [EisenAnonymousInstanceState(branch_restricton, Initializations.Initialized)]
+
+        if branch_restricton.is_primitive() and not parent_instancestate.restriction.is_val():
+            return [EisenAnonymousInstanceState(branch_restricton, Initializations.Initialized)]
+
         return [parent_instancestate]
 
     @Visitor.for_asls("call", "is_call")

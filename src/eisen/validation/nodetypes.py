@@ -412,10 +412,13 @@ class Nodes():
         def is_single_assignment(self) -> bool:
             return first_child_is_token(self) or self.first_child().type != "tuple"
 
-        def get_names(self):
+        def get_names_of_parent_objects(self):
             if self.first_child().type == "ref":
                 return [Nodes.Ref(self.state.but_with_first_child()).get_name()]
-            return [child.value for child in self.first_child()]
+            if self.first_child().type == "tuple":
+                return [child.value for child in self.first_child()]
+            if self.first_child().type == ".":
+                return [Nodes.Scope(self.state).get_object_name()]
 
     class RefLike(AbstractNodeInterface):
         asl_types = ["ref", "::", "."]
@@ -498,6 +501,7 @@ class Nodes():
         asl_type = "."
         examples = """
         (. (ref obj) attr)
+        (. (. (ref obj) attr1) attr2)
         """
 
         def get_asl_defining_restriction(self) -> CLRList:
@@ -508,6 +512,12 @@ class Nodes():
 
         def get_object_asl(self) -> CLRList:
             return self.first_child()
+
+        def get_object_name(self) -> str:
+            primary_asl = self.first_child()
+            while primary_asl.type != "ref":
+                primary_asl = primary_asl.first()
+            return Nodes.Ref(self.state.but_with(asl=primary_asl)).get_name()
 
     class Call(AbstractNodeInterface):
         asl_type = "call"

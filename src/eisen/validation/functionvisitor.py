@@ -7,6 +7,9 @@ from eisen.validation.nodetypes import Nodes
 from eisen.validation.typeparser import TypeParser
 
 class FunctionVisitor(Visitor):
+    def __init__(self, debug: bool = False):
+        super().__init__(debug)
+        self.local_type_parser = TypeParser()
     """this creates the function instances from (create ...) and (def ) asls. the
     instances get added to the module so they can be used and called.
     """
@@ -50,7 +53,7 @@ class FunctionVisitor(Visitor):
     def def_(fn, state: State):
         instance = EisenInstance(
             name=Nodes.Def(state).get_function_name(),
-            type=TypeParser().apply(state),
+            type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl())
         state.get_node_data().instances = [instance]
@@ -64,7 +67,7 @@ class FunctionVisitor(Visitor):
         # the name of the constructor is the same as the struct
         instance = EisenInstance(
             name=node.get_name(),
-            type=TypeParser().apply(state),
+            type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl(),
             is_constructor=True)
@@ -78,7 +81,7 @@ class FunctionVisitor(Visitor):
 
         instance = EisenInstance(
             name=node.get_name(),
-            type=TypeParser().apply(state),
+            type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl())
         state.get_node_data().instances = [instance]

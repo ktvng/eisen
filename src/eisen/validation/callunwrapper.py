@@ -10,11 +10,13 @@ from eisen.common.nodedata import NodeData
 from eisen.validation.nodetypes import Nodes
 
 if TYPE_CHECKING:
-    from eisen.validation.flowvisitor import FlowVisitor
+    from eisen.validation.typechecker import TypeChecker
 
 class CallUnwrapper():
     @classmethod
-    def process(cls, state: State, guessed_params_type: Type, fn: FlowVisitor) -> Type:
+    def process(cls, state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
+        """decide whether or not the call needs to be unwrapped, and returns the
+        true type of the parameters"""
         if cls._chains_to_correct_function(state, guessed_params_type):
             state.get_asl().update(type="call")
             return guessed_params_type
@@ -34,10 +36,13 @@ class CallUnwrapper():
             # Need to get the type of the first parameter
             first_param_type = fn.apply(state.but_with(asl=first_param_asl))
             if len(params_asl) == 1:
-                return  first_param_type
+                true_type = first_param_type
             else:
-                return TypeFactory.produce_tuple_type(
+                true_type = TypeFactory.produce_tuple_type(
                     components=[first_param_type, *guessed_params_type.components])
+
+            state.but_with_second_child().get_node_data().returned_type = true_type
+            return true_type
 
     @classmethod
     def _chains_to_correct_function(cls, state: State, guessed_params_type: Type) -> bool:

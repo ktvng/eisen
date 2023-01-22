@@ -23,10 +23,18 @@ class NilCheck(Visitor):
             return NilableStatus("nil", True)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
-    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "if", "cond", "while", "prod_type", "is")
+    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "cond", "prod_type", "is")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
         return []
+
+    @Visitor.for_asls("if")
+    def if_(fn, state: State):
+        Nodes.If(state).enter_context_and_apply(fn)
+
+    @Visitor.for_asls("while")
+    def while_(fn, state: State):
+        Nodes.While(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("def", "create", "is_fn")
     def fns_(fn, state: State):

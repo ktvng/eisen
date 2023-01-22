@@ -65,7 +65,7 @@ class LookupManager():
         return function_instance.type if function_instance is not None else None
 
     @classmethod
-    def resolve_reference_type(cls, name: str, context: Context, mod: Module, argument_type: Type = None) -> Type:
+    def resolve_reference_type(cls, name: str, context: Context, mod: Module, argument_type: Type = None) -> Type | None:
         # first try resolving the reference as a local_reference
         resolved_type = LookupManager.resolve_local_reference_type(name, context)
 
@@ -90,4 +90,3 @@ class LookupManager():
     resolve_struct_type = resolve_defined_type
     resolve_interface_type = resolve_defined_type
     resolve_variant_type = resolve_defined_type
-

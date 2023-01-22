@@ -104,7 +104,7 @@ class Validate:
 
 
     @classmethod
-    def instance_exists(cls, state: State, name: str, instance: EisenInstance) -> ValidationResult:
+    def instance_exists(cls, state: State, name: str, instance: EisenInstance | Type) -> ValidationResult:
         if instance is None:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",

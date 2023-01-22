@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from alpaca.clr import CLRToken, CLRList
 from alpaca.concepts._type import Type
@@ -12,6 +13,9 @@ from eisen.common.restriction import (GeneralRestriction, LetRestriction, VarRes
     PrimitiveRestriction, NullableVarRestriction)
 
 from eisen.validation.lookupmanager import LookupManager
+
+if TYPE_CHECKING:
+    from eisen.validation.typechecker import TypeChecker
 
 def get_name_from_first_child(self) -> str:
     """assumes the first child is a token containing the name"""
@@ -286,7 +290,7 @@ class Nodes():
 
         def enter_context_and_apply_fn(self, fn) -> None:
             # must create fn_context here as it is shared by all children
-            fn_context = self.state.create_block_context("func")
+            fn_context = self.state.create_block_context()
             will_enter_constructor = self.state.asl.type == "create"
             for child in self.state.get_child_asls():
                 fn.apply(self.state.but_with(
@@ -339,15 +343,6 @@ class Nodes():
         def assigns_a_tuple(self) -> bool:
             return isinstance(self.first_child(), CLRList)
 
-        def unpack_assigned_types(self, type: Type) -> list[Type]:
-            """if the assigned type is a tuple, unpack the components of the tuple
-            into a list of component types; otherwise returns a list with the singluar
-            type as the only member"""
-            if self.assigns_a_tuple():
-                return type.components
-            else:
-                return [type]
-
         def get_restriction(self) -> GeneralRestriction:
             if self.state.asl.type == "ilet":
                 return LetRestriction()
@@ -366,11 +361,12 @@ class Nodes():
         is_single_assignment = first_child_is_token
 
         def get_restriction(self) -> GeneralRestriction:
+            if self.get_node_type() == "let":
+                return LetRestriction()
             if self.get_node_type() == "var":
                 return VarRestriction()
             elif self.get_node_type() == "var?":
                 return NullableVarRestriction()
-            return None
 
         def get_is_nullable(self) -> bool:
             return self.get_node_type() == "var?"
@@ -476,7 +472,7 @@ class Nodes():
                 argument_type=argument_type,
                 mod=self.get_module())
 
-        def resolve_reference_type(self) -> Type:
+        def resolve_reference_type(self) -> Type | None:
             return LookupManager.resolve_reference_type(
                 name=self.get_name(),
                 context=self.state.get_context(),
@@ -677,3 +673,27 @@ class Nodes():
             elif self.state.get_asl().type == "type":
                 restriction = LetRestriction()
             return restriction
+
+    class If(AbstractNodeInterface):
+        asl_type = "if"
+        examples = """
+        (if (cond ...) (cond ...))
+        (if (cond ...) (seq ... ))
+        """
+
+        def enter_context_and_apply(self, fn):
+            for child in self.state.get_child_asls():
+                fn.apply(self.state.but_with(
+                    asl=child,
+                    context=self.state.create_block_context()))
+
+    class While(AbstractNodeInterface):
+        asl_type = "while"
+        examples = """
+        (while (cond ...))
+        """
+
+        def enter_context_and_apply(self, fn):
+            fn.apply(self.state.but_with(
+                asl=self.state.first_child(),
+                context=self.state.create_block_context()))

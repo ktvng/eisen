@@ -345,9 +345,9 @@ Token: {self.asl}
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)
 
-    def create_block_context(self, name: str) -> Context:
+    def create_block_context(self) -> Context:
         return Context(
-            name=name,
+            name="block",
             parent=self.get_context())
 
     def is_inside_constructor(self) -> bool:

@@ -80,24 +80,19 @@ class InstanceVisitor(Visitor):
         fn.apply(state.but_with_second_child())
         node = Nodes.IletIvar(state)
         names = node.get_names()
-        type_to_be_assigned = state.get_returned_type()
-        componentwise_types = node.unpack_assigned_types(type_to_be_assigned)
+        type = state.get_returned_type()
+        componentwise_types = type.components if type.is_tuple() else [type]
         return [InstanceVisitor.create_instance_inside_context(name, type, state)
             for name, type in zip(names, componentwise_types)]
 
     @Visitor.for_asls("if")
     def if_(fn, state: State) -> Type:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                context=state.create_block_context("if")))
+        Nodes.If(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("while")
     def while_(fn, state: State) -> Type:
-        fn.apply(state.but_with(
-            asl=state.first_child(),
-            context=state.create_block_context("while")))
+        Nodes.While(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
@@ -111,9 +106,11 @@ class InstanceVisitor(Visitor):
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
-    @Visitor.for_asls("call")
+    @Visitor.for_asls("call", "is_call")
     def raw_call(fn, state: State) -> Type:
         params_type = state.but_with_second_child().get_returned_type()
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
         fn.apply(state.but_with_second_child())
-        return []
+
+        node = Nodes.RefLike(state.but_with_first_child())
+        return [node.resolve_function_instance(params_type)]

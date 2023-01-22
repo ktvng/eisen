@@ -87,17 +87,12 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("if")
     def if_(fn, state: State) -> list[EisenInstanceState]:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(
-                asl=child,
-                context=state.create_block_context("if")))
+        Nodes.If(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("while")
     def while_(fn, state: State) -> list[EisenInstanceState]:
-        fn.apply(state.but_with(
-            asl=state.first_child(),
-            context=state.create_block_context("while")))
+        Nodes.While(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("ref")

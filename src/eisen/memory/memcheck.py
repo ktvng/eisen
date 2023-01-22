@@ -85,7 +85,7 @@ class GetDeps():
             return found_deps
 
         # Main start
-        state = state.but_with(context=state.create_block_context("func"))
+        state = state.but_with(context=state.create_block_context())
 
         input_number = 0
         def_node = Nodes.Def(state)
@@ -196,20 +196,14 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("if")
     def if_(fn, state: State):
-        for child in state.get_all_children():
-            if child.type == "seq":
-                fn.apply(state.but_with(
-                    asl=child,
-                    context=state.create_block_context("if"),
-                    depth = state.depth-1))
-            fn.apply(state.but_with(asl=child))
+        Nodes.If(state.but_with(depth=state.depth-1)).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("while")
     def while_(fn, state: State):
         cond_state = state.but_with(
             asl=state.first_child(),
-            context=state.create_block_context("cond"),
+            context=state.create_block_context(),
             depth=state.depth-1)
 
         # no spreads can change in the first part of the cond, as there is no assignment
@@ -237,7 +231,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("cond")
     def cond_(fn, state: State):
-        cond_context = state.create_block_context("cond")
+        cond_context = state.create_block_context()
         state.but_with(
             context=cond_context,
             depth=state.depth-1

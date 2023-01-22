@@ -5,6 +5,7 @@ from alpaca.concepts import Type, TypeFactory
 from eisen.common.state import State
 from eisen.common.restriction import LetRestriction, ValRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes
+from eisen.validation.validate import Validate
 
 class TypeParser(Visitor):
     """this parses the asl into a type. certain asls define types. these are:
@@ -15,20 +16,18 @@ class TypeParser(Visitor):
     def apply(self, state: State) -> Type:
         return self._route(state.get_asl(), state)
 
-    @Visitor.for_asls("type", "var_type")
+    @Visitor.for_asls("type", "var_type", "var_type?")
     def type_(fn, state: State) -> Type:
         """
         (type int)
         (var_type int)
         """
         node = Nodes.TypeLike(state)
-        found_type = state.get_defined_type(node.get_name())
-        restriction = node.get_restriction(found_type)
-        if found_type:
-            type = found_type.with_restriction(restriction)
-            state.get_node_data().returned_type = type
-            return type
-        raise Exception(f"unknown type! {node.get_name()}")
+        name = node.get_name()
+        type = state.get_defined_type(name)
+        if Validate.type_exists(state, name, type).failed():
+            return state.get_abort_signal()
+        return type.with_restriction(node.get_restriction(type))
 
     @Visitor.for_asls(":")
     def colon_(fn, state: State) -> Type:

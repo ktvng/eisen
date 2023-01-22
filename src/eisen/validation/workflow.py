@@ -5,7 +5,7 @@ import time
 from eisen.common.state import State
 from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
-from eisen.validation.flowvisitor import FlowVisitor
+from eisen.validation.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
 from eisen.validation.permissionsvisitor import PermissionsVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
@@ -52,7 +52,7 @@ class Workflow():
         # evaluate the flow of types through the program.
         #   - the type which is flowed through a node can be accessed by
         #     params.get_returned_type()
-        FlowVisitor,
+        TypeChecker,
 
         InstanceVisitor,
 

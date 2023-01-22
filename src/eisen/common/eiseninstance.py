@@ -12,6 +12,9 @@ class EisenInstance(Instance):
     def get_c_name(self):
         return self.context.get_full_name() + "_" + self.name
 
+    def get_unique_function_name(self):
+        return self.context.get_full_name() + "_" + self.name + "_" + str(self.type)
+
 
 class EisenFunctionInstance(EisenInstance):
     pass

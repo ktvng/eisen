@@ -5,6 +5,9 @@ import time
 import os
 import json
 import traceback
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+from threading import Lock
 
 import alpaca
 from alpaca.concepts import AbstractException
@@ -45,11 +48,11 @@ class Test():
         return self.parse_asl()
 
     def parse_asl(self):
-        # config = alpaca.config.parser.run(filename=Test.grammarfile)
+        config = alpaca.config.parser.run(filename=Test.grammarfile)
         tokens = alpaca.lexer.run(text=self.code, config=StaticParser.config, callback=EisenCallback)
         # asl = alpaca.parser.run(config, tokens, builder=EisenBuilder())
-        # asl = SuperParser(config).parse(tokens)
-        asl = StaticParser.parser.parse(tokens)
+        asl = SuperParser(config).parse(tokens)
+        # asl = StaticParser.parser.parse(tokens)
         return asl
 
     @classmethod
@@ -77,7 +80,7 @@ class Test():
             expected_exceptions = self.metadata["expected"]["exceptions"]
             got_number_of_exceptions = state.watcher.txt.count(AbstractException.delineator)
             if len(expected_exceptions) != got_number_of_exceptions:
-                return False, f"expected ({len(expected_exceptions)}) exceptions but got ({got_number_of_exceptions})"
+                return False, f"expected ({len(expected_exceptions)}) exceptions but got ({got_number_of_exceptions}) in: \n{state.watcher.txt}"
             for e in expected_exceptions:
                 if e["type"] not in state.watcher.txt or e["contains"] not in state.watcher.txt:
                     return False, Test._make_exception_error_msg(e, state)
@@ -141,8 +144,32 @@ class TestRunner():
         return [t.split(".")[0] for t in test_files]
 
     @classmethod
-    def run_all_tests(cls):
+    def run_all_tests_threadpooled(cls):
         start = time.perf_counter()
+        tests = cls.get_all_test_names()
+        with multiprocessing.Pool(8) as p:
+            data: list[str] = p.map(cls.run_test_in_thread, tests)
+
+        successes = data.count("success!")
+        msg = "\n".join([m for m in data if m != "success!"])
+        print(msg)
+        end = time.perf_counter()
+        total_tests= len(tests)
+        print(f"ran {total_tests} tests in {round(end-start, 4)}s, {successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
+
+    @classmethod
+    def run_test_in_thread(cls, testname: str) -> tuple[bool, str]:
+        status, msg = cls.run_test_by_name(testname)
+        msg_to_sender = "success!"
+        if not status:
+            msg_to_sender = f"test failed: {testname}\n" + "\n".join(["   " + l for l in msg.split("\n")])
+
+        return msg_to_sender
+
+    @classmethod
+    def run_all_tests(cls):
+        cls.run_all_tests_threadpooled()
+        return
         successes = 0
         tests = cls.get_all_test_names()
         for testname in tests:
@@ -178,5 +205,3 @@ class TestRunner():
             asl_str = str(test.parse_asl())
             with open(cls.cachedir + testname, 'w') as f:
                 f.write(asl_str)
-
-

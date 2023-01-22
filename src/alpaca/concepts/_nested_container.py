@@ -107,4 +107,5 @@ class NestedContainer():
         mod = self.parent
         while mod is not None and mod.parent is not None:
             name += mod.name + "::"
+            mod = mod.parent
         return name

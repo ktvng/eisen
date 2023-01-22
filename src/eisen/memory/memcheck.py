@@ -9,16 +9,11 @@ from eisen.common.state import State
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 
 class PublicCheck():
-    def apply(cls, state: State):
-        # state.simple_check = SimpleMemCheck()
-        # state.recursion_check = RecursionMemCheck()
-        # result = state.simple_check.apply(state.but_with(
-        #     asl=PublicCheck.get_main_function(state.asl),
-        #     context=state.create_block_context("func")))
-        # print(result.ok)
+    def __init__(self) -> None:
+        self.get_deps = GetDeps()
 
-        get_deps = GetDeps()
-        get_deps.of_function(state.but_with(asl=PublicCheck.get_main_function(state.asl)))
+    def apply(self, state: State):
+        self.get_deps.of_function(state.but_with(asl=PublicCheck.get_main_function(state.asl)))
 
     @classmethod
     def get_main_function(cls, full_asl: CLRList) -> CLRList:
@@ -84,6 +79,10 @@ class GetDeps():
 
     def of_function(self, state: State) -> Deps:
         node = Nodes.Def(state)
+        function_uid = node.get_function_instance().get_unique_function_name()
+        found_deps = self.cache.get(function_uid, None)
+        if found_deps is not None:
+            return found_deps
 
         # Main start
         state = state.but_with(context=state.create_block_context("func"))
@@ -115,6 +114,7 @@ class GetDeps():
             return Deps()
 
         new_deps = Deps.create_from_return_value_spreads(spreads_for_return_values)
+        self.cache[function_uid] = new_deps
         return new_deps
 
 class SpreadVisitor(Visitor):

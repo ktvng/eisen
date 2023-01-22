@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from eisen.common.state import State
 from alpaca.concepts import Type, Instance, Module
 
+no_assign_binary_ops = ["+", "-", "/", "*", "and", "or"]
 binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="]
 boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 implemented_primitive_types = ["str", "int", "bool", "flt"]

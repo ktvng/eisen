@@ -325,7 +325,7 @@ STRUCTURE
         |   L1
 
     L0S ->
-        @action build lvals
+        @action filter_build lvals
         |   _L0S
 
     _L0S ->

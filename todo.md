@@ -5,3 +5,5 @@
 2. Figure out @allow or @deny, and update grammar accordingly
 
 3. Fix primitive restrictions
+
+4. Fix lvals

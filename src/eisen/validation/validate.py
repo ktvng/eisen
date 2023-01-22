@@ -40,13 +40,18 @@ class Validate:
         if any([state.get_abort_signal() in (type1, type2)]):
             return Validate._abort_signal(state)
 
-        if type1.restriction.is_nullable() and type2.is_nil():
-            return Validate._success(type1)
-        if type2.is_nil():
-            state.report_exception(Exceptions.NilAssignment(
-                msg=f"cannot assign nil to non-nilable type '{type1}'",
-                line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
+        if type1.is_tuple():
+            for l, r in zip(type1.components, type2.components):
+                if not l.restriction.is_nullable() and r.is_nil():
+                    state.report_exception(Exceptions.NilAssignment(
+                    msg=f"cannot assign nil to non-nilable type '{type1}'",
+                    line_number=state.get_line_number()))
+        else:
+            if not type1.restriction.is_nullable() and type2.is_nil():
+                state.report_exception(Exceptions.NilAssignment(
+                    msg=f"cannot assign nil to non-nilable type '{type1}'",
+                    line_number=state.get_line_number()))
+                return Validate._abort_signal(state)
 
         return Validate.equivalent_types(state, type1, type2)
 

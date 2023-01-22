@@ -127,7 +127,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):
-        return []
+        return [Spread(values=set(), depth=0)]
 
     @Visitor.for_asls("seq")
     def seq_(fn, state: State):

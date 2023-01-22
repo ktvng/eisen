@@ -112,7 +112,7 @@ class FlowVisitor(Visitor):
         instance = node.get_end_instance()
         return instance.type
 
-    @Visitor.for_asls("tuple", "params", "prod_type")
+    @Visitor.for_asls("tuple", "params", "prod_type", "lvals")
     def tuple_(fn, state: State) -> Type:
         if len(state.get_asl()) == 0:
             return state.get_void_type()

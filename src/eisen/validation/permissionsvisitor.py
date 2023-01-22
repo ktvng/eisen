@@ -125,7 +125,7 @@ class PermissionsVisitor(Visitor):
             state.add_instancestate(left)
         return []
 
-    @Visitor.for_asls("tuple", "params")
+    @Visitor.for_asls("tuple", "params", "lvals")
     def tuple_(fn, state: State) -> list[EisenInstanceState]:
         instancestates = []
         for child in state.get_all_children():
@@ -216,5 +216,5 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_default
     def default_(fn, state: State) -> list[EisenInstanceState]:
-        print("UNHANDLED", state.get_asl())
+        print("PermissionsVisitor Unhandled State:", state.get_asl())
         return PermissionsVisitor.NoRestrictionInstanceState()

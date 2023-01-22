@@ -377,8 +377,9 @@ class Nodes():
 
         def get_is_var(self) -> bool:
             node_type = self.get_node_type()
-            return node_type == "var" or node_type == "var?"
-
+            return (node_type == "var"
+                or node_type == "var?"
+                or node_type == ":" and self.get_type_asl().type == "var_type?")
 
         def get_names(self) -> list[str]:
             if self.is_single_assignment():

@@ -87,7 +87,7 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("mod")
     @returns_void_type
     def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        Nodes.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("!")
     def not_(fn, state: State) -> Type:
@@ -204,7 +204,7 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("def", "create", ":=", "is_fn")
     @returns_void_type
     def fn(fn, state: State) -> Type:
-        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
+        Nodes.CommonFunction(state).enter_context_and_apply(fn)
 
     @classmethod
     def _create_references(cls, state: State, names: list[str], type: Type):

@@ -20,7 +20,7 @@ class ModuleVisitor(Visitor):
         node.set_entered_module(
             Module(name=node.get_module_name(), parent=state.get_enclosing_module()))
 
-        node.enter_module_and_apply_fn_to_child_asls(fn)
+        node.enter_module_and_apply(fn)
 
     @Visitor.for_default
     def default_(fn, state: State):

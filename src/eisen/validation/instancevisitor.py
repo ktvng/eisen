@@ -44,7 +44,7 @@ class InstanceVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State) -> list[EisenInstance]:
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        Nodes.Mod(state).enter_module_and_apply(fn)
         return []
 
     @Visitor.for_asls("ref")
@@ -97,7 +97,7 @@ class InstanceVisitor(Visitor):
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
-        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
+        Nodes.CommonFunction(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("struct")

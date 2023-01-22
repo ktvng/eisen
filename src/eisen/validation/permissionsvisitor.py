@@ -7,9 +7,7 @@ from alpaca.concepts import Type
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import (VarRestriction, ValRestriction,
-    LetRestriction, LiteralRestriction, PrimitiveRestriction, NoRestriction,
-    NullableVarRestriction)
+from eisen.common.restriction import (LiteralRestriction, NoRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
@@ -30,18 +28,18 @@ class PermissionsVisitor(Visitor):
         return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized)]
 
     @classmethod
-    def convert_instance_to_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
+    def get_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
         return EisenInstanceState(instance.name, instance.type.restriction, init_state)
 
     @classmethod
-    def convert_type_to_instancestate(cls, tc: Type) -> list[EisenInstanceState]:
+    def get_instancestate_from_type(cls, tc: Type) -> list[EisenInstanceState]:
         return EisenAnonymousInstanceState(tc.restriction, Initializations.Initialized)
 
     @Visitor.for_asls("rets")
     def _rets(fn, state: State):
         if state.is_inside_constructor():
-            instancestate = fn.apply(state.but_with_first_child())[0]
-            instancestate.mark_as_initialized()
+            inst = fn.apply(state.but_with_first_child())[0]
+            inst.mark_as_initialized()
         else:
             state.apply_fn_to_all_children(fn)
         return []
@@ -49,8 +47,8 @@ class PermissionsVisitor(Visitor):
     @Visitor.for_asls("args", "prod_type")
     def args_(fn, state: State):
         for child in state.get_all_children():
-            for instancestate in fn.apply(state.but_with(asl=child)):
-                instancestate.mark_as_initialized()
+            for inst in fn.apply(state.but_with(asl=child)):
+                inst.mark_as_initialized()
         return []
 
     @Visitor.for_asls("start", "seq", "cond")
@@ -60,12 +58,12 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        Nodes.Mod(state).enter_module_and_apply(fn)
         return []
 
     @Visitor.for_asls("def", "create", "is_fn")
     def defs_(fn, state: State) -> list[EisenInstanceState]:
-        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
+        Nodes.CommonFunction(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("interface", "return")
@@ -101,18 +99,18 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(":", "let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:
-        instancestates = [PermissionsVisitor.convert_instance_to_instancestate(instance, Initializations.NotInitialized)
+        insts = [PermissionsVisitor.get_instancestate(instance, Initializations.NotInitialized)
             for instance in state.get_instances()]
-        for instancestate in instancestates:
-            state.add_instancestate(instancestate)
-        return instancestates
+        for inst in insts:
+            state.add_instancestate(inst)
+        return insts
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:
-        left_instancestates = [PermissionsVisitor.convert_instance_to_instancestate(i, Initializations.NotInitialized)
+        left_insts = [PermissionsVisitor.get_instancestate(i, Initializations.NotInitialized)
             for i in state.get_instances()]
-        right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
-        for left, right in zip(left_instancestates, right_instancestates):
+        right_insts = fn.apply(state.but_with(asl=state.second_child()))
+        for left, right in zip(left_insts, right_insts):
             Validate.assignment_restrictions_met(state, left, right)
 
             # mark as initialized after validations
@@ -122,51 +120,45 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("tuple", "params", "lvals")
     def tuple_(fn, state: State) -> list[EisenInstanceState]:
-        instancestates = []
+        insts = []
         for child in state.get_all_children():
-            instancestates += fn.apply(state.but_with(asl=child))
-        return instancestates
+            insts += fn.apply(state.but_with(asl=child))
+        return insts
 
     @Visitor.for_asls("=")
     def equals_(fn, state: State) -> list[EisenInstanceState]:
-        left_instancestates = fn.apply(state.but_with(asl=state.first_child()))
-        right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
+        left_insts = fn.apply(state.but_with(asl=state.first_child()))
+        right_insts = fn.apply(state.but_with(asl=state.second_child()))
 
-        for left_instancestate, right_instancestate in zip(left_instancestates, right_instancestates):
-            Validate.assignment_restrictions_met(state, left_instancestate, right_instancestate)
+        for left_inst, right_inst in zip(left_insts, right_insts):
+            Validate.assignment_restrictions_met(state, left_inst, right_inst)
             # must mark as initialized after we check critera, otherwise checks may fail
             # if this is where the first initialization occurs
-            left_instancestate.mark_as_initialized()
+            left_inst.mark_as_initialized()
         return []
 
     @Visitor.for_asls("<-")
     def larrow_(fn, state: State) -> list[EisenInstanceState]:
-        left_instancestates = fn.apply(state.but_with(asl=state.first_child()))
-        right_instancestates = fn.apply(state.but_with(asl=state.second_child()))
+        left_insts = fn.apply(state.but_with(asl=state.first_child()))
+        right_insts = fn.apply(state.but_with(asl=state.second_child()))
 
-        for left_instancestate, right_instancestate in zip(left_instancestates, right_instancestates):
-            Validate.overwrite_restrictions_met(state, left_instancestate, right_instancestate)
+        for left_inst, right_inst in zip(left_insts, right_insts):
+            Validate.overwrite_restrictions_met(state, left_inst, right_inst)
             # must mark as initialized after we check critera, otherwise checks may fail
             # if this is where the first initialization occurs
-            left_instancestate.mark_as_initialized()
+            left_inst.mark_as_initialized()
         return []
-
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State) -> list[EisenInstanceState]:
-        parent_instancestate = fn.apply(state.but_with_first_child())[0]
-        result = Validate.instancestate_is_initialized(state, parent_instancestate)
-        if result.failed():
+        parent_inst = fn.apply(state.but_with_first_child())[0]
+        if Validate.instancestate_is_initialized(state, parent_inst).failed():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
         branch_restricton = state.get_restriction()
-        if branch_restricton.is_var() and not parent_instancestate.restriction.is_val():
+        if not parent_inst.restriction.is_val():
             return [EisenAnonymousInstanceState(branch_restricton, Initializations.Initialized)]
-
-        if branch_restricton.is_primitive() and not parent_instancestate.restriction.is_val():
-            return [EisenAnonymousInstanceState(branch_restricton, Initializations.Initialized)]
-
-        return [parent_instancestate]
+        return [parent_inst]
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State) -> list[EisenInstanceState]:
@@ -174,18 +166,18 @@ class PermissionsVisitor(Visitor):
         if node.is_print():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        argument_instancestates = [PermissionsVisitor.convert_type_to_instancestate(tc)
+        argument_insts = [PermissionsVisitor.get_instancestate_from_type(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
-        param_instancestates = fn.apply(state.but_with(asl=node.get_params_asl()))
-        for argument_requires, given in zip(argument_instancestates, param_instancestates):
+        param_insts = fn.apply(state.but_with(asl=node.get_params_asl()))
+        for argument_requires, given in zip(argument_insts, param_insts):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.instancestate_is_initialized(state, given)
 
         # handle returned restrictions
-        returned_instancestates = [PermissionsVisitor.convert_type_to_instancestate(tc)
+        returned_insts = [PermissionsVisitor.get_instancestate_from_type(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
-        return returned_instancestates
+        return returned_insts
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[EisenInstanceState]:
@@ -194,13 +186,10 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[EisenInstanceState]:
-        component_instancestates = []
+        component_insts = []
         for child in state.get_all_children():
-            component_instancestates += fn.apply(state.but_with(asl=child))
-
-        for instancestate in component_instancestates:
-            Validate.instancestate_is_initialized(state, instancestate)
-
+            for inst in fn.apply(state.but_with(asl=child)):
+                Validate.instancestate_is_initialized(state, inst)
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens

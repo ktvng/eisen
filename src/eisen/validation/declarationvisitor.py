@@ -30,7 +30,7 @@ class DeclarationVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        Nodes.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("struct")
     @adds_type_to_module

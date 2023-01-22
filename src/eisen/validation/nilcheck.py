@@ -38,7 +38,7 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("def", "create", "is_fn")
     def fns_(fn, state: State):
-        Nodes.CommonFunction(state).enter_context_and_apply_fn(fn)
+        Nodes.CommonFunction(state).enter_context_and_apply(fn)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
     @Visitor.for_asls(*binary_ops, *boolean_return_ops)

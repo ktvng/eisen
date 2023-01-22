@@ -61,7 +61,7 @@ class Nodes():
         def set_entered_module(self, mod: Module):
             self.state.get_node_data().enters_module = mod
 
-        def enter_module_and_apply_fn_to_child_asls(self, fn):
+        def enter_module_and_apply(self, fn):
             for child in self.state.get_asl()[1:]:
                 fn.apply(self.state.but_with(
                     asl=child,
@@ -288,7 +288,7 @@ class Nodes():
         def get_seq_asl(self) -> CLRList:
             return self.state.get_asl()[-1]
 
-        def enter_context_and_apply_fn(self, fn) -> None:
+        def enter_context_and_apply(self, fn) -> None:
             # must create fn_context here as it is shared by all children
             fn_context = self.state.create_block_context()
             will_enter_constructor = self.state.asl.type == "create"

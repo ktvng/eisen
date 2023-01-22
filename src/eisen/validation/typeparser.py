@@ -3,7 +3,6 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 from eisen.common.state import State
-from eisen.common.restriction import LetRestriction, ValRestriction, VarRestriction
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.validate import Validate
 
@@ -75,7 +74,7 @@ class TypeParser(Visitor):
             type = fn.apply(state.but_with(asl=state.first_child()))
             node.convert_let_args_to_var(type)
             return type
-        return state.get_void_type().with_restriction(LetRestriction())
+        return state.get_void_type()
 
     @Visitor.for_asls("rets")
     def rets_(fn ,state: State) -> Type:
@@ -84,7 +83,7 @@ class TypeParser(Visitor):
         """
         if state.get_asl():
             return fn.apply(state.but_with(asl=state.first_child()))
-        return state.get_void_type().with_restriction(LetRestriction())
+        return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
     def def_(fn, state: State) -> Type:

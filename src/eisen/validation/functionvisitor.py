@@ -22,7 +22,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply_fn_to_child_asls(fn)
+        Nodes.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_default
     def default_(fn, state: State) -> None:

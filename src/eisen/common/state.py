@@ -76,8 +76,6 @@ class State(AbstractParams):
             objs: dict[str, Obj] = {},
 
             # used for memcheck
-            simple_check = None,
-            recursion_check = None,
             depth: int = 0,
             ):
 
@@ -101,8 +99,6 @@ class State(AbstractParams):
 
         self.objs = objs
 
-        self.simple_check = simple_check
-        self.recursion_check = recursion_check
         self.depth = depth
 
     def but_with(self,
@@ -124,9 +120,6 @@ class State(AbstractParams):
             # used for transmutation
             as_ptr: bool = None,
 
-            # used for memcheck
-            simple_check = None,
-            recursion_check = None,
             depth: int = None,
             ) -> State:
 
@@ -142,9 +135,7 @@ class State(AbstractParams):
             # these cannot be changed by input params
             critical_exception=self.critical_exception, watcher=self.watcher,
             print_to_watcher=self.print_to_watcher,
-            counter=self.counter,
-
-            simple_check=self.simple_check, recursion_check=self.recursion_check)
+            counter=self.counter,)
 
     def report_exception(self, e: AbstractException):
         self.exceptions.append(e)

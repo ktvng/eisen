@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 class AbstractFlags:
-    def __init__(self, flags: list[str] = []):
-        self._flags = flags
+    def __init__(self, flags: list[str] = None):
+        self._flags = flags or []
 
     def __getitem__(self, x) -> str:
         return self._flags.__getitem__(x)

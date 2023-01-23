@@ -147,7 +147,7 @@ class State(AbstractParams):
         if isinstance(self.asl, CLRList):
             instances = None
             try:
-                instances = self.get_instances(self.asl)
+                instances = self.get_instances()
             except:
                 pass
 

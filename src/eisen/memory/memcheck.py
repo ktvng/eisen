@@ -28,9 +28,6 @@ class Spread():
         self._is_return_value = is_return_value
         self.changed = False
 
-    def __eq__(self, __o: object) -> bool:
-        return isinstance(__o, Spread) and __o.value == self.value;
-
     def __str__(self) -> str:
         return str(self.values)
 

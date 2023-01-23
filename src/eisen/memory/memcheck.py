@@ -57,7 +57,7 @@ class Spread():
         return new_spread
 
 class Deps():
-    def __init__(self, indexes_by_return_value: list = []):
+    def __init__(self, indexes_by_return_value: list = list()):
         self.indexes_by_return_value = indexes_by_return_value
 
     def apply_to_parameter_spreads(self, param_spreads: list[Spread]) -> list[list[Spread]]:

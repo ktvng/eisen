@@ -219,6 +219,8 @@ STRUCTURE
         |   E10 . TAG
         @action build raw_call
         |   E10 PARAMS
+        @action build curry_call
+        |   E10 CURRIED_PARAMS
         @action filter_build cast
         |   E10 . as ( TYPE )
         @action pass
@@ -285,6 +287,19 @@ STRUCTURE
     TAGS ->
         @action filter_build tags
         |   _TAGS
+
+
+    CURRIED_PARAMS ->
+        @action filter_build curried
+        |   < E0 >
+        |   < _E0S >
+
+    PARAMS ->
+        @action filter_build params
+        |   ( )
+        |   ( E0 )
+        |   ( _E0S )
+
 
     # tuple of tags
     _TAGS ->
@@ -381,12 +396,6 @@ STRUCTURE
         |   DECL ENDLS
         |   return ENDLS
         |   CONTROL
-
-    PARAMS ->
-        @action filter_build params
-        |   ( )
-        |   ( E0 )
-        |   ( _E0S )
 
 
     # ====================================================

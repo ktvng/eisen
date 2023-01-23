@@ -169,6 +169,10 @@ class SpreadVisitor(Visitor):
     def ref_(fn, state: State):
         return [state.get_spread(Nodes.Ref(state).get_name())]
 
+    @Visitor.for_asls("fn")
+    def fn_(fn, state: State):
+        return []
+
     @Visitor.for_asls("=", "+=", "-=", "/=", "*=", "<-")
     def eq_(fn, state: State):
         names = Nodes.Assignment(state).get_names_of_parent_objects()
@@ -178,7 +182,8 @@ class SpreadVisitor(Visitor):
             left_spread = state.get_spread(name)
             left_spread.add(right_spread)
 
-            if left_spread.is_tainted():
+            # TODO fix this, doesn't work for tuples
+            if left_spread.is_tainted() and not state.but_with_first_child().get_restriction().is_primitive():
                 state.report_exception(
                     Exceptions.ObjectLifetime(
                         msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
@@ -249,3 +254,8 @@ class SpreadVisitor(Visitor):
             param_spreads=fn.apply(state.but_with(asl=node.get_params_asl())))
         return [Spread.merge_all(spreads_for_one_return_value)
             for spreads_for_one_return_value in all_return_value_spreads]
+
+    @Visitor.for_default
+    def default_(fn, state: State):
+        print(f"MemCheck Unhandled state {state.asl}")
+        return []

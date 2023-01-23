@@ -10,6 +10,7 @@ from eisen.validation.functionvisitor import FunctionVisitor
 from eisen.validation.permissionsvisitor import PermissionsVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import FinalizationVisitor
+from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
@@ -48,6 +49,9 @@ class Workflow():
         # which allows us to process them identically later in the
         # TypeClassFlowWrangler.
         FunctionVisitor,
+
+        # this changes (ref ...) to (fn ...) if they refer to global functions
+        FnConverter,
 
         # evaluate the flow of types through the program.
         #   - the type which is flowed through a node can be accessed by

@@ -108,7 +108,7 @@ class TypeChecker(Visitor):
         instance = node.get_end_instance()
         return instance.type
 
-    @Visitor.for_asls("tuple", "params", "prod_type", "lvals")
+    @Visitor.for_asls("tuple", "params", "prod_type", "lvals", "curried")
     def tuple_(fn, state: State) -> Type:
         if len(state.get_asl()) == 0:
             return state.get_void_type()
@@ -131,17 +131,17 @@ class TypeChecker(Visitor):
     @classmethod
     def _shared_call_checks(cls, state: State, params_type: Type):
         node = Nodes.RefLike(state.but_with_first_child())
-        fn_instance = node.resolve_function_instance(params_type)
-        if Validate.instance_exists(state, node.get_name(), fn_instance).failed():
+        fn_type = node.resolve_reference_type(params_type)
+        if Validate.instance_exists(state, node.get_name(), fn_type).failed():
             return state.get_abort_signal()
 
         if Validate.correct_argument_types(state,
             name=node.get_name(),
-            arg_type=fn_instance.type.get_argument_type(),
+            arg_type=fn_type.get_argument_type(),
             given_type=params_type).failed():
                 return state.get_abort_signal()
 
-        return fn_instance.type.get_return_type()
+        return fn_type.get_return_type()
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
@@ -170,6 +170,16 @@ class TypeChecker(Visitor):
             fn.apply(state.but_with_second_child())
             return TypeChecker._shared_call_checks(state, params_type)
         return state.get_bool_type()
+
+    @Visitor.for_asls("curry_call")
+    def curry_call_(fn, state: State) -> Type:
+        fn_type = fn.apply_to_first_child_of(state)
+        curried_args_type = fn.apply_to_second_child_of(state)
+        n_curried_args = 1
+        if curried_args_type.is_tuple():
+            n_curried_args = len(curried_args_type.components)
+
+        return state.get_curried_type(fn_type, n_curried_args)
 
     @Visitor.for_asls("struct")
     @returns_void_type
@@ -234,7 +244,7 @@ class TypeChecker(Visitor):
         type = TypeChecker.update_to_primitive_restriction_if_needed(type)
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls("type", "var_type", "var_type?")
+    @Visitor.for_asls("fn_type", "type", "var_type", "var_type?")
     def _type1(fn, state: State) -> Type:
         return fn.typeparser.apply(state)
 
@@ -255,6 +265,14 @@ class TypeChecker(Visitor):
         if Validate.equivalent_types(state, left_type, right_type).failed():
             return state.get_abort_signal()
         return state.get_bool_type()
+
+    @Visitor.for_asls("fn")
+    def fn_(fn, state: State) -> Type:
+        node = Nodes.Fn(state)
+        instance = node.resolve_function_instance(state.get_arg_type())
+        if Validate.instance_exists(state, node.get_name(), instance).failed():
+            return state.get_abort_signal()
+        return instance.type
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> Type:

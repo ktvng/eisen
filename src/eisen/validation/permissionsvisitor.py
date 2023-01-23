@@ -7,7 +7,7 @@ from alpaca.concepts import Type
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.common.state import State
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import (LiteralRestriction, NoRestriction)
+from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
@@ -93,9 +93,16 @@ class PermissionsVisitor(Visitor):
         Nodes.While(state).enter_context_and_apply(fn)
         return []
 
+    def fn_(fn, state: State) -> list[EisenInstanceState]:
+        pass
+
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
         return [state.get_instancestate(Nodes.Ref(state).get_name())]
+
+    @Visitor.for_asls("fn")
+    def fn_(fn, state: State) -> list[EisenInstanceState]:
+        return [EisenAnonymousInstanceState(FunctionalRestriction(), Initializations.Initialized)]
 
     @Visitor.for_asls(":", "let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:

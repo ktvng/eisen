@@ -6,6 +6,7 @@ class Obj:
         self.value = value
         self.name = name
         self.is_var = is_var
+        self.params = []
 
     lambda_map = {
         "+": lambda x, y: x + y,
@@ -21,6 +22,7 @@ class Obj:
         "or": lambda x, y: x or y,
         "and": lambda x, y: x and y,
     }
+
     @classmethod
     def apply_binary_operation(cls, op: str, obj1: Obj, obj2: Obj):
         if op in Obj.lambda_map:

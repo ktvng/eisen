@@ -183,7 +183,7 @@ class AstInterpreter(Visitor):
             return_values.append(fn_objs[name])
         return return_values
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_asls("ref", "fn")
     def ref_(fn, state: State):
         name = Nodes.Ref(state).get_name()
         local_obj = state.objs.get(name, None)

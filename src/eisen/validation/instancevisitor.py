@@ -47,7 +47,7 @@ class InstanceVisitor(Visitor):
         Nodes.Mod(state).enter_module_and_apply(fn)
         return []
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_asls("ref", "fn")
     def ref_(fn, state: State) -> list[EisenInstance]:
         return [Nodes.Ref(state).resolve_instance()]
 

@@ -73,7 +73,7 @@ class State(AbstractParams):
             as_ptr: bool = False,
 
             # used for interpreter
-            objs: dict[str, Obj] = {},
+            objs: dict[str, Obj] = None,
 
             # used for memcheck
             depth: int = 0,
@@ -97,7 +97,7 @@ class State(AbstractParams):
         self.counter = counter
         self.as_ptr = as_ptr
 
-        self.objs = objs
+        self.objs = objs or {}
 
         self.depth = depth
 

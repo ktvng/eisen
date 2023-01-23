@@ -56,8 +56,8 @@ class Type():
     def finalize(self,
             components: list[Type],
             component_names: list[str],
-            inherits: list[Type] = [],
-            embeds: list[Type] = []):
+            inherits: list[Type] = None,
+            embeds: list[Type] = None):
         if (self.classification != Type.classifications.proto_interface and
             self.classification != Type.classifications.proto_struct):
             raise Exception("can only finalize a proto* Type")
@@ -69,8 +69,8 @@ class Type():
 
         self.components = components
         self.component_names = component_names
-        self.inherits = inherits
-        self.embeds = embeds
+        self.inherits = inherits or []
+        self.embeds = embeds or []
 
     def finalize_variant(self, parent_type: Type):
         self.classification = Type.classifications.variant

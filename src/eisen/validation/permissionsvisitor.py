@@ -93,9 +93,6 @@ class PermissionsVisitor(Visitor):
         Nodes.While(state).enter_context_and_apply(fn)
         return []
 
-    def fn_(fn, state: State) -> list[EisenInstanceState]:
-        pass
-
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
         return [state.get_instancestate(Nodes.Ref(state).get_name())]

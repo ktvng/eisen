@@ -51,16 +51,10 @@ class InstanceVisitor(Visitor):
     def ref_(fn, state: State) -> list[EisenInstance]:
         return [Nodes.Ref(state).resolve_instance()]
 
-    @Visitor.for_asls("rets")
+    @Visitor.for_asls("rets", "args")
     def rets_(fn, state: State) -> list[EisenInstance]:
         for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child, is_ptr=True))
-        return []
-
-    @Visitor.for_asls("args")
-    def rets_(fn, state: State) -> list[EisenInstance]:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child, as_ptr=True))
         return []
 
     @Visitor.for_asls("::")

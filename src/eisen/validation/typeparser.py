@@ -5,6 +5,7 @@ from alpaca.concepts import Type, TypeFactory
 from eisen.common.state import State
 from eisen.validation.nodetypes import Nodes
 from eisen.validation.validate import Validate
+from eisen.common.restriction import FunctionalRestriction
 
 class TypeParser(Visitor):
     """this parses the asl into a type. certain asls define types. these are:
@@ -62,7 +63,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=state.first_child())),
             ret=fn.apply(state.but_with(asl=state.second_child())),
-            mod=None)
+            mod=None).with_restriction(FunctionalRestriction())
 
     @Visitor.for_asls("args")
     def args_(fn, state: State) -> Type:
@@ -95,4 +96,4 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),
-            mod=None)
+            mod=None).with_restriction(FunctionalRestriction())

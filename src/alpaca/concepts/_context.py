@@ -8,7 +8,7 @@ from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
     container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type",
-    "depth", "spread"]
+    "depth", "spread", "local_ref"]
 
     def _add_child(self, child: NestedContainer):
         return
@@ -36,3 +36,12 @@ class Context(NestedContainer):
 
     def get_spread(self, name: str):
         return self.get_obj("spread", name)
+
+    def add_local_ref(self, name: str):
+        self.add_obj("local_ref", name, True)
+
+    def get_local_ref(self, name: str) -> bool:
+        found = self.get_obj("local_ref", name)
+        if found:
+            return True
+        return False

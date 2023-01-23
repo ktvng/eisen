@@ -7,7 +7,7 @@ from alpaca.clr import CLRList
 
 from eisen.common.nodedata import NodeData
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import PrimitiveRestriction, NoRestriction
+from eisen.common.restriction import PrimitiveRestriction, NoRestriction, FunctionalRestriction
 from eisen.validation.lookupmanager import LookupManager
 
 if TYPE_CHECKING:
@@ -349,3 +349,23 @@ Token: {self.asl}
 
     def add_spread(self, name: str, spread: Spread):
         self.get_context().add_spread(name, spread)
+
+    def get_curried_type(self, fn_type: Type, n_curried_args: int) -> Type:
+        argument_type = fn_type.get_argument_type()
+        if not argument_type.is_tuple():
+            if n_curried_args == 1:
+                return TypeFactory.produce_function_type(
+                    arg=self.get_void_type(),
+                    ret=fn_type.get_return_type(),
+                    mod=fn_type.mod)
+            raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
+
+        if len(argument_type.components) - n_curried_args == 1:
+            # unpack tuple to just a single type
+            curried_fn_args = argument_type.components[-1]
+        else:
+            curried_fn_args = TypeFactory.produce_tuple_type(argument_type.components[n_curried_args:])
+        return TypeFactory.produce_function_type(
+            arg=curried_fn_args,
+            ret=fn_type.get_return_type(),
+            mod=fn_type.mod).with_restriction(FunctionalRestriction())

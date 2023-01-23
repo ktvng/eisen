@@ -26,7 +26,7 @@ class CallUnwrapper():
             first_param_asl = state.asl.first().first()
             params_asl[:] = [first_param_asl, *params_asl]
             fn_asl = CLRList(
-                type="ref",
+                type="fn",
                 lst=[state.asl.first().second()],
                 line_number=state.get_line_number(),
                 data=NodeData())
@@ -50,9 +50,13 @@ class CallUnwrapper():
             node = Nodes.Ref(state.but_with_first_child())
             if node.is_print():
                 return BuiltinPrint.get_type_of_function(state)
+            return node.resolve_reference_type().is_function()
+        if state.asl.first().type == "fn":
+            node = Nodes.Fn(state.but_with_first_child())
             instance = node.resolve_function_instance(argument_type=guessed_params_type)
             return instance.type.is_function()
         type = cls._follow_chain(state, state.asl.first())
+
         if type is None:
             return False
         if type.is_function():

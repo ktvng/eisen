@@ -194,13 +194,11 @@ class Type():
     def get_return_type(self) -> Type:
         if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_return_type on function constructions, got {self}")
-
         return self.components[1]
 
     def get_argument_type(self) -> Type:
         if self.classification != Type.classifications.function:
             raise Exception(f"Can only get_argument_type on function constructions, got {self}")
-
         return self.components[0]
 
     def is_function(self) -> bool:

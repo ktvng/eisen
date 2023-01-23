@@ -432,6 +432,8 @@ class Nodes():
                 return Nodes.ModuleScope(self.state).get_end_name()
             elif type == ".":
                 return Nodes.Scope(self.state).get_attribute_name()
+            elif type == "fn":
+                return Nodes.Fn(self.state).get_name()
 
             raise Exception("unknown type")
 
@@ -445,6 +447,15 @@ class Nodes():
                 name=self.get_name(),
                 argument_type=argument_type,
                 mod=self.get_module())
+
+        def resolve_reference_type(self, argument_type: Type=None) -> Type | None:
+            type = self.get_node_type()
+            if type == "fn":
+                return Nodes.Fn(self.state).resolve_function_instance(argument_type).type
+            elif type == "ref":
+                return Nodes.Ref(self.state).resolve_reference_type()
+            elif type == "::":
+                return Nodes.ModuleScope(self.state).get_end_instance().type
 
         def resolve_instance(self) -> EisenInstance:
             return LookupManager.resolve_reference(
@@ -463,8 +474,7 @@ class Nodes():
         (ref name)
         """
 
-        def get_name(self) -> str:
-            return self.first_child().value
+        get_name = get_name_from_first_child
 
         def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
             return LookupManager.resolve_function_reference_by_signature(
@@ -494,6 +504,27 @@ class Nodes():
 
         def is_print(self) -> bool:
             return self.first_child().value == "print"
+
+    class Fn(AbstractNodeInterface):
+        asl_type = "fn"
+        examples = """
+        (fn name)
+        """
+        get_name = get_name_from_first_child
+
+        def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
+            if argument_type:
+                return LookupManager.resolve_function_reference_by_signature(
+                    name=self.get_name(),
+                    argument_type=argument_type,
+                    mod=self.state.get_enclosing_module())
+            else:
+                instances = LookupManager.resolve_function_references_by_name(
+                    name=self.get_name(),
+                    mod=self.state.get_enclosing_module())
+                if len(instances) == 1:
+                    return instances[0]
+                # TODO: raise compiler message here
 
     class Scope(AbstractNodeInterface):
         asl_type = "."
@@ -697,3 +728,9 @@ class Nodes():
             fn.apply(self.state.but_with(
                 asl=self.state.first_child(),
                 context=self.state.create_block_context()))
+
+    class CurriedCall(AbstractNodeInterface):
+        asl_type = "curry_call"
+        examples = """
+         (curry_call (ref space) (curried 4)
+        """

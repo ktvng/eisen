@@ -16,6 +16,9 @@ class GeneralRestriction(AbstractRestriction):
     def is_let(self) -> bool:
         return False
 
+    def is_functional(self) -> bool:
+        return False
+
     def is_nullable(self) -> bool:
         return False
 
@@ -66,8 +69,10 @@ class LetRestriction(GeneralRestriction):
         return True
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return (current_init_state == Initializations.NotInitialized) and (
-            other.is_let() or other.is_unrestricted() or other.is_literal())
+        return (current_init_state == Initializations.NotInitialized) and (other.is_let()
+            or other.is_unrestricted()
+            or other.is_literal()
+            or other.is_functional())
 
 class ValRestriction(GeneralRestriction):
     def is_val(self) -> bool:
@@ -75,6 +80,10 @@ class ValRestriction(GeneralRestriction):
 
 class LiteralRestriction(GeneralRestriction):
     def is_literal(self) -> bool:
+        return True
+
+class FunctionalRestriction(GeneralRestriction):
+    def is_functional(self) -> bool:
         return True
 
 class PrimitiveRestriction(GeneralRestriction):

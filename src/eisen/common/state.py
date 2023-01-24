@@ -97,7 +97,7 @@ class State(AbstractParams):
         self.counter = counter
         self.as_ptr = as_ptr
 
-        self.objs = objs or {}
+        self.objs = objs if objs is not None else {}
 
         self.depth = depth
 

@@ -69,8 +69,8 @@ class Type():
 
         self.components = components
         self.component_names = component_names
-        self.inherits = inherits or []
-        self.embeds = embeds or []
+        self.inherits = inherits if inherits is not None else []
+        self.embeds = embeds if embeds is not None else []
 
     def finalize_variant(self, parent_type: Type):
         self.classification = Type.classifications.variant

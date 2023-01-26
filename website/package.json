@@ -11,7 +11,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "vitepress": "^1.0.0-alpha.26"
+    "vitepress": "1.0.0-alpha.40"
   },
   "pnpm": {
     "patchedDependencies": {

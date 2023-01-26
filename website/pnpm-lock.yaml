@@ -4,12 +4,15 @@ patchedDependencies:
   shiki@0.12.1:
     hash: tn4s37srwozxu7nkip2hawykdq
     path: patches/shiki@0.12.1.patch
+  vitepress@1.0.0-alpha.40:
+    hash: isqn7i66rdgaffg7lxujtvtmci
+    path: patches/vitepress@1.0.0-alpha.40.patch
 
 specifiers:
   vitepress: 1.0.0-alpha.40
 
 dependencies:
-  vitepress: 1.0.0-alpha.40
+  vitepress: 1.0.0-alpha.40_isqn7i66rdgaffg7lxujtvtmci
 
 packages:
 
@@ -723,7 +726,7 @@ packages:
       fsevents: 2.3.2
     dev: false
 
-  /vitepress/1.0.0-alpha.40:
+  /vitepress/1.0.0-alpha.40_isqn7i66rdgaffg7lxujtvtmci:
     resolution: {integrity: sha512-axhLI/wq/V9RjzFQZ00Ur0WhvoZXG7E1H88NxnglZm6wU/FAePP4bGaWPzU2WZwy3Nzpb9cbf1oXC+1DNgv9cQ==}
     hasBin: true
     dependencies:
@@ -749,6 +752,7 @@ packages:
       - sugarss
       - terser
     dev: false
+    patched: true
 
   /vscode-oniguruma/1.7.0:
     resolution: {integrity: sha512-L9WMGRfrjOhgHSdOYgCt/yRMsXzLDJSL7BPrOZt73gU0iWO4mpqzqQzOz5srxqTvMBaR0XZTSrVWo4j55Rc6cA==}

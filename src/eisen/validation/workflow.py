@@ -100,10 +100,11 @@ class Workflow():
             return decorated_step
 
         decorated_workflow = [step_decorator(step) for step in steps]
-        result = cls.execute(state, steps=decorated_workflow)
+        result, state = cls.execute(state, steps=decorated_workflow)
         if not result:
             print("Failed to run...")
         cls.pretty_print_perf(perf)
+        return state
 
     @classmethod
     def pretty_print_perf(cls, perf: list[tuple[str, int]]):

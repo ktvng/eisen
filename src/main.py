@@ -55,7 +55,7 @@ def run_eisen(filename: str):
     print("############## EISEN ###############")
     state = eisen.BaseState.create_initial(config, asl, txt)
     eisen.Workflow.steps.append(eisen.AstInterpreter)
-    eisen.Workflow.execute_with_benchmarks(state)
+    state = eisen.Workflow.execute_with_benchmarks(state)
 
     global_end = time.perf_counter_ns()
     print(f"elapsed in {(global_end-global_start)/1000000}")

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import time
 
-from eisen.common.state import State
 from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
 from eisen.validation.typechecker import TypeChecker
@@ -14,7 +13,8 @@ from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
-from eisen.memory.memcheck import PublicCheck
+from eisen.memory.memcheck import MemCheck
+from eisen.state.basestate import BaseState as State
 
 # Notes:
 # A module is a collection of structs/functions
@@ -64,7 +64,7 @@ class Workflow():
         PermissionsVisitor,
 
         NilCheck,
-        PublicCheck,
+        MemCheck,
 
         # note: def, create, fn, ref, ilet, :: need instances!!
     ]
@@ -75,13 +75,13 @@ class Workflow():
             steps = cls.steps
 
         for step in steps:
-            step().apply(state)
+            state = step().run(state)
 
             ExceptionsHandler().apply(state)
             if cls.should_stop_execution(state):
-                return False
+                return False, state
 
-        return True
+        return True, state
 
     @classmethod
     def execute_with_benchmarks(cls, state: State, steps=None):
@@ -90,11 +90,13 @@ class Workflow():
         perf = []
         def step_decorator(step):
             class decorated_step():
-                def apply(self, state: State):
+                def run(self, state: State):
                     start = time.perf_counter_ns()
-                    step().apply(state)
+                    state = step().run(state)
                     end = time.perf_counter_ns()
                     perf.append((step.__name__, (end-start)/1000000))
+                    return state
+
             return decorated_step
 
         decorated_workflow = [step_decorator(step) for step in steps]

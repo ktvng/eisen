@@ -3,15 +3,30 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 
 from eisen.common import binary_ops, boolean_return_ops
-from eisen.common.state import State
+from eisen.state.stateb import StateB
 from eisen.validation.validate import Validate
 import eisen.nodes as nodes
 from eisen.validation.nilablestatus import NilableStatus
 
+State = StateB
+
 class NilCheck(Visitor):
+    def run(self, state: StateB):
+        self.apply(state)
+        return state
+
     def apply(self, state: State) -> list[NilableStatus]:
         # print(state.asl)
         return self._route(state.asl, state)
+
+    @classmethod
+    def get_nilstate(self, state: StateB, name) -> bool:
+        return state.get_context().get_nilstate(name)
+
+    @classmethod
+    def add_nilstate(self, state: StateB, name: str, nilstate: bool):
+        state.get_context().add_nilstate(name, nilstate)
+
 
     @classmethod
     def anonymous_nilablestatus(cls, is_nilable: bool) -> list[NilableStatus]:
@@ -70,24 +85,24 @@ class NilCheck(Visitor):
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
         node = nodes.Ref(state)
-        return [NilableStatus(node.get_name(), state.get_nilstate(node.get_name()))]
+        return [NilableStatus(node.get_name(), NilCheck.get_nilstate(state, node.get_name()))]
 
     @Visitor.for_asls("var?")
     def nullable_var_(fn, state: State):
         for name in nodes.Decl(state).get_names():
-            state.add_nilstate(name, True)
+            NilCheck.add_nilstate(state, name, True)
         return []
 
     @Visitor.for_asls("let", "var", "val")
     def let_(fn, state: State):
         for name in nodes.Decl(state).get_names():
-            state.add_nilstate(name, False)
+            NilCheck.add_nilstate(state, name, False)
         return []
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
         for name in nodes.IletIvar(state).get_names():
-            state.add_nilstate(name, False)
+            NilCheck.add_nilstate(state, name, False)
         return []
 
     @Visitor.for_asls("cast")
@@ -99,9 +114,9 @@ class NilCheck(Visitor):
     def colon_(fn, state: State):
         for name in nodes.Decl(state).get_names():
             if nodes.Decl(state).get_is_var():
-                state.add_nilstate(name, True)
+                NilCheck.add_nilstate(state, name, True)
             else:
-                state.add_nilstate(name, False)
+                NilCheck.add_nilstate(state, name, False)
         return []
 
     @Visitor.for_asls(".")

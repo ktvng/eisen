@@ -67,7 +67,9 @@ class LookupManager():
     @classmethod
     def resolve_reference_type(cls, name: str, context: Context, mod: Module, argument_type: Type = None) -> Type | None:
         # first try resolving the reference as a local_reference
-        resolved_type = LookupManager.resolve_local_reference_type(name, context)
+        resolved_type = None
+        if context:
+            resolved_type = LookupManager.resolve_local_reference_type(name, context)
 
         # try resolving the reference as a method via its signature
         if resolved_type is None and argument_type is not None:

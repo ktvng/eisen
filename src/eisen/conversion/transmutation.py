@@ -6,7 +6,9 @@ from alpaca.utils import Visitor
 
 from eisen.common._common import Utils
 
-from eisen.common.state import State
+from eisen.state.stateb import StateB
+
+State = StateB
 
 class CTransmutation(Visitor):
     global_prefix = ""

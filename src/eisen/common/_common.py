@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from eisen.common.state import State
+    from eisen.state.basestate import BaseState
 from alpaca.concepts import Type, Instance, Module
 
 no_assign_binary_ops = ["+", "-", "/", "*", "and", "or"]
@@ -11,7 +11,7 @@ boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
 implemented_primitive_types = ["str", "int", "bool", "flt"]
 
 def asls_of_type(type: str, *args):
-    def predicate(params: State):
+    def predicate(params: BaseState):
         return params.asl.type in list(args) + [type]
     return predicate
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
 
-from eisen.common.state import State
+from eisen.state.basestate import BaseState
 from eisen.validation.builtin_print import BuiltinPrint
 from eisen.common.nodedata import NodeData
 import eisen.nodes as nodes
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class CallUnwrapper():
     @classmethod
-    def process(cls, state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
+    def process(cls, state: BaseState, guessed_params_type: Type, fn: TypeChecker) -> Type:
         """decide whether or not the call needs to be unwrapped, and returns the
         true type of the parameters"""
         if cls._chains_to_correct_function(state, guessed_params_type):
@@ -45,7 +45,7 @@ class CallUnwrapper():
             return true_type
 
     @classmethod
-    def _chains_to_correct_function(cls, state: State, guessed_params_type: Type) -> bool:
+    def _chains_to_correct_function(cls, state: BaseState, guessed_params_type: Type) -> bool:
         if state.asl.first().type == "ref":
             node = nodes.Ref(state.but_with_first_child())
             if node.is_print():
@@ -64,7 +64,7 @@ class CallUnwrapper():
         return False
 
     @classmethod
-    def _follow_chain(cls, state: State, scope_asl: CLRList) -> Type:
+    def _follow_chain(cls, state: BaseState, scope_asl: CLRList) -> Type:
         if scope_asl.type == "::":
             instance = nodes.ModuleScope(state.but_with(asl=scope_asl)).get_end_instance()
             return instance.type

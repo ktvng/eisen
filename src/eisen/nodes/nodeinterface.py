@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from alpaca.clr import CLRToken
 from alpaca.concepts import Type
-from eisen.common.state import State
+from eisen.state.basestate import BaseState
 
 class AbstractNodeInterface():
-    def __init__(self, state: State):
+    def __init__(self, state: BaseState):
         self.state = state
 
     def first_child(self):

@@ -5,21 +5,37 @@ from alpaca.clr import CLRList
 
 import eisen.nodes as nodes
 from eisen.common.exceptions import Exceptions
-from eisen.common.state import State
 from eisen.common import no_assign_binary_ops, boolean_return_ops
+from eisen.state.stateb import StateB
+from eisen.state.memcheckstate import MemcheckState
 
-class PublicCheck():
+State = MemcheckState
+
+class MemCheck():
     def __init__(self) -> None:
         self.get_deps = GetDeps()
 
+    def run(self, state: StateB):
+        self.apply(MemcheckState.create_from_state_b(state))
+        return state
+
     def apply(self, state: State):
-        self.get_deps.of_function(state.but_with(asl=PublicCheck.get_main_function(state.asl)))
+        self.get_deps.of_function(state.but_with(asl=MemCheck.get_main_function(state.asl)))
 
     @classmethod
     def get_main_function(cls, full_asl: CLRList) -> CLRList:
         for child in full_asl:
             if child.type == "def" and child.first().value == "main":
                 return child
+
+    @classmethod
+    def get_spread(cls, state: MemcheckState, name: str) -> Spread:
+        return state.get_context().get_spread(name)
+
+    @classmethod
+    def add_spread(cls, state: MemcheckState, name: str, spread: Spread):
+        state.get_context().add_spread(name, spread)
+
 
 class Spread():
     def __init__(self, values: set[int], depth: int, is_return_value=False) -> None:
@@ -91,12 +107,12 @@ class GetDeps():
         # add the spread of all inputs to the function to be the index of that input
         arg_node = nodes.ArgsRets(state.but_with(asl=def_node.get_args_asl()))
         for name in arg_node.get_names():
-            state.add_spread(name, Spread(values={input_number}, depth=0))
+            MemCheck.add_spread(state, name, Spread(values={input_number}, depth=0))
             input_number += 1
 
         ret_node = nodes.ArgsRets(state.but_with(asl=def_node.get_rets_asl()))
         for name in ret_node.get_names():
-            state.add_spread(name, Spread(values=set(), depth=0, is_return_value=True))
+            MemCheck.add_spread(state, name, Spread(values=set(), depth=0, is_return_value=True))
             input_number += 1
 
         self.spread_visitor.apply(state.but_with(
@@ -105,7 +121,7 @@ class GetDeps():
 
         spreads_for_return_values: list[Spread] = []
         for name in ret_node.get_names():
-            spread_for_this_return_value = state.get_spread(name)
+            spread_for_this_return_value = MemCheck.get_spread(state, name)
             spreads_for_return_values.append(spread_for_this_return_value)
 
         if not node.has_return_value():
@@ -141,31 +157,31 @@ class SpreadVisitor(Visitor):
     @Visitor.for_asls("let")
     def decl_(fn, state: State):
         for name in nodes.Decl(state).get_names():
-            state.add_spread(name, Spread(values={state.depth}, depth=state.depth))
+            MemCheck.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
         return []
 
     @Visitor.for_asls("var", "val", "var?")
     def decl2_(fn, state: State):
         # because variables can be assigned to anything, they don't have a spread yet
         for name in nodes.Decl(state).get_names():
-            state.add_spread(name, Spread(values=set(), depth=state.depth))
+            MemCheck.add_spread(state, name, Spread(values=set(), depth=state.depth))
         return []
 
     @Visitor.for_asls("ilet")
     def iletivar_(fn, state: State):
         for name in nodes.IletIvar(state).get_names():
-            state.add_spread(name, Spread(values={state.depth}, depth=state.depth))
+            MemCheck.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
         return []
 
     @Visitor.for_asls("ivar")
     def iletivar2_(fn, state: State):
         for name in nodes.IletIvar(state).get_names():
-            state.add_spread(name, Spread(values=set(), depth=state.depth))
+            MemCheck.add_spread(state, name, Spread(values=set(), depth=state.depth))
         return []
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        return [state.get_spread(nodes.Ref(state).get_name())]
+        return [MemCheck.get_spread(state, nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State):
@@ -177,7 +193,7 @@ class SpreadVisitor(Visitor):
         assigned_spreads = fn.apply(state.but_with_second_child())
         left_spreads = []
         for name, right_spread in zip(names, assigned_spreads):
-            left_spread = state.get_spread(name)
+            left_spread = MemCheck.get_spread(state, name)
             left_spread.add(right_spread)
 
             # TODO fix this, doesn't work for tuples

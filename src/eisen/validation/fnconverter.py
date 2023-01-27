@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from eisen.common.state import State
+from eisen.state.basestate import BaseState
 import eisen.nodes as nodes
 from eisen.validation.lookupmanager import LookupManager
 
+State = BaseState
+
 class FnConverter(Visitor):
+    def run(self, state: BaseState):
+        self.apply(state)
+        return state
+
     def apply(self, state: State):
         self._route(state.asl, state)
 

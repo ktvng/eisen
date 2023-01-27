@@ -53,7 +53,7 @@ def run_eisen(filename: str):
     print(*asl_str, sep="\n")
 
     print("############## EISEN ###############")
-    state = eisen.State.create_initial(config, asl, txt)
+    state = eisen.BaseState.create_initial(config, asl, txt)
     eisen.Workflow.steps.append(eisen.AstInterpreter)
     eisen.Workflow.execute_with_benchmarks(state)
 

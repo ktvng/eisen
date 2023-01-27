@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Callable
+import sys
 
 from alpaca.clr import CLRList
 from alpaca.logging._logger import Logger
@@ -22,6 +23,23 @@ class TokenTaggedTransform(TaggedTransform):
         self.f = f
         self.handles_types = None
 
+
+class VisitorException(Exception):
+    def __init__(self, msg: str, *args: object) -> None:
+        self.msg = msg
+        super().__init__(*args)
+
+    def __str__(self) -> str:
+        return self.msg
+
+orignal_hook = sys.excepthook
+def exceptions_hook(e_type, e_value: Exception, tb):
+    if e_type == VisitorException:
+        orignal_hook(e_type, e_value.with_traceback(None), None)
+    else:
+        orignal_hook(e_type, e_value, tb)
+
+sys.excepthook = exceptions_hook
 
 
 # TODO: remove some of this deprecated code
@@ -125,17 +143,22 @@ class Visitor():
         return result
 
     def _route(self, asl: CLRList, state: Any):
-        if isinstance(asl, CLRList):
-            transform = self.index.get(asl.type, self.new_default_transform)
-            if transform is None:
-                raise Exception(f"{self._get_loggable_name()} has no matching transforms for asl of type '{asl.type}'")
-            result = transform(self, state)
-        else:
-            if self.token_transform is None:
-                raise Exception(f"{self._get_loggable_name()} has no transform for CLRTokens")
-            result = self.token_transform(self, state)
+        try:
+            if isinstance(asl, CLRList):
+                transform = self.index.get(asl.type, self.new_default_transform)
+                if transform is None:
+                    raise Exception(f"{self._get_loggable_name()} has no matching transforms for asl of type '{asl.type}'")
+                result = transform(self, state)
+            else:
+                if self.token_transform is None:
+                    raise Exception(f"{self._get_loggable_name()} has no transform for CLRTokens")
+                result = self.token_transform(self, state)
 
-        return result
+            return result
+        except VisitorException as ve:
+            raise ve
+        except Exception as e:
+            raise VisitorException(f"\n{self._get_loggable_name()} thrown from asl:\n{state.asl}") from e
 
     def _get_loggable_name(self) -> str:
         return type(self).__name__

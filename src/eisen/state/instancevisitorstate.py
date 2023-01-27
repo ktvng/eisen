@@ -24,11 +24,13 @@ class InstanceVisitorState(StateA):
             mod=mod,
             inside_constructor=inside_constructor,
             arg_type=arg_type,
-            is_ptr=is_ptr)
+            is_ptr=is_ptr,)
 
     @classmethod
     def create_from_state_A(cls, state: StateA):
-        return InstanceVisitorState(**state._get(), arg_type=None, is_ptr=None)
+        return InstanceVisitorState(**state._get(),
+            arg_type=None,
+            is_ptr=None,)
 
     def get_returned_type(self) -> Type:
         """canonical way to access the type returned from this node"""

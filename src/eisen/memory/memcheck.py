@@ -263,6 +263,7 @@ class SpreadVisitor(Visitor):
         if node.is_print():
             return []
         def_asl = node.get_asl_defining_the_function()
+
         f_deps = fn.get_deps.of_function(state.but_with(asl=def_asl))
         all_return_value_spreads = f_deps.apply_to_parameter_spreads(
             param_spreads=fn.apply(state.but_with(asl=node.get_params_asl())))

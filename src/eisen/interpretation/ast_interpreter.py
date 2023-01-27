@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 
 import eisen.nodes as nodes
-from eisen.interpretation.obj import Obj
+from eisen.interpretation.obj import Obj, FnObj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
 from eisen.state.stateb import StateB
@@ -154,6 +154,7 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
         node = nodes.Call(state)
+        fnobj: FnObj = fn.apply(state.but_with_first_child())[0]
 
         if node.is_print():
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
@@ -166,31 +167,50 @@ class AstInterpreter(Visitor):
 
         # evaluate the parameters and add them as new objects inside the new function context
         param_objs_outside_of_fn = [fn.apply(node.state.but_with(asl=param))[0] for param in node.get_params()]
-        param_objs_inside_of_fn = AstInterpreter.create_objs_for_function_arguments(node)
-        for inside, outside in zip(param_objs_inside_of_fn, param_objs_outside_of_fn):
+        new_objs = []
+        for name, restriction in zip(fnobj.param_names, fnobj.param_restrictions):
+            # create new_obj so changes inside the function don't affect the existing obj
+            new_objs.append(Obj(None, name=name, is_var=restriction.is_var()))
+
+        for inside, outside in zip(new_objs, param_objs_outside_of_fn):
             # add inside objects to the new fn_objs context
             fn_objs[inside.name] = inside
             Passer.handle_assignment(fn_objs, inside, outside)
 
         # add return values to the new context
-        return_names = node.get_return_names()
-        for name, restriction in zip(return_names, node.get_function_return_restrictions()):
+        for name, restriction in zip(fnobj.return_names, fnobj.return_restrictions):
             # use a dict in case we are creating a new struct
             obj = Obj({}, name=name, is_var=restriction.is_var())
             fn_objs[name] = obj
 
         # call the function by invoking the seq of the asl_defining_the_function
         fn.apply(state.but_with(
-            asl=nodes.Def(state.but_with(asl=node.get_asl_defining_the_function())).get_seq_asl(),
+            asl=nodes.Def(state.but_with(asl=fnobj.asl)).get_seq_asl(),
             objs=fn_objs))
 
         # get the actual return values
         return_values = []
-        for name in return_names:
+        for name in fnobj.return_names:
             return_values.append(fn_objs[name])
         return return_values
 
-    @Visitor.for_asls("ref", "fn")
+    @Visitor.for_asls("::")
+    def modscope_(fn, state: State):
+        # TODO: make this work for module variables
+        return fn.fn_(fn, state)
+
+    @Visitor.for_asls("fn")
+    def fn_(fn, state: State):
+        # this is for functions apparently
+        instance = state.get_instances()[0]
+        return [FnObj(
+            instance.asl,
+            nodes.Def(state.but_with(asl=instance.asl)).get_arg_names(),
+            nodes.Def(state.but_with(asl=instance.asl)).get_ret_names(),
+            instance.type.get_argument_type().get_restrictions(),
+            instance.type.get_return_type().get_restrictions())]
+
+    @Visitor.for_asls("ref")
     def ref_(fn, state: State):
         name = nodes.Ref(state).get_name()
         local_obj = state.objs.get(name, None)

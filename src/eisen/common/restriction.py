@@ -55,7 +55,10 @@ class VarRestriction(GeneralRestriction):
         return True
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return (other.is_var() and not other.is_nullable()) or other.is_let() or other.is_primitive()
+        return ((other.is_var() and not other.is_nullable())
+            or other.is_let()
+            or other.is_primitive()
+            or other.is_functional())
 
 class NullableVarRestriction(VarRestriction):
     def is_nullable(self) -> bool:

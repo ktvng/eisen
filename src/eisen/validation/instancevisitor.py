@@ -25,7 +25,8 @@ class InstanceVisitor(Visitor):
         return result
 
     @classmethod
-    def create_instance_inside_context(cls, name: str, type: Type, state: State):
+    def create_instance_inside_context(cls, name: str, type: Type, state: State,
+            is_function: bool=False):
         """add a new instance to the current context and return it."""
         instance = EisenInstance(
             name=name,
@@ -33,7 +34,8 @@ class InstanceVisitor(Visitor):
             context=state.get_context(),
             asl=state.get_asl(),
             # TODO: fix this abuse of as_ptr
-            is_ptr=state.is_ptr)
+            is_ptr=state.is_ptr,
+            is_function=is_function)
         state.get_context().add_instance(instance)
         return instance
 
@@ -74,7 +76,9 @@ class InstanceVisitor(Visitor):
     def alloc_(fn, state: State) -> list[EisenInstance]:
         node = nodes.Decl(state)
         type = state.get_returned_type()
-        return [InstanceVisitor.create_instance_inside_context(name, type, state)
+        return [InstanceVisitor.create_instance_inside_context(
+                name, type, state,
+                is_function=type.is_function())
             for name in node.get_names()]
 
     @Visitor.for_asls("ilet", "ivar")
@@ -84,7 +88,9 @@ class InstanceVisitor(Visitor):
         names = node.get_names()
         type = state.get_returned_type()
         componentwise_types = type.components if type.is_tuple() else [type]
-        return [InstanceVisitor.create_instance_inside_context(name, type, state)
+        return [InstanceVisitor.create_instance_inside_context(
+            name, type, state,
+            is_function=type.is_function())
             for name, type in zip(names, componentwise_types)]
 
     @Visitor.for_asls("if")

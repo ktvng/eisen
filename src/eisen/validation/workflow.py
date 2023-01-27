@@ -23,6 +23,11 @@ from eisen.state.basestate import BaseState as State
 # for use as instances)
 # They are implemented the same.
 
+class PrintAsl():
+    def run(self, state: State):
+        print(state.asl)
+        return state
+
 class Workflow():
     steps = [
         # initialize the .data attribute for all asls with empty NodeData instances

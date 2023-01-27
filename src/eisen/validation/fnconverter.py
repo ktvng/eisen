@@ -54,6 +54,7 @@ class FnConverter(Visitor):
     def iletivar_(fn, state: State):
         for name in nodes.IletIvar(state).get_names():
             state.get_context().add_local_ref(name)
+        fn.apply(state.but_with_second_child())
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):

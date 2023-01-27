@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Any
 
+from alpaca.clr import CLRList
+
 class Obj:
     def __init__(self, value: Any, name: str = "anon", is_var: bool = False):
         self.value = value
@@ -45,3 +47,18 @@ class Obj:
             self.value[key] = new_obj
             found = new_obj
         return found
+
+class FnObj(Obj):
+    def __init__(
+            self,
+            asl: CLRList,
+            param_names: list[str],
+            return_names: list[str],
+            param_restrictions: list,
+            return_restrictions: list):
+        super().__init__(None, "anon", False)
+        self.asl = asl
+        self.param_names = param_names
+        self.return_names = return_names
+        self.param_restrictions = param_restrictions
+        self.return_restrictions = return_restrictions

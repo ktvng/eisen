@@ -5,8 +5,10 @@ from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
 import eisen.nodes as nodes
-from eisen.common.state import State
+from eisen.state.stateb import StateB
 from eisen.common._common import Utils
+
+State = StateB
 
 # date structure which contains the information obtain from flattening.
 class FlatteningPacket:

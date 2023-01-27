@@ -5,7 +5,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import Type
 
 from eisen.common import binary_ops, boolean_return_ops
-from eisen.common.state import State
+from eisen.state.stateb import StateB
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction)
 from eisen.common.initialization import Initializations
@@ -14,7 +14,12 @@ from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenIn
 import eisen.nodes as nodes
 from eisen.validation.validate import Validate
 
+State = StateB
 class PermissionsVisitor(Visitor):
+    def run(self, state: StateB):
+        self.apply(state)
+        return state
+
     def apply(self, state: State) -> list[EisenInstanceState]:
         if self.debug and isinstance(state.get_asl(), CLRList):
             print("\n"*64)
@@ -28,12 +33,21 @@ class PermissionsVisitor(Visitor):
         return [EisenAnonymousInstanceState(NoRestriction(), Initializations.NotInitialized)]
 
     @classmethod
-    def get_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
+    def create_instancestate(cls, instance: EisenInstance, init_state: Initializations) -> EisenInstanceState:
         return EisenInstanceState(instance.name, instance.type.restriction, init_state)
 
     @classmethod
-    def get_instancestate_from_type(cls, tc: Type) -> list[EisenInstanceState]:
+    def create_instancestate_from_type(cls, tc: Type) -> list[EisenInstanceState]:
         return EisenAnonymousInstanceState(tc.restriction, Initializations.Initialized)
+
+    @classmethod
+    def add_instancestate(cls, state: StateB, inst: EisenInstanceState):
+        state.get_context().add_instancestate(inst)
+
+    @classmethod
+    def get_instancestate(cls, state: StateB, name: str) -> EisenInstanceState:
+        """canonical way to access a InstanceState by name"""
+        return state.get_context().get_instancestate(name)
 
     @Visitor.for_asls("rets")
     def _rets(fn, state: State):
@@ -95,7 +109,7 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
-        return [state.get_instancestate(nodes.Ref(state).get_name())]
+        return [PermissionsVisitor.get_instancestate(state, nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State) -> list[EisenInstanceState]:
@@ -103,15 +117,15 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls(":", "let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:
-        insts = [PermissionsVisitor.get_instancestate(instance, Initializations.NotInitialized)
+        insts = [PermissionsVisitor.create_instancestate(instance, Initializations.NotInitialized)
             for instance in state.get_instances()]
         for inst in insts:
-            state.add_instancestate(inst)
+            PermissionsVisitor.add_instancestate(state, inst)
         return insts
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:
-        left_insts = [PermissionsVisitor.get_instancestate(i, Initializations.NotInitialized)
+        left_insts = [PermissionsVisitor.create_instancestate(i, Initializations.NotInitialized)
             for i in state.get_instances()]
         right_insts = fn.apply(state.but_with(asl=state.second_child()))
         for left, right in zip(left_insts, right_insts):
@@ -119,7 +133,7 @@ class PermissionsVisitor(Visitor):
 
             # mark as initialized after validations
             left.mark_as_initialized()
-            state.add_instancestate(left)
+            PermissionsVisitor.add_instancestate(state, left)
         return []
 
     @Visitor.for_asls("tuple", "params", "lvals")
@@ -170,7 +184,7 @@ class PermissionsVisitor(Visitor):
         if node.is_print():
             return PermissionsVisitor.NoRestrictionInstanceState()
 
-        argument_insts = [PermissionsVisitor.get_instancestate_from_type(tc)
+        argument_insts = [PermissionsVisitor.create_instancestate_from_type(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
         param_insts = fn.apply(state.but_with(asl=node.get_params_asl()))
@@ -179,7 +193,7 @@ class PermissionsVisitor(Visitor):
             Validate.instancestate_is_initialized(state, given)
 
         # handle returned restrictions
-        returned_insts = [PermissionsVisitor.get_instancestate_from_type(tc)
+        returned_insts = [PermissionsVisitor.create_instancestate_from_type(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_insts
 

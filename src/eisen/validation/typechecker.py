@@ -4,7 +4,9 @@ from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
-from eisen.common.state import State
+from eisen.state.basestate import BaseState
+from eisen.state.statea import StateA
+from eisen.state.typecheckerstate import TypeCheckerState
 from eisen.common.restriction import PrimitiveRestriction
 import eisen.nodes as nodes
 from eisen.validation.validate import Validate
@@ -14,6 +16,7 @@ from eisen.validation.typeparser import TypeParser
 
 from eisen.validation.builtin_print import BuiltinPrint
 
+State = TypeCheckerState
 
 class TypeChecker(Visitor):
     """this evaluates the flow of types throughout the asl, and records which
@@ -24,6 +27,18 @@ class TypeChecker(Visitor):
         super().__init__(debug=debug)
         self.typeparser = TypeParser()
         # self.debug = True
+
+    def run(self, state: BaseState):
+        self.apply(TypeCheckerState.create_from_basestate(state))
+        return StateA.create_from_basestate(state)
+
+    @classmethod
+    def set_returned_type(cls, state: State, type: Type):
+        state.get_node_data().returned_type = type
+
+    @classmethod
+    def add_reference_type(cls, state: State, name: str, type: Type):
+        state.get_context().add_reference_type(name, type)
 
     def apply(self, state: State) -> Type:
         if self.debug and isinstance(state.get_asl(), CLRList):
@@ -39,7 +54,7 @@ class TypeChecker(Visitor):
 
         result = self._route(state.get_asl(), state)
         if state.is_asl():
-            state.assign_returned_type(result)
+            TypeChecker.set_returned_type(state, result)
         return result
 
     def apply_to_first_child_of(self, state: State) -> Type:
@@ -225,7 +240,7 @@ class TypeChecker(Visitor):
         if Validate.all_names_are_unbound(state, names).failed():
             return state.get_abort_signal()
         for name, t in zip(names, types):
-            state.add_reference_type(name, t)
+            TypeChecker.add_reference_type(state, name, t)
         return type
 
     @Visitor.for_asls("ilet", "ivar")

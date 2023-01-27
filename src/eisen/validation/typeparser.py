@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
-from eisen.common.state import State
 import eisen.nodes as nodes
 from eisen.validation.validate import Validate
 from eisen.common.restriction import FunctionalRestriction
+from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
     """this parses the asl into a type. certain asls define types. these are:

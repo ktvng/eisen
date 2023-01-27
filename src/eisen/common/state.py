@@ -51,7 +51,7 @@ class SharedCounter():
         self.n = val
 
 class State(AbstractParams):
-    attrs = ["config", "asl", "txt", "context", "mod", "global_mod",
+    attrs = ["config", "asl", "txt", "context", "mod",
     "struct_name", "exceptions", "is_ptr", "critical_exception"]
 
     def __init__(self,
@@ -60,7 +60,6 @@ class State(AbstractParams):
             txt: str,
             context: Context,
             mod: Module,
-            global_mod: Module,
             struct_name: str,
             arg_type: Type,
             exceptions: list[AbstractException],
@@ -79,27 +78,16 @@ class State(AbstractParams):
             depth: int = 0,
             ):
 
-        self.config = config
-        self.asl = asl
-        self.txt = txt
-        self.context = context
-        self.mod = mod
-        self.struct_name = struct_name
-        self.arg_type = arg_type
-        self.global_mod = global_mod
-        self.exceptions = exceptions
-        self.is_ptr = is_ptr
-        self.inside_constructor = inside_constructor
-        self.critical_exception = critical_exception
+        super().__init__(config=config, asl=asl, txt=txt,
+            context=context, mod=mod, struct_name=struct_name,
+            arg_type=arg_type, exceptions=exceptions, is_ptr=is_ptr,
+            inside_constructor=inside_constructor, critical_exception=critical_exception,
+            print_to_watcher=print_to_watcher, counter=counter,
+            depth=depth, objs=objs, as_ptr=as_ptr)
 
-        self.print_to_watcher = print_to_watcher
+
         self.watcher = Watcher()
-        self.counter = counter
-        self.as_ptr = as_ptr
-
         self.objs = objs if objs is not None else {}
-
-        self.depth = depth
 
     def but_with(self,
             config: Config = None,
@@ -107,7 +95,6 @@ class State(AbstractParams):
             txt: str = None,
             context: Context = None,
             mod: Module = None,
-            global_mod: Module = None,
             struct_name: str = None,
             arg_type: Type = None,
             exceptions: list[AbstractException] = None,
@@ -126,7 +113,7 @@ class State(AbstractParams):
         return self._but_with(config=config, asl=asl, txt=txt, context=context, mod=mod,
             struct_name=struct_name, exceptions=exceptions, is_ptr=is_ptr,
             arg_type=arg_type,
-            objs=objs,global_mod=global_mod, inside_constructor=inside_constructor,
+            objs=objs, inside_constructor=inside_constructor,
 
             as_ptr=as_ptr,
 
@@ -204,7 +191,6 @@ Token: {self.asl}
             txt=txt,
             context=None,
             mod=global_mod,
-            global_mod=global_mod,
             struct_name=None,
             arg_type=None,
             exceptions=[],
@@ -325,6 +311,13 @@ Token: {self.asl}
 
     def add_function_instance_to_module(self, instance: EisenInstance):
         self.get_enclosing_module().add_function_instance(instance)
+        print(">>", instance.name)
+        print(LookupManager.resolve_reference_type(
+            name=instance.name,
+            context=self.get_context(),
+            mod=self.get_enclosing_module(),
+            argument_type=None))
+
 
     def apply_fn_to_all_children(self, fn):
         for child in self.asl:

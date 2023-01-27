@@ -2,20 +2,27 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 
-from eisen.common.state import State
 import eisen.nodes as nodes
 from eisen.interpretation.obj import Obj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
+from eisen.state.stateb import StateB
+from eisen.state.astinterpreterstate import AstInterpreterState
 
 class ReturnSignal():
     pass
+
+State = AstInterpreterState
 
 class AstInterpreter(Visitor):
     def __init__(self, redirect_output=False):
         super().__init__()
         self.stdout = "";
         self.redirect_output = redirect_output
+
+    def run(self, state: StateB):
+        self.apply(AstInterpreterState.create_from_state_b(state))
+        return state
 
     def apply(self, state: State) -> list[Obj]:
         # print(state.asl)

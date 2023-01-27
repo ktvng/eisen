@@ -15,7 +15,7 @@ from alpaca.concepts import AbstractException
 from eisen.parsing.callback import EisenCallback
 from eisen.parsing.builder import EisenBuilder
 from eisen.parsing.customparser2 import SuperParser
-from eisen.common.state import State
+from eisen.state.basestate import BaseState
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
 
@@ -56,7 +56,7 @@ class Test():
         return asl
 
     @classmethod
-    def _make_exception_error_msg(cls, e, state: State):
+    def _make_exception_error_msg(cls, e, state: BaseState):
         exception_type = e["type"]
         contents = e["contains"]
         return f"expected to encounter exception '{exception_type}' containing:\n{contents}\nbut got:\n-----\n{state.watcher.txt}\n-----\n"
@@ -64,15 +64,15 @@ class Test():
     def run(self) -> tuple[bool, str]:
         asl = self.parse_asl_with_cache()
         config = alpaca.config.parser.run(filename=Test.grammarfile)
-        state = State.create_initial(config, asl, txt=self.code, print_to_watcher=True)
-        failed_compile = not Workflow.execute(state)
+        state = BaseState.create_initial(config, asl, txt=self.code, print_to_watcher=True)
+        succeeded, state = Workflow.execute(state)
         if self.metadata["expected"]["success"]:
-            if failed_compile:
+            if not succeeded:
                 print(state.watcher.txt)
                 print(state.asl)
                 return False, "test failed due to exception"
             interpreter = AstInterpreter(redirect_output=True)
-            interpreter.apply(state)
+            interpreter.run(state)
             expected_output = self.metadata["expected"]["output"]
             if interpreter.stdout != expected_output:
                 return False, f"expected, got:\n{expected_output}\n-----\n{interpreter.stdout}\n-----\n"
@@ -170,6 +170,7 @@ class TestRunner():
     def run_all_tests(cls):
         cls.run_all_tests_threadpooled()
         return
+        start = time.perf_counter()
         successes = 0
         tests = cls.get_all_test_names()
         for testname in tests:

@@ -4,16 +4,24 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type
 
 import eisen.nodes as nodes
-from eisen.common.state import State
 from eisen.common.eiseninstance import EisenInstance
+from eisen.state.statea import StateA
+from eisen.state.stateb import StateB
+from eisen.state.instancevisitorstate import InstanceVisitorState
+
+State = InstanceVisitorState
 
 class InstanceVisitor(Visitor):
     """creates and persists instances for terminal asls"""
 
+    def run(self, state: StateA):
+        self.apply(InstanceVisitorState.create_from_state_A(state))
+        return StateB.create_from_state_a(state)
+
     def apply(self, state: State) -> list[EisenInstance]:
         result: list[EisenInstance] = self._route(state.get_asl(), state)
         if result:
-            state.set_instances(result)
+            state.get_node_data().instances = result
         return result
 
     @classmethod
@@ -25,7 +33,7 @@ class InstanceVisitor(Visitor):
             context=state.get_context(),
             asl=state.get_asl(),
             # TODO: fix this abuse of as_ptr
-            is_ptr=state.is_ptr or (state.as_ptr and not type.is_novel()))
+            is_ptr=state.is_ptr)
         state.get_context().add_instance(instance)
         return instance
 

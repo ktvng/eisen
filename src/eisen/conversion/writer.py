@@ -4,7 +4,7 @@ import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Visitor
 
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 
 class Writer(Visitor):
     def run(self, asl: CLRList) -> str:

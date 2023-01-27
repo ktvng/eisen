@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 
 from eisen.common.state import State
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 from eisen.interpretation.obj import Obj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
@@ -39,7 +39,7 @@ class AstInterpreter(Visitor):
 
     @classmethod
     def _handle_colon_like(cls, state: State):
-        node = Nodes.Decl(state)
+        node = nodes.Decl(state)
         names = node.get_names()
         objs = [Obj(None, name=name) for name in names]
         for name, obj in zip(names, objs):
@@ -87,7 +87,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("+=", "-=", "/=", "*=")
     def asseqs_(fn, state: State):
-        node = Nodes.CompoundAssignment(state)
+        node = nodes.CompoundAssignment(state)
         left = fn.apply(state.but_with_first_child())[0]
         right = fn.apply(state.but_with_second_child())[0]
         new_obj = Obj.apply_binary_operation(node.get_arithmetic_operation(), left, right)
@@ -101,7 +101,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("def")
     def def_(fn, state: State):
-        node = Nodes.Def(state)
+        node = nodes.Def(state)
         if node.get_function_name() == "main":
             fn.apply(state.but_with(asl=node.get_seq_asl()))
         return []
@@ -116,7 +116,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
-        node = Nodes.IletIvar(state)
+        node = nodes.IletIvar(state)
         names = node.get_names()
         values = fn.apply(state.but_with_second_child())
 
@@ -137,7 +137,7 @@ class AstInterpreter(Visitor):
         return ReturnSignal()
 
     @classmethod
-    def create_objs_for_function_arguments(cls, node: Nodes.Call) -> list[Obj]:
+    def create_objs_for_function_arguments(cls, node: nodes.Call) -> list[Obj]:
         new_objs = []
         for name, restriction in zip(node.get_param_names(), node.get_function_argument_type().get_restrictions()):
             # create new_obj so changes inside the function don't affect the existing obj
@@ -146,7 +146,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
-        node = Nodes.Call(state)
+        node = nodes.Call(state)
 
         if node.is_print():
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
@@ -174,7 +174,7 @@ class AstInterpreter(Visitor):
 
         # call the function by invoking the seq of the asl_defining_the_function
         fn.apply(state.but_with(
-            asl=Nodes.Def(state.but_with(asl=node.get_asl_defining_the_function())).get_seq_asl(),
+            asl=nodes.Def(state.but_with(asl=node.get_asl_defining_the_function())).get_seq_asl(),
             objs=fn_objs))
 
         # get the actual return values
@@ -185,7 +185,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("ref", "fn")
     def ref_(fn, state: State):
-        name = Nodes.Ref(state).get_name()
+        name = nodes.Ref(state).get_name()
         local_obj = state.objs.get(name, None)
         if local_obj is not None:
             return [local_obj]
@@ -197,7 +197,7 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls(".")
     def dot_(fn, state: State):
         obj = fn.apply(state.but_with_first_child())[0]
-        return [obj.get(Nodes.Scope(state).get_attribute_name())]
+        return [obj.get(nodes.Scope(state).get_attribute_name())]
 
     @Visitor.for_asls("type")
     def type_(fn, state: State):

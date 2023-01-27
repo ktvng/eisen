@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Module
 from eisen.common.state import State
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 
 class ModuleVisitor(Visitor):
     """this parses the asl and creates the module structure of the program"""
@@ -16,7 +16,7 @@ class ModuleVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State) -> Module:
-        node = Nodes.Mod(state)
+        node = nodes.Mod(state)
         node.set_entered_module(
             Module(name=node.get_module_name(), parent=state.get_enclosing_module()))
 

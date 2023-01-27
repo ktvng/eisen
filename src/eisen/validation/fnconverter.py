@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from eisen.common.state import State
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 from eisen.validation.lookupmanager import LookupManager
 
 class FnConverter(Visitor):
@@ -19,39 +19,39 @@ class FnConverter(Visitor):
 
     @Visitor.for_asls("def", "create", "is_fn")
     def def_(fn, state: State):
-        Nodes.CommonFunction(state).enter_context_and_apply(fn)
+        nodes.CommonFunction(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("if")
     def if_(fn, state: State):
-        Nodes.If(state).enter_context_and_apply(fn)
+        nodes.If(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("while")
     def while_(fn, state: State):
-        Nodes.While(state).enter_context_and_apply(fn)
+        nodes.While(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State):
-        node = Nodes.Struct(state)
+        node = nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: State):
-        fn.apply(state.but_with(asl=Nodes.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(asl=nodes.Variant(state).get_is_asl()))
 
     @Visitor.for_asls("let", "var", "val", ":", "var?")
     def decls_(fn, state: State):
-        for name in Nodes.Decl(state).get_names():
+        for name in nodes.Decl(state).get_names():
             state.get_context().add_local_ref(name)
 
     @Visitor.for_asls("ilet", "ivar")
     def iletivar_(fn, state: State):
-        for name in Nodes.IletIvar(state).get_names():
+        for name in nodes.IletIvar(state).get_names():
             state.get_context().add_local_ref(name)
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        node = Nodes.Ref(state)
+        node = nodes.Ref(state)
         if state.get_context().get_local_ref(node.get_name()):
             return
 

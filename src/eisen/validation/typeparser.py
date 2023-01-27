@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 from eisen.common.state import State
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 from eisen.validation.validate import Validate
 from eisen.common.restriction import FunctionalRestriction
 
@@ -22,7 +22,7 @@ class TypeParser(Visitor):
         (type int)
         (var_type int)
         """
-        node = Nodes.TypeLike(state)
+        node = nodes.TypeLike(state)
         name = node.get_name()
         type = state.get_defined_type(name)
         if Validate.type_exists(state, name, type).failed():
@@ -71,7 +71,7 @@ class TypeParser(Visitor):
         (args (type ...))
         """
         if state.get_asl():
-            node = Nodes.ArgsRets(state)
+            node = nodes.ArgsRets(state)
             type = fn.apply(state.but_with(asl=state.first_child()))
             node.convert_let_args_to_var(type)
             return type
@@ -92,7 +92,7 @@ class TypeParser(Visitor):
         (def name (args ...) (rets ...) (seq ...))
         (create name (args ...) (rets ...) (seq ...)) # after normalization
         """
-        node = Nodes.CommonFunction(state)
+        node = nodes.CommonFunction(state)
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 from eisen.common.exceptions import Exceptions
 from eisen.common.state import State
 from eisen.common import no_assign_binary_ops, boolean_return_ops
@@ -76,7 +76,7 @@ class GetDeps():
         self.spread_visitor = SpreadVisitor(self)
 
     def of_function(self, state: State) -> Deps:
-        node = Nodes.Def(state)
+        node = nodes.Def(state)
         function_uid = node.get_function_instance().get_unique_function_name()
         found_deps = self.cache.get(function_uid, None)
         if found_deps is not None:
@@ -86,15 +86,15 @@ class GetDeps():
         state = state.but_with(context=state.create_block_context())
 
         input_number = 0
-        def_node = Nodes.Def(state)
+        def_node = nodes.Def(state)
 
         # add the spread of all inputs to the function to be the index of that input
-        arg_node = Nodes.ArgsRets(state.but_with(asl=def_node.get_args_asl()))
+        arg_node = nodes.ArgsRets(state.but_with(asl=def_node.get_args_asl()))
         for name in arg_node.get_names():
             state.add_spread(name, Spread(values={input_number}, depth=0))
             input_number += 1
 
-        ret_node = Nodes.ArgsRets(state.but_with(asl=def_node.get_rets_asl()))
+        ret_node = nodes.ArgsRets(state.but_with(asl=def_node.get_rets_asl()))
         for name in ret_node.get_names():
             state.add_spread(name, Spread(values=set(), depth=0, is_return_value=True))
             input_number += 1
@@ -140,32 +140,32 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("let")
     def decl_(fn, state: State):
-        for name in Nodes.Decl(state).get_names():
+        for name in nodes.Decl(state).get_names():
             state.add_spread(name, Spread(values={state.depth}, depth=state.depth))
         return []
 
     @Visitor.for_asls("var", "val", "var?")
     def decl2_(fn, state: State):
         # because variables can be assigned to anything, they don't have a spread yet
-        for name in Nodes.Decl(state).get_names():
+        for name in nodes.Decl(state).get_names():
             state.add_spread(name, Spread(values=set(), depth=state.depth))
         return []
 
     @Visitor.for_asls("ilet")
     def iletivar_(fn, state: State):
-        for name in Nodes.IletIvar(state).get_names():
+        for name in nodes.IletIvar(state).get_names():
             state.add_spread(name, Spread(values={state.depth}, depth=state.depth))
         return []
 
     @Visitor.for_asls("ivar")
     def iletivar2_(fn, state: State):
-        for name in Nodes.IletIvar(state).get_names():
+        for name in nodes.IletIvar(state).get_names():
             state.add_spread(name, Spread(values=set(), depth=state.depth))
         return []
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        return [state.get_spread(Nodes.Ref(state).get_name())]
+        return [state.get_spread(nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State):
@@ -173,7 +173,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("=", "+=", "-=", "/=", "*=", "<-")
     def eq_(fn, state: State):
-        names = Nodes.Assignment(state).get_names_of_parent_objects()
+        names = nodes.Assignment(state).get_names_of_parent_objects()
         assigned_spreads = fn.apply(state.but_with_second_child())
         left_spreads = []
         for name, right_spread in zip(names, assigned_spreads):
@@ -199,7 +199,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("if")
     def if_(fn, state: State):
-        Nodes.If(state.but_with(depth=state.depth-1)).enter_context_and_apply(fn)
+        nodes.If(state.but_with(depth=state.depth-1)).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("while")
@@ -243,7 +243,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("call")
     def call_(fn, state: State):
-        node = Nodes.Call(state)
+        node = nodes.Call(state)
         if node.is_print():
             return []
         def_asl = node.get_asl_defining_the_function()

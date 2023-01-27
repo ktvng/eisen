@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 from eisen.common.state import State
-from eisen.validation.nodetypes import Nodes
+import eisen.nodes as nodes
 
 class DeclarationVisitor(Visitor):
     """parses (struct ...) and (interface ...) asls into a instances of the
@@ -30,27 +30,27 @@ class DeclarationVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        Nodes.Mod(state).enter_module_and_apply(fn)
+        nodes.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("struct")
     @adds_type_to_module
     def struct_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_struct_type(
-            name=Nodes.Struct(state).get_struct_name(),
+            name=nodes.Struct(state).get_struct_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_asls("interface")
     @adds_type_to_module
     def interface_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_interface_type(
-            name=Nodes.Interface(state).get_interface_name(),
+            name=nodes.Interface(state).get_interface_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_asls("variant")
     @adds_type_to_module
     def variant_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_variant_type(
-            name=Nodes.Variant(state).get_variant_name(),
+            name=nodes.Variant(state).get_variant_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_default

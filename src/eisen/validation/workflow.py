@@ -6,7 +6,7 @@ from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
 from eisen.validation.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
-from eisen.validation.permissionsvisitor import PermissionsVisitor
+from eisen.validation.usagechecker import UsageChecker
 from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import FinalizationVisitor
 from eisen.validation.fnconverter import FnConverter
@@ -66,7 +66,7 @@ class Workflow():
         InstanceVisitor,
 
         # this handles restrictions based on let/var/val differences
-        PermissionsVisitor,
+        UsageChecker,
 
         NilCheck,
         MemCheck,

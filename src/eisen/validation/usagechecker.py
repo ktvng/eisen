@@ -15,7 +15,7 @@ import eisen.nodes as nodes
 from eisen.validation.validate import Validate
 
 State = StateB
-class PermissionsVisitor(Visitor):
+class UsageChecker(Visitor):
     def run(self, state: StateB):
         self.apply(state)
         return state
@@ -109,23 +109,23 @@ class PermissionsVisitor(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
-        return [PermissionsVisitor.get_instancestate(state, nodes.Ref(state).get_name())]
+        return [UsageChecker.get_instancestate(state, nodes.Ref(state).get_name())]
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State) -> list[EisenInstanceState]:
-        return [EisenAnonymousInstanceState(FunctionalRestriction(), Initializations.Initialized)]
+        return [UsageChecker.create_instancestate(state.get_instances()[0], Initializations.NotNull)]
 
     @Visitor.for_asls(":", "let", "var", "var?")
     def let_(fn, state: State) -> list[EisenInstanceState]:
-        insts = [PermissionsVisitor.create_instancestate(instance, Initializations.NotInitialized)
+        insts = [UsageChecker.create_instancestate(instance, Initializations.NotInitialized)
             for instance in state.get_instances()]
         for inst in insts:
-            PermissionsVisitor.add_instancestate(state, inst)
+            UsageChecker.add_instancestate(state, inst)
         return insts
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:
-        left_insts = [PermissionsVisitor.create_instancestate(i, Initializations.NotInitialized)
+        left_insts = [UsageChecker.create_instancestate(i, Initializations.NotInitialized)
             for i in state.get_instances()]
         right_insts = fn.apply(state.but_with(asl=state.second_child()))
         for left, right in zip(left_insts, right_insts):
@@ -133,7 +133,7 @@ class PermissionsVisitor(Visitor):
 
             # mark as initialized after validations
             left.mark_as_initialized()
-            PermissionsVisitor.add_instancestate(state, left)
+            UsageChecker.add_instancestate(state, left)
         return []
 
     @Visitor.for_asls("tuple", "params", "lvals")
@@ -171,7 +171,7 @@ class PermissionsVisitor(Visitor):
     def dot_(fn, state: State) -> list[EisenInstanceState]:
         parent_inst = fn.apply(state.but_with_first_child())[0]
         if Validate.instancestate_is_initialized(state, parent_inst).failed():
-            return PermissionsVisitor.NoRestrictionInstanceState()
+            return UsageChecker.NoRestrictionInstanceState()
 
         branch_restricton = state.get_restriction()
         if not parent_inst.restriction.is_val():
@@ -182,9 +182,9 @@ class PermissionsVisitor(Visitor):
     def call_(fn, state: State) -> list[EisenInstanceState]:
         node = nodes.Call(state)
         if node.is_print():
-            return PermissionsVisitor.NoRestrictionInstanceState()
+            return UsageChecker.NoRestrictionInstanceState()
 
-        argument_insts = [PermissionsVisitor.create_instancestate_from_type(tc)
+        argument_insts = [UsageChecker.create_instancestate_from_type(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
         param_insts = fn.apply(state.but_with(asl=node.get_params_asl()))
@@ -193,7 +193,7 @@ class PermissionsVisitor(Visitor):
             Validate.instancestate_is_initialized(state, given)
 
         # handle returned restrictions
-        returned_insts = [PermissionsVisitor.create_instancestate_from_type(tc)
+        returned_insts = [UsageChecker.create_instancestate_from_type(tc)
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_insts
 
@@ -208,15 +208,15 @@ class PermissionsVisitor(Visitor):
         for child in state.get_all_children():
             for inst in fn.apply(state.but_with(asl=child)):
                 Validate.instancestate_is_initialized(state, inst)
-        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
+        return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[EisenInstanceState]:
         if state.asl.value == "nil":
-            return PermissionsVisitor.NoRestrictionInstanceState()
+            return UsageChecker.NoRestrictionInstanceState()
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default
     def default_(fn, state: State) -> list[EisenInstanceState]:
         print("PermissionsVisitor Unhandled State:", state.get_asl())
-        return PermissionsVisitor.NoRestrictionInstanceState()
+        return UsageChecker.NoRestrictionInstanceState()

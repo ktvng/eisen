@@ -41,12 +41,6 @@ class TypeChecker(Visitor):
         state.get_context().add_reference_type(name, type)
 
     def apply(self, state: State) -> Type:
-        if self.debug and isinstance(state.get_asl(), CLRList):
-            print("\n"*64)
-            print(state.inspect())
-            print("\n"*4)
-            input()
-
         # this guards the function such that if there is a critical exception thrown
         # downstream, the method will skip execution.
         if state.critical_exception:

@@ -64,7 +64,7 @@ class NilCheck(Visitor):
         for left, right in zip(left_states, right_states):
             result = Validate.both_operands_are_not_nilable(state, left, right)
             if result.failed():
-                return result.get_failure_type()
+                return state.get_abort_signal()
 
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 

@@ -265,3 +265,15 @@ class Type():
             embeds=self.embeds,
             restriction=restriction,
             parent_type=self.parent_type)
+
+    def copy(self) -> Type:
+        return Type(
+            classification=self.classification,
+            name=self.name,
+            mod=self.mod,
+            components=self.components,
+            component_names=self.component_names,
+            inherits=self.inherits,
+            embeds=self.embeds,
+            restriction=self.restriction,
+            parent_type=self.parent_type)

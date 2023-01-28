@@ -1,44 +1,38 @@
 from __future__ import annotations
 
-from alpaca.concepts import Type, Context, Module
+from alpaca.concepts import Type, Context, Module, AbstractException
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.exceptions import Exceptions
 from eisen.common.eiseninstancestate import EisenInstanceState
 from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
+from eisen.common.restriction import RestrictionViolation
+import eisen.nodes as nodes
 
 
 class ValidationResult():
-    def __init__(self, result: bool, return_obj: Type | EisenInstance):
+    def __init__(self, result: bool):
         self.result = result
-        self.return_obj = return_obj
 
     def failed(self) -> bool:
         return not self.result
-
-    def get_failure_type(self) -> Type:
-        return self.return_obj
-
-    def get_found_instance(self) -> EisenInstance:
-        return self.return_obj
-
 
 ################################################################################
 # performs the actual validations
 class Validate:
     @classmethod
-    def _abort_signal(cls, state: State) -> ValidationResult:
-        return ValidationResult(result=False, return_obj=state.get_abort_signal())
+    def send_failure(cls) -> ValidationResult:
+        return ValidationResult(result=False)
 
     @classmethod
-    def _success(cls, return_obj=None) -> ValidationResult:
-        return ValidationResult(result=True, return_obj=return_obj)
+    def send_success(cls) -> ValidationResult:
+        return ValidationResult(result=True)
 
     @classmethod
     def can_assign(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate._abort_signal(state)
+            return Validate.send_failure()
 
         # TODO: this doesn't really work
         if type1.is_tuple():
@@ -49,26 +43,26 @@ class Validate:
                     line_number=state.get_line_number()))
         else:
             if type1.restriction.is_nullable() and type2.is_nil():
-                return Validate._success()
+                return Validate.send_success()
             if not type1.restriction.is_nullable() and type2.is_nil():
                 state.report_exception(Exceptions.NilAssignment(
                     msg=f"cannot assign nil to non-nilable type '{type1}'",
                     line_number=state.get_line_number()))
-                return Validate._abort_signal(state)
+                return Validate.send_failure()
 
         return Validate.equivalent_types(state, type1, type2)
 
     @classmethod
     def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate._abort_signal(state)
+            return Validate.send_failure()
 
         if type1 != type2:
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"'{type1}' != '{type2}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(type1)
+            return Validate.send_failure()
+        return Validate.send_success()
 
 
     @classmethod
@@ -77,13 +71,13 @@ class Validate:
             state.report_exception(Exceptions.TupleSizeMismatch(
                 msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def correct_argument_types(cls, state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (arg_type, given_type)]):
-            return Validate._abort_signal(state)
+            return Validate.send_failure()
 
         if arg_type != given_type:
             # if the given_type is a struct, we have another change to succeed if
@@ -93,14 +87,14 @@ class Validate:
                     state.report_exception(Exceptions.TypeMismatch(
                         msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                         line_number=state.get_line_number()))
-                    return Validate._abort_signal(state)
-                return Validate._success(arg_type)
+                    return Validate.send_failure()
+                return Validate.send_success()
 
             state.report_exception(Exceptions.TypeMismatch(
                 msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(arg_type)
+            return Validate.send_failure()
+        return Validate.send_success()
 
 
     @classmethod
@@ -109,8 +103,8 @@ class Validate:
             state.report_exception(Exceptions.UndefinedVariable(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def type_exists(cls, state: State, name: str, type: Type) -> ValidationResult:
@@ -118,8 +112,8 @@ class Validate:
             state.report_exception(Exceptions.UnderfinedType(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
 
     @classmethod
@@ -144,24 +138,24 @@ class Validate:
             state.report_exception(Exceptions.UndefinedFunction(
                 msg=f"'{name}' is not defined",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(return_obj=instance)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def name_is_unbound(cls, state: State, name: str) -> ValidationResult:
-        if state.get_context().get_instance(name) is not None:
+        if state.get_context().get_reference_type(name) is not None:
             state.report_exception(Exceptions.RedefinedIdentifier(
                 msg=f"'{name}' is in use",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(return_obj=None)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def all_names_are_unbound(cls, state: State, names: list[str]) -> ValidationResult:
         results = [Validate.name_is_unbound(state, name) for name in names]
         if any(result.failed() for result in results):
-            return Validate._abort_signal(state)
-        return Validate._success(return_obj=None)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def has_member_attribute(cls, state: State, type: Type, attribute_name: str) -> ValidationResult:
@@ -169,27 +163,27 @@ class Validate:
             state.report_exception(Exceptions.MissingAttribute(
                 f"'{type}' does not have member attribute '{attribute_name}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(return_obj=None)
+            return Validate.send_failure()
+        return Validate.send_success()
 
 
     @classmethod
     def castable_types(cls, state: State, type: Type, cast_into_type: Type) -> ValidationResult:
         if any([state.get_abort_signal() in (type, cast_into_type)]):
-            return Validate._abort_signal(state)
+            return Validate.send_failure()
 
         if type == cast_into_type:
-            return Validate._success()
+            return Validate.send_success()
 
         if type.parent_type == cast_into_type or cast_into_type.parent_type == type:
-            return Validate._success()
+            return Validate.send_success()
 
         if cast_into_type not in type.inherits:
             state.report_exception(Exceptions.CastIncompatibleTypes(
                 msg=f"'{type}' cannot be cast into '{cast_into_type}'",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success(return_obj=None)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def all_implementations_are_complete(cls, state: State, type: Type):
@@ -214,8 +208,8 @@ class Validate:
                     line_number=state.get_line_number()))
 
         if encountered_exception:
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
 
     @classmethod
@@ -239,21 +233,64 @@ class Validate:
                 else:
                     conflict_map[pair] = embedded_type
         if conflicts:
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
+
+    @classmethod
+    def compose_assignment_restriction_error_message(
+            cls,
+            state: State,
+            ex_type: RestrictionViolation,
+            l: EisenInstanceState,
+            r: EisenInstanceState):
+
+        ex = None
+        if ex_type == RestrictionViolation.LetReassignment:
+            ex = Exceptions.LetReassignment(
+                msg=f"'{l.name} is declared as 'let' and initialized; '{l.name}' cannot be reassigned",
+                line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.LetInitializationToPointer:
+            if state.second_child().type == "call":
+                fn_name = nodes.Call(state.but_with_second_child()).get_function_name()
+                ex = Exceptions.LetInitializationMismatch(
+                    msg=f"'{l.name}' is declared as 'let' but '{fn_name}' returns a type with '{r.restriction.get_name()}' designation",
+                    line_number=state.get_line_number())
+            else:
+                ex = Exceptions.LetInitializationMismatch(
+                    msg=f"'{l.name}' is declared as 'let' but '{r.name}' has designation '{r.restriction.get_name()}'",
+                    line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.LetBadConstruction:
+            ex = Exceptions.LetInitializationMismatch(
+                msg=f"'{l.name}' is declared as 'let', but is initialized to '{r.name}' which is a separate memory allocation",
+                line_number=state.get_line_number())
+
+        elif ex_type == RestrictionViolation.VarAssignedToLiteral:
+            ex = Exceptions.VarImproperAssignment(
+                msg=f"'{l.name}' is declared as 'var', but is being assigned to a literal",
+                line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.VarNoNullableAssignment:
+            name = f"'{r.name}'" if r.name else ""
+            ex = Exceptions.NilableMismatch(
+                msg=f"'{l.name}' is not nilable, but is being assigned to a nilable value {name}",
+                line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.PrimitiveToNonPrimitiveAssignment:
+            ex = Exceptions.PrimitiveAssignmentMismatch(
+                msg=f"'{l.name}' is a primitive",
+                line_number=state.get_line_number())
+        if ex is None:
+            raise Exception("no matching exception")
+        state.report_exception(ex)
+
 
 
     @classmethod
     def assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
-        is_assignable = left.assignable_to(right)
+        is_assignable, ex_type = left.assignable_to(right)
         if not is_assignable:
-            state.report_exception(Exceptions.MemoryAssignment(
-                # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO:assignment_restrictions_met fix error message {left}, {right}: {state.asl}",
-                line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def overwrite_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
@@ -264,20 +301,17 @@ class Validate:
                 # TODO, figure out how to pass the name of the variable here
                 msg=f"TODO:overwrite_restrictions_met fix error message {left}, {right}",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def parameter_assignment_restrictions_met(cls, state: State, argument_requires: EisenInstanceState, given: EisenInstanceState):
         # print(state.asl)
-        is_assignable = argument_requires.assignable_to(given)
+        is_assignable, ex_type = argument_requires.assignable_to(given)
         if not is_assignable:
-            state.report_exception(Exceptions.MemoryAssignment(
-                # TODO, figure out how to pass the name of the variable here
-                msg=f"argument requires '{argument_requires.restriction}', but given '{given.restriction}': {state.asl}",
-                line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def instancestate_is_initialized(cls, state: State, instancestate: EisenInstanceState) -> ValidationResult:
@@ -285,8 +319,8 @@ class Validate:
             state.report_exception(Exceptions.UseBeforeInitialize(
                 msg=f"{instancestate.name} is not initialized",
                 line_number=state.get_line_number()))
-            return Validate._abort_signal(state)
-        return Validate._success()
+            return Validate.send_failure()
+        return Validate.send_success()
 
     @classmethod
     def _generate_nil_exception_msg(cls, status: NilableStatus) -> str:
@@ -298,7 +332,7 @@ class Validate:
     @classmethod
     def both_operands_are_not_nilable(cls, state: State, left: NilableStatus, right: NilableStatus) -> ValidationResult:
         if any([state.get_abort_signal() in (left, right)]):
-            return Validate._abort_signal(state)
+            return Validate.send_failure()
 
         if left.is_nilable:
             state.report_exception(Exceptions.NilUsage(
@@ -309,4 +343,4 @@ class Validate:
                 msg=cls._generate_nil_exception_msg(right),
                 line_number=state.get_line_number()))
 
-        return Validate._success()
+        return Validate.send_success()

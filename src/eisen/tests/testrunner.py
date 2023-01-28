@@ -81,9 +81,12 @@ class Test():
             got_number_of_exceptions = state.watcher.txt.count(AbstractException.delineator)
             if len(expected_exceptions) != got_number_of_exceptions:
                 return False, f"expected ({len(expected_exceptions)}) exceptions but got ({got_number_of_exceptions}) in: \n{state.watcher.txt}"
+            txt = state.watcher.txt
             for e in expected_exceptions:
-                if e["type"] not in state.watcher.txt or e["contains"] not in state.watcher.txt:
+                if e["type"] not in txt or e["contains"] not in txt:
                     return False, Test._make_exception_error_msg(e, state)
+                txt = txt.replace(e["type"], "", 1)
+                txt = txt.replace(e["contains"], "", 1)
 
         return True, "success"
 

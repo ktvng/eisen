@@ -26,19 +26,10 @@ class TypeChecker(Visitor):
     def __init__(self, debug: bool = False):
         super().__init__(debug=debug)
         self.typeparser = TypeParser()
-        # self.debug = True
 
     def run(self, state: BaseState):
         self.apply(TypeCheckerState.create_from_basestate(state))
         return StateA.create_from_basestate(state)
-
-    @classmethod
-    def set_returned_type(cls, state: State, type: Type):
-        state.get_node_data().returned_type = type
-
-    @classmethod
-    def add_reference_type(cls, state: State, name: str, type: Type):
-        state.get_context().add_reference_type(name, type)
 
     def apply(self, state: State) -> Type:
         # this guards the function such that if there is a critical exception thrown
@@ -50,6 +41,15 @@ class TypeChecker(Visitor):
         if state.is_asl():
             TypeChecker.set_returned_type(state, result)
         return result
+
+
+    @classmethod
+    def set_returned_type(cls, state: State, type: Type):
+        state.get_node_data().returned_type = type
+
+    @classmethod
+    def add_reference_type(cls, state: State, name: str, type: Type):
+        state.get_context().add_reference_type(name, type)
 
     def apply_to_first_child_of(self, state: State) -> Type:
         return self.apply(state.but_with_first_child())

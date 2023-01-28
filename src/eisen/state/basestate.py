@@ -1,20 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from alpaca.concepts import Module, Context, TypeFactory, Type, AbstractParams, AbstractException
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from eisen.common.nodedata import NodeData
-from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction, FunctionalRestriction
 from eisen.validation.lookupmanager import LookupManager
-
-if TYPE_CHECKING:
-    from eisen.interpretation.obj import Obj
-    from eisen.common.eiseninstancestate import EisenInstanceState
-    from eisen.common.restriction import GeneralRestriction
-    from eisen.memory.memcheck import Spread
 
 class SharedBool():
     def __init__(self, value: bool):
@@ -141,13 +133,13 @@ Token: {self.asl}
 """
 
     @classmethod
-    def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> State:
+    def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> BaseState:
         global_mod = Module("global")
         global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction()))
-        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
+        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void").with_restriction(NoRestriction()))
 
         return BaseState(
             config=config,
@@ -157,7 +149,6 @@ Token: {self.asl}
             mod=global_mod,
             exceptions=[],
             print_to_watcher=print_to_watcher)
-
 
     def get_config(self) -> Config:
         """canonical way to access the config"""
@@ -240,75 +231,6 @@ Token: {self.asl}
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)
 
-
-    # def get_struct_name(self) -> str:
-    #     """canonical way to access the name of the struct, if applicable"""
-    #     return self.struct_name
-
-    # def get_variant_name(self) -> str:
-    #     return self.struct_name
-
-    # def get_returned_type(self) -> Type:
-    #     """canonical way to access the type returned from this node"""
-    #     return self.get_node_data().returned_type
-
-    # def get_instances(self) -> list[EisenInstance]:
-    #     """canonical way to get instances stored in this node"""
-    #     return self.get_node_data().instances
-
-    # def get_nilstate(self, name) -> bool:
-    #     return self.get_context().get_nilstate(name)
-
-    # def add_nilstate(self, name: str, nilstate: bool):
-    #     self.get_context().add_nilstate(name, nilstate)
-
-
-
-    # def get_arg_type(self) -> Type | None:
-    #     return self.arg_type
-
-
-
-    # def get_instancestate(self, name: str) -> EisenInstanceState:
-    #     """canonical way to access a InstanceState by name"""
-    #     return self.context.get_instancestate(name)
-
-    # def get_restriction(self) -> GeneralRestriction:
-    #     return self.get_returned_type().get_restrictions()[0]
-
-    # def add_reference_type(self, name: str, type: Type):
-    #     self.get_context().add_reference_type(name, type)
-
-    # def assign_returned_type(self, type: Type):
-    #     self.get_node_data().returned_type = type
-
-    # def assign_instances(self, instances: list[EisenInstance] | EisenInstance):
-    #     if isinstance(instances, EisenInstance):
-    #         instances = [instances]
-    #     self.get_node_data().instances = instances
-
-    # def set_instances(self, instances: list[EisenInstance]):
-    #     self.get_node_data().instances = instances
-
-
-
-    # def add_defined_type(self, type: Type):
-    #     self.get_enclosing_module().add_defined_type(type.name, type)
-
-    # def add_instancestate(self, instancestate: EisenInstanceState):
-    #     self.context.add_instancestate(instancestate)
-
-    # def add_function_instance_to_module(self, instance: EisenInstance):
-    #     self.get_enclosing_module().add_function_instance(instance)
-
-
-
-
-    # def get_spread(self, name: str) -> Spread:
-    #     return self.get_context().get_spread(name)
-
-    # def add_spread(self, name: str, spread: Spread):
-    #     self.get_context().add_spread(name, spread)
 
     # def get_curried_type(self, fn_type: Type, n_curried_args: int) -> Type:
     #     argument_type = fn_type.get_argument_type()

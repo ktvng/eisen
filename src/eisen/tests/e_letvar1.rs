@@ -11,10 +11,11 @@ struct point {
 fn main() {
     let p = point()
     p = point()
+    let p2: point
 
     var myP = p
-    p = myP
+    p2 = myP
 
-    let p2 = point()
-    p = p2
+    let p3: point
+    p3 = p
 }

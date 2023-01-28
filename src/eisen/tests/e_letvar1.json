@@ -5,16 +5,16 @@
         "success": false,
         "exceptions": [
             {
-                "type": "MemoryAssignmentException",
+                "type": "LetReassignmentException",
                 "contains": ">> 13"
             },
             {
-                "type": "MemoryAssignmentException",
-                "contains": ">> 16"
+                "type": "LetInitializationMismatchException",
+                "contains": ">> 17"
             },
             {
-                "type": "MemoryAssignmentException",
-                "contains": ">> 19"
+                "type": "LetInitializationMismatchException",
+                "contains": ">> 20"
             }
         ]
     }

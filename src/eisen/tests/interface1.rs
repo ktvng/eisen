@@ -34,14 +34,12 @@ struct vector implements positionable {
 fn main() {
     let p = point3d(1, 2, 5)
     // print("3 5 12 0")
-    // TODO: obj will need to be changed to var once pointers are implemented
-    // this test will fail then...
-    let obj1: positionable
+    var obj1: positionable
     obj1 = p.as(positionable)
     print("%i ", obj1.el_distance())
     print("%i ", p.z)
 
-    let obj2: positionable
+    var obj2: positionable
     let v = vector(8, 4)
     obj2 = v.as(positionable)
     print("%i ", obj2.el_distance())

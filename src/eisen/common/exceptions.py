@@ -51,10 +51,6 @@ class Exceptions():
         type = "EmbeddedStructCollision"
         description = "embedded structs cannot have an attribute with the same name and type as another"
 
-    class MemoryAssignment(AbstractException):
-        type = "MemoryAssignment"
-        description = "incompatible assignment of let/var/val declared types"
-
     class LiteralAssignment(AbstractException):
         type = "LiteralAssignment"
         description = "an entity declared with the 'var' keyword may not be assigned to a literal"
@@ -70,3 +66,27 @@ class Exceptions():
     class ObjectLifetime(AbstractException):
         type = "ObjectLifetime"
         description = "cannot assign an object to a reference when the object has a shorter lifetime than the reference"
+
+    class MemoryAssignment(AbstractException):
+        type = "MemoryAssignment"
+        description = "incompatible assignment of let/var/val declared types"
+
+    class LetReassignment(AbstractException):
+        type = "LetReassignment"
+        description = "memory is allocated with the the 'let' keyword and already initialized cannot be overriden with the '=' operation"
+
+    class LetInitializationMismatch(AbstractException):
+        type = "LetInitializationMismatch"
+        description = "the 'let' keyword allocates a block of memory which must be initialized by a function returning a 'let' designation"
+
+    class VarImproperAssignment(AbstractException):
+        type = "VarImproperAssignment"
+        description = "the 'var' keyword defines a pointer to an existing memory allocation and cannot be set to point to a literal"
+
+    class NilableMismatch(AbstractException):
+        type = "NilableMismatch"
+        description = "a nilable type cannot be assigned to a non-nilable type"
+
+    class PrimitiveAssignmentMismatch(AbstractException):
+        type = "PrimitiveAssignmentMismatch"
+        description = "a primitive type may only be assigned to other primitives or literals"

@@ -83,7 +83,10 @@ class TypeParser(Visitor):
         (rets (type ...))
         """
         if state.get_asl():
-            return fn.apply(state.but_with(asl=state.first_child()))
+            node = nodes.ArgsRets(state)
+            type = fn.apply(state.but_with(asl=state.first_child()))
+            node.convert_let_rets_to_let_construction(type)
+            return type
         return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")

@@ -1,7 +1,17 @@
 from __future__ import annotations
 
-from alpaca.concepts import AbstractRestriction, InstanceState
+from alpaca.concepts import AbstractRestriction
 from eisen.common.initialization import Initializations
+
+class RestrictionViolation:
+    LetReassignment = 0
+    LetInitializationToPointer = 1
+    LetBadConstruction = 2
+
+    VarAssignedToLiteral = 10
+    VarNoNullableAssignment = 11
+
+    PrimitiveToNonPrimitiveAssignment = 20
 
 class GeneralRestriction(AbstractRestriction):
     def is_unrestricted(self) -> bool:
@@ -16,6 +26,9 @@ class GeneralRestriction(AbstractRestriction):
     def is_let(self) -> bool:
         return False
 
+    def is_let_construction(self) -> bool:
+        return False
+
     def is_functional(self) -> bool:
         return False
 
@@ -32,7 +45,10 @@ class GeneralRestriction(AbstractRestriction):
         return False
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return False
+        return False, None
+
+    def get_name(self) -> str:
+        return ""
 
     def __str__(self) -> str:
         return str(type(self))
@@ -42,7 +58,7 @@ class NoRestriction(GeneralRestriction):
         return True
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return True
+        return True, None
 
     def is_unrestricted(self) -> bool:
         return True
@@ -54,32 +70,55 @@ class VarRestriction(GeneralRestriction):
     def allows_for_reassignment(self) -> bool:
         return True
 
+    def get_name(self) -> str:
+        return "var"
+
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return ((other.is_var() and not other.is_nullable())
-            or other.is_let()
-            or other.is_primitive()
-            or other.is_functional())
+        if other.is_literal():
+            return False, RestrictionViolation.VarAssignedToLiteral
+        if other.is_nullable():
+            return False, RestrictionViolation.VarNoNullableAssignment
+        return True, None
 
 class NullableVarRestriction(VarRestriction):
     def is_nullable(self) -> bool:
         return True
 
+    def get_name(self) -> str:
+        return "var?"
+
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return other.is_var() or other.is_let() or other.is_primitive() or other.is_unrestricted()
+        if other.is_literal():
+            return False, RestrictionViolation.VarAssignedToLiteral
+        return True, None
 
 class LetRestriction(GeneralRestriction):
     def is_let(self) -> bool:
         return True
 
+    def get_name(self) -> str:
+        return "let"
+
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return (current_init_state == Initializations.NotInitialized) and (other.is_let()
-            or other.is_unrestricted()
-            or other.is_literal()
-            or other.is_functional())
+        if current_init_state == Initializations.NotNull:
+            return False, RestrictionViolation.LetReassignment
+        if other.is_val() or other.is_var():
+            return False, RestrictionViolation.LetInitializationToPointer
+        if not other.is_let_construction():
+            return False, RestrictionViolation.LetBadConstruction
+        return True, None
+
+class LetConstruction(LetRestriction):
+    def is_let_construction(self) -> bool:
+        return True
 
 class ValRestriction(GeneralRestriction):
     def is_val(self) -> bool:
         return True
+
+    def get_name(self) -> str:
+        return "val"
+
 
 class LiteralRestriction(GeneralRestriction):
     def is_literal(self) -> bool:
@@ -89,6 +128,10 @@ class FunctionalRestriction(GeneralRestriction):
     def is_functional(self) -> bool:
         return True
 
+    def get_name(self) -> str:
+        return "let"
+
+
 class PrimitiveRestriction(GeneralRestriction):
     def is_primitive(self) -> bool:
         return True
@@ -97,38 +140,7 @@ class PrimitiveRestriction(GeneralRestriction):
         return True
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        return other.is_primitive() or other.is_literal() or other.is_unrestricted()
+        if other.is_primitive() or other.is_literal() or other.is_unrestricted():
+            return True, None
 
-    # TODO: recover the error messages again
-    # def assignable_to(self, right: Restriction) -> tuple[bool, str]:
-    #     # print(self, right)
-    #     assignable = False
-    #     if self.type == Restriction.let_primitive:
-    #         assignable = (right.type == Restriction.let_primitive
-    #             or right.type == Restriction.literal
-    #             or right.type == Restriction.none)
-    #         if not assignable:
-    #             return False, ("a primitive type declared by 'let' can only be assigned to other "
-    #                 "primitive types declared by 'let' or to other literals")
-    #         return True, "success"
-    #     if self.type == Restriction.none:
-    #         return True, "TODO: we should't be getting None here right?"
-    #     if self.type == Restriction.var:
-    #         assignable = (right.type == Restriction.var
-    #             or right.type == Restriction.let
-    #             or right.type == Restriction.let_primitive)
-    #         if not assignable:
-    #             return False, ("a type declared by 'var' can only be assigned to other "
-    #                 "variable declared by 'var' or to memory declared with 'let'"
-    #                 f"\nleft={self}\nright={right}")
-    #         return True, "success"
-    #     if self.type == Restriction.let:
-    #         # TODO: none is added because restriction logic is not fully built out yet
-    #         assignable = (self.state == Restriction.States.not_initialized and
-    #             (right.type == Restriction.let or right.type == Restriction.none))
-    #         if not assignable:
-    #             return False, ("memory declared by 'let' cannot be reassigned after it has been "
-    #                 "initialized the first time")
-    #         return True, "success"
-
-    #     raise Exception(f"{self} not implemented assignable_to")
+        return False, RestrictionViolation.PrimitiveToNonPrimitiveAssignment

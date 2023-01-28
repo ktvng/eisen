@@ -21,12 +21,10 @@ class UsageChecker(Visitor):
         return state
 
     def apply(self, state: State) -> list[EisenInstanceState]:
-        if self.debug and isinstance(state.get_asl(), CLRList):
-            print("\n"*64)
-            print(state.inspect())
-            print("\n"*4)
-            input()
-        return self._route(state.get_asl(), state)
+        result = self._route(state.get_asl(), state)
+        if result is None:
+            return []
+        return result
 
     @classmethod
     def NoRestrictionInstanceState(cls):
@@ -52,33 +50,28 @@ class UsageChecker(Visitor):
     @Visitor.for_asls("rets")
     def _rets(fn, state: State):
         if state.is_inside_constructor():
-            inst = fn.apply(state.but_with_first_child())[0]
-            inst.mark_as_initialized()
+            for inst in fn.apply(state.but_with_first_child()):
+                inst.mark_as_initialized()
         else:
             state.apply_fn_to_all_children(fn)
-        return []
 
     @Visitor.for_asls("args", "prod_type")
     def args_(fn, state: State):
         for child in state.get_all_children():
             for inst in fn.apply(state.but_with(asl=child)):
                 inst.mark_as_initialized()
-        return []
 
     @Visitor.for_asls("start", "seq", "cond")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
-        return []
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
         nodes.Mod(state).enter_module_and_apply(fn)
-        return []
 
     @Visitor.for_asls("def", "create", "is_fn")
     def defs_(fn, state: State) -> list[EisenInstanceState]:
         nodes.CommonFunction(state).enter_context_and_apply(fn)
-        return []
 
     @Visitor.for_asls("interface", "return")
     def none_(fn, state: State) -> list[EisenInstanceState]:
@@ -89,23 +82,18 @@ class UsageChecker(Visitor):
         node = nodes.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
-        return []
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: State) -> list[EisenInstance]:
-        node = nodes.Variant(state)
-        fn.apply(state.but_with(asl=node.get_is_asl()))
-        return []
+        fn.apply(state.but_with(asl=nodes.Variant(state).get_is_asl()))
 
     @Visitor.for_asls("if")
     def if_(fn, state: State) -> list[EisenInstanceState]:
         nodes.If(state).enter_context_and_apply(fn)
-        return []
 
     @Visitor.for_asls("while")
     def while_(fn, state: State) -> list[EisenInstanceState]:
         nodes.While(state).enter_context_and_apply(fn)
-        return []
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
@@ -140,7 +128,7 @@ class UsageChecker(Visitor):
     def tuple_(fn, state: State) -> list[EisenInstanceState]:
         insts = []
         for child in state.get_all_children():
-            insts += fn.apply(state.but_with(asl=child))
+            insts.extend(fn.apply(state.but_with(asl=child)))
         return insts
 
     @Visitor.for_asls("=")
@@ -204,7 +192,6 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[EisenInstanceState]:
-        component_insts = []
         for child in state.get_all_children():
             for inst in fn.apply(state.but_with(asl=child)):
                 Validate.instancestate_is_initialized(state, inst)

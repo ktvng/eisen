@@ -135,6 +135,8 @@ class FunctionalRestriction(GeneralRestriction):
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
         if other.is_functional():
             return True, None
+        if other.is_let_construction():
+            return True, None
         return False, RestrictionViolation.FunctionalMisassigment
 
 class PrimitiveRestriction(GeneralRestriction):

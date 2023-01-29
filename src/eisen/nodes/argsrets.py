@@ -40,5 +40,5 @@ class ArgsRets(AbstractNodeInterface):
                 for component in type.components:
                     if component.restriction.is_let():
                         component.restriction = LetConstruction()
-            elif type.restriction.is_let():
+            elif type.restriction.is_let() or type.restriction.is_functional():
                 type.restriction = LetConstruction()

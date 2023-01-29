@@ -13,6 +13,8 @@ class RestrictionViolation:
 
     PrimitiveToNonPrimitiveAssignment = 20
 
+    FunctionalMisassigment = 30
+
 class GeneralRestriction(AbstractRestriction):
     def is_unrestricted(self) -> bool:
         return False
@@ -105,6 +107,8 @@ class LetRestriction(GeneralRestriction):
         if other.is_val() or other.is_var():
             return False, RestrictionViolation.LetInitializationToPointer
         if not other.is_let_construction():
+            if other.is_functional():
+                return True, None
             return False, RestrictionViolation.LetBadConstruction
         return True, None
 
@@ -128,9 +132,10 @@ class FunctionalRestriction(GeneralRestriction):
     def is_functional(self) -> bool:
         return True
 
-    def get_name(self) -> str:
-        return "let"
-
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
+        if other.is_functional():
+            return True, None
+        return False, RestrictionViolation.FunctionalMisassigment
 
 class PrimitiveRestriction(GeneralRestriction):
     def is_primitive(self) -> bool:

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
+from alpaca.concepts import Type
 
 import eisen.nodes as nodes
 from eisen.common.exceptions import Exceptions
+from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.stateb import StateB
 from eisen.state.memcheckstate import MemcheckState
@@ -131,6 +133,46 @@ class GetDeps():
         self.cache[function_uid] = new_deps
         return new_deps
 
+class FunctionAliasAdder:
+    @classmethod
+    def examine(cls, state: State):
+        node = nodes.Assignment(state)
+        type = state.but_with_first_child().get_returned_type()
+        if not type.is_function():
+            return
+        fn_instance = FunctionAliasAdder.get_assigned_function_instance(state, type.get_argument_type())
+        for name in node.get_names_of_parent_objects():
+            FunctionAliasAdder.add_fn_alias(state, name, fn_instance)
+
+    @classmethod
+    def get_assigned_function_instance(cls, state: State, argument_type: Type):
+        if state.second_child().type == "fn":
+            node = nodes.Fn(state.but_with_second_child())
+            return node.resolve_function_instance(argument_type)
+        elif state.second_child().type == "ref":
+            node = nodes.Ref(state.but_with_second_child())
+            return FunctionAliasResolver.get_fn_alias(state, node.get_name())
+        raise Exception(f"not implemented for {state.second_child().type()}")
+
+    @classmethod
+    def add_fn_alias(cls, state: State, name: str, fn_instance: EisenFunctionInstance):
+        state.get_context().add_fn_alias(name, fn_instance)
+
+class FunctionAliasResolver:
+    @classmethod
+    def get_def_asl(cls, state: State) -> CLRList:
+        if state.first_child().type == "ref":
+            return FunctionAliasResolver.get_fn_alias(
+                state,
+                nodes.Ref(state.but_with_first_child()).get_name()).asl
+        return state.but_with_first_child().get_instances()[0].asl
+
+    @classmethod
+    def get_fn_alias(cls, state: State, name: str) -> EisenFunctionInstance:
+        return state.get_context().get_fn_alias(name)
+
+
+
 class SpreadVisitor(Visitor):
     def __init__(self, get_deps: GetDeps):
         super().__init__(False)
@@ -189,6 +231,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("=", "+=", "-=", "/=", "*=", "<-")
     def eq_(fn, state: State):
+        FunctionAliasAdder.examine(state)
         names = nodes.Assignment(state).get_names_of_parent_objects()
         assigned_spreads = fn.apply(state.but_with_second_child())
         left_spreads = []
@@ -261,8 +304,10 @@ class SpreadVisitor(Visitor):
     def call_(fn, state: State):
         node = nodes.Call(state)
         if node.is_print():
+            fn.apply(state.but_with_second_child())
             return []
-        def_asl = node.get_asl_defining_the_function()
+
+        def_asl = FunctionAliasResolver.get_def_asl(state)
 
         f_deps = fn.get_deps.of_function(state.but_with(asl=def_asl))
         all_return_value_spreads = f_deps.apply_to_parameter_spreads(

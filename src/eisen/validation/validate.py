@@ -278,7 +278,7 @@ class Validate:
                 msg=f"'{l.name}' is a primitive",
                 line_number=state.get_line_number())
         if ex is None:
-            raise Exception("no matching exception")
+            raise Exception(f"no matching exception for {ex_type}")
         state.report_exception(ex)
 
 

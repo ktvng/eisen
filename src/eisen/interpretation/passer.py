@@ -4,7 +4,7 @@ from eisen.interpretation.obj import Obj
 class Passer():
     @classmethod
     def pass_by_value(cls, context: dict, l: Obj, r: Obj):
-        l.value = r.value
+        l.copy(r)
 
     @classmethod
     def pass_by_reference(cls, context: dict, l: Obj, r: Obj):

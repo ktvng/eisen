@@ -7,7 +7,7 @@ from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_t
 from eisen.state.basestate import BaseState
 from eisen.state.statea import StateA
 from eisen.state.typecheckerstate import TypeCheckerState
-from eisen.common.restriction import PrimitiveRestriction
+from eisen.common.restriction import PrimitiveRestriction, FunctionalRestriction
 import eisen.nodes as nodes
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
@@ -74,6 +74,8 @@ class TypeChecker(Visitor):
             return type.with_restriction(PrimitiveRestriction())
         if type.is_tuple() and all([c.is_novel() and c.restriction.is_let() for c in type.components]):
             return type.with_restriction(PrimitiveRestriction())
+        if type.is_function():
+            return type.with_restriction(FunctionalRestriction())
         return type
 
     @Visitor.for_tokens

@@ -42,6 +42,30 @@ class TypeChecker(Visitor):
             TypeChecker.set_returned_type(state, result)
         return result
 
+    @classmethod
+    def get_curried_type(cls, state: State, fn_type: Type, n_curried_args: int) -> Type:
+        argument_type = fn_type.get_argument_type()
+        if not argument_type.is_tuple():
+            if n_curried_args == 1:
+                return TypeFactory.produce_function_type(
+                    arg=state.get_void_type(),
+                    ret=fn_type.get_return_type(),
+                    mod=fn_type.mod).with_restriction(FunctionalRestriction())
+            raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
+
+        if len(argument_type.components) - n_curried_args == 1:
+            # unpack tuple to just a single type
+            curried_fn_args = argument_type.components[-1]
+        elif len(argument_type.components) - n_curried_args == 0:
+            curried_fn_args = state.get_void_type()
+        else:
+            curried_fn_args = TypeFactory.produce_tuple_type(argument_type.components[n_curried_args:])
+
+        return TypeFactory.produce_function_type(
+            arg=curried_fn_args,
+            ret=fn_type.get_return_type(),
+            mod=fn_type.mod).with_restriction(FunctionalRestriction())
+
 
     @classmethod
     def set_returned_type(cls, state: State, type: Type):
@@ -190,7 +214,7 @@ class TypeChecker(Visitor):
         if curried_args_type.is_tuple():
             n_curried_args = len(curried_args_type.components)
 
-        return state.get_curried_type(fn_type, n_curried_args)
+        return TypeChecker.get_curried_type(state, fn_type, n_curried_args)
 
     @Visitor.for_asls("struct")
     @returns_void_type

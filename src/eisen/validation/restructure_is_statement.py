@@ -12,6 +12,6 @@ class RestructureIsStatement():
         node = nodes.Is(state)
         is_asl = state.get_asl()
         new_token = CLRToken(type_chain=["TAG"], value="is_" + node.get_type_name())
-        new_ref = CLRList(type="ref", lst=[new_token], line_number=is_asl.line_number, data=NodeData())
+        new_ref = CLRList(type="fn", lst=[new_token], line_number=is_asl.line_number, data=NodeData())
         new_params = CLRList(type="params", lst=[is_asl.first()], line_number=is_asl.line_number, data=NodeData())
         is_asl.update(type="is_call", lst=[new_ref, new_params])

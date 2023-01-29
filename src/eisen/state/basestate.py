@@ -230,24 +230,3 @@ Token: {self.asl}
 
     def is_asl(self) -> bool:
         return isinstance(self.asl, CLRList)
-
-
-    # def get_curried_type(self, fn_type: Type, n_curried_args: int) -> Type:
-    #     argument_type = fn_type.get_argument_type()
-    #     if not argument_type.is_tuple():
-    #         if n_curried_args == 1:
-    #             return TypeFactory.produce_function_type(
-    #                 arg=self.get_void_type(),
-    #                 ret=fn_type.get_return_type(),
-    #                 mod=fn_type.mod)
-    #         raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
-
-    #     if len(argument_type.components) - n_curried_args == 1:
-    #         # unpack tuple to just a single type
-    #         curried_fn_args = argument_type.components[-1]
-    #     else:
-    #         curried_fn_args = TypeFactory.produce_tuple_type(argument_type.components[n_curried_args:])
-    #     return TypeFactory.produce_function_type(
-    #         arg=curried_fn_args,
-    #         ret=fn_type.get_return_type(),
-    #         mod=fn_type.mod).with_restriction(FunctionalRestriction())

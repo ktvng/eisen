@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.concepts import Module, Context
+from alpaca.concepts import Module, Context, Type
 from alpaca.clr import CLRList
 
 from eisen.state.stateb import StateB
@@ -16,7 +16,8 @@ class MemcheckState(StateB):
             mod: Module = None,
             inside_constructor: bool = None,
             depth: int = None,
-            inherited_fns: list[EisenFunctionInstance] = None
+            inherited_fns: list[EisenFunctionInstance] = None,
+            argument_type: Type = None,
             ) -> MemcheckState:
 
         return self._but_with(
@@ -25,11 +26,15 @@ class MemcheckState(StateB):
             mod=mod,
             inside_constructor=inside_constructor,
             depth=depth,
-            inherited_fns=inherited_fns)
+            inherited_fns=inherited_fns,
+            argument_type=argument_type)
 
     @classmethod
     def create_from_state_b(cls, state: StateB):
-        return MemcheckState(**state._get(), depth=None, inherited_fns=[])
+        return MemcheckState(**state._get(),
+                             depth=None,
+                             inherited_fns=[],
+                             argument_type=None)
 
     def get_depth(self) -> int:
         return self.depth
@@ -39,3 +44,6 @@ class MemcheckState(StateB):
 
     def but_with_second_child(self) -> MemcheckState:
         return self.but_with(asl=self.second_child())
+
+    def get_argument_type(self) -> Type:
+        return self.argument_type

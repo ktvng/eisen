@@ -13,7 +13,8 @@ class Obj:
             param_names: list[str] = None,
             return_names: list[str] = None,
             param_restrictions: list = None,
-            return_restrictions: list = None):
+            return_restrictions: list = None,
+            curried_params: list[Obj] = None):
 
         self.value = value
         self.name = name
@@ -24,6 +25,7 @@ class Obj:
         self.return_names = return_names
         self.param_restrictions = param_restrictions
         self.return_restrictions = return_restrictions
+        self.curried_params = curried_params if curried_params is not None else []
 
     lambda_map = {
         "+": lambda x, y: x + y,
@@ -70,3 +72,4 @@ class Obj:
         self.return_names = o.return_names
         self.param_restrictions = o.param_restrictions
         self.return_restrictions = o.return_restrictions
+        self.curried_params = o.curried_params.copy()

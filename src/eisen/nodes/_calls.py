@@ -76,3 +76,6 @@ class CurriedCall(AbstractNodeInterface):
     examples = """
         (curry_call (ref space) (curried 4)
     """
+
+    def get_params_asl(self) -> CLRList:
+        return self.second_child()

@@ -185,6 +185,13 @@ class UsageChecker(Visitor):
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_insts
 
+    @Visitor.for_asls("curry_call")
+    def curry_call_(fn, state: State) -> list[EisenInstanceState]:
+        node = nodes.CurriedCall(state)
+        # TODO: check arguments
+
+        return [EisenAnonymousInstanceState(FunctionalRestriction(), Initializations.NotNull)]
+
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[EisenInstanceState]:
         # restriction is carried over from the first child

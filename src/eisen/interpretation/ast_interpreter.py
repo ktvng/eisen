@@ -85,7 +85,7 @@ class AstInterpreter(Visitor):
         objs = fn.apply(state.but_with_first_child())
         return [Obj(not objs[0].value)]
 
-    @Visitor.for_asls("tuple")
+    @Visitor.for_asls("tuple", "curried")
     def tuple(fn, state: State):
         objs = []
         for child in state.asl:
@@ -166,7 +166,7 @@ class AstInterpreter(Visitor):
         fn_objs = {}
 
         # evaluate the parameters and add them as new objects inside the new function context
-        param_objs_outside_of_fn = [fn.apply(node.state.but_with(asl=param))[0] for param in node.get_params()]
+        param_objs_outside_of_fn = fnobj.curried_params + [fn.apply(node.state.but_with(asl=param))[0] for param in node.get_params()]
         new_objs = []
         for name, restriction in zip(fnobj.param_names, fnobj.param_restrictions):
             # create new_obj so changes inside the function don't affect the existing obj
@@ -239,6 +239,15 @@ class AstInterpreter(Visitor):
         while result:
             result = fn._handle_cond(state.but_with_first_child())
         return []
+
+    @Visitor.for_asls("curry_call")
+    def curried_(fn, state: State):
+        node = nodes.CurriedCall(state)
+        fn_obj = Obj(None)
+        fn_obj.copy(fn.apply(state.but_with_first_child())[0])
+        params = fn.apply(state.but_with(asl=node.get_params_asl()))
+        fn_obj.curried_params += params
+        return [fn_obj]
 
     @Visitor.for_asls("if")
     def if_(fn, state: State):

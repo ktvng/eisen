@@ -277,6 +277,10 @@ class Validate:
             ex = Exceptions.PrimitiveAssignmentMismatch(
                 msg=f"'{l.name}' is a primitive",
                 line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.FunctionalMisassigment:
+            ex = Exceptions.PrimitiveAssignmentMismatch(
+                msg=f"'{l.name}' must be given a function",
+                line_number=state.get_line_number())
         if ex is None:
             raise Exception(f"no matching exception for {ex_type}")
         state.report_exception(ex)

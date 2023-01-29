@@ -1,0 +1,8 @@
+{
+    "name": "variants",
+    "info": "test for basic variants",
+    "expected": {
+        "success": true,
+        "output": "point origin "
+    }
+}

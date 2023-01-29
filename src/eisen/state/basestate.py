@@ -225,6 +225,9 @@ Token: {self.asl}
             name="block",
             parent=self.get_context())
 
+    def create_isolated_context(self) -> Context:
+        return Context(name="isolated", parent=None)
+
     def is_inside_constructor(self) -> bool:
         return self.inside_constructor
 

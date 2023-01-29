@@ -1,4 +1,5 @@
 from __future__ import annotations
+from uuid import uuid4
 
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
@@ -96,12 +97,13 @@ class GetDeps():
     def of_function(self, state: State) -> Deps:
         node = nodes.Def(state)
         function_uid = node.get_function_instance().get_unique_function_name()
-        found_deps = self.cache.get(function_uid, None)
-        if found_deps is not None:
-            return found_deps
+        if not state.get_inherited_fns():
+            found_deps = self.cache.get(function_uid, None)
+            if found_deps is not None:
+                return found_deps
 
         # Main start
-        state = state.but_with(context=state.create_block_context())
+        state = state.but_with(context=state.create_isolated_context())
 
         input_number = 0
         def_node = nodes.Def(state)
@@ -137,6 +139,7 @@ class CurriedFunction():
     def __init__(self, fn_instance: EisenFunctionInstance, param_spreads: list[Spread]) -> None:
         self.fn_instance = fn_instance
         self.param_spreads = param_spreads if param_spreads is not None else []
+        self.uuid = uuid4()
 
 class FunctionAliasAdder(Visitor):
     def __init__(self, spread_visitor: SpreadVisitor, debug: bool = False):
@@ -209,9 +212,14 @@ class FunctionAliasResolver:
     @classmethod
     def get_def_asl(cls, state: State) -> tuple[CLRList, list[Spread]]:
         if state.first_child().type == "ref":
+            name = nodes.Ref(state.but_with_first_child()).get_name()
             fn_thing = FunctionAliasResolver.get_fn_alias(
                 state,
-                nodes.Ref(state.but_with_first_child()).get_name())
+                name)
+            if fn_thing is None:
+               fn_thing = state.get_inherited_fns().get(name, None)
+            if fn_thing is None:
+                raise Exception(f"did not find curried function with name {name}")
             return fn_thing.fn_instance.asl, fn_thing.param_spreads
         return state.but_with_first_child().get_instances()[0].asl, []
 
@@ -364,7 +372,22 @@ class SpreadVisitor(Visitor):
         def_asl, curried_spreads = FunctionAliasResolver.get_def_asl(state)
         param_spreads = curried_spreads + param_spreads
 
-        f_deps = fn.get_deps.of_function(state.but_with(asl=def_asl))
+        # compute inherited fns
+        inherited_fns = {}
+        arg_names = nodes.Def(state.but_with(asl=def_asl)).get_arg_names()
+        params = state.but_with(asl=node.get_params_asl()).get_all_children()
+        arg_names = arg_names[len(arg_names) - len(params): ]
+        for inside_name, p in zip(arg_names, params):
+            param_state = state.but_with(asl=p)
+            if param_state.is_asl() and param_state.get_returned_type().is_function():
+                inherited_fns[inside_name] = (FunctionAliasResolver.get_fn_alias(
+                    param_state,
+                    nodes.RefLike(param_state).get_name()))
+
+        f_deps = fn.get_deps.of_function(state.but_with(
+            asl=def_asl,
+            inherited_fns=inherited_fns,
+            context=state.create_block_context()))
         all_return_value_spreads = f_deps.apply_to_parameter_spreads(param_spreads)
         return [Spread.merge_all(spreads_for_one_return_value)
             for spreads_for_one_return_value in all_return_value_spreads]

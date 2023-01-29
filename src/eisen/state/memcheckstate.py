@@ -1,10 +1,13 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from alpaca.concepts import Module, Context, Type
 from alpaca.clr import CLRList
 
 from eisen.state.stateb import StateB
 from eisen.common.eiseninstance import EisenFunctionInstance
+if TYPE_CHECKING:
+    from eisen.memory.memcheck import CurriedFunction
 
 class MemcheckState(StateB):
     def __init__(self, **kwargs):
@@ -33,7 +36,7 @@ class MemcheckState(StateB):
     def create_from_state_b(cls, state: StateB):
         return MemcheckState(**state._get(),
                              depth=None,
-                             inherited_fns=[],
+                             inherited_fns={},
                              argument_type=None)
 
     def get_depth(self) -> int:
@@ -47,3 +50,6 @@ class MemcheckState(StateB):
 
     def get_argument_type(self) -> Type:
         return self.argument_type
+
+    def get_inherited_fns(self) -> dict[str, CurriedFunction]:
+        return self.inherited_fns

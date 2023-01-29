@@ -93,7 +93,6 @@ class NestedContainer():
         for child in self.children:
             sub_module_lines.extend(str(child).split("\n"))
         object_lines = [str(instance) for instance in self.containers["instance"].values()]
-        types_lines = [("::" + str(type)).split("::")[-1] for type in self.types]
         sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
         indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
         return f"{self.name}\n{indented_subtext}"

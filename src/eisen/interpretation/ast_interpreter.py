@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 
 import eisen.nodes as nodes
-from eisen.interpretation.obj import Obj, FnObj
+from eisen.interpretation.obj import Obj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
 from eisen.state.stateb import StateB
@@ -154,7 +154,7 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
         node = nodes.Call(state)
-        fnobj: FnObj = fn.apply(state.but_with_first_child())[0]
+        fnobj: Obj = fn.apply(state.but_with_first_child())[0]
 
         if node.is_print():
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
@@ -203,7 +203,10 @@ class AstInterpreter(Visitor):
     def fn_(fn, state: State):
         # this is for functions apparently
         instance = state.get_instances()[0]
-        return [FnObj(
+        return [Obj(
+            None,
+            "anon",
+            False,
             instance.asl,
             nodes.Def(state.but_with(asl=instance.asl)).get_arg_names(),
             nodes.Def(state.but_with(asl=instance.asl)).get_ret_names(),

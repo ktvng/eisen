@@ -8,7 +8,7 @@ from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
     container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type",
-    "depth", "spread", "local_ref"]
+    "depth", "spread", "local_ref", "fn_aliases"]
 
     def _add_child(self, child: NestedContainer):
         return
@@ -45,3 +45,9 @@ class Context(NestedContainer):
         if found:
             return True
         return False
+
+    def get_fn_alias(self, name: str):
+        return self.get_obj("fn_aliases", name)
+
+    def add_fn_alias(self, name: str, value):
+        self.add_obj("fn_aliases", name, value)

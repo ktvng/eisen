@@ -191,6 +191,16 @@ class FunctionAliasAdder(Visitor):
         fn_thing.param_spreads = param_spreads
         return fn_thing
 
+    # TODO: make this work
+    @Visitor.for_asls("call")
+    def call_(fn, state: State):
+        param_spreads = fn.spread_visitor.apply(state)
+        fn_thing = fn.apply(state.but_with_first_child())
+        fn_thing.param_spreads = param_spreads
+        return fn_thing
+
+
+
     @classmethod
     def add_fn_alias(cls, state: State, name: str, fn: CurriedFunction):
         state.get_context().add_fn_alias(name, fn)

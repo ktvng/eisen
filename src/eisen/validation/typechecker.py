@@ -175,7 +175,6 @@ class TypeChecker(Visitor):
             arg_type=fn_type.get_argument_type(),
             given_type=params_type).failed():
                 return state.get_abort_signal()
-
         return fn_type.get_return_type()
 
     @Visitor.for_asls("raw_call")

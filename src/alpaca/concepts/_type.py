@@ -233,6 +233,7 @@ class Type():
             or self.classification == Type.classifications.interface):
             return [self]
         if self.classification == Type.classifications.function:
+            return [self]
             return self.get_return_type().unpack_into_parts()
         if self.classification == Type.classifications.tuple:
             return self.components

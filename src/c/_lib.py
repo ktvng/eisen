@@ -90,6 +90,8 @@ class Writer(Visitor):
 
     @Visitor.for_tokens
     def token_(fn, asl: CLRToken) -> list[str]:
+        if asl.type == "str":
+            return ['"', asl.value, '"']
         return [asl.value]
 
     @Visitor.for_asls("start")

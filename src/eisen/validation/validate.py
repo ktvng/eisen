@@ -8,7 +8,7 @@ from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
 from eisen.common.restriction import RestrictionViolation
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 
 
 class ValidationResult():
@@ -251,7 +251,7 @@ class Validate:
                 line_number=state.get_line_number())
         elif ex_type == RestrictionViolation.LetInitializationToPointer:
             if state.second_child().type == "call":
-                fn_name = nodes.Call(state.but_with_second_child()).get_function_name()
+                fn_name = adapters.Call(state.but_with_second_child()).get_function_name()
                 ex = Exceptions.LetInitializationMismatch(
                     msg=f"'{l.name}' is declared as 'let' but '{fn_name}' returns a type with '{r.restriction.get_name()}' designation",
                     line_number=state.get_line_number())

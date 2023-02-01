@@ -7,7 +7,7 @@ from alpaca.concepts import Type, TypeFactory
 from eisen.state.basestate import BaseState
 from eisen.validation.builtin_print import BuiltinPrint
 from eisen.common.nodedata import NodeData
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 
 if TYPE_CHECKING:
     from eisen.validation.typechecker import TypeChecker
@@ -47,12 +47,12 @@ class CallUnwrapper():
     @classmethod
     def _chains_to_correct_function(cls, state: BaseState, guessed_params_type: Type) -> bool:
         if state.asl.first().type == "ref":
-            node = nodes.Ref(state.but_with_first_child())
+            node = adapters.Ref(state.but_with_first_child())
             if node.is_print():
                 return BuiltinPrint.get_type_of_function(state)
             return node.resolve_reference_type().is_function()
         if state.asl.first().type == "fn":
-            node = nodes.Fn(state.but_with_first_child())
+            node = adapters.Fn(state.but_with_first_child())
             instance = node.resolve_function_instance(argument_type=guessed_params_type)
             return instance.type.is_function()
         type = cls._follow_chain(state, state.asl.first())
@@ -66,7 +66,7 @@ class CallUnwrapper():
     @classmethod
     def _follow_chain(cls, state: BaseState, scope_asl: CLRList) -> Type:
         if scope_asl.type == "::":
-            instance = nodes.ModuleScope(state.but_with(asl=scope_asl)).get_end_instance()
+            instance = adapters.ModuleScope(state.but_with(asl=scope_asl)).get_end_instance()
             return instance.type
 
         if scope_asl.type == ".":

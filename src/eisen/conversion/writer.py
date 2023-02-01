@@ -4,7 +4,7 @@ import alpaca
 from alpaca.clr import CLRList, CLRToken
 from alpaca.utils import Visitor
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 
 class Writer(Visitor):
     def run(self, asl: CLRList) -> str:

@@ -8,7 +8,7 @@ from eisen.state.basestate import BaseState
 from eisen.state.statea import StateA
 from eisen.state.typecheckerstate import TypeCheckerState
 from eisen.common.restriction import PrimitiveRestriction, FunctionalRestriction
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
 from eisen.validation.restructure_is_statement import RestructureIsStatement
@@ -122,7 +122,7 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("mod")
     @returns_void_type
     def mod_(fn, state: State):
-        nodes.Mod(state).enter_module_and_apply(fn)
+        adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("!")
     def not_(fn, state: State) -> Type:
@@ -130,7 +130,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State) -> Type:
-        node = nodes.Scope(state)
+        node = adapters.Scope(state)
         parent_type = fn.apply(state.but_with(asl=node.get_object_asl()))
         attr_name = node.get_attribute_name()
         if Validate.has_member_attribute(state, parent_type, attr_name).failed():
@@ -139,7 +139,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("::")
     def scope_(fn, state: State) -> Type:
-        node = nodes.ModuleScope(state)
+        node = adapters.ModuleScope(state)
         instance = node.get_end_instance()
         return instance.type
 
@@ -156,16 +156,16 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("if")
     @returns_void_type
     def if_(fn, state: State) -> Type:
-        nodes.If(state).enter_context_and_apply(fn)
+        adapters.If(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("while")
     @returns_void_type
     def while_(fn, state: State) -> Type:
-        nodes.While(state).enter_context_and_apply(fn)
+        adapters.While(state).enter_context_and_apply(fn)
 
     @classmethod
     def _shared_call_checks(cls, state: State, params_type: Type):
-        node = nodes.RefLike(state.but_with_first_child())
+        node = adapters.RefLike(state.but_with_first_child())
         fn_type = node.resolve_reference_type(params_type)
         if Validate.instance_exists(state, node.get_name(), fn_type).failed():
             return state.get_abort_signal()
@@ -187,14 +187,14 @@ class TypeChecker(Visitor):
             fn=fn)
 
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
-        node = nodes.RefLike(state.but_with_first_child())
+        node = adapters.RefLike(state.but_with_first_child())
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state).get_return_type()
         return TypeChecker._shared_call_checks(state, params_type)
 
     @Visitor.for_asls("is")
     def is_(fn, state: State) -> Type:
-        node = nodes.Is(state)
+        node = adapters.Is(state)
         # if the check is not against nil, treat this as a call to
         # some "is" function of a variant
         if node.get_type_name() != "nil":
@@ -218,14 +218,14 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("struct")
     @returns_void_type
     def struct(fn, state: State) -> Type:
-        node = nodes.Struct(state)
+        node = adapters.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
     @Visitor.for_asls("variant")
     @returns_void_type
     def variant_(fn, state: State) -> Type:
-        fn.apply(state.but_with(asl=nodes.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
 
     @Visitor.for_asls("interface", "impls")
     @returns_void_type
@@ -248,7 +248,7 @@ class TypeChecker(Visitor):
     @Visitor.for_asls("def", "create", ":=", "is_fn")
     @returns_void_type
     def fn(fn, state: State) -> Type:
-        nodes.CommonFunction(state).enter_context_and_apply(fn)
+        adapters.CommonFunction(state).enter_context_and_apply(fn)
 
     @classmethod
     def _create_references(cls, state: State, names: list[str], type: Type):
@@ -264,7 +264,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("ilet", "ivar")
     def idecls_(fn, state: State):
-        node = nodes.IletIvar(state)
+        node = adapters.IletIvar(state)
         names = node.get_names()
         type = fn.apply_to_second_child_of(state).with_restriction(node.get_restriction())
         type = TypeChecker.update_to_primitive_restriction_if_needed(type)
@@ -272,7 +272,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls(":", "val", "var", "var?", "let")
     def decls_(fn, state: State):
-        node = nodes.Decl(state)
+        node = adapters.Decl(state)
         names = node.get_names()
         type = fn.apply(state.but_with(asl=node.get_type_asl())).with_restriction(node.get_restriction())
         type = TypeChecker.update_to_primitive_restriction_if_needed(type)
@@ -302,7 +302,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State) -> Type:
-        node = nodes.Fn(state)
+        node = adapters.Fn(state)
         instance = node.resolve_function_instance(state.get_arg_type())
         if Validate.instance_exists(state, node.get_name(), instance).failed():
             return state.get_abort_signal()
@@ -310,7 +310,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> Type:
-        node = nodes.Ref(state)
+        node = adapters.Ref(state)
         if node.is_print():
             return BuiltinPrint.get_type_of_function(state)
 
@@ -321,7 +321,7 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("args", "rets")
     def args_(fn, state: State) -> Type:
-        node = nodes.ArgsRets(state)
+        node = adapters.ArgsRets(state)
         if not state.get_asl():
             return state.get_void_type()
         type = fn.apply(state.but_with(asl=state.first_child()))

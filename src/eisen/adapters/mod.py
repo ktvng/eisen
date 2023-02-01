@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts import Module
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 
 class Mod(AbstractNodeInterface):
     asl_type = "mod"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from eisen.state.basestate import BaseState
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 
@@ -27,11 +27,11 @@ class FinalizationVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        nodes.Mod(state).enter_module_and_apply(fn)
+        adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("interface")
     def interface_(fn, state: State) -> None:
-        node = nodes.Interface(state)
+        node = adapters.Interface(state)
         node.get_this_type().finalize(
             components=[TypeParser().apply(state.but_with(asl=child))
                 for child in node.get_child_attribute_asls()],
@@ -40,7 +40,7 @@ class FinalizationVisitor(Visitor):
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> None:
-        node = nodes.Struct(state)
+        node = adapters.Struct(state)
         this_struct_type = node.get_this_type()
         this_struct_type.finalize(
             components=[TypeParser().apply(state.but_with(asl=asl))
@@ -55,7 +55,7 @@ class FinalizationVisitor(Visitor):
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: State) -> None:
-        node = nodes.Variant(state)
+        node = adapters.Variant(state)
         this_variant_type = node.get_this_type()
         this_variant_type.finalize_variant(parent_type=node.get_parent_type())
 

@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 
 class If(AbstractNodeInterface):
     asl_type = "if"

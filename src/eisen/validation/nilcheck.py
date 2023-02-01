@@ -5,7 +5,7 @@ from alpaca.utils import Visitor
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.state.stateb import StateB
 from eisen.validation.validate import Validate
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.validation.nilablestatus import NilableStatus
 
 State = StateB
@@ -45,15 +45,15 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("if")
     def if_(fn, state: State):
-        nodes.If(state).enter_context_and_apply(fn)
+        adapters.If(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("while")
     def while_(fn, state: State):
-        nodes.While(state).enter_context_and_apply(fn)
+        adapters.While(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("def", "create", "is_fn")
     def fns_(fn, state: State):
-        nodes.CommonFunction(state).enter_context_and_apply(fn)
+        adapters.CommonFunction(state).enter_context_and_apply(fn)
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
     @Visitor.for_asls(*binary_ops, *boolean_return_ops)
@@ -75,7 +75,7 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
-        fn.apply(state.but_with(asl=nodes.Call(state).get_params_asl()))
+        fn.apply(state.but_with(asl=adapters.Call(state).get_params_asl()))
         if state.get_returned_type().is_tuple():
             return [NilableStatus(name="", is_nilable=type.restriction.is_nullable())
                 for type in state.get_returned_type().components]
@@ -84,24 +84,24 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        node = nodes.Ref(state)
+        node = adapters.Ref(state)
         return [NilableStatus(node.get_name(), NilCheck.get_nilstate(state, node.get_name()))]
 
     @Visitor.for_asls("var?")
     def nullable_var_(fn, state: State):
-        for name in nodes.Decl(state).get_names():
+        for name in adapters.Decl(state).get_names():
             NilCheck.add_nilstate(state, name, True)
         return []
 
     @Visitor.for_asls("let", "var", "val")
     def let_(fn, state: State):
-        for name in nodes.Decl(state).get_names():
+        for name in adapters.Decl(state).get_names():
             NilCheck.add_nilstate(state, name, False)
         return []
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
-        for name in nodes.IletIvar(state).get_names():
+        for name in adapters.IletIvar(state).get_names():
             NilCheck.add_nilstate(state, name, False)
         return []
 
@@ -112,8 +112,8 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls(":")
     def colon_(fn, state: State):
-        for name in nodes.Decl(state).get_names():
-            if nodes.Decl(state).get_is_var():
+        for name in adapters.Decl(state).get_names():
+            if adapters.Decl(state).get_is_var():
                 NilCheck.add_nilstate(state, name, True)
             else:
                 NilCheck.add_nilstate(state, name, False)
@@ -125,8 +125,8 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State):
-        if nodes.Struct(state).has_create_asl():
-            fn.apply(state.but_with(asl=nodes.Struct(state).get_create_asl()))
+        if adapters.Struct(state).has_create_asl():
+            fn.apply(state.but_with(asl=adapters.Struct(state).get_create_asl()))
         return []
 
     @Visitor.for_asls("interface")
@@ -136,7 +136,7 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: State):
-        fn.apply(state.but_with(asl=nodes.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
         return []
 
     @Visitor.for_default

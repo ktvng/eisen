@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.clr import CLRList
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.state.stateb import StateB
 from eisen.state.memcheckstate import MemcheckState
 State = MemcheckState
@@ -71,13 +71,13 @@ class GetDeps():
         self.spread_visitor = SpreadVisitor(self)
 
     def _try_cache_lookup(self, state: State) -> Deps | None:
-        node = nodes.Def(state)
+        node = adapters.Def(state)
         function_uid = node.get_function_instance().get_unique_function_name()
         if not state.get_inherited_fns():
             return self.cache.get(function_uid, None)
 
     def _add_to_cache(self, state: State, F_deps: Deps):
-        node = nodes.Def(state)
+        node = adapters.Def(state)
         function_uid = node.get_function_instance().get_unique_function_name()
         if not state.get_inherited_fns():
             self.cache[function_uid] = F_deps
@@ -88,18 +88,18 @@ class GetDeps():
         spreads default to the empty set, as there is no information on which arguments dictate
         their lifetimes yet.
         """
-        node = nodes.Def(state)
-        arg_node = nodes.ArgsRets(state.but_with(asl=node.get_args_asl()))
+        node = adapters.Def(state)
+        arg_node = adapters.ArgsRets(state.but_with(asl=node.get_args_asl()))
         for i, name in enumerate(arg_node.get_names()):
             SpreadVisitor.add_spread(state, name, Spread(values={i}, depth=0))
 
-        ret_node = nodes.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        ret_node = adapters.ArgsRets(state.but_with(asl=node.get_rets_asl()))
         for name in ret_node.get_names():
             SpreadVisitor.add_spread(state, name, Spread(values=set(), depth=0, is_return_value=True))
 
     def _construct_RVS(self, state: State) -> list[Spread]:
-        node = nodes.Def(state)
-        ret_node = nodes.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        node = adapters.Def(state)
+        ret_node = adapters.ArgsRets(state.but_with(asl=node.get_rets_asl()))
         RVS: list[Spread] = []
         for name in ret_node.get_names():
             spread_for_this_return_value = SpreadVisitor.get_spread(state, name)
@@ -117,7 +117,7 @@ class GetDeps():
         # all processing must occur inside an isolate context, to avoid name collisions from
         # previous functions.
         state = state.but_with(context=state.create_isolated_context())
-        node = nodes.Def(state)
+        node = adapters.Def(state)
         self._add_new_spreads_for_inputs(state)
 
         # invoke the SpreadVisitor to populate all spreads with the correct values after the

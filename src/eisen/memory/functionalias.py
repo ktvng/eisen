@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.state.memcheckstate import MemcheckState as State
 
@@ -25,7 +25,7 @@ class FunctionAliasAdder(Visitor):
 
     @Visitor.for_asls("ilet")
     def ilet_(fn, state: State):
-        node = nodes.IletIvar(state)
+        node = adapters.IletIvar(state)
         if not isinstance(state.second_child(), CLRList):
             return
 
@@ -45,24 +45,24 @@ class FunctionAliasAdder(Visitor):
         type = state.but_with_first_child().get_returned_type()
         if not type.is_function():
             return
-        node = nodes.Assignment(state)
+        node = adapters.Assignment(state)
         fn_thing = fn.apply(state.but_with_second_child())
         for name in node.get_names_of_parent_objects():
             FunctionAliasAdder.add_fn_alias(state, name, fn_thing)
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State):
-        node = nodes.Fn(state)
+        node = adapters.Fn(state)
         return CurriedFunction(node.resolve_function_instance(state.get_argument_type()), [])
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        node = nodes.Ref(state)
+        node = adapters.Ref(state)
         return FunctionAliasResolver.get_fn_alias(state, node.get_name())
 
     @Visitor.for_asls("curry_call")
     def curry_call_(fn, state: State):
-        node = nodes.CurriedCall(state)
+        node = adapters.CurriedCall(state)
         param_spreads = fn.spread_visitor.apply(state.but_with(asl=node.get_params_asl()))
         fn_thing = fn.apply(state.but_with_first_child())
         fn_thing.param_spreads = param_spreads
@@ -84,7 +84,7 @@ class FunctionAliasResolver:
     @classmethod
     def get_def_asl(cls, state: State) -> tuple[CLRList, list[Spread]]:
         if state.first_child().type == "ref":
-            name = nodes.Ref(state.but_with_first_child()).get_name()
+            name = adapters.Ref(state.but_with_first_child()).get_name()
             fn_thing = FunctionAliasResolver.get_fn_alias(
                 state.but_with_first_child(),
                 name)

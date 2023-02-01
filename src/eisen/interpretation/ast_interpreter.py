@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.interpretation.obj import Obj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
@@ -46,7 +46,7 @@ class AstInterpreter(Visitor):
 
     @classmethod
     def _handle_colon_like(cls, state: State):
-        node = nodes.Decl(state)
+        node = adapters.Decl(state)
         names = node.get_names()
         objs = [Obj(None, name=name) for name in names]
         for name, obj in zip(names, objs):
@@ -94,7 +94,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("+=", "-=", "/=", "*=")
     def asseqs_(fn, state: State):
-        node = nodes.CompoundAssignment(state)
+        node = adapters.CompoundAssignment(state)
         left = fn.apply(state.but_with_first_child())[0]
         right = fn.apply(state.but_with_second_child())[0]
         new_obj = Obj.apply_binary_operation(node.get_arithmetic_operation(), left, right)
@@ -108,7 +108,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("def")
     def def_(fn, state: State):
-        node = nodes.Def(state)
+        node = adapters.Def(state)
         if node.get_function_name() == "main":
             fn.apply(state.but_with(asl=node.get_seq_asl()))
         return []
@@ -123,7 +123,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
-        node = nodes.IletIvar(state)
+        node = adapters.IletIvar(state)
         names = node.get_names()
         values = fn.apply(state.but_with_second_child())
 
@@ -144,7 +144,7 @@ class AstInterpreter(Visitor):
         return ReturnSignal()
 
     @classmethod
-    def create_objs_for_function_arguments(cls, node: nodes.Call) -> list[Obj]:
+    def create_objs_for_function_arguments(cls, node: adapters.Call) -> list[Obj]:
         new_objs = []
         for name, restriction in zip(node.get_param_names(), node.get_function_argument_type().get_restrictions()):
             # create new_obj so changes inside the function don't affect the existing obj
@@ -153,7 +153,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):
-        node = nodes.Call(state)
+        node = adapters.Call(state)
         fnobj: Obj = fn.apply(state.but_with_first_child())[0]
 
         if node.is_print():
@@ -185,7 +185,7 @@ class AstInterpreter(Visitor):
 
         # call the function by invoking the seq of the asl_defining_the_function
         fn.apply(state.but_with(
-            asl=nodes.Def(state.but_with(asl=fnobj.asl)).get_seq_asl(),
+            asl=adapters.Def(state.but_with(asl=fnobj.asl)).get_seq_asl(),
             objs=fn_objs))
 
         # get the actual return values
@@ -208,14 +208,14 @@ class AstInterpreter(Visitor):
             "anon",
             False,
             instance.asl,
-            nodes.Def(state.but_with(asl=instance.asl)).get_arg_names(),
-            nodes.Def(state.but_with(asl=instance.asl)).get_ret_names(),
+            adapters.Def(state.but_with(asl=instance.asl)).get_arg_names(),
+            adapters.Def(state.but_with(asl=instance.asl)).get_ret_names(),
             instance.type.get_argument_type().get_restrictions(),
             instance.type.get_return_type().get_restrictions())]
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State):
-        name = nodes.Ref(state).get_name()
+        name = adapters.Ref(state).get_name()
         local_obj = state.objs.get(name, None)
         if local_obj is not None:
             return [local_obj]
@@ -227,7 +227,7 @@ class AstInterpreter(Visitor):
     @Visitor.for_asls(".")
     def dot_(fn, state: State):
         obj = fn.apply(state.but_with_first_child())[0]
-        return [obj.get(nodes.Scope(state).get_attribute_name())]
+        return [obj.get(adapters.Scope(state).get_attribute_name())]
 
     @Visitor.for_asls("type")
     def type_(fn, state: State):
@@ -242,7 +242,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("curry_call")
     def curried_(fn, state: State):
-        node = nodes.CurriedCall(state)
+        node = adapters.CurriedCall(state)
         fn_obj = Obj(None)
         fn_obj.copy(fn.apply(state.but_with_first_child())[0])
         params = fn.apply(state.but_with(asl=node.get_params_asl()))

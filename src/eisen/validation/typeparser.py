@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.common.restriction import FunctionalRestriction
 from eisen.state.basestate import BaseState as State
@@ -22,7 +22,7 @@ class TypeParser(Visitor):
         (type int)
         (var_type int)
         """
-        node = nodes.TypeLike(state)
+        node = adapters.TypeLike(state)
         name = node.get_name()
         type = state.get_defined_type(name)
         if Validate.type_exists(state, name, type).failed():
@@ -71,7 +71,7 @@ class TypeParser(Visitor):
         (args (type ...))
         """
         if state.get_asl():
-            node = nodes.ArgsRets(state)
+            node = adapters.ArgsRets(state)
             type = fn.apply(state.but_with(asl=state.first_child()))
             node.convert_let_args_to_var(type)
             return type
@@ -83,7 +83,7 @@ class TypeParser(Visitor):
         (rets (type ...))
         """
         if state.get_asl():
-            node = nodes.ArgsRets(state)
+            node = adapters.ArgsRets(state)
             type = fn.apply(state.but_with(asl=state.first_child()))
             node.convert_let_rets_to_let_construction(type)
             return type
@@ -95,7 +95,7 @@ class TypeParser(Visitor):
         (def name (args ...) (rets ...) (seq ...))
         (create name (args ...) (rets ...) (seq ...)) # after normalization
         """
-        node = nodes.CommonFunction(state)
+        node = adapters.CommonFunction(state)
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),

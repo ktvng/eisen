@@ -11,7 +11,7 @@ from eisen.common.restriction import (LiteralRestriction, NoRestriction, Functio
 from eisen.common.initialization import Initializations
 from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 
 State = StateB
@@ -67,11 +67,11 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        nodes.Mod(state).enter_module_and_apply(fn)
+        adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_asls("def", "create", "is_fn")
     def defs_(fn, state: State) -> list[EisenInstanceState]:
-        nodes.CommonFunction(state).enter_context_and_apply(fn)
+        adapters.CommonFunction(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("interface", "return")
     def none_(fn, state: State) -> list[EisenInstanceState]:
@@ -79,25 +79,25 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State) -> list[EisenInstanceState]:
-        node = nodes.Struct(state)
+        node = adapters.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: State) -> list[EisenInstance]:
-        fn.apply(state.but_with(asl=nodes.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
 
     @Visitor.for_asls("if")
     def if_(fn, state: State) -> list[EisenInstanceState]:
-        nodes.If(state).enter_context_and_apply(fn)
+        adapters.If(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("while")
     def while_(fn, state: State) -> list[EisenInstanceState]:
-        nodes.While(state).enter_context_and_apply(fn)
+        adapters.While(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("ref")
     def ref_(fn, state: State) -> list[EisenInstanceState]:
-        return [UsageChecker.get_instancestate(state, nodes.Ref(state).get_name())]
+        return [UsageChecker.get_instancestate(state, adapters.Ref(state).get_name())]
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State) -> list[EisenInstanceState]:
@@ -168,7 +168,7 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State) -> list[EisenInstanceState]:
-        node = nodes.Call(state)
+        node = adapters.Call(state)
         if node.is_print():
             return UsageChecker.NoRestrictionInstanceState()
 
@@ -187,7 +187,7 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls("curry_call")
     def curry_call_(fn, state: State) -> list[EisenInstanceState]:
-        node = nodes.CurriedCall(state)
+        node = adapters.CurriedCall(state)
         # TODO: check arguments
 
         return [EisenAnonymousInstanceState(FunctionalRestriction(), Initializations.NotNull)]

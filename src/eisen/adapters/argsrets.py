@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from alpaca.concepts import Type
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.restriction import VarRestriction, LetConstruction
 
-from eisen.nodes._decls import Decl
+from eisen.adapters._decls import Decl
 
 class ArgsRets(AbstractNodeInterface):
     asl_types = ["rets", "args"]

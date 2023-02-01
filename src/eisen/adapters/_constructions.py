@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from alpaca.clr import CLRList, CLRToken
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 
 class Struct(AbstractNodeInterface):
     asl_type = "struct"

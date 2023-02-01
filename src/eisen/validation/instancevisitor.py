@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Type
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.common.eiseninstance import EisenInstance
 from eisen.state.statea import StateA
 from eisen.state.stateb import StateB
@@ -54,12 +54,12 @@ class InstanceVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State) -> list[EisenInstance]:
-        nodes.Mod(state).enter_module_and_apply(fn)
+        adapters.Mod(state).enter_module_and_apply(fn)
         return []
 
     @Visitor.for_asls("ref", "fn")
     def ref_(fn, state: State) -> list[EisenInstance]:
-        return [nodes.Ref(state).resolve_instance()]
+        return [adapters.Ref(state).resolve_instance()]
 
     @Visitor.for_asls("rets", "args")
     def rets_(fn, state: State) -> list[EisenInstance]:
@@ -69,12 +69,12 @@ class InstanceVisitor(Visitor):
 
     @Visitor.for_asls("::")
     def scope_(fn, state: State) -> list[EisenInstance]:
-        node = nodes.ModuleScope(state)
+        node = adapters.ModuleScope(state)
         return [node.get_end_instance()]
 
     @Visitor.for_asls(":", "var", "var?", "let", "val")
     def alloc_(fn, state: State) -> list[EisenInstance]:
-        node = nodes.Decl(state)
+        node = adapters.Decl(state)
         type = state.get_returned_type()
         return [InstanceVisitor.create_instance_inside_context(
                 name, type, state,
@@ -84,7 +84,7 @@ class InstanceVisitor(Visitor):
     @Visitor.for_asls("ilet", "ivar")
     def iletivar_(fn, state: State) -> list[EisenInstance]:
         fn.apply(state.but_with_second_child())
-        node = nodes.IletIvar(state)
+        node = adapters.IletIvar(state)
         names = node.get_names()
         type = state.get_returned_type()
         componentwise_types = type.components if type.is_tuple() else [type]
@@ -95,22 +95,22 @@ class InstanceVisitor(Visitor):
 
     @Visitor.for_asls("if")
     def if_(fn, state: State) -> Type:
-        nodes.If(state).enter_context_and_apply(fn)
+        adapters.If(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("while")
     def while_(fn, state: State) -> Type:
-        nodes.While(state).enter_context_and_apply(fn)
+        adapters.While(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
-        nodes.CommonFunction(state).enter_context_and_apply(fn)
+        adapters.CommonFunction(state).enter_context_and_apply(fn)
         return []
 
     @Visitor.for_asls("struct")
     def struct(fn, state: State) -> Type:
-        node = nodes.Struct(state)
+        node = adapters.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
@@ -120,5 +120,5 @@ class InstanceVisitor(Visitor):
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
         fn.apply(state.but_with_second_child())
 
-        node = nodes.RefLike(state.but_with_first_child())
+        node = adapters.RefLike(state.but_with_first_child())
         return [node.resolve_function_instance(params_type)]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRList, CLRToken
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import EisenFunctionInstance
 
 class CommonFunction(AbstractNodeInterface):

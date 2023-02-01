@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts import Type
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common import implemented_primitive_types
 from eisen.common.restriction import (VarRestriction, GeneralRestriction, NullableVarRestriction,
     PrimitiveRestriction, LetRestriction)

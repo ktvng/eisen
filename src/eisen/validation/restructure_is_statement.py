@@ -4,12 +4,12 @@ from alpaca.clr import CLRList, CLRToken
 
 from eisen.common.nodedata import NodeData
 from eisen.state.basestate import BaseState
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 
 class RestructureIsStatement():
     @classmethod
     def run(cls, state: BaseState):
-        node = nodes.Is(state)
+        node = adapters.Is(state)
         is_asl = state.get_asl()
         new_token = CLRToken(type_chain=["TAG"], value="is_" + node.get_type_name())
         new_ref = CLRList(type="fn", lst=[new_token], line_number=is_asl.line_number, data=NodeData())

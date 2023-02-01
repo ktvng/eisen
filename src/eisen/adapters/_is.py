@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from alpaca.concepts import TypeFactory
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.validation.lookupmanager import LookupManager
 

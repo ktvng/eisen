@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from alpaca.clr import CLRList
-from eisen.nodes.nodeinterface import AbstractNodeInterface
+from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.common.restriction import GeneralRestriction
 
-from eisen.nodes._refs import RefLike
-from eisen.nodes._functionals import Def
+from eisen.adapters._refs import RefLike
+from eisen.adapters._functionals import Def
 
 class Call(AbstractNodeInterface):
     asl_type = "call"

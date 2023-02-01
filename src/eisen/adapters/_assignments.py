@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from alpaca.concepts import Type
-from eisen.nodes.nodeinterface import AbstractNodeInterface
-from eisen.nodes._refs import RefLike, Ref, Scope
+from eisen.adapters.nodeinterface import AbstractNodeInterface
+from eisen.adapters._refs import RefLike, Ref, Scope
 
 class CompoundAssignment(AbstractNodeInterface):
     asl_types = ["+=", "-=", "*=", "/="]

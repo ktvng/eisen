@@ -4,7 +4,7 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 from eisen.state.stateb import StateB
 from eisen.common._common import Utils
 
@@ -90,7 +90,7 @@ class Flattener(Visitor):
     def seq_(fn, params: State) -> tuple[CLRList, list[CLRList]]:
         children = []
         for child in params.asl:
-            if child.type == "call" and not nodes.Call(params.but_with(asl=child)).is_print():
+            if child.type == "call" and not adapters.Call(params.but_with(asl=child)).is_print():
                 decls_and_call, _ = fn._flatten_call(params.but_with(asl=child))
                 children += decls_and_call
             else:
@@ -117,7 +117,7 @@ class Flattener(Visitor):
         packet = fn.apply(params.but_with(asl=params.asl.second()))
 
         # get the asl of type (fn <name>)
-        node = nodes.Call(params)
+        node = adapters.Call(params)
         asl_defining_the_function = node.get_asl_defining_the_function()
 
         # the third child is (rets ...)

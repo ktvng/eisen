@@ -5,7 +5,7 @@ from eisen.common.eiseninstance import EisenInstance
 from eisen.state.basestate import BaseState
 from eisen.state.functionvisitorstate import FunctionVisitorState
 from eisen.validation.typeparser import TypeParser
-import eisen.nodes as nodes
+import eisen.adapters as adapters
 
 State = FunctionVisitorState
 
@@ -30,7 +30,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: FunctionVisitorState):
-        nodes.Mod(state).enter_module_and_apply(fn)
+        adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_default
     def default_(fn, state: FunctionVisitorState) -> None:
@@ -44,7 +44,7 @@ class FunctionVisitor(Visitor):
         # for example, a struct named MyStruct will have a constructor method
         # called via MyStruct(...), so the (create ...)  method inside the
         # (struct MyStruct ... ) asl needs context as to the struct it is inside.
-        node = nodes.Struct(state)
+        node = adapters.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(
                 asl=node.get_create_asl(),
@@ -52,7 +52,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("variant")
     def variant_(fn, state: FunctionVisitorState) -> None:
-        node = nodes.Variant(state)
+        node = adapters.Variant(state)
         fn.apply(state.but_with(
             asl=node.get_is_asl(),
             struct_name=node.get_variant_name()))
@@ -60,7 +60,7 @@ class FunctionVisitor(Visitor):
     @Visitor.for_asls("def")
     def def_(fn, state: FunctionVisitorState):
         instance = EisenInstance(
-            name=nodes.Def(state).get_function_name(),
+            name=adapters.Def(state).get_function_name(),
             type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
             asl=state.get_asl())
@@ -69,7 +69,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("create")
     def create_(fn, state: FunctionVisitorState):
-        node = nodes.Create(state)
+        node = adapters.Create(state)
         node.normalize(struct_name=state.get_struct_name())
 
         # the name of the constructor is the same as the struct
@@ -84,7 +84,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_asls("is_fn")
     def is_(fn, state: FunctionVisitorState):
-        node = nodes.IsFn(state)
+        node = adapters.IsFn(state)
         node.normalize(variant_name=state.get_variant_name())
 
         instance = EisenInstance(

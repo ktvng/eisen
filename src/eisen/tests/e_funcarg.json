@@ -1,0 +1,13 @@
+{
+    "name": "e_funcarg1",
+    "info": "tests memory checking when passing in functions",
+    "expected": {
+        "success": false,
+        "exceptions": [
+            {
+                "type": "ObjectLifetimeException",
+                "contains": ">> 11"
+            }
+        ]
+    }
+}

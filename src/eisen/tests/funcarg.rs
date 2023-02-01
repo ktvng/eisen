@@ -14,5 +14,6 @@ fn main() {
     let f = mul<5>
     red(f, 25)
     let g = mul
+    // TODO: why dooes blue(mul, 5) throw errors
     blue(g, 5)
 }

@@ -1,18 +1,13 @@
 from __future__ import annotations
-from uuid import uuid4
 
-from alpaca.utils import Visitor
 from alpaca.clr import CLRList
-from alpaca.concepts import Type
 
 import eisen.nodes as nodes
-from eisen.common.exceptions import Exceptions
-from eisen.common.eiseninstance import EisenFunctionInstance
-from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.stateb import StateB
 from eisen.state.memcheckstate import MemcheckState
-
 State = MemcheckState
+
+from eisen.memory.spreads import Spread, SpreadVisitor
 
 class MemCheck():
     def __init__(self) -> None:
@@ -31,368 +26,115 @@ class MemCheck():
             if child.type == "def" and child.first().value == "main":
                 return child
 
-    @classmethod
-    def get_spread(cls, state: MemcheckState, name: str) -> Spread:
-        return state.get_context().get_spread(name)
-
-    @classmethod
-    def add_spread(cls, state: MemcheckState, name: str, spread: Spread):
-        state.get_context().add_spread(name, spread)
-
-
-class Spread():
-    def __init__(self, values: set[int], depth: int, is_return_value=False) -> None:
-        self.values = values
-        self.depth = depth
-        self._is_return_value = is_return_value
-        self.changed = False
-
-    def __str__(self) -> str:
-        return str(self.values)
-
-    def add(self, other: Spread):
-        if self.difference(other):
-            self.changed = True
-        self.values |= other.values
-
-    def difference(self, other: Spread):
-        return (other.values - self.values)
-
-    def is_tainted(self) -> bool:
-        return (any([value < 0 for value in self.values]) and self._is_return_value
-            or any([value < self.depth for value in self.values]) and not self._is_return_value)
-
-    def is_return_value(self) -> bool:
-        return self._is_return_value
-
-    @classmethod
-    def merge_all(self, spreads: list[Spread]) -> Spread:
-        new_spread = Spread(values=set(), depth=None)
-        for comp in spreads:
-            new_spread.add(comp)
-        return new_spread
-
 class Deps():
-    def __init__(self, indexes_by_return_value: list = None):
-        indexes_by_return_value = indexes_by_return_value or []
-        self.indexes_by_return_value = indexes_by_return_value
+    """For a function F, F_deps is the set of arguments which may impact the lifetime
+    of the returned value(s) of F. In other words, if i \in F_deps, this implies that
+    the lifetime of the return value is at most the lifetime of the ith argument to F
+    arg_i \in Args
+    """
 
-    def apply_to_parameter_spreads(self, param_spreads: list[Spread]) -> list[list[Spread]]:
-        return [[x for i, x in enumerate(param_spreads) if i in indexes_for_a_return_val]
-            for indexes_for_a_return_val in self.indexes_by_return_value]
+    def __init__(self, R: list[list[int]] = None):
+        """Create a representation of F_deps for some function F. If F had a single
+        return value, then F_deps could be represented by a single list of indexes S,
+        which correspond to the indexes of the arguments which determine the lifetime
+        of the return value. For functions with multiple return values, a list of S_j
+        is needed for each jth return value. This list is denoted R such that R[j] = S_j
+        """
+        self.R = R if R is not None else []
+
+    def apply_to_parameter_spreads(self, Args: list[Spread]) -> list[list[Spread]]:
+        """Apply the mapping specified by F_deps to a list Args of parameter spreads. Returns
+        a list for each return value of the dependent Args spreads, i.e. arg_i if i \in S_j for
+        each return value ret_j
+        """
+        return [[arg_i for i, arg_i in enumerate(Args) if i in S_j]
+            for S_j in self.R]
 
     @classmethod
-    def create_from_return_value_spreads(self, return_value_spreads: list[Spread]) -> Deps:
+    def create_from_return_value_spreads(self, RVS: list[Spread]) -> Deps:
+        """Cannonical way to create F_deps for a non-void function. The list RVS a list
+        index by return value, where each entry is a set S_i of spreads such that the
+        lifetime of return value i depends on entries in S_i
+        """
         new_deps = Deps()
-        for spread in return_value_spreads:
-            new_deps.indexes_by_return_value.append(spread.values)
+        for S_i in RVS:
+            new_deps.R.append(S_i.values)
         return new_deps
 
 
 class GetDeps():
+    """Representation of the function GET_DEPS: F -> F_Deps with local caching and DP to prevent
+    unnecessary lookups.
+    """
     def __init__(self):
         self.cache: dict[str, Deps] = {}
         self.spread_visitor = SpreadVisitor(self)
 
-    def of_function(self, state: State) -> Deps:
+    def _try_cache_lookup(self, state: State) -> Deps | None:
         node = nodes.Def(state)
         function_uid = node.get_function_instance().get_unique_function_name()
         if not state.get_inherited_fns():
-            found_deps = self.cache.get(function_uid, None)
-            if found_deps is not None:
-                return found_deps
+            return self.cache.get(function_uid, None)
 
-        # Main start
+    def _add_to_cache(self, state: State, F_deps: Deps):
+        node = nodes.Def(state)
+        function_uid = node.get_function_instance().get_unique_function_name()
+        if not state.get_inherited_fns():
+            self.cache[function_uid] = F_deps
+
+    def _add_new_spreads_for_inputs(self, state: State):
+        """Add new spreads for argument/return values to the function. Argument spreads default
+        to only be the argument number, as their lifetime is only dictated by theirselves. Return
+        spreads default to the empty set, as there is no information on which arguments dictate
+        their lifetimes yet.
+        """
+        node = nodes.Def(state)
+        arg_node = nodes.ArgsRets(state.but_with(asl=node.get_args_asl()))
+        for i, name in enumerate(arg_node.get_names()):
+            SpreadVisitor.add_spread(state, name, Spread(values={i}, depth=0))
+
+        ret_node = nodes.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        for name in ret_node.get_names():
+            SpreadVisitor.add_spread(state, name, Spread(values=set(), depth=0, is_return_value=True))
+
+    def _construct_RVS(self, state: State) -> list[Spread]:
+        node = nodes.Def(state)
+        ret_node = nodes.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        RVS: list[Spread] = []
+        for name in ret_node.get_names():
+            spread_for_this_return_value = SpreadVisitor.get_spread(state, name)
+            RVS.append(spread_for_this_return_value)
+        return RVS
+
+    def of_function(self, state: State) -> Deps:
+        """State should have state.get_asl() return an abstract syntax list of type 'def'. This is
+        the pointer to F, and this function will return F_deps. Cache lookups will be performed if
+        F takes no free function parameters; else novel computation is required.
+        """
+        cached_f_deps = self._try_cache_lookup(state)
+        if cached_f_deps is not None: return cached_f_deps
+
+        # all processing must occur inside an isolate context, to avoid name collisions from
+        # previous functions.
         state = state.but_with(context=state.create_isolated_context())
+        node = nodes.Def(state)
+        self._add_new_spreads_for_inputs(state)
 
-        input_number = 0
-        def_node = nodes.Def(state)
-
-        # add the spread of all inputs to the function to be the index of that input
-        arg_node = nodes.ArgsRets(state.but_with(asl=def_node.get_args_asl()))
-        for name in arg_node.get_names():
-            MemCheck.add_spread(state, name, Spread(values={input_number}, depth=0))
-            input_number += 1
-
-        ret_node = nodes.ArgsRets(state.but_with(asl=def_node.get_rets_asl()))
-        for name in ret_node.get_names():
-            MemCheck.add_spread(state, name, Spread(values=set(), depth=0, is_return_value=True))
-            input_number += 1
-
+        # invoke the SpreadVisitor to populate all spreads with the correct values after the
+        # function call. Depth counts down, starting at -2 (it is underneath the first argument
+        # value), and decreasing for each if/while context entered.
+        # note: a depth of -1 indicates a literal/token
         self.spread_visitor.apply(state.but_with(
-            asl=def_node.get_seq_asl(),
-            depth=-1))
+            asl=node.get_seq_asl(),
+            depth=-2))
 
-        spreads_for_return_values: list[Spread] = []
-        for name in ret_node.get_names():
-            spread_for_this_return_value = MemCheck.get_spread(state, name)
-            spreads_for_return_values.append(spread_for_this_return_value)
+        RVS = self._construct_RVS(state)
 
+        # need to keep this here to examine code inside this function, even though we know
+        # it has no return value
         if not node.has_return_value():
             return Deps()
 
-        new_deps = Deps.create_from_return_value_spreads(spreads_for_return_values)
-        self.cache[function_uid] = new_deps
-        return new_deps
-
-class CurriedFunction():
-    def __init__(self, fn_instance: EisenFunctionInstance, param_spreads: list[Spread]) -> None:
-        self.fn_instance = fn_instance
-        self.param_spreads = param_spreads if param_spreads is not None else []
-        self.uuid = uuid4()
-
-class FunctionAliasAdder(Visitor):
-    def __init__(self, spread_visitor: SpreadVisitor, debug: bool = False):
-        super().__init__(debug)
-        self.spread_visitor = spread_visitor
-
-    def apply(self, state: State) -> CurriedFunction:
-        return self._route(state.asl, state)
-
-    @Visitor.for_asls("ilet")
-    def ilet_(fn, state: State):
-        node = nodes.IletIvar(state)
-        if not isinstance(state.second_child(), CLRList):
-            return
-
-        type = state.but_with_second_child().get_returned_type()
-        if not type.is_function():
-            return
-        fn_thing = fn.apply(state.but_with_second_child())
-        for name in node.get_names():
-            FunctionAliasAdder.add_fn_alias(state, name, fn_thing)
-
-    @Visitor.for_asls("+=", "-=", "*=", "/=", "<-")
-    def assign_(fn, state: State):
-        return
-
-    @Visitor.for_asls("=")
-    def eq_(fn, state: State):
-        type = state.but_with_first_child().get_returned_type()
-        if not type.is_function():
-            return
-        node = nodes.Assignment(state)
-        fn_thing = fn.apply(state.but_with_second_child())
-        for name in node.get_names_of_parent_objects():
-            FunctionAliasAdder.add_fn_alias(state, name, fn_thing)
-
-    @Visitor.for_asls("fn")
-    def fn_(fn, state: State):
-        node = nodes.Fn(state)
-        return CurriedFunction(node.resolve_function_instance(state.get_argument_type()), [])
-
-    @Visitor.for_asls("ref")
-    def ref_(fn, state: State):
-        node = nodes.Ref(state)
-        return FunctionAliasResolver.get_fn_alias(state, node.get_name())
-
-    @Visitor.for_asls("curry_call")
-    def curry_call_(fn, state: State):
-        node = nodes.CurriedCall(state)
-        param_spreads = fn.spread_visitor.apply(state.but_with(asl=node.get_params_asl()))
-        fn_thing = fn.apply(state.but_with_first_child())
-        fn_thing.param_spreads = param_spreads
-        return fn_thing
-
-    # TODO: make this work
-    @Visitor.for_asls("call")
-    def call_(fn, state: State):
-        param_spreads = fn.spread_visitor.apply(state)
-        fn_thing = fn.apply(state.but_with_first_child())
-        fn_thing.param_spreads = param_spreads
-        return fn_thing
-
-
-
-    @classmethod
-    def add_fn_alias(cls, state: State, name: str, fn: CurriedFunction):
-        state.get_context().add_fn_alias(name, fn)
-
-class FunctionAliasResolver:
-    @classmethod
-    def get_def_asl(cls, state: State) -> tuple[CLRList, list[Spread]]:
-        if state.first_child().type == "ref":
-            name = nodes.Ref(state.but_with_first_child()).get_name()
-            fn_thing = FunctionAliasResolver.get_fn_alias(
-                state,
-                name)
-            if fn_thing is None:
-               fn_thing = state.get_inherited_fns().get(name, None)
-            if fn_thing is None:
-                raise Exception(f"did not find curried function with name {name}")
-            return fn_thing.fn_instance.asl, fn_thing.param_spreads
-        return state.but_with_first_child().get_instances()[0].asl, []
-
-    @classmethod
-    def get_fn_alias(cls, state: State, name: str) -> CurriedFunction:
-        return state.get_context().get_fn_alias(name)
-
-
-
-class SpreadVisitor(Visitor):
-    def __init__(self, get_deps: GetDeps):
-        super().__init__(False)
-        self.get_deps = get_deps
-
-    def apply(self, state: State) -> list[Spread]:
-        return self._route(state.asl, state)
-
-    @Visitor.for_tokens
-    def tokens_(fn, state: State):
-        return [Spread(values=set(), depth=0)]
-
-    @Visitor.for_asls("seq")
-    def seq_(fn, state: State):
-        spreads = []
-        for child in state.get_all_children():
-            spreads += fn.apply(state.but_with(asl=child))
-        return spreads
-
-    @Visitor.for_asls(*boolean_return_ops, *no_assign_binary_ops, '!', 'cast')
-    def binop_(fn, state: State):
-        return [Spread(values={state.depth}, depth=state.depth)]
-
-    @Visitor.for_asls("let")
-    def decl_(fn, state: State):
-        for name in nodes.Decl(state).get_names():
-            MemCheck.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
-        return []
-
-    @Visitor.for_asls("var", "val", "var?")
-    def decl2_(fn, state: State):
-        # because variables can be assigned to anything, they don't have a spread yet
-        for name in nodes.Decl(state).get_names():
-            MemCheck.add_spread(state, name, Spread(values=set(), depth=state.depth))
-        return []
-
-    @Visitor.for_asls("ilet")
-    def iletivar_(fn, state: State):
-        FunctionAliasAdder(spread_visitor=fn).apply(state)
-        for name in nodes.IletIvar(state).get_names():
-            MemCheck.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
-        return []
-
-    @Visitor.for_asls("ivar")
-    def iletivar2_(fn, state: State):
-        for name in nodes.IletIvar(state).get_names():
-            MemCheck.add_spread(state, name, Spread(values=set(), depth=state.depth))
-        return []
-
-    @Visitor.for_asls(".")
-    def dot_(fn, state: State):
-        return fn.apply(state.but_with_first_child())
-
-    @Visitor.for_asls("ref")
-    def ref_(fn, state: State):
-        return [MemCheck.get_spread(state, nodes.Ref(state).get_name())]
-
-    @Visitor.for_asls("fn")
-    def fn_(fn, state: State):
-        return []
-
-    @Visitor.for_asls("=", "+=", "-=", "/=", "*=", "<-")
-    def eq_(fn, state: State):
-        FunctionAliasAdder(spread_visitor=fn).apply(state)
-        names = nodes.Assignment(state).get_names_of_parent_objects()
-        assigned_spreads = fn.apply(state.but_with_second_child())
-        left_spreads = []
-        for name, right_spread in zip(names, assigned_spreads):
-            left_spread = MemCheck.get_spread(state, name)
-            left_spread.add(right_spread)
-
-            # TODO fix this, doesn't work for tuples
-            if left_spread.is_tainted() and not state.but_with_first_child().get_restriction().is_primitive():
-                state.report_exception(
-                    Exceptions.ObjectLifetime(
-                        msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
-                        line_number=state.get_line_number()))
-
-            left_spreads.append(left_spread)
-        return left_spreads
-
-    @Visitor.for_asls("tuple", "params", "curried")
-    def tuple_(fn, state: State):
-        spreads = []
-        for child in state.get_all_children():
-            spreads += fn.apply(state.but_with(asl=child))
-        return spreads
-
-    @Visitor.for_asls("if")
-    def if_(fn, state: State):
-        nodes.If(state.but_with(depth=state.depth-1)).enter_context_and_apply(fn)
-        return []
-
-    @Visitor.for_asls("while")
-    def while_(fn, state: State):
-        cond_state = state.but_with(
-            asl=state.first_child(),
-            context=state.create_block_context(),
-            depth=state.depth-1)
-
-        # no spreads can change in the first part of the cond, as there is no assignment
-        fn.apply(cond_state.but_with_first_child())
-        spreads = fn.apply(cond_state.but_with_second_child())
-
-        # TODO: we use this to prevent duplicate exceptions. make this cleaner
-        # local exceptions are used because we iterate over the while loop multiple
-        # times and each time can throw an exception
-        cond_state.exceptions = []
-        local_exceptions = []
-        n_iterations = 0
-        while (any([spread.changed for spread in spreads])):
-            n_iterations += 1
-            for s in spreads:
-                s.changed = False
-            spreads = fn.apply(cond_state.but_with_second_child())
-            local_exceptions = cond_state.exceptions
-            cond_state.exceptions = []
-
-        state.exceptions.extend(local_exceptions)
-        print(f"REQUIRED {n_iterations} additional iterations of the while loop")
-
-        return []
-
-    @Visitor.for_asls("cond")
-    def cond_(fn, state: State):
-        cond_context = state.create_block_context()
-        state.but_with(
-            context=cond_context,
-            depth=state.depth-1
-                ).apply_fn_to_all_children(fn)
-        return []
-
-    @Visitor.for_asls("call", "is_call")
-    def call_(fn, state: State):
-        node = nodes.Call(state)
-        if node.is_print():
-            fn.apply(state.but_with_second_child())
-            return []
-
-        param_spreads = fn.apply(state.but_with(asl=node.get_params_asl()))
-        def_asl, curried_spreads = FunctionAliasResolver.get_def_asl(state)
-        param_spreads = curried_spreads + param_spreads
-
-        # compute inherited fns
-        inherited_fns = {}
-        arg_names = nodes.Def(state.but_with(asl=def_asl)).get_arg_names()
-        params = state.but_with(asl=node.get_params_asl()).get_all_children()
-        arg_names = arg_names[len(arg_names) - len(params): ]
-        for inside_name, p in zip(arg_names, params):
-            param_state = state.but_with(asl=p)
-            if param_state.is_asl() and param_state.get_returned_type().is_function():
-                inherited_fns[inside_name] = (FunctionAliasResolver.get_fn_alias(
-                    param_state,
-                    nodes.RefLike(param_state).get_name()))
-
-        f_deps = fn.get_deps.of_function(state.but_with(
-            asl=def_asl,
-            inherited_fns=inherited_fns,
-            context=state.create_block_context()))
-        all_return_value_spreads = f_deps.apply_to_parameter_spreads(param_spreads)
-        return [Spread.merge_all(spreads_for_one_return_value)
-            for spreads_for_one_return_value in all_return_value_spreads]
-
-    @Visitor.for_default
-    def default_(fn, state: State):
-        print(f"MemCheck Unhandled state {state.asl}")
-        return []
+        F_deps = Deps.create_from_return_value_spreads(RVS)
+        self._add_to_cache(state, F_deps)
+        return F_deps

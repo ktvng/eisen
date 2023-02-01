@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from alpaca.concepts import Module, Context, Type
+from alpaca.concepts import Module, Context, Type, AbstractException
 from alpaca.clr import CLRList
 
 from eisen.state.stateb import StateB
@@ -21,6 +21,7 @@ class MemcheckState(StateB):
             depth: int = None,
             inherited_fns: list[EisenFunctionInstance] = None,
             argument_type: Type = None,
+            exceptions: list = None,
             ) -> MemcheckState:
 
         return self._but_with(
@@ -30,7 +31,8 @@ class MemcheckState(StateB):
             inside_constructor=inside_constructor,
             depth=depth,
             inherited_fns=inherited_fns,
-            argument_type=argument_type)
+            argument_type=argument_type,
+            exceptions=exceptions)
 
     @classmethod
     def create_from_state_b(cls, state: StateB):
@@ -53,3 +55,6 @@ class MemcheckState(StateB):
 
     def get_inherited_fns(self) -> dict[str, CurriedFunction]:
         return self.inherited_fns
+
+    def get_exceptions(self) -> list[AbstractException]:
+        return self.exceptions

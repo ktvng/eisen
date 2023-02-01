@@ -69,7 +69,7 @@ class NilCheck(Visitor):
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
     # TODO: fix this
-    @Visitor.for_asls("=", "<-")
+    @Visitor.for_asls("=", "<-", "fn")
     def assigns_(fn, state: State):
         return NilCheck.anonymous_nilablestatus(is_nilable=False)
 
@@ -141,5 +141,5 @@ class NilCheck(Visitor):
 
     @Visitor.for_default
     def default_(fn, state: State):
-        print(state.inspect())
+        print(state.get_asl())
         raise Exception("Nilcheck not implemented for state:", state.asl)

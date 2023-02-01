@@ -86,7 +86,7 @@ class FunctionAliasResolver:
         if state.first_child().type == "ref":
             name = nodes.Ref(state.but_with_first_child()).get_name()
             fn_thing = FunctionAliasResolver.get_fn_alias(
-                state,
+                state.but_with_first_child(),
                 name)
             if fn_thing is None:
                fn_thing = state.get_inherited_fns().get(name, None)
@@ -97,4 +97,8 @@ class FunctionAliasResolver:
 
     @classmethod
     def get_fn_alias(cls, state: State, name: str) -> CurriedFunction:
-        return state.get_context().get_fn_alias(name)
+        if state.get_asl().type == "ref":
+            return state.get_context().get_fn_alias(name)
+        elif state.get_asl().type == "fn":
+            return CurriedFunction(state.get_instances()[0], [])
+        raise Exception(f"get_fn_alias not implemented for {state.asl}")

@@ -4,7 +4,7 @@ interface positionable {
 }
 
 fn el_distance(p: positionable) -> distance: int {
-    distance = p.x + (p.y)
+    distance = p.x + p.y
 }
 
 struct point3d implements positionable {
@@ -33,7 +33,6 @@ struct vector implements positionable {
 
 fn main() {
     let p = point3d(1, 2, 5)
-    // print("3 5 12 0")
     var obj1: positionable
     obj1 = p.as(positionable)
     print("%i ", obj1.el_distance())

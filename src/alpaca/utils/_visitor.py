@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Callable
+from typing import Any
 import sys
 
 from alpaca.clr import CLRList
@@ -13,10 +13,12 @@ class TaggedTransform():
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.f(*args, **kwds)
 
+
 class DefaultTaggedTransform(TaggedTransform):
     def __init__(self, f) -> None:
         self.f = f
         self.handles_types = None
+
 
 class TokenTaggedTransform(TaggedTransform):
     def __init__(self, f) -> None:
@@ -32,6 +34,7 @@ class VisitorException(Exception):
     def __str__(self) -> str:
         return self.msg
 
+
 orignal_hook = sys.excepthook
 def exceptions_hook(e_type, e_value: Exception, tb):
     if e_type == VisitorException:
@@ -40,32 +43,6 @@ def exceptions_hook(e_type, e_value: Exception, tb):
         orignal_hook(e_type, e_value, tb)
 
 sys.excepthook = exceptions_hook
-
-
-# TODO: remove some of this deprecated code
-class PartialTransform():
-    def __init__(self, predicate: Callable[[Any], bool], f: Callable[[Any], Any]):
-        self.f = f
-        self.predicate = predicate
-
-    def invoke(self, *args):
-        return self.f(*args)
-
-    def covers(self, *args):
-        return self.predicate(*args)
-
-    def __call__(self, *args, **kwargs):
-        return self.f(*args, **kwargs)
-
-class DefaultTransform():
-    def __init__(self, f: Callable[[Any], Any]):
-        self.f = f
-
-    def invoke(self, *args):
-        return self.f(*args)
-
-    def __call__(self, *args, **kwargs):
-        return self.f(*args, **kwargs)
 
 class Visitor():
     max_depth = 100
@@ -79,24 +56,12 @@ class Visitor():
             file="wrangler",
             tag=type(self).__name__)
 
-        self.logger.log("#" * 20 + " Init " + "#" * 20)
+        self.logger.log_debug("#" * 20 + " Init " + "#" * 20)
 
         # depth of recusion, used during debug functionality
         self._depth = 0
 
-        # TODO: remove some of this deprecated code
         attrs = dir(self)
-        self.partial_transforms: list[PartialTransform] = [getattr(self, k) for k in attrs
-            if isinstance(getattr(self, k), PartialTransform)]
-
-        has_default_transform_attr = [getattr(self, k) for k in attrs
-            if isinstance(getattr(self, k), DefaultTransform)]
-
-        self.default_transform = None
-        if has_default_transform_attr:
-            self.default_transform: DefaultTransform = has_default_transform_attr[0]
-
-        # start of new implementation
         self.index = {}
         self.new_default_transform = None
         self.token_transform = None
@@ -114,40 +79,10 @@ class Visitor():
                         raise Exception(f"{self._get_loggable_name()} already has definition for {type_name}")
                     self.index[type_name] = t
 
-
-    # TODO: remove some of this deprecated code
-    def _apply(self, match_args: list, fn_args: list):
-        args_str = str([str(arg) for arg in match_args])
-        self.logger.log(f"Matching against {args_str}, depth={self._depth}")
-
-        matching_transforms = [f for f in self.partial_transforms if f.covers(*match_args)]
-        if not matching_transforms:
-            if self.default_transform is not None:
-                return self.default_transform.invoke(*[self, *fn_args])
-
-            msg = f"{type(self).__name__} has no matching transforms for provided match_args: '{args_str}'"
-            self.logger.raise_exception(msg)
-
-        if len(matching_transforms) > 1:
-            msg = f"{type(self).__name__} has multiple matching transforms for provided match_args: '{args_str}'"
-            transform_names = ", ".join([x.f.__name__ for x in matching_transforms])
-            self.logger.log_error(f"Matched transform names: [{transform_names}]")
-            self.logger.raise_exception(msg)
-
-        if self.debug and self._depth > self.max_depth:
-            self.logger.raise_exception(f"{type(self).__name__} has reached max depth ({self.max_depth}); forcing exit")
-
-        self._depth += 1
-        result = matching_transforms[0].invoke(*[self, *fn_args])
-        self._depth -= 1
-        return result
-
     def _route(self, asl: CLRList, state: Any):
         try:
             if isinstance(asl, CLRList):
                 transform = self.index.get(asl.type, self.new_default_transform)
-                if transform is None:
-                    raise Exception(f"{self._get_loggable_name()} has no matching transforms for asl of type '{asl.type}'")
                 result = transform(self, state)
             else:
                 if self.token_transform is None:

@@ -2,7 +2,7 @@ from eisen.tests.testrunner import TestRunner
 from eisen.parsing.builder import EisenBuilder
 from eisen.parsing.callback import EisenCallback
 from eisen.validation.workflow import Workflow
-from eisen.parsing.customparser2 import SuperParser
+from eisen.parsing.superparser import SuperParser
 from eisen.interpretation.ast_interpreter import AstInterpreter
 
 from eisen.conversion.writer import Writer

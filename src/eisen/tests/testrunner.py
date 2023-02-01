@@ -2,19 +2,18 @@ from __future__ import annotations
 
 from os import walk
 import time
-import os
+import sys
 import json
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-from threading import Lock
 
 import alpaca
 from alpaca.concepts import AbstractException
+from alpaca.utils import VisitorException
 
 from eisen.parsing.callback import EisenCallback
 from eisen.parsing.builder import EisenBuilder
-from eisen.parsing.customparser2 import SuperParser
+from eisen.parsing.superparser import SuperParser
 from eisen.state.basestate import BaseState
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
@@ -62,6 +61,15 @@ class Test():
         return f"expected to encounter exception '{exception_type}' containing:\n{contents}\nbut got:\n-----\n{state.watcher.txt}\n-----\n"
 
     def run(self) -> tuple[bool, str]:
+        orignal_hook = sys.excepthook
+        def exceptions_hook(e_type, e_value: Exception, tb):
+            if e_type == VisitorException:
+                orignal_hook(e_type, e_value.with_traceback(None), None)
+            else:
+                orignal_hook(e_type, e_value, tb)
+
+        sys.excepthook = exceptions_hook
+
         asl = self.parse_asl_with_cache()
         config = alpaca.config.parser.run(filename=Test.grammarfile)
         state = BaseState.create_initial(config, asl, txt=self.code, print_to_watcher=True)
@@ -71,10 +79,10 @@ class Test():
                 print(state.watcher.txt)
                 print(state.asl)
                 return False, "test failed due to exception"
-            interpreter = AstInterpreter(redirect_output=True)
+            interpreter = AstInterpreter()
             interpreter.run(state)
             expected_output = self.metadata["expected"]["output"]
-            if interpreter.stdout != expected_output:
+            if state.watcher.txt != expected_output:
                 return False, f"expected, got:\n{expected_output}\n-----\n{interpreter.stdout}\n-----\n"
         else:
             expected_exceptions = self.metadata["expected"]["exceptions"]
@@ -158,7 +166,7 @@ class TestRunner():
         print(msg)
         end = time.perf_counter()
         total_tests= len(tests)
-        print(f"ran {total_tests} tests in {round(end-start, 4)}s, {successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
+        print(f"finished in {round(end-start, 4)}s\n{successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
 
     @classmethod
     def run_test_in_thread(cls, testname: str) -> tuple[bool, str]:

@@ -6,9 +6,7 @@ import argparse
 
 import alpaca
 import eisen
-import lamb
 import c
-import eisen.memory.memcheck as memcheck
 
 delim = "="*28
 
@@ -28,9 +26,7 @@ def run_c(filename: str):
 
 def run_eisen(filename: str):
     global_start = time.perf_counter_ns()
-    perf = []
-    # PARSE EISEN CONFIG
-    config = run_and_measure("config parsed",
+    config = run_and_measure("ConfigParsing",
         alpaca.config.parser.run,
         filename="./src/eisen/grammar.gm")
 
@@ -39,26 +35,30 @@ def run_eisen(filename: str):
         txt = f.read()
 
     # TOKENIZE
-    tokens = run_and_measure("tokenizer",
+    tokens = run_and_measure("Tokenizing",
         alpaca.lexer.run,
         text=txt, config=config, callback=eisen.EisenCallback)
 
-    start = time.perf_counter_ns()
-    parser = eisen.SuperParser(config)
-    asl = parser.parse(tokens)
-    end = time.perf_counter_ns()
-    print(f"parsed in {(end-start)/1000000}")
+    parser = run_and_measure("InitParser",
+        eisen.SuperParser,
+        config=config)
 
-    asl_str = [">    " + line for line in  str(asl).split("\n")]
-    print(*asl_str, sep="\n")
+    asl = run_and_measure("Parser",
+        parser.parse,
+        tokens=tokens)
 
-    print("############## EISEN ###############")
-    state = eisen.BaseState.create_initial(config, asl, txt)
+    # asl_str = ["  " + line for line in  str(asl).split("\n")]
+    # print(*asl_str, sep="\n")
+
+    # print("############## EISEN ###############")
+    state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
     eisen.Workflow.steps.append(eisen.AstInterpreter)
     state = eisen.Workflow.execute_with_benchmarks(state)
 
     global_end = time.perf_counter_ns()
     print(f"elapsed in {(global_end-global_start)/1000000}")
+    print(delim)
+    print(state.watcher.txt)
 
     # Leave this exit here to prevent transpilation
     exit()
@@ -107,7 +107,7 @@ def run_and_measure(name: str, f, *args, **kwargs):
     starttime = time.perf_counter_ns()
     result = f(*args, **kwargs)
     endtime = time.perf_counter_ns()
-    print(f"|  - {name} finished in {(endtime-starttime)/1000000} ms")
+    print(f"{' '*(24-len(name))}{name}   {round((endtime-starttime)/1000000, 5)}")
     return result;
 
 def run_eisen_tests(name: str):
@@ -121,7 +121,7 @@ def run_eisen_tests(name: str):
         eisen.TestRunner.run_all_tests()
 
 def debug():
-    config = run_and_measure("config parsed",
+    config = run_and_measure("ConfigParsing",
         alpaca.config.parser.run,
         filename="./src/eisen/grammar.gm")
 
@@ -130,12 +130,9 @@ def debug():
         txt = f.read()
 
     # TOKENIZE
-    tokens = run_and_measure("tokenizer",
+    tokens = run_and_measure("Tokenizing",
         alpaca.lexer.run,
         text=txt, config=config, callback=eisen.EisenCallback)
-    print("debugging...")
-    for t in tokens:
-        print(t)
     result = alpaca.parser.run(config, tokens, eisen.EisenBuilder())
     print(result)
 

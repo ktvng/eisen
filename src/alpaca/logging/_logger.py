@@ -6,7 +6,7 @@ class Logger():
     log_dir = "./logs/"
 
     def __init__(self, file: str, tag: str) -> None:
-        self.log_level = "debug"
+        self.log_level = "info"
         self.file = file
         self.tag = tag
 

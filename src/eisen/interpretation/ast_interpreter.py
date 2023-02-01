@@ -15,11 +15,6 @@ class ReturnSignal():
 State = AstInterpreterState
 
 class AstInterpreter(Visitor):
-    def __init__(self, redirect_output=False):
-        super().__init__()
-        self.stdout = "";
-        self.redirect_output = redirect_output
-
     def run(self, state: StateB):
         self.apply(AstInterpreterState.create_from_state_b(state))
         return state
@@ -158,8 +153,8 @@ class AstInterpreter(Visitor):
 
         if node.is_print():
             args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
-            redirect_to = True if fn.redirect_output else None
-            fn.stdout += PrintFunction.emulate(redirect_to, *args)
+            redirect_to = True if state.print_to_watcher else None
+            state.watcher.txt += PrintFunction.emulate(redirect_to, *args)
             return []
 
         # enter a new object context

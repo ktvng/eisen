@@ -6,4 +6,3 @@ import alpaca.lexer as lexer
 import alpaca.parser as parser
 import alpaca.utils as utils
 import alpaca.concepts as concepts
-import alpaca._types as _types

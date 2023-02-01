@@ -99,7 +99,7 @@ class Workflow():
                     start = time.perf_counter_ns()
                     state = step().run(state)
                     end = time.perf_counter_ns()
-                    perf.append((step.__name__, (end-start)/1000000))
+                    perf.append((step.__name__, round((end-start)/1000000, 5)))
                     return state
 
             return decorated_step
@@ -118,7 +118,7 @@ class Workflow():
         for name, val in perf:
             print(" "*(block_size - len(name)), name, " ", val)
 
-        print(" "*(block_size-len("Total")), "Total", " ", sum(x[1] for x in perf))
+        print(" "*(block_size-len("Total")), "Total", " ", round(sum(x[1] for x in perf), 5))
 
     @classmethod
     def should_stop_execution(cls, state: State):

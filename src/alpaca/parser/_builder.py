@@ -40,5 +40,10 @@ class Builder():
 
     def apply(self, type_name: str, config, components: list[CLRList | list[CLRList]], *args):
         transform = self.index.get(type_name, self.new_default_transform)
+        if transform is None:
+            raise Exception(f"{self._get_loggable_name()} has no transform for {type_name}")
         result = transform(self, config, components, *args)
         return result
+
+    def _get_loggable_name(self) -> str:
+        return type(self).__name__

@@ -37,7 +37,8 @@ def run_eisen(filename: str):
     # TOKENIZE
     tokens = run_and_measure("Tokenizing",
         alpaca.lexer.run,
-        text=txt, config=config, callback=eisen.EisenCallback)
+        text=txt.strip(), config=config, callback=eisen.EisenCallback)
+    # for t in tokens: print(t)
 
     parser = run_and_measure("InitParser",
         eisen.SuperParser,
@@ -46,6 +47,10 @@ def run_eisen(filename: str):
     asl = run_and_measure("Parser",
         parser.parse,
         tokens=tokens)
+
+    # Keep this exit to only parse
+    # print(asl)
+    # exit()
 
     # asl_str = ["  " + line for line in  str(asl).split("\n")]
     # print(*asl_str, sep="\n")

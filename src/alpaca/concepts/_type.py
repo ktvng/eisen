@@ -29,6 +29,7 @@ class Type():
         proto_struct = "proto_struct"
         proto_interface = "proto_interface"
         proto_variant = "proto_variant"
+        parametric = "parametric"
 
     def __init__(
             self,
@@ -39,6 +40,7 @@ class Type():
             component_names: list[str],
             inherits: list[Type],
             embeds: list[Type],
+            parametrics: list[Type],
             restriction: AbstractRestriction,
             parent_type: Type):
 
@@ -50,6 +52,7 @@ class Type():
         self.component_names = component_names
         self.inherits = inherits
         self.embeds = embeds
+        self.parametrics = parametrics
         self.restriction = restriction
         self.parent_type = parent_type
 
@@ -124,7 +127,7 @@ class Type():
             return self._get_uuid_for_function()
         else:
             # this should be the case for proto entities,
-            return self._get_uuid_based_on_module_and_name()
+            return self._get_uuid_based_on_module_and_name() + "<proto>"
 
     def _equiv(self, u : list, v : list) -> bool:
         return (u is not None
@@ -264,6 +267,7 @@ class Type():
             component_names=self.component_names,
             inherits=self.inherits,
             embeds=self.embeds,
+            parametrics=self.parametrics,
             restriction=restriction,
             parent_type=self.parent_type)
 
@@ -276,5 +280,6 @@ class Type():
             component_names=self.component_names,
             inherits=self.inherits,
             embeds=self.embeds,
+            parametrics=self.parametrics,
             restriction=self.restriction,
             parent_type=self.parent_type)

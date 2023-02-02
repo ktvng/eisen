@@ -83,6 +83,8 @@ class Visitor():
         try:
             if isinstance(asl, CLRList):
                 transform = self.index.get(asl.type, self.new_default_transform)
+                if transform is None:
+                    raise Exception(f"{self._get_loggable_name()} has no tranform for {asl.type}")
                 result = transform(self, state)
             else:
                 if self.token_transform is None:

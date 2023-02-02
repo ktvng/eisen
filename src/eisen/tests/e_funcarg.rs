@@ -12,8 +12,8 @@ fn pass(f: (int) -> int var, b: int) -> c: int var {
 }
 
 fn main() {
-    let f = bad<12>
-    let g = good<19>
+    let f = bad{12}
+    let g = good{19}
     print("%i", pass(g, 5))
     print("%i", pass(f, 5))
 }

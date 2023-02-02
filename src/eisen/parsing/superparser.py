@@ -115,6 +115,11 @@ class ContextSeparator():
         header_list = []
 
         pos = 0
+        len_ends = 0
+        while toks[pos].type == "endl":
+            len_ends += 1
+            pos += 1
+
         while toks[pos].type != "{" and pos < len(toks):
             header_list.append(toks[pos])
             pos += 1
@@ -144,4 +149,4 @@ class ContextSeparator():
 
         # here we have a populated struct list including the final "}" token, we
         # return the header_list and the remainng tokens
-        return header_list, toks[len(header_list): ]
+        return header_list, toks[len(header_list) + len_ends: ]

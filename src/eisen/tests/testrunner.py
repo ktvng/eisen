@@ -48,7 +48,7 @@ class Test():
 
     def parse_asl(self):
         config = alpaca.config.parser.run(filename=Test.grammarfile)
-        tokens = alpaca.lexer.run(text=self.code, config=StaticParser.config, callback=EisenCallback)
+        tokens = alpaca.lexer.run(text=self.code.strip(), config=StaticParser.config, callback=EisenCallback)
         # asl = alpaca.parser.run(config, tokens, builder=EisenBuilder())
         asl = SuperParser(config).parse(tokens)
         # asl = StaticParser.parser.parse(tokens)

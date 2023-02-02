@@ -160,6 +160,7 @@ class Validate:
     @classmethod
     def has_member_attribute(cls, state: State, type: Type, attribute_name: str) -> ValidationResult:
         if not type.has_member_attribute_with_name(attribute_name):
+            print("kxt", type, type.component_names)
             state.report_exception(Exceptions.MissingAttribute(
                 f"'{type}' does not have member attribute '{attribute_name}'",
                 line_number=state.get_line_number()))

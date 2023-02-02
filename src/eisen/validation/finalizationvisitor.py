@@ -63,3 +63,32 @@ class FinalizationVisitor(Visitor):
     def default_(fn, state: State) -> None:
         # nothing to do by default
         return
+
+
+class Finalization2(Visitor):
+    def run(self, state: BaseState):
+        self.apply(state)
+        return state
+
+    def apply(self, state: State) -> None:
+        self._route(state.get_asl(), state)
+
+    @Visitor.for_asls("start")
+    def start_(fn, state: State):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: State):
+        adapters.Mod(state).enter_module_and_apply(fn)
+
+    @Visitor.for_asls("struct")
+    def struct_(fn, state: State) -> None:
+        node = adapters.Struct(state)
+        this_struct_type = node.get_this_type()
+        this_struct_type.components = [TypeParser().apply(state.but_with(asl=asl))
+            for asl in node.get_child_attribute_asls()]
+
+    @Visitor.for_default
+    def default_(fn, state: State) -> None:
+        # nothing to do by default
+        return

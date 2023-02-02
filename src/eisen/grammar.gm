@@ -55,7 +55,7 @@ SYMBOLICS
     keyword fn          ->  fn
     keyword struct      ->  struct
     keyword if          ->  if
-    keyword else        ->  else
+    keyword else        ->  [ \t\n]*else
     keyword while       ->  while
     keyword let         ->  let
     keyword return      ->  return
@@ -74,13 +74,13 @@ SYMBOLICS
     keyword embed       ->  embed
 
     symbol @            ->  @
-    symbol ,            ->  ,
+    symbol ,            ->  ,[ \t\n]*
     symbol {            ->  \s*{\s*
-    symbol }            ->  }\s*
+    symbol }            ->  [ \t\n]*}
     symbol [            ->  \[
     symbol ]            ->  \]
-    symbol (            ->  \(
-    symbol )            ->  \)
+    symbol (            ->  \([ \t\n]*
+    symbol )            ->  [ \t\n]*\)
     symbol endl         ->  \n\s*
 
     operator =          ->  =
@@ -166,6 +166,9 @@ STRUCTURE
         |   TAG ?
         @action pass
         |   FN_TYPE
+        @action filter_build para_type
+        |   TAG [ TYPE ]
+        |   TAG [ _TYPES ]
 
     TYPES ->
         @action filter_build prod_type
@@ -284,21 +287,32 @@ STRUCTURE
     # ====================================================
     # TUPLES
 
+    E0 ->
+        @action strip_annotation
+        |   TAG : E0
+
     TAGS ->
         @action filter_build tags
         |   _TAGS
 
-
     CURRIED_PARAMS ->
         @action filter_build curried
-        |   < E0 >
-        |   < _E0S >
+        |   { E0 }
+        |   { _E0S }
+        |   { E0 ENDLS }
+        |   { _E0S ENDLS }
+
 
     PARAMS ->
         @action filter_build params
         |   ( )
         |   ( E0 )
         |   ( _E0S )
+
+        |   ! { E0 }
+        |   ! { _E0S }
+        |   ! { E0 ENDLS }
+        |   ! { _E0S ENDLS }
 
 
     # tuple of tags
@@ -391,10 +405,10 @@ STRUCTURE
 
     LINE ->
         @action pass
-        |   E0 ENDLS
-        |   ASSIGNMENT ENDLS
-        |   DECL ENDLS
-        |   return ENDLS
+        |   E0
+        |   ASSIGNMENT
+        |   DECL
+        |   return
         |   CONTROL
 
 
@@ -409,8 +423,8 @@ STRUCTURE
 
     LINES ->
         @action pool
-        |   LINE LINE
-        |   LINE LINES
+        |   LINE ENDLS LINE
+        |   LINE ENDLS LINES
 
 
     # ====================================================
@@ -474,20 +488,20 @@ STRUCTURE
 
     STRUCT_ELEMS ->
         @action pool
-        |   STRUCT_ELEM STRUCT_ELEMS
+        |   STRUCT_ELEM ENDLS STRUCT_ELEMS
         |   STRUCT_ELEM
 
     STRUCT_ELEM ->
         @action pool
-        |   TYPING ENDLS
+        |   TYPING
         |   FUNC
         @action filter_build create
         |   create ARGS RETS SEQ
         @action filter_build destroy
         |   destroy ARGS SEQ
         @action filter_build embed
-        |   embed TAG ENDLS
-        |   embed TAGS ENDLS
+        |   embed TAG
+        |   embed TAGS
 
 
     # ====================================================
@@ -499,12 +513,12 @@ STRUCTURE
 
     INTERFACE_ELEMS ->
         @action pool
-        |   INTERFACE_ELEM INTERFACE_ELEMS
+        |   INTERFACE_ELEM ENDLS INTERFACE_ELEMS
         |   INTERFACE_ELEM
 
     INTERFACE_ELEM ->
         @action pool
-        |   TYPING ENDLS
+        |   TYPING
 
 
     # ====================================================
@@ -516,16 +530,16 @@ STRUCTURE
 
     VARIANT_ELEMS ->
         @action pool
-        |   VARIANT_ELEM VARIANT_ELEMS
+        |   VARIANT_ELEM ENDLS VARIANT_ELEMS
         |   VARIANT_ELEM
 
     VARIANT_ELEM ->
         @action filter_build is_fn
         |   is ARGS RETS SEQ
         @action filter_build @
-        |   @ TAG ( TAGS ) ENDLS
-        |   @ TAG ( TAG ) ENDLS
-        |   @ TAG ( ) ENDLS
+        |   @ TAG ( TAGS )
+        |   @ TAG ( TAG )
+        |   @ TAG ( )
 
 
     # ====================================================
@@ -548,6 +562,7 @@ STRUCTURE
         |   INTERFACE
         |   VARIANT
         |   MOD
+        |   ENDLS
 
 
     # ====================================================

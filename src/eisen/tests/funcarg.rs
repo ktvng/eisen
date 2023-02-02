@@ -11,7 +11,7 @@ fn blue(f: (int, int) -> int, x: int) {
 }
 
 fn main() {
-    let f = mul<5>
+    let f = mul{5}
     red(f, 25)
     let g = mul
     blue(g, 5)

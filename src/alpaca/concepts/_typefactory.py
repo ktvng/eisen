@@ -14,6 +14,7 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
 
@@ -27,8 +28,24 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
+
+    @classmethod
+    def produce_parametric_type(cls, name: str, parametrics: list[Type]) -> Type:
+        return Type(
+            classification=Type.classifications.parametric,
+            name=name,
+            mod=None,
+            components=[],
+            component_names=[],
+            inherits=[],
+            embeds=[],
+            parametrics=parametrics,
+            restriction=None,
+            parent_type=None)
+
 
     # TODO: function types should not need modules, unless they are named
     @classmethod
@@ -41,6 +58,7 @@ class TypeFactory():
             component_names=["arg", "ret"],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
 
@@ -54,6 +72,7 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
 
@@ -67,6 +86,7 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
 
@@ -80,6 +100,7 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)
 
@@ -93,5 +114,6 @@ class TypeFactory():
             component_names=[],
             inherits=[],
             embeds=[],
+            parametrics=[],
             restriction=None,
             parent_type=None)

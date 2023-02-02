@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import FunctionalRestriction
+from eisen.common.restriction import FunctionalRestriction, LetConstruction
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -45,8 +45,8 @@ class TypeParser(Visitor):
         component_types = [fn.apply(state.but_with(asl=component)) for component in state.get_asl()]
         return TypeFactory.produce_tuple_type(components=component_types)
 
-    @Visitor.for_asls("fn_type_in", "fn_type_out")
-    def fn_type_out(fn, state: State) -> Type:
+    @Visitor.for_asls("fn_type_in")
+    def fn_type_in(fn, state: State) -> Type:
         """
         (fn_type_in (type/s ...)
         (fn_type_out (type/s ...))
@@ -54,6 +54,17 @@ class TypeParser(Visitor):
         if len(state.get_asl()) == 0:
             return state.get_void_type()
         return fn.apply(state.but_with(asl=state.first_child()))
+
+    @Visitor.for_asls("fn_type_out")
+    def fn_type_out(fn, state: State) -> Type:
+        """
+        (fn_type_in (type/s ...)
+        (fn_type_out (type/s ...))
+        """
+        if len(state.get_asl()) == 0:
+            return state.get_void_type()
+        # TODO: fix this
+        return fn.apply(state.but_with(asl=state.first_child())).with_restriction(LetConstruction())
 
     @Visitor.for_asls("fn_type")
     def fn_type_(fn, state: State) -> Type:
@@ -100,3 +111,14 @@ class TypeParser(Visitor):
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),
             mod=None).with_restriction(FunctionalRestriction())
+
+    @Visitor.for_asls("para_type")
+    def para_type(fn, state: State) -> Type:
+        """
+        (para_type name (tags type1 type2))
+        (para_type name type1)
+        """
+        return TypeFactory.produce_parametric_type(
+            name=state.first_child().value,
+            parametrics=[fn.apply(state.but_with(asl=child))
+                for child in state.get_child_asls()])

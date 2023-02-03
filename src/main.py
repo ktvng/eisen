@@ -7,11 +7,32 @@ import argparse
 import alpaca
 import eisen
 import c
+import python
 
 delim = "="*28
 
-def run_lamb(filename : str):
-    raise Exception("deprecated")
+def run_python(filename: str):
+    # READ FILE TO STR
+    with open(filename, 'r') as f:
+        txt = f.read()
+    txt = python.Preprocessor.run(txt)
+
+    # PARSE GRAMMAR
+    config = run_and_measure("ConfigParsing",
+        alpaca.config.parser.run,
+        filename="./src/python/python.gm")
+
+    # TOKENIZE
+    tokens = run_and_measure("Tokenizing",
+        alpaca.lexer.run,
+        text=txt.strip(), config=config, callback=eisen.EisenCallback)
+    for t in tokens: print(t)
+
+    asl = run_and_measure("Parser",
+        alpaca.parser.run,
+        config=config, tokens=tokens, builder=python.Builder())
+
+    print(asl)
 
 def run_c(filename: str):
     config = alpaca.config.parser.run("./src/c/grammar.gm")
@@ -92,8 +113,8 @@ def run_eisen(filename: str):
 
 
 def run(lang: str, filename: str):
-    if lang == "lamb":
-        run_lamb(filename)
+    if lang == "python":
+        run_python(filename)
     elif lang == "eisen":
         run_eisen(filename)
     elif lang == "c":
@@ -154,7 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--lang",
         action="store",
         type=str,
-        choices=["eisen", "lamb", "c", "types"],
+        choices=["eisen", "python", "c", "types"],
         default="eisen")
 
     args = parser.parse_args()

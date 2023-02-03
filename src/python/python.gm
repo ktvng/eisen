@@ -1,0 +1,325 @@
+# ========================================================
+#
+# GrammarMaster (.gm)
+#
+# ========================================================
+
+SYMBOLICS
+    <type>              ->  <regex>
+    keyword def         ->  def
+    keyword class       ->  class
+    keyword if          ->  if
+    keyword elif        ->  \s*elif
+    keyword else        ->  \s*else
+    keyword while       ->  while
+    keyword return      ->  return
+    keyword None        ->  None
+    keyword is          ->  is
+    keyword init        ->  __init__
+
+    symbol @            ->  @
+    symbol ,            ->  ,\s*
+    symbol {            ->  \s*{\s*
+    symbol }            ->  \s*}
+    symbol [            ->  \[
+    symbol ]            ->  \]
+    symbol (            ->  \(\s*
+    symbol )            ->  \s*\)
+    symbol endl         ->  \n\s*
+
+    operator =          ->  =
+    operator +=         ->  \+=
+    operator -=         ->  -=
+    operator *=         ->  \*=
+    operator /=         ->  /=
+    operator ?          ->  \?
+    operator ==         ->  ==
+    operator !=         ->  !=
+    operator +          ->  \+
+    operator -          ->  -
+    operator /          ->  /
+    operator *          ->  \*
+    operator and        ->  and
+    operator or         ->  or
+    operator not        ->  not
+    operator %          ->  %
+    operator |          ->  \|
+    operator <          ->  <
+    operator >          ->  >
+    operator <=         ->  <=
+    operator >=         ->  >=
+    operator .          ->  \.
+    operator :          ->  :\s*
+
+    str                 ->  (["'])(?:(?=(\\?))\2.)*?\1
+    int                 ->  -?[0-9]+
+    bool                ->  True|False
+
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t]*
+    none                ->  [ \t]*\/\/.*?\n+
+    none                ->  [ \t]*\/\/[^\n]*
+
+
+STRUCTURE
+    # ====================================================
+    # Aliases
+
+    OP_ASSIGN ->
+        @action pass
+        |   =
+        |   <-
+        |   +=
+        |   -=
+        |   *=
+        |   /=
+
+    LITERAL ->
+        @action pass
+        |   int
+        |   str
+        |   bool
+        |   flt
+        |   nil
+
+    VAR ->
+        @action convert ref
+        |   TAG
+
+    ENDLS ->
+        @action pass
+        | endl
+        | endl ENDLS
+
+
+    # ====================================================
+    # Expressions
+
+    E10 ->
+        @action build_operator
+        |   E10 . TAG
+        @action build raw_call
+        |   E10 PARAMS
+        @action pass
+        |   E11
+        |   LITERAL
+        |   VAR
+        @action filter_pass
+        |   ( E0 )
+
+    E8 ->
+        @action build_operator
+        |   E8 * E10
+        |   E8 / E10
+        @action pass
+        |   E10
+
+    E7 ->
+        @action build_operator
+        |   E7 + E8
+        |   E7 - E8
+        @action pass
+        |   E8
+
+    E6 ->
+        @action build_operator
+        |   E6 < E7
+        |   E6 <= E7
+        |   E6 > E7
+        |   E6 >= E7
+        |   E6 == E7
+        |   E6 != E7
+        @action pass
+        |   E7
+
+    E5 ->
+        @action handle_op_pref
+        |   not E5
+        @action pass
+        |   E6
+
+    E4 ->
+        @action build_operator
+        |   E4 and E5
+        |   E4 or E5
+        @action pass
+        |   E5
+
+    E3 ->
+        @action filter_build is
+        |   E3 is TAG
+        |   E3 is None
+        @action pass
+        |   E4
+
+    E0 ->
+        @action pass
+        |   E3
+
+
+    # ====================================================
+    # TUPLES
+
+    TAGS ->
+        @action filter_build tags
+        |   _TAGS
+
+    PARAMS ->
+        @action filter_build params
+        |   ( )
+        |   ( E0 )
+        |   ( _E0S )
+
+    # tuple of tags
+    _TAGS ->
+        @action pool
+        |   TAG , TAG
+        |   TAG , _TAGS
+
+
+    # tuple of Expressions
+    E0S ->
+        @action filter_build tuple
+        |   ( _E0S )
+        |   _E0S
+
+    _E0S ->
+        @action pool
+        |   E0 , E0
+        |   E0 , _E0S
+
+
+    # ====================================================
+    # LValues
+
+    L1 ->
+        @action pass
+        |   VAR
+
+    L0 ->
+        @action build_operator
+        |   L0 . TAG
+        @action pass
+        |   L1
+
+    L0S ->
+        @action filter_build lvals
+        |   _L0S
+
+    _L0S ->
+        @action pool
+        |   L0 , L0
+        |   L0 , _L0S
+
+
+    # ====================================================
+    # Assignment
+
+    ASSIGNMENT ->
+        @action build_operator
+        |   L0 OP_ASSIGN E0
+        |   L0S OP_ASSIGN E0S
+        |   L0S OP_ASSIGN E0
+
+    # ====================================================
+    # LINE
+
+    LINE ->
+        @action pass
+        |   E0
+        |   ASSIGNMENT
+        |   CONTROL
+        @action filter_build return
+        |   return
+        |   return E0
+        |   return E0S
+
+
+    # ====================================================
+    # Block
+
+    SEQ ->
+        @action filter_build seq
+        |   { }
+        |   { LINE }
+        |   { LINES }
+
+    LINES ->
+        @action pool
+        |   LINE ENDLS LINE
+        |   LINE ENDLS LINES
+
+
+    # ====================================================
+    # Control flow
+
+    COND ->
+        @action filter_build cond
+        |   E0 : SEQ
+
+    CONTROL ->
+        @action filter_build if
+        |   IF_CONTEXT
+        @action filter_build while
+        |   while COND
+
+    IF_CONTEXT ->
+        @action pool
+        |   if COND
+        |   if COND ELSES
+
+    ELSES ->
+        @action pool
+        |   else : SEQ
+        |   elif COND
+        |   elif COND ELSES
+
+
+    # ====================================================
+    # Function Definitions
+
+    FUNC ->
+        @action filter_build def
+        |   def TAG ARGS : SEQ
+
+    ARGS ->
+        @action filter_build args
+        |   ( )
+        |   ( TAG )
+        |   ( TAGS )
+
+    # ====================================================
+    # Classes
+
+    STRUCT ->
+        @action filter_build struct
+        |   class TAG : { STRUCT_ELEMS }
+
+    STRUCT_ELEMS ->
+        @action pool
+        |   STRUCT_ELEM ENDLS STRUCT_ELEMS
+        |   STRUCT_ELEM
+
+    STRUCT_ELEM ->
+        @action filter_build init
+        |   def init ARGS : SEQ
+
+
+    # ====================================================
+    # Program
+
+    CONTEXTS ->
+        @action pool
+        |   CONTEXT CONTEXTS
+        |   CONTEXT
+
+    CONTEXT ->
+        @action pass
+        |   FUNC
+        |   STRUCT
+        |   ENDLS
+
+
+    START ->
+        @action build start
+        |   CONTEXTS

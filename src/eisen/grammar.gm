@@ -408,9 +408,9 @@ STRUCTURE
         |   E0
         |   ASSIGNMENT
         |   DECL
-        |   return
         |   CONTROL
-
+        @action filter_build return
+        |   return
 
     # ====================================================
     # Block

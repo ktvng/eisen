@@ -98,7 +98,7 @@ STRUCTURE
     E10 ->
         @action build_operator
         |   E10 . TAG
-        @action build raw_call
+        @action build call
         |   E10 PARAMS
         @action pass
         |   E11
@@ -291,16 +291,16 @@ STRUCTURE
     # ====================================================
     # Classes
 
-    STRUCT ->
-        @action filter_build struct
-        |   class TAG : { STRUCT_ELEMS }
+    CLASS ->
+        @action filter_build class
+        |   class TAG : { CLASS_ELEMS }
 
-    STRUCT_ELEMS ->
+    CLASS_ELEMS ->
         @action pool
-        |   STRUCT_ELEM ENDLS STRUCT_ELEMS
-        |   STRUCT_ELEM
+        |   CLASS_ELEM ENDLS CLASS_ELEMS
+        |   CLASS_ELEM
 
-    STRUCT_ELEM ->
+    CLASS_ELEM ->
         @action filter_build init
         |   def init ARGS : SEQ
 
@@ -310,14 +310,14 @@ STRUCTURE
 
     CONTEXTS ->
         @action pool
-        |   CONTEXT CONTEXTS
+        |   CONTEXT ENDLS CONTEXTS
         |   CONTEXT
 
     CONTEXT ->
         @action pass
         |   FUNC
-        |   STRUCT
-        |   ENDLS
+        |   CLASS
+        |   LINE
 
 
     START ->

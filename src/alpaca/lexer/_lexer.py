@@ -15,7 +15,7 @@ class Lexer():
     _newline_regex = re.compile("\n+")
 
     @classmethod
-    def run(cls, text : str, config : Config, callback : AbstractCallback):
+    def run(cls, text : str, config : Config, callback : AbstractCallback) -> list[Token]:
         tokens = []
         line_number = 1
         while text:

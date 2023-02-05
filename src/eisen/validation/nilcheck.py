@@ -129,7 +129,7 @@ class NilCheck(Visitor):
             fn.apply(state.but_with(asl=adapters.Struct(state).get_create_asl()))
         return []
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_asls("interface", "return")
     def interface_(fn, state: State):
         # nothing to do
         return []

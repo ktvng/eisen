@@ -95,7 +95,7 @@ class Visitor():
         except VisitorException as ve:
             raise ve
         except Exception as e:
-            raise VisitorException(f"\n{self._get_loggable_name()} thrown from asl:\n{state.asl}") from e
+            raise VisitorException(f"\n{self._get_loggable_name()} thrown from asl:\n{asl}") from e
 
     def _get_loggable_name(self) -> str:
         return type(self).__name__

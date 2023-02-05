@@ -5,7 +5,11 @@ import uuid
 from abc import ABC
 
 class CLRElement(ABC):
-    pass
+    def is_asl(self) -> bool:
+        return False
+
+    def is_token(self) -> bool:
+        return False
 
 class CLRToken(CLRElement):
     def __init__(self, type_chain: list[str], value: str, line_number: int = 0):
@@ -26,6 +30,10 @@ class CLRToken(CLRElement):
         else:
             return self.type
 
+    def is_token(self) -> bool:
+        return True
+
+
 class CLRList(CLRElement):
     indent = "  "
 
@@ -38,6 +46,9 @@ class CLRList(CLRElement):
             self.guid = uuid.uuid4()
         else:
             self.guid = guid
+
+    def is_asl(self) -> bool:
+        return True
 
     def has_no_children(self) -> bool:
         return len(self._list) == 0

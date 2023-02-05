@@ -104,6 +104,9 @@ class Create(AbstractNodeInterface):
     def get_rets_asl(self) -> CLRList:
         return self.third_child()
 
+    def get_seq_asl(self) -> CLRList:
+        return self.state.asl[-1]
+
     def get_name(self) -> str:
         """the name of the constructor is the same as the struct it constructs. this
         must be passed into the State as a parameter"""

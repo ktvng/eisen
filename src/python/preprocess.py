@@ -47,3 +47,20 @@ class Preprocessor:
             indent_level += 1
             line = line[len(indent_token):]
         return indent_level
+
+class PostProcessor:
+    @classmethod
+    def run(cls, txt: str) -> str:
+        indent = "    "
+        indent_level = 0
+        lines = []
+        for line in txt.split("\n"):
+            if line.strip() == "{":
+                indent_level += 1
+                continue
+            if line.strip() == "}":
+                indent_level -= 1
+                continue
+
+            lines.append(indent*indent_level + line.strip())
+        return "\n".join(lines)

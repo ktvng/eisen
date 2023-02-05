@@ -123,7 +123,7 @@ class SpreadVisitor(Visitor):
     def ref_(fn, state: State):
         return [SpreadVisitor.get_spread(state, adapters.Ref(state).get_name())]
 
-    @Visitor.for_asls("fn")
+    @Visitor.for_asls("fn", "return")
     def fn_(fn, state: State):
         return []
 

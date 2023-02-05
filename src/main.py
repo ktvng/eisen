@@ -16,6 +16,7 @@ def run_python(filename: str):
     with open(filename, 'r') as f:
         txt = f.read()
     txt = python.Preprocessor.run(txt)
+    # print(txt)
 
     # PARSE GRAMMAR
     config = run_and_measure("ConfigParsing",
@@ -26,13 +27,16 @@ def run_python(filename: str):
     tokens = run_and_measure("Tokenizing",
         alpaca.lexer.run,
         text=txt.strip(), config=config, callback=eisen.EisenCallback)
-    for t in tokens: print(t)
+    # for t in tokens: print(t)
 
     asl = run_and_measure("Parser",
         alpaca.parser.run,
         config=config, tokens=tokens, builder=python.Builder())
 
     print(asl)
+    proto_code = python.Writer().run(asl)
+    code = python.PostProcessor.run(proto_code)
+    # print(code)
 
 def run_c(filename: str):
     config = alpaca.config.parser.run("./src/c/grammar.gm")
@@ -70,7 +74,7 @@ def run_eisen(filename: str):
         tokens=tokens)
 
     # Keep this exit to only parse
-    # print(asl)
+    print(asl)
     # exit()
 
     # asl_str = ["  " + line for line in  str(asl).split("\n")]
@@ -152,15 +156,42 @@ def debug():
         filename="./src/eisen/grammar.gm")
 
     # READ FILE TO STR
-    with open("./parsetest.txt", 'r') as f:
+    with open("./test.rs", 'r') as f:
         txt = f.read()
 
     # TOKENIZE
     tokens = run_and_measure("Tokenizing",
         alpaca.lexer.run,
-        text=txt, config=config, callback=eisen.EisenCallback)
-    result = alpaca.parser.run(config, tokens, eisen.EisenBuilder())
-    print(result)
+        text=txt.strip(), config=config, callback=eisen.EisenCallback)
+    # for t in tokens: print(t)
+
+    parser = run_and_measure("InitParser",
+        eisen.SuperParser,
+        config=config)
+
+    asl = run_and_measure("Parser",
+        parser.parse,
+        tokens=tokens)
+    print(asl)
+
+    state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
+    state = eisen.Workflow.execute_with_benchmarks(state)
+    asl = eisen.ToPython().run(state)
+    print(asl)
+
+    proto_code = python.Writer().run(asl)
+    code = python.PostProcessor.run(proto_code)
+    print(code)
+
+    # p = "('start A ('def 'main xs4...) xs...)"
+    # pat = alpaca.pattern.Pattern(p)
+    # r = pat.match(asl).to("('here ('def 'notmain xs4...) A xs...)")
+    # print(r)
+
+    # print("then...")
+    # a = alpaca.pattern.Pattern("('def name xs...)").map(asl._list, "('name name)")
+    # for b in a:
+    #     print(b)
 
 
 if __name__ == "__main__":

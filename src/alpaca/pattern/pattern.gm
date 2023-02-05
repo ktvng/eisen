@@ -1,0 +1,22 @@
+# ========================================================
+#
+# GrammarMaster (.gm)
+#
+# ========================================================
+
+
+SYMBOLICS
+    <type>              ->  <regex>
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol tag          ->  '[^\s\)]+
+    symbol var          ->  [\w\d]+
+    symbol lst          ->  [\w\d]+\.\.\.
+    symbol any          ->  \?\?
+
+    none                ->  [\s]+
+
+STRUCTURE
+    @action pass
+    START ->
+        |   NOT USED

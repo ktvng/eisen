@@ -36,7 +36,7 @@ def run_python(filename: str):
     print(asl)
     proto_code = python.Writer().run(asl)
     code = python.PostProcessor.run(proto_code)
-    # print(code)
+    print(code)
 
 def run_c(filename: str):
     config = alpaca.config.parser.run("./src/c/grammar.gm")
@@ -180,8 +180,10 @@ def debug():
     print(asl)
 
     proto_code = python.Writer().run(asl)
-    code = python.PostProcessor.run(proto_code)
-    print(code)
+    code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain()"
+    with open("./build/test.py", 'w') as f:
+        f.write(code)
+    subprocess.run(["python3", "./build/test.py"])
 
     # p = "('start A ('def 'main xs4...) xs...)"
     # pat = alpaca.pattern.Pattern(p)

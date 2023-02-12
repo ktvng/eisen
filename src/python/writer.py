@@ -46,14 +46,23 @@ class Writer(Visitor):
             p += [", "] + fn.apply(child)
         return p
 
-    @Visitor.for_asls("params")
-    def params_(fn, asl: CLRList):
+    @staticmethod
+    def write_sequential(fn, asl: CLRList, brackets: str):
+        l, r = brackets[0], brackets[1]
         if asl.has_no_children():
-            return ["()"]
-        p = ["("] + fn.apply(asl.first())
+            return [f"{l}{r}"]
+        p = [f"{l}"] + fn.apply(asl.first())
         for child in asl[1:]:
             p += [", "] + fn.apply(child)
-        return p + [")"]
+        return p + [f"{r}"]
+
+    @Visitor.for_asls("params")
+    def params_(fn, asl: CLRList):
+        return Writer.write_sequential(fn, asl, "()")
+
+    @Visitor.for_asls("list")
+    def list_(fn, asl: CLRList):
+        return Writer.write_sequential(fn, asl, "[]")
 
     @Visitor.for_asls("seq")
     def seq_(fn, asl: CLRList):
@@ -100,7 +109,14 @@ class Writer(Visitor):
 
     @Visitor.for_asls("class")
     def class_(fn, asl: CLRList):
-        return ["class ", *fn.apply(asl.first()), ": \n{\n", *fn.apply(asl.second()), "}\n"]
+        elems = []
+        for child in asl[1:]:
+            elems += fn.apply(child)
+        return ["class ", *fn.apply(asl.first()), ": \n{\n", *elems, "}\n"]
+
+    @Visitor.for_asls("vargs", "unpack")
+    def unpack_(fn, asl: CLRList):
+        return ["*", *fn.apply(asl.first())]
 
     @Visitor.for_asls("call")
     def call_(fn, asl: CLRList):

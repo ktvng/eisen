@@ -37,7 +37,7 @@ class Call(AbstractNodeInterface):
     def get_function_return_restrictions(self) -> list[GeneralRestriction]:
         return self.get_function_return_type().get_restrictions()
 
-    def is_print(self) -> str:
+    def is_print(self) -> bool:
         node = RefLike(self.state.but_with(asl=self.first_child()))
         return node.is_print()
 

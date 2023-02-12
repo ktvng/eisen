@@ -55,7 +55,7 @@ SYMBOLICS
     int                 ->  -?[0-9]+
     bool                ->  True|False
 
-    TAG                 ->  [_a-zA-Z]\w*
+    TAG                 ->  [_a-zA-Z]+
     none                ->  [ \t]*
     none                ->  [ \t]*\/\/.*?\n+
     none                ->  [ \t]*\/\/[^\n]*
@@ -98,14 +98,17 @@ STRUCTURE
     E10 ->
         @action build_operator
         |   E10 . TAG
+        @action filter_build unpack
+        |   * VAR
         @action build call
         |   E10 PARAMS
         @action pass
-        |   E11
         |   LITERAL
         |   VAR
+        |   E0_LST
         @action filter_pass
         |   ( E0 )
+
 
     E8 ->
         @action build_operator
@@ -176,6 +179,10 @@ STRUCTURE
         |   TAG , TAG
         |   TAG , _TAGS
 
+    # list of Expressions
+    E0_LST ->
+        @action filter_build list
+        |   [ _E0S ]
 
     # tuple of Expressions
     E0S ->
@@ -282,11 +289,17 @@ STRUCTURE
         @action filter_build def
         |   def TAG ARGS : SEQ
 
+    VARGS ->
+        @action filter_build vargs
+        |   * TAG
+
     ARGS ->
         @action filter_build args
         |   ( )
-        |   ( TAG )
+        |   ( VARGS )
+        |   ( TAG , VARGS )
         |   ( TAGS )
+        |   ( TAGS , VARGS )
 
     # ====================================================
     # Classes
@@ -303,6 +316,8 @@ STRUCTURE
     CLASS_ELEM ->
         @action filter_build init
         |   def init ARGS : SEQ
+        @action filter_build def
+        |   def TAG ARGS : SEQ
 
 
     # ====================================================

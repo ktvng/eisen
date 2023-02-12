@@ -8,7 +8,22 @@ from eisen.state.topythonstate import ToPythonState as State
 from eisen.state.stateb import StateB
 import eisen.adapters as adapters
 
+
 class ToPython(Visitor):
+    lmda = """
+class lmda:
+    def __init__(self, f):
+        self.f = f
+        self.params=list()
+
+    def __call__(self, *args):
+        return self.f(*self.params, *args)
+
+    def curry(self, args):
+        self.params += args
+        return self
+    """
+
     def __init__(self, debug: bool = False):
         super().__init__(debug)
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
@@ -25,12 +40,12 @@ class ToPython(Visitor):
     @Visitor.for_default
     def default_(fn, state: State):
         print(f"ToPython unimplemented for {state.asl}")
-        return
+        return CLRToken(type_chain=["code"], value="***TODO***")
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):
         return CLRList("start", lst=[fn.apply(state.but_with(asl=child))
-            for child in state.get_all_children()])
+            for child in state.get_all_children() if child.type != "interface"])
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State):
@@ -102,22 +117,74 @@ class ToPython(Visitor):
         return CLRList("seq", lst=[fn.apply(state.but_with(asl=child))
             for child in children])
 
-    @Visitor.for_asls("ilet", "ivar", "let", "var", "val", "var?")
+    @Visitor.for_asls("ilet", "ivar")
     def iletivar_(fn, state: State):
         return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("ref", "fn")
+    @Visitor.for_asls("let", "var", "val", "var?")
+    def decls_(fn, state: State):
+        print(state.get_asl())
+        if Pattern("(?? ('tags xs...) _)").match(state.get_asl()):
+            tags_asl = Pattern("(?? ('tags xs...) _)").match(state.get_asl())\
+                .to("('tags xs...)")
+
+            number_of_vars = len(tags_asl)
+            values = " ".join(["None"]*number_of_vars)
+            values_asl = fn.create_asl(f"(tuple {values})")
+            return CLRList("=", lst=[tags_asl, values_asl])
+        else:
+            return Pattern("(?? name _)").match(state.get_asl()).to("('= ('ref name) 'None)")
+
+    @Visitor.for_asls("ref")
     def ref_(fn, state: State):
         return CLRList("ref", lst=[state.first_child()])
 
+    @Visitor.for_asls("fn")
+    def fn_(fn, state: State):
+        return Pattern("('fn name)").match(state.get_asl())\
+            .to("('call ('ref 'lmda) ('params name))")
+
+    @Visitor.for_asls("call")
+    def all_(fn, state: State):
+        if adapters.Call(state).is_print():
+            other_params = state.second_child()[1:]
+            value: str = state.second_child().first().value
+            base = CLRToken(type_chain=["str"], value=value.replace("%i", "{}"))
+            return CLRList("call", lst=[
+                fn.apply(state.but_with_first_child()),
+                CLRList("params", lst=[
+                    CLRList("call", lst=[
+                        CLRList(".", lst=[
+                            base,
+                            CLRList("ref", lst=[CLRToken(type_chain=["TAG"], value="format")])
+                        ]),
+                        CLRList("params", lst=[fn.apply(state.but_with(asl=child)) for child in other_params])
+                    ])
+                ])
+            ])
+
+        return CLRList("call", lst=[fn.apply(state.but_with(asl=child))
+            for child in state.get_all_children()])
+
     @Visitor.for_asls("if", "cond", "lvals",
-        "params", "call", "tags", "tuple",
+        "params", "tags", "tuple",
         "=", ".", "+", "-", "/",
         "*", "==", "+=", "-=", "/=", "*=")
     def binop_(fn, state: State):
         return CLRList(state.get_asl().type, lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children()])
+
+    @Visitor.for_asls("cast")
+    def cast_(fn, state: State):
+        return fn.apply(state.but_with_first_child())
+
+    @Visitor.for_asls("curry_call")
+    def curry_call_(fn, state: State):
+        state.get_asl()[0] = fn.apply(state.but_with_first_child())
+        return Pattern("('curry_call FN ('curried XS...)").match(state.get_asl())\
+            .to("('call ('. FN 'curry) ('params ('list XS...)))")
+
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):

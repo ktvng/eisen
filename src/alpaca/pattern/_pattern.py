@@ -64,7 +64,6 @@ class PatternBuilder:
             elif isinstance(comp, TagComponent):
                 lst.append(CLRToken(type_chain=["code"], value=comp.get_value()))
             elif isinstance(comp, ListComponent):
-                lst.append(lookups.get(comp.get_value()))
                 lst += lookups.get(comp.get_value())
             elif isinstance(comp, list):
                 lst.append(PatternBuilder.construct(comp, lookups))

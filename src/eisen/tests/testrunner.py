@@ -6,8 +6,10 @@ import sys
 import json
 import traceback
 import multiprocessing
+import subprocess
 
 import alpaca
+import python
 from alpaca.concepts import AbstractException
 from alpaca.utils import VisitorException
 
@@ -17,6 +19,7 @@ from eisen.parsing.superparser import SuperParser
 from eisen.state.basestate import BaseState
 from eisen.validation.workflow import Workflow
 from eisen.interpretation.ast_interpreter import AstInterpreter
+from eisen.conversion.to_python import ToPython
 
 class StaticParser():
     grammarfile = "./src/eisen/grammar.gm"
@@ -79,11 +82,26 @@ class Test():
                 print(state.watcher.txt)
                 print(state.asl)
                 return False, "test failed due to exception"
-            interpreter = AstInterpreter()
-            interpreter.run(state)
+
+            asl = ToPython().run(state)
+            proto_code = python.Writer().run(asl)
+            proto_code = python.Writer().run(asl)
+            code = python.PostProcessor.run(proto_code) + ToPython.lmda + "\nmain()"
+            fname= f"./build/{self.name}.py"
+            with open(fname, 'w') as f:
+                f.write(code)
+            bytes = subprocess.check_output(["python3", fname])
+            gotten_output = bytes.decode()
+            # interpreter = AstInterpreter()
+            # interpreter.run(state)
             expected_output = self.metadata["expected"]["output"]
-            if state.watcher.txt != expected_output:
-                return False, f"expected, got:\n{expected_output}\n-----\n{interpreter.stdout}\n-----\n"
+            if not self.metadata["expected"].get("match_case", True):
+                gotten_output = gotten_output.lower()
+                expected_output = expected_output.lower()
+            if gotten_output != expected_output:
+                return False, f"expected, got:\n{expected_output}\n-----\n{gotten_output}\n-----\n"
+            # if state.watcher.txt != expected_output:
+                # return False, f"expected, got:\n{expected_output}\n-----\n{interpreter.stdout}\n-----\n"
         else:
             expected_exceptions = self.metadata["expected"]["exceptions"]
             got_number_of_exceptions = state.watcher.txt.count(AbstractException.delineator)

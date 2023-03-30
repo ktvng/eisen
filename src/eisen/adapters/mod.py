@@ -20,3 +20,11 @@ class Mod(AbstractNodeInterface):
             fn.apply(self.state.but_with(
                 asl=child,
                 mod=self.get_entered_module()))
+
+    def enter_module_and_apply_with_return(self, fn):
+        lst = []
+        for child in self.state.get_asl()[1:]:
+            lst.append(fn.apply(self.state.but_with(
+                asl=child,
+                mod=self.get_entered_module())))
+        return lst

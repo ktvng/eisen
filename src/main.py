@@ -183,7 +183,12 @@ def debug():
     code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
+
+    print(code)
+    exec(code)
+    exit()
     subprocess.run(["python3", "./build/test.py"])
+    print()
 
     # p = "('start A ('def 'main xs4...) xs...)"
     # pat = alpaca.pattern.Pattern(p)

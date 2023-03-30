@@ -4,7 +4,12 @@ import alpaca
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
-binops = ["+", "-", "/", "*", "<", ">", "<=", ">=", "==", "!=", "+=", "-=", "/=", "*=", "="]
+binops = ["+", "-", "/", "*", "<", ">", "<=", ">=",
+    "==", "!=", "+=", "-=", "/=", "*=",
+    "=",
+    "//=", "//",
+    "and", "or"
+]
 
 class Writer(Visitor):
     def run(self, asl: CLRList) -> str:
@@ -87,6 +92,11 @@ class Writer(Visitor):
     def while_(fn, asl: CLRList):
         return ["while ", *fn.apply(asl.first())]
 
+    @Visitor.for_asls("for")
+    def for_(fn, asl: CLRList):
+        return ["for ", asl.first().value, " in ", *fn.apply(asl.second()), ":",
+            *fn.apply(asl.third())]
+
     @Visitor.for_asls("cond")
     def cond_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), ": ", *fn.apply(asl.second())]
@@ -98,6 +108,10 @@ class Writer(Visitor):
     @Visitor.for_asls(*binops)
     def binops_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), f" {asl.type} ", *fn.apply(asl.second())]
+
+    @Visitor.for_asls("not")
+    def not_(fn ,asl: CLRList):
+        return ["not ", *fn.apply(asl.first())]
 
     @Visitor.for_asls(".")
     def close_bind_(fn, asl: CLRList):
@@ -121,6 +135,10 @@ class Writer(Visitor):
     @Visitor.for_asls("call")
     def call_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), *fn.apply(asl.second())]
+
+    @Visitor.for_asls("named")
+    def named_(fn, asl: CLRList):
+        return [*fn.apply(asl.first()), "=", *fn.apply(asl.second())]
 
     @Visitor.for_tokens
     def tokens_(fn, asl: CLRList):

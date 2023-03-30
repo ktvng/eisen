@@ -162,6 +162,10 @@ class ModuleScope(AbstractNodeInterface):
             current_mod = current_mod.get_child_by_name(mod_name)
         return current_mod
 
+    def get_fq_name(self) -> str:
+        end, parts = self._unpack_structure()
+        return "_".join(parts) + "_" + end
+
 class Scope(AbstractNodeInterface):
     asl_type = "."
     examples = """

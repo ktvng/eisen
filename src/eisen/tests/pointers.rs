@@ -4,7 +4,8 @@ fn max(x: int var, y: int var) -> r: int var {
     }
     else {
         r = y
-        y <- 0
+        // should not be able to edit memory that is passed in!
+        // y <- 0
     }
 }
 

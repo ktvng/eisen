@@ -3,6 +3,7 @@
     "info": "tests for simple logical operators",
     "expected": {
         "success": true,
+        "match_case": false,
         "output": "true false true"
     }
 }

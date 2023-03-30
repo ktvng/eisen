@@ -47,6 +47,10 @@ class lmda:
         return CLRList("start", lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children() if child.type != "interface"])
 
+    @Visitor.for_asls("mod")
+    def mod_(fn, state: State):
+        parts = adapters.Mod(state).enter_module_and_apply_with_return(fn)
+
     @Visitor.for_asls("struct")
     def struct_(fn, state: State):
         node = adapters.Struct(state)
@@ -160,7 +164,8 @@ class lmda:
                             CLRList("ref", lst=[CLRToken(type_chain=["TAG"], value="format")])
                         ]),
                         CLRList("params", lst=[fn.apply(state.but_with(asl=child)) for child in other_params])
-                    ])
+                    ]),
+                    CLRList("named", lst=[CLRToken(["TAG"], value="end"), CLRToken(["str"], value="")])
                 ])
             ])
 
@@ -169,10 +174,37 @@ class lmda:
 
     @Visitor.for_asls("if", "cond", "lvals",
         "params", "tags", "tuple",
-        "=", ".", "+", "-", "/",
-        "*", "==", "+=", "-=", "/=", "*=")
+        "=", ".", "+", "-",
+        "*", "==", "+=", "-=", "*=", "!=",
+        "<", ">", "<=", ">=",
+        "and", "or",
+        "while")
     def binop_(fn, state: State):
         return CLRList(state.get_asl().type, lst=[fn.apply(state.but_with(asl=child))
+            for child in state.get_all_children()])
+
+    @Visitor.for_asls("::")
+    def mod_scope_(fn, state: State):
+        node = adapters.ModuleScope(state)
+        return CLRToken(type_chain=["code"], value=node.get_fq_name())
+
+    @Visitor.for_asls("<-")
+    def ptr_(fn, state: State):
+        return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
+            for child in state.get_all_children()])
+
+    @Visitor.for_asls("!")
+    def not_(fn, state: State):
+        return CLRList("not", lst=[fn.apply(state.but_with_first_child())])
+
+    @Visitor.for_asls("/=")
+    def div_eq_(fn, state: State):
+        return CLRList("//=", lst=[fn.apply(state.but_with(asl=child))
+            for child in state.get_all_children()])
+
+    @Visitor.for_asls("/")
+    def div_(fn, state: State):
+        return CLRList("//", lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children()])
 
     @Visitor.for_asls("cast")

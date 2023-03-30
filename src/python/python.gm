@@ -12,9 +12,11 @@ SYMBOLICS
     keyword elif        ->  \s*elif
     keyword else        ->  \s*else
     keyword while       ->  while
+    keyword for         ->  for
     keyword return      ->  return
     keyword None        ->  None
     keyword is          ->  is
+    keyword in          ->  in
     keyword init        ->  __init__
 
     symbol @            ->  @
@@ -172,6 +174,19 @@ STRUCTURE
         |   ( )
         |   ( E0 )
         |   ( _E0S )
+        |   ( E0 , KV )
+        |   ( E0 , _KVS )
+        |   ( _E0S , KV )
+        |   ( _E0S , _KVS )
+
+    KV ->
+        @action filter_build named
+        |   TAG = E0
+
+    _KVS ->
+        @action pool
+        |   KV , KV
+        |   KV , _KVS
 
     # tuple of tags
     _TAGS ->
@@ -269,6 +284,8 @@ STRUCTURE
         |   IF_CONTEXT
         @action filter_build while
         |   while COND
+        @action filter_build for
+        |   for TAG in E0 : SEQ
 
     IF_CONTEXT ->
         @action pool

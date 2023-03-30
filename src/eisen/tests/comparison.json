@@ -3,6 +3,7 @@
     "info": "tests for simple comparisons",
     "expected": {
         "success": true,
+        "match_case": false,
         "output": "false true false"
     }
 }

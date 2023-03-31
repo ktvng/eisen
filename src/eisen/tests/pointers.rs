@@ -1,25 +1,27 @@
-fn max(x: int var, y: int var) -> r: int var {
-    if (x > y) {
+struct Integer {
+    value: int
+
+    create(value: int) -> self: Integer {
+        self.value = value
+    }
+}
+
+fn max(x: Integer var, y: Integer var) -> r: Integer var {
+    if (x.value > y.value) {
         r = x
     }
     else {
         r = y
-        // should not be able to edit memory that is passed in!
-        // y <- 0
     }
 }
 
-fn letwhy(x: int) -> r: int {
-    r = x
-}
-
 fn main() {
-    let a, b = 15, 9
+    let a, b = Integer(15), Integer(9)
     var x = max(a, b)
-    print("%i ", x)
-    a = 4
-    print("%i ", x)
+    print("%i ", x.value)
+    a.value = 4
+    print("%i ", x.value)
 
     x = max(a, b)
-    print("%i", x)
+    print("%i", x.value)
 }

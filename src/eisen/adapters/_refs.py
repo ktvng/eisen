@@ -164,6 +164,10 @@ class ModuleScope(AbstractNodeInterface):
 
     def get_fq_name(self) -> str:
         end, parts = self._unpack_structure()
+        mod = self.state.get_enclosing_module()
+        while mod.parent is not None:
+            parts.insert(0, mod.name)
+            mod = mod.parent
         return "_".join(parts) + "_" + end
 
 class Scope(AbstractNodeInterface):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.lexer import Token
-from alpaca.clr import CLRList
+from alpaca.clr import CLRList, CLRToken
 
 from eisen.parsing.builder import EisenBuilder
 
@@ -53,7 +53,9 @@ class ModParser(ContextParser):
 
     def parse(self, tokens: list[Token]):
         line_number = tokens[0].line_number
-        contexts = [tokens[1]]
+        contexts = [CLRToken(type_chain=["TAG"],
+                             value=tokens[1].value,
+                             line_number=tokens[1].line_number)]
 
         # remove the outer mod
         remaining_tokens = tokens[3:-1]

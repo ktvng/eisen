@@ -14,12 +14,12 @@ variant origin of point {
     }
 }
 
-fn say(p: point) {
-    print("point ")
-}
-
 fn say(p: origin) {
     print("origin ")
+}
+
+fn say(p: point) {
+    print("point ")
 }
 
 fn main() {

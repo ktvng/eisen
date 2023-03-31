@@ -43,6 +43,19 @@ class Def(AbstractNodeInterface):
         (seq ...))
     """
     get_function_name = AbstractNodeInterface.get_name_from_first_child
+
+    def get_fq_name(self) -> CLRList:
+        fn_instance = self.get_function_instance()
+        if fn_instance.context.parent is None:
+            return self.get_function_name()
+
+        mod_prefixes = ""
+        mod = fn_instance.context
+        while mod.parent is not None:
+            mod_prefixes = mod.name + "_" + mod_prefixes
+            mod = mod.parent
+        return mod_prefixes + self.get_function_name()
+
     def get_args_asl(self) -> CLRList:
         return self.second_child()
 

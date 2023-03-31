@@ -20,8 +20,9 @@ class lmda:
         return self.f(*self.params, *args)
 
     def curry(self, args):
-        self.params += args
-        return self
+        fn = lmda(self.f)
+        fn.params = self.params + args
+        return fn
     """
 
     def __init__(self, debug: bool = False):
@@ -29,7 +30,8 @@ class lmda:
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
 
     def run(self, state: StateB) -> CLRList:
-        return self.apply(State.create_from_stateb(state))
+        result = self.apply(State.create_from_stateb(state))
+        return result
 
     def apply(self, state: State) -> CLRList:
         return self._route(state.asl, state)
@@ -44,12 +46,29 @@ class lmda:
 
     @Visitor.for_asls("start")
     def start_(fn, state: State):
-        return CLRList("start", lst=[fn.apply(state.but_with(asl=child))
-            for child in state.get_all_children() if child.type != "interface"])
+        lst = []
+        for child in state.get_all_children():
+            if child.type == "mod":
+                lst.extend(fn.apply(state.but_with(asl=child)))
+            elif child.type != "interface":
+                lst.append(fn.apply(state.but_with(asl=child)))
+
+        return CLRList("start", lst=lst)
 
     @Visitor.for_asls("mod")
     def mod_(fn, state: State):
-        parts = adapters.Mod(state).enter_module_and_apply_with_return(fn)
+        node = adapters.Mod(state)
+        parts = []
+        for child in state.get_child_asls():
+            if child.type == "mod":
+                parts.extend(fn.apply(state.but_with(
+                    asl=child,
+                    mod=node.get_entered_module())))
+            else:
+                parts.append(fn.apply(state.but_with(
+                    asl=child,
+                    mod=node.get_entered_module())))
+        return parts
 
     @Visitor.for_asls("struct")
     def struct_(fn, state: State):
@@ -79,6 +98,14 @@ class lmda:
             return [m.name for m in map(Pattern("(': name _)").match, ret_asl.first()._list) if m]
         return [Pattern("('rets (': name _))").match(ret_asl).name]
 
+    @Visitor.for_asls("variant")
+    def variant_(fn, state: State):
+        node = adapters.Variant(state)
+        is_asl = node.get_is_asl()
+        asl = Pattern("('is_fn xs...)").match(is_asl).to("'def xs...")
+        asl.data = is_asl.data
+        return fn.apply(state.but_with(asl=asl))
+
     @Visitor.for_asls("def")
     def def_(fn, state: State):
         node = adapters.Def(state)
@@ -90,7 +117,7 @@ class lmda:
             asl=node.get_seq_asl(),
             ret_names=ret_names))
         seq_asl._list = [*return_vars, *seq_asl._list]
-        return CLRList("def", lst=[state.first_child(), arg_asl, seq_asl])
+        return CLRList("def", lst=[CLRToken(["TAG"], value=node.get_fq_name()), arg_asl, seq_asl])
 
     @Visitor.for_asls("return")
     def return_(fn, state: State):
@@ -128,7 +155,6 @@ class lmda:
 
     @Visitor.for_asls("let", "var", "val", "var?")
     def decls_(fn, state: State):
-        print(state.get_asl())
         if Pattern("(?? ('tags xs...) _)").match(state.get_asl()):
             tags_asl = Pattern("(?? ('tags xs...) _)").match(state.get_asl())\
                 .to("('tags xs...)")
@@ -148,6 +174,11 @@ class lmda:
     def fn_(fn, state: State):
         return Pattern("('fn name)").match(state.get_asl())\
             .to("('call ('ref 'lmda) ('params name))")
+
+    @Visitor.for_asls("is_call")
+    def is_call(fn, state: State):
+        return Pattern("('is_call ('fn name) xs...)").match(state.get_asl())\
+            .to("('call ('ref name) xs...)")
 
     @Visitor.for_asls("call")
     def all_(fn, state: State):

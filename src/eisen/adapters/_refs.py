@@ -116,7 +116,6 @@ class Fn(AbstractNodeInterface):
                 return instances[0]
             # TODO: raise compiler message here
 
-
 class ModuleScope(AbstractNodeInterface):
     asl_type = "::"
     examples = """
@@ -162,13 +161,8 @@ class ModuleScope(AbstractNodeInterface):
             current_mod = current_mod.get_child_by_name(mod_name)
         return current_mod
 
-    def get_fq_name(self) -> str:
-        end, parts = self._unpack_structure()
-        mod = self.state.get_enclosing_module()
-        while mod.parent is not None:
-            parts.insert(0, mod.name)
-            mod = mod.parent
-        return "_".join(parts) + "_" + end
+    def get_instance(self) -> EisenInstance:
+        return self.get_end_instance()
 
 class Scope(AbstractNodeInterface):
     asl_type = "."

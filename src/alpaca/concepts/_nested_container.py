@@ -98,13 +98,9 @@ class NestedContainer():
         return f"{self.name}\n{indented_subtext}"
 
     def get_full_name(self) -> str:
-        # case for the global module
-        if self.parent is None:
-            return ""
-
-        name = self.name
-        mod = self.parent
-        while mod is not None and mod.parent is not None:
-            name += mod.name + "::"
+        name = ""
+        mod = self
+        while mod is not None:
+            name = mod.name + "_" + name
             mod = mod.parent
         return name

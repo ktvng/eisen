@@ -138,7 +138,7 @@ class Flattener(Visitor):
             packet.asl._list.append(Flattener._make_code_token_for(f"(addr {ref.value})"))
 
         fn_instance = node.get_fn_instance()
-        fn_name = fn_instance.get_c_name()
+        fn_name = fn_instance.get_full_name()
 
         # missing a close paren as we need to add the (params ...) which is added as
         # an asl, not a token, because we don't yet have the ability to transmute it.

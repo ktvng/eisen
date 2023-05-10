@@ -6,17 +6,6 @@ from alpaca.concepts._module import Module
 class AbstractRestriction():
     pass
 
-# TODO: figure this out
-class FunctionSignature():
-    def __init__(self, name: str, type: Type):
-        self.name = name
-        self.type = type
-
-class VariantAcl():
-    def __init__(self, allowed_attrs: list[str], allowed_fns: list[FunctionSignature]):
-        self.allowed_attrs = []
-        self.allowed_fns = [FunctionSignature]
-
 class Type():
     class classifications:
         nil = "nil"

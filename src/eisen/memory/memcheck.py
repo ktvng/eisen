@@ -72,13 +72,13 @@ class GetDeps():
 
     def _try_cache_lookup(self, state: State) -> Deps | None:
         node = adapters.Def(state)
-        function_uid = node.get_function_instance().get_unique_function_name()
+        function_uid = node.get_function_instance().get_full_name()
         if not state.get_inherited_fns():
             return self.cache.get(function_uid, None)
 
     def _add_to_cache(self, state: State, F_deps: Deps):
         node = adapters.Def(state)
-        function_uid = node.get_function_instance().get_unique_function_name()
+        function_uid = node.get_function_instance().get_full_name()
         if not state.get_inherited_fns():
             self.cache[function_uid] = F_deps
 

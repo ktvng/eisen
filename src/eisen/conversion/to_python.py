@@ -30,6 +30,8 @@ class lmda:
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
 
     def run(self, state: StateB) -> CLRList:
+        # print(state.get_asl())
+        # input()
         result = self.apply(State.create_from_stateb(state))
         return result
 
@@ -117,7 +119,7 @@ class lmda:
             asl=node.get_seq_asl(),
             ret_names=ret_names))
         seq_asl._list = [*return_vars, *seq_asl._list]
-        return CLRList("def", lst=[CLRToken(["TAG"], value=node.get_fq_name()), arg_asl, seq_asl])
+        return CLRList("def", lst=[CLRToken(["TAG"], value=node.get_function_instance().get_full_name()), arg_asl, seq_asl])
 
     @Visitor.for_asls("return")
     def return_(fn, state: State):
@@ -172,11 +174,26 @@ class lmda:
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State):
-        return Pattern("('fn name)").match(state.get_asl())\
+        node = adapters.Fn(state)
+        instance = state.get_instances()[0]
+        # if the function instance is a constructor we don't need
+        # to append the function signature
+        if instance.is_constructor:
+            asl = state.get_asl()
+        else:
+            asl = CLRList(
+                type="fn",
+                lst=[CLRToken(type_chain=["TAG"],
+                    value=instance.get_full_name())])
+        return Pattern("('fn name)").match(asl)\
             .to("('call ('ref 'lmda) ('params name))")
 
     @Visitor.for_asls("is_call")
     def is_call(fn, state: State):
+        lst = []
+        for child in state.get_all_children():
+            lst.append(fn.apply(state.but_with(asl=child)))
+        return CLRList(type="call", lst=lst)
         return Pattern("('is_call ('fn name) xs...)").match(state.get_asl())\
             .to("('call ('ref name) xs...)")
 
@@ -217,7 +234,7 @@ class lmda:
     @Visitor.for_asls("::")
     def mod_scope_(fn, state: State):
         node = adapters.ModuleScope(state)
-        return CLRToken(type_chain=["code"], value=node.get_fq_name())
+        return CLRToken(type_chain=["code"], value=node.get_instance().get_full_name())
 
     @Visitor.for_asls("<-")
     def ptr_(fn, state: State):

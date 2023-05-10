@@ -86,7 +86,7 @@ class Test():
             asl = ToPython().run(state)
             proto_code = python.Writer().run(asl)
             proto_code = python.Writer().run(asl)
-            code = python.PostProcessor.run(proto_code) + ToPython.lmda + "\nmain()"
+            code = python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
             fname= f"./build/{self.name}.py"
             with open(fname, 'w') as f:
                 f.write(code)

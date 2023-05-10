@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRList, CLRToken
+from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import EisenFunctionInstance
 
@@ -44,18 +45,6 @@ class Def(AbstractNodeInterface):
     """
     get_function_name = AbstractNodeInterface.get_name_from_first_child
 
-    def get_fq_name(self) -> CLRList:
-        fn_instance = self.get_function_instance()
-        if fn_instance.context.parent is None:
-            return self.get_function_name()
-
-        mod_prefixes = ""
-        mod = fn_instance.context
-        while mod.parent is not None:
-            mod_prefixes = mod.name + "_" + mod_prefixes
-            mod = mod.parent
-        return mod_prefixes + self.get_function_name()
-
     def get_args_asl(self) -> CLRList:
         return self.second_child()
 
@@ -76,6 +65,9 @@ class Def(AbstractNodeInterface):
 
     def get_function_instance(self) -> EisenFunctionInstance:
         return self.state.get_instances()[0]
+
+    def get_function_type(self) -> Type:
+        return self.get_function_instance().type
 
     @classmethod
     def _unpack_to_get_names(self, args_or_rets: CLRList) -> list[str]:

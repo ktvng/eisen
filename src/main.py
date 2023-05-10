@@ -180,13 +180,13 @@ def debug():
     print(asl)
 
     proto_code = python.Writer().run(asl)
-    code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain()"
+    code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
 
     print(code)
-    exec(code)
-    exit()
+    # exec(code)
+    # exit()
     subprocess.run(["python3", "./build/test.py"])
     print()
 

@@ -134,7 +134,7 @@ Token: {self.asl}
 
     @classmethod
     def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> BaseState:
-        global_mod = Module("global")
+        global_mod = Module("")
         global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))

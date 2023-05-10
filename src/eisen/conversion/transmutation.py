@@ -106,7 +106,7 @@ class CTransmutation(Visitor):
     @Visitor.for_asls("def")
     def partial_8(fn, params: State) -> str:
         instance = params.get_instances()[0]
-        name = instance.get_c_name()
+        name = instance.get_full_name()
         args = fn.apply(params.but_with(asl=params.asl.second()))
         rets = fn.apply(params.but_with(asl=params.asl.third()))
         seq = fn.apply(params.but_with(asl=params.asl[-1]))
@@ -117,7 +117,7 @@ class CTransmutation(Visitor):
     def partial_17(fn, params: State) -> str:
         instances = params.get_instances()
         # get the type returned by the create object, as this is the type of the struct.
-        name = instances[0].get_c_name() + "_constructor"
+        name = instances[0].get_full_name() + "_constructor"
         args = fn.apply(params.but_with(asl=params.asl.second()))
         rets = fn.apply(params.but_with(asl=params.asl.third()))
         seq = fn.apply(params.but_with(asl=params.asl[-1]))

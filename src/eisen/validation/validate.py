@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from alpaca.concepts import Type, Context, Module, AbstractException
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.exceptions import Exceptions
@@ -11,210 +13,227 @@ from eisen.common.restriction import RestrictionViolation
 import eisen.adapters as adapters
 
 
-class ValidationResult():
-    def __init__(self, result: bool):
-        self.result = result
+@dataclass
+class ValidationResult:
+    result: bool
 
     def failed(self) -> bool:
         return not self.result
 
+    @staticmethod
+    def failure() -> ValidationResult:
+        return ValidationResult(result=False)
+
+    @staticmethod
+    def success() -> ValidationResult:
+        return ValidationResult(result=True)
+
+@dataclass
+class TypePair:
+    left: Type
+    right: Type
+
+
+class TypeCheck:
+    @staticmethod
+    def encountered_prior_failure(state: State, *args: list[Type]) -> bool:
+        return state.get_abort_signal() in args
+
+    @staticmethod
+    def flatten_to_type_pairs(left: Type, right: Type) -> list[TypePair]:
+        if left.is_tuple():
+            return [TypePair(left=l, right=r) for l, r in zip(left.components, right.components)]
+        return [TypePair(left=left, right=right)]
+
+    @staticmethod
+    def type_pair_is_nil_compatible(state: State, type_pair: TypePair):
+        if not type_pair.left.restriction.is_nullable() and type_pair.right.is_nil():
+            add_exception_to(state,
+                ex=Exceptions.NilAssignment,
+                msg=f"cannot assign nil to non-nilable type '{type_pair.left}'")
+            return False
+        return True
+
+class ImplementationCheck:
+    @staticmethod
+    def _has_attribute(state: State, type: Type, attribute_name: str, inherited_type: Type) -> bool:
+        if not type.has_member_attribute_with_name(attribute_name):
+            add_exception_to(state,
+                ex=Exceptions.AttributeMismatch,
+                msg=f"'{type}' is missing attribute '{attribute_name}' required to inherit '{inherited_type}'")
+            return False
+        return True
+
+    @staticmethod
+    def _attribute_matches_type(state: State,
+                                type: Type,
+                                attribute_name: str,
+                                required_attribute_type: Type,
+                                inherited_type: Type):
+        if not type.get_member_attribute_by_name(attribute_name) == required_attribute_type:
+            add_exception_to(state,
+                ex=Exceptions.MissingAttribute,
+                msg=f"'{type}' is missing attribute '{attribute_name}' required to inherit '{inherited_type}'")
+            return False
+        return True
+
+    @staticmethod
+    def has_required_attributes(state: State, type: Type, inherited_type: Type) -> bool:
+        return all([ImplementationCheck._has_attribute(state, type, required_attribute_name, inherited_type)
+                    and ImplementationCheck._attribute_matches_type(state,
+                                                                    type,
+                                                                    required_attribute_name,
+                                                                    required_attribute_type,
+                                                                    inherited_type)
+                        for required_attribute_name, required_attribute_type in inherited_type.get_all_attribute_name_type_pairs()])
+
+
+def add_exception_to(state: State, ex: AbstractException, msg: str, line_number: int=0):
+    if line_number == 0:
+        line_number = state.get_line_number()
+    state.report_exception(ex(
+        msg=msg,
+        line_number=line_number))
+
+def failure_with_exception_added_to(state: State, ex: AbstractException, msg: str, line_number: int=0):
+    add_exception_to(state, ex, msg, line_number)
+    return ValidationResult.failure()
+
 ################################################################################
 # performs the actual validations
 class Validate:
-    @classmethod
-    def send_failure(cls) -> ValidationResult:
-        return ValidationResult(result=False)
+    @staticmethod
+    def can_assign(state: State, type1: Type, type2: Type) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, type1, type2):
+            return ValidationResult.failure()
 
-    @classmethod
-    def send_success(cls) -> ValidationResult:
-        return ValidationResult(result=True)
+        if (Validate.types_are_nil_compatible(state, type1, type2).failed()
+                or Validate.equivalent_types(state, type1, type2).failed()):
+            return ValidationResult.failure()
+        return ValidationResult.success()
 
-    @classmethod
-    def can_assign(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
-        if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate.send_failure()
+    @staticmethod
+    def types_are_nil_compatible(state: State, type1: Type, type2: Type) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, type1, type2):
+            return ValidationResult.failure()
 
-        # TODO: this doesn't really work
-        if type1.is_tuple():
-            for l, r in zip(type1.components, type2.components):
-                if not l.restriction.is_nullable() and r.is_nil():
-                    state.report_exception(Exceptions.NilAssignment(
-                    msg=f"cannot assign nil to non-nilable type '{type1}'",
-                    line_number=state.get_line_number()))
-        else:
-            if type1.restriction.is_nullable() and type2.is_nil():
-                return Validate.send_success()
-            if not type1.restriction.is_nullable() and type2.is_nil():
-                state.report_exception(Exceptions.NilAssignment(
-                    msg=f"cannot assign nil to non-nilable type '{type1}'",
-                    line_number=state.get_line_number()))
-                return Validate.send_failure()
+        if all([TypeCheck.type_pair_is_nil_compatible(state, type_pair) for
+                type_pair in TypeCheck.flatten_to_type_pairs(type1, type2)]):
+            return ValidationResult.success()
+        return ValidationResult.failure()
 
-        return Validate.equivalent_types(state, type1, type2)
+    @staticmethod
+    def equivalent_types(state: State, type1: Type, type2: Type) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, type1, type2):
+            return ValidationResult.failure()
 
-    @classmethod
-    def equivalent_types(cls, state: State, type1: Type, type2: Type) -> ValidationResult:
-        if any([state.get_abort_signal() in (type1, type2)]):
-            return Validate.send_failure()
+        # 'nil' is considered equivalent to all nullable types
+        if type1.restriction.is_nullable() and type2.is_nil():
+            return ValidationResult.success()
 
         if type1 != type2:
-            state.report_exception(Exceptions.TypeMismatch(
-                msg=f"'{type1}' != '{type2}'",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.TypeMismatch,
+                msg=f"'{type1}' != '{type2}'")
+        return ValidationResult.success()
 
-
-    @classmethod
-    def tuple_sizes_match(cls, state: State, lst1: list, lst2: list):
+    @staticmethod
+    def tuple_sizes_match(state: State, lst1: list, lst2: list):
         if len(lst1) != len(lst2):
-            state.report_exception(Exceptions.TupleSizeMismatch(
-                msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.TupleSizeMismatch,
+                msg=f"expected tuple of size {len(lst1)} but got {len(lst2)}")
+        return ValidationResult.success()
 
-    @classmethod
-    def correct_argument_types(cls, state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
-        if any([state.get_abort_signal() in (arg_type, given_type)]):
-            return Validate.send_failure()
+    @staticmethod
+    def correct_argument_types(state: State, name: str, arg_type: Type, given_type: Type) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, arg_type, given_type):
+            return ValidationResult.failure()
 
         if arg_type != given_type:
             # if the given_type is a struct, we have another change to succeed if
             # the struct embeds the expected fn_type
             if given_type.classification == Type.classifications.struct:
                 if arg_type not in given_type.embeds:
-                    state.report_exception(Exceptions.TypeMismatch(
-                        msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
-                        line_number=state.get_line_number()))
-                    return Validate.send_failure()
-                return Validate.send_success()
+                    return failure_with_exception_added_to(state,
+                        ex=Exceptions.TypeMismatch,
+                        msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'")
+                return ValidationResult.success()
 
-            state.report_exception(Exceptions.TypeMismatch(
-                msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.TypeMismatch,
+                msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'")
+        return ValidationResult.success()
 
 
-    @classmethod
-    def instance_exists(cls, state: State, name: str, instance: EisenInstance | Type) -> ValidationResult:
+    @staticmethod
+    def instance_exists(state: State, name: str, instance: EisenInstance | Type) -> ValidationResult:
         if instance is None:
-            state.report_exception(Exceptions.UndefinedVariable(
-                msg=f"'{name}' is not defined",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.UndefinedVariable,
+                msg=f"'{name}' is not defined")
+        return ValidationResult.success()
 
-    @classmethod
-    def type_exists(cls, state: State, name: str, type: Type) -> ValidationResult:
+    @staticmethod
+    def type_exists(state: State, name: str, type: Type) -> ValidationResult:
         if type is None:
-            state.report_exception(Exceptions.UnderfinedType(
-                msg=f"'{name}' is not defined",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.UnderfinedType,
+                msg=f"'{name}' is not defined")
+        return ValidationResult.success()
 
-
-    @classmethod
-    def function_instance_exists_in_local_context(cls, state: State) -> ValidationResult:
-        return cls._instance_exists_in_container(
-            state.first_child().value,
-            state.get_context(),
-            state)
-
-
-    @classmethod
-    def function_instance_exists_in_module(cls, state: State) -> ValidationResult:
-        return cls._instance_exists_in_container(
-            state.first_child().value,
-            state.get_enclosing_module(),
-            state)
-
-    @classmethod
-    def _instance_exists_in_container(cls, name: str, container: Context | Module, state: State) -> ValidationResult:
-        instance = container.get_instance(name)
-        if instance is None:
-            state.report_exception(Exceptions.UndefinedFunction(
-                msg=f"'{name}' is not defined",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
-
-    @classmethod
-    def name_is_unbound(cls, state: State, name: str) -> ValidationResult:
+    @staticmethod
+    def name_is_unbound(state: State, name: str) -> ValidationResult:
         if state.get_context().get_reference_type(name) is not None:
-            state.report_exception(Exceptions.RedefinedIdentifier(
-                msg=f"'{name}' is in use",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.RedefinedIdentifier,
+                msg=f"'{name}' is in use")
+        return ValidationResult.success()
 
-    @classmethod
-    def all_names_are_unbound(cls, state: State, names: list[str]) -> ValidationResult:
+    @staticmethod
+    def all_names_are_unbound(state: State, names: list[str]) -> ValidationResult:
         results = [Validate.name_is_unbound(state, name) for name in names]
         if any(result.failed() for result in results):
-            return Validate.send_failure()
-        return Validate.send_success()
+            return ValidationResult.failure()
+        return ValidationResult.success()
 
-    @classmethod
-    def has_member_attribute(cls, state: State, type: Type, attribute_name: str) -> ValidationResult:
+    @staticmethod
+    def has_member_attribute(state: State, type: Type, attribute_name: str) -> ValidationResult:
         if not type.has_member_attribute_with_name(attribute_name):
-            print("kxt", type, type.component_names)
-            state.report_exception(Exceptions.MissingAttribute(
-                f"'{type}' does not have member attribute '{attribute_name}'",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.MissingAttribute,
+                msg=f"'{type}' does not have member attribute '{attribute_name}'")
+        return ValidationResult.success()
 
+    @staticmethod
+    def castable_types(state: State, type: Type, cast_into_type: Type) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, type, cast_into_type):
+            return ValidationResult.failure()
 
-    @classmethod
-    def castable_types(cls, state: State, type: Type, cast_into_type: Type) -> ValidationResult:
-        if any([state.get_abort_signal() in (type, cast_into_type)]):
-            return Validate.send_failure()
+        if (type == cast_into_type
+                or type.parent_type == cast_into_type
+                or cast_into_type.parent_type == type
+                or cast_into_type in type.inherits):
+            return ValidationResult.success()
 
-        if type == cast_into_type:
-            return Validate.send_success()
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.CastIncompatibleTypes,
+            msg=f"'{type}' cannot be cast into '{cast_into_type}'")
 
-        if type.parent_type == cast_into_type or cast_into_type.parent_type == type:
-            return Validate.send_success()
-
-        if cast_into_type not in type.inherits:
-            state.report_exception(Exceptions.CastIncompatibleTypes(
-                msg=f"'{type}' cannot be cast into '{cast_into_type}'",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
-
-    @classmethod
-    def all_implementations_are_complete(cls, state: State, type: Type):
+    @staticmethod
+    def all_implementations_are_complete(state: State, type: Type):
         for interface in type.inherits:
-            cls.implementation_is_complete(state, type, interface)
+            Validate.implementation_is_complete(state, type, interface)
 
-    @classmethod
-    def implementation_is_complete(cls, state: State, type: Type, inherited_type: Type) -> ValidationResult:
-        encountered_exception = False
-        for name, required_attribute_type in zip(inherited_type.component_names, inherited_type.components):
-            if type.has_member_attribute_with_name(name):
-                attribute_type = type.get_member_attribute_by_name(name)
-                if attribute_type != required_attribute_type:
-                    encountered_exception = True
-                    state.report_exception(Exceptions.AttributeMismatch(
-                        msg=f"'{type}' has attribute '{name}' of '{attribute_type}', but '{required_attribute_type}' is required to inherit '{inherited_type}'",
-                        line_number=state.get_line_number()))
-            else:
-                encountered_exception = True
-                state.report_exception(Exceptions.MissingAttribute(
-                    msg=f"'{type}' is missing attribute '{name}' required to inherit '{inherited_type}'",
-                    line_number=state.get_line_number()))
-
-        if encountered_exception:
-            return Validate.send_failure()
-        return Validate.send_success()
+    @staticmethod
+    def implementation_is_complete(state: State, type: Type, inherited_type: Type) -> ValidationResult:
+        if ImplementationCheck.has_required_attributes(state, type, inherited_type):
+            return ValidationResult.success()
+        return ValidationResult.failure()
 
 
-    @classmethod
-    def embeddings_dont_conflict(cls, state: State, type: Type):
+    @staticmethod
+    def embeddings_dont_conflict(state: State, type: Type):
         conflicts = False
         conflict_map: dict[tuple[str, Type], bool] = {}
 
@@ -234,12 +253,11 @@ class Validate:
                 else:
                     conflict_map[pair] = embedded_type
         if conflicts:
-            return Validate.send_failure()
-        return Validate.send_success()
+            return ValidationResult.failure()
+        return ValidationResult.success()
 
-    @classmethod
+    @staticmethod
     def compose_assignment_restriction_error_message(
-            cls,
             state: State,
             ex_type: RestrictionViolation,
             l: EisenInstanceState,
@@ -288,64 +306,62 @@ class Validate:
 
 
 
-    @classmethod
-    def assignment_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
+    @staticmethod
+    def assignment_restrictions_met(state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
         is_assignable, ex_type = left.assignable_to(right)
         if not is_assignable:
             Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
-            return Validate.send_failure()
-        return Validate.send_success()
+            return ValidationResult.failure()
+        return ValidationResult.success()
 
-    @classmethod
-    def overwrite_restrictions_met(cls, state: State, left: EisenInstanceState, right: EisenInstanceState):
+    @staticmethod
+    def overwrite_restrictions_met(state: State, left: EisenInstanceState, right: EisenInstanceState):
         # print(state.asl)
         is_assignable = left.restriction.is_var()
         if not is_assignable:
-            state.report_exception(Exceptions.MemoryAssignment(
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.MemoryAssignment,
                 # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO:overwrite_restrictions_met fix error message {left}, {right}",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+                msg=f"TODO:overwrite_restrictions_met fix error message {left}, {right}")
+        return ValidationResult.success()
 
-    @classmethod
-    def parameter_assignment_restrictions_met(cls, state: State, argument_requires: EisenInstanceState, given: EisenInstanceState):
+    @staticmethod
+    def parameter_assignment_restrictions_met(state: State, argument_requires: EisenInstanceState, given: EisenInstanceState):
         # print(state.asl)
         is_assignable, ex_type = argument_requires.assignable_to(given)
         if not is_assignable:
             Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
-            return Validate.send_failure()
-        return Validate.send_success()
+            return ValidationResult.failure()
+        return ValidationResult.success()
 
-    @classmethod
-    def instancestate_is_initialized(cls, state: State, instancestate: EisenInstanceState) -> ValidationResult:
+    @staticmethod
+    def instancestate_is_initialized(state: State, instancestate: EisenInstanceState) -> ValidationResult:
         if instancestate.initialization == Initializations.NotInitialized:
-            state.report_exception(Exceptions.UseBeforeInitialize(
-                msg=f"{instancestate.name} is not initialized",
-                line_number=state.get_line_number()))
-            return Validate.send_failure()
-        return Validate.send_success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.UseBeforeInitialize,
+                msg=f"{instancestate.name} is not initialized")
+        return ValidationResult.success()
 
-    @classmethod
-    def _generate_nil_exception_msg(cls, status: NilableStatus) -> str:
+    @staticmethod
+    def _generate_nil_exception_msg(status: NilableStatus) -> str:
         if status.name:
             return f"'{status.name}' is nilable, and may be nil."
         else:
             return f"something may be nilable in this expession"
 
-    @classmethod
-    def both_operands_are_not_nilable(cls, state: State, left: NilableStatus, right: NilableStatus) -> ValidationResult:
+    @staticmethod
+    def both_operands_are_not_nilable(state: State, left: NilableStatus, right: NilableStatus) -> ValidationResult:
         if any([state.get_abort_signal() in (left, right)]):
-            return Validate.send_failure()
+            return ValidationResult.failure()
 
         if left.is_nilable:
             state.report_exception(Exceptions.NilUsage(
-                msg=cls._generate_nil_exception_msg(left),
+                msg=Validate._generate_nil_exception_msg(left),
                 line_number=state.get_line_number()))
         if right.is_nilable:
             state.report_exception(Exception.NilUsage(
-                msg=cls._generate_nil_exception_msg(right),
+                msg=Validate._generate_nil_exception_msg(right),
                 line_number=state.get_line_number()))
 
-        return Validate.send_success()
+        return ValidationResult.success()

@@ -138,10 +138,10 @@ class Type():
     def get_uuid_str(self) -> str:
         return self._get_uuid_str()
 
-    def get_direct_attribute_name_type_pairs(self) -> list[Type]:
+    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         return zip(self.component_names, self.components)
 
-    def get_all_attribute_name_type_pairs(self) -> list[Type]:
+    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         pairs = self.get_direct_attribute_name_type_pairs()
         for embedded_type in self.embeds:
             pairs.extend(embedded_type.get_all_attribute_name_type_pairs())

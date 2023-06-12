@@ -38,8 +38,12 @@ class CallUnwrapper():
             if len(params_asl) == 1:
                 true_type = first_param_type
             else:
-                true_type = TypeFactory.produce_tuple_type(
-                    components=[first_param_type, *guessed_params_type.components])
+                if guessed_params_type.is_tuple():
+                    true_type = TypeFactory.produce_tuple_type(
+                        components=[first_param_type, *guessed_params_type.components])
+                else:
+                    true_type = TypeFactory.produce_tuple_type(
+                        components=[first_param_type, guessed_params_type])
 
             state.but_with_second_child().get_node_data().returned_type = true_type
             return true_type

@@ -118,7 +118,8 @@ class lmda:
         seq_asl = fn.apply(state.but_with(
             asl=node.get_seq_asl(),
             ret_names=ret_names))
-        seq_asl._list = [*return_vars, *seq_asl._list]
+        returns = CLRList(type="return", lst=([] if not ret_names else [CLRList("tags", lst=ret_names)]))
+        seq_asl._list = [*return_vars, *seq_asl._list, returns]
         return CLRList("def", lst=[CLRToken(["TAG"], value=node.get_function_instance().get_full_name()), arg_asl, seq_asl])
 
     @Visitor.for_asls("return")
@@ -145,8 +146,6 @@ class lmda:
     @Visitor.for_asls("seq")
     def seq_(fn, state: State):
         children = state.get_all_children()
-        if children[-1].type != "return" and state.get_ret_names():
-            children.append(CLRList("return", lst=[]))
         return CLRList("seq", lst=[fn.apply(state.but_with(asl=child))
             for child in children])
 

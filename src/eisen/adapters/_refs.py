@@ -12,6 +12,9 @@ class RefLike(AbstractNodeInterface):
     def is_print(self) -> bool:
         return self.state.get_asl().type == "ref" and Ref(self.state).is_print()
 
+    def is_append(self) -> bool:
+        return self.state.get_asl().type == "fn" and Ref(self.state).is_append()
+
     def get_name(self) -> str:
         type = self.state.get_asl().type
         if type == "ref":
@@ -93,6 +96,9 @@ class Ref(AbstractNodeInterface):
 
     def is_print(self) -> bool:
         return self.first_child().value == "print"
+
+    def is_append(self) -> bool:
+        return self.first_child().value == "append"
 
 
 class Fn(AbstractNodeInterface):

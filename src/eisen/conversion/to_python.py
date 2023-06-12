@@ -5,7 +5,7 @@ from alpaca.clr import CLRList, CLRToken
 from alpaca.pattern import Pattern
 import alpaca
 from eisen.state.topythonstate import ToPythonState as State
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 import eisen.adapters as adapters
 
 
@@ -29,10 +29,10 @@ class lmda:
         super().__init__(debug)
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
 
-    def run(self, state: StateB) -> CLRList:
+    def run(self, state: State_PostInstanceVisitor) -> CLRList:
         # print(state.get_asl())
         # input()
-        result = self.apply(State.create_from_stateb(state))
+        result = self.apply(State.create_from_basestate(state))
         return result
 
     def apply(self, state: State) -> CLRList:
@@ -272,4 +272,6 @@ class lmda:
             return CLRToken(type_chain=["code"], value="True")
         if state.get_asl().value == "false":
             return CLRToken(type_chain=["code"], value="False")
+        if state.get_asl().value == "nil":
+            return CLRToken(type_chain=["code"], value="None")
         return state.get_asl()

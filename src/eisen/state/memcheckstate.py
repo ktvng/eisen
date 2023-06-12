@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING
 from alpaca.concepts import Module, Context, Type, AbstractException
 from alpaca.clr import CLRList
 
-from eisen.state.stateb import StateB
+from eisen.state.basestate import BaseState
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor as State
 from eisen.common.eiseninstance import EisenFunctionInstance
 if TYPE_CHECKING:
     from eisen.memory.memcheck import CurriedFunction
 
-class MemcheckState(StateB):
+class MemcheckState(State):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
@@ -35,7 +36,7 @@ class MemcheckState(StateB):
             exceptions=exceptions)
 
     @classmethod
-    def create_from_state_b(cls, state: StateB):
+    def create_from_basestate(cls, state: BaseState):
         return MemcheckState(**state._get(),
                              depth=None,
                              inherited_fns={},
@@ -44,17 +45,8 @@ class MemcheckState(StateB):
     def get_depth(self) -> int:
         return self.depth
 
-    def but_with_first_child(self) -> MemcheckState:
-        return self.but_with(asl=self.first_child())
-
-    def but_with_second_child(self) -> MemcheckState:
-        return self.but_with(asl=self.second_child())
-
     def get_argument_type(self) -> Type:
         return self.argument_type
 
     def get_inherited_fns(self) -> dict[str, CurriedFunction]:
         return self.inherited_fns
-
-    def get_exceptions(self) -> list[AbstractException]:
-        return self.exceptions

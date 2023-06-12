@@ -3,15 +3,15 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 
 from eisen.common import binary_ops, boolean_return_ops
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.validation.validate import Validate
 import eisen.adapters as adapters
 from eisen.validation.nilablestatus import NilableStatus
 
-State = StateB
+State = State_PostInstanceVisitor
 
 class NilCheck(Visitor):
-    def run(self, state: StateB):
+    def run(self, state: State):
         self.apply(state)
         return state
 
@@ -20,11 +20,11 @@ class NilCheck(Visitor):
         return self._route(state.asl, state)
 
     @classmethod
-    def get_nilstate(self, state: StateB, name) -> bool:
+    def get_nilstate(self, state: State, name) -> bool:
         return state.get_context().get_nilstate(name)
 
     @classmethod
-    def add_nilstate(self, state: StateB, name: str, nilstate: bool):
+    def add_nilstate(self, state: State, name: str, nilstate: bool):
         state.get_context().add_nilstate(name, nilstate)
 
 

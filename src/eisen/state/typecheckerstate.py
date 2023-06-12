@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from alpaca.concepts import Module, Context, TypeFactory, Type, AbstractParams, AbstractException
-from alpaca.config import Config
+from alpaca.concepts import Module, Context, Type
 from alpaca.clr import CLRList
 
-from eisen.common.eiseninstance import EisenInstance
-from eisen.state.basestate import BaseState, SharedBool
-from eisen.validation.lookupmanager import LookupManager
-
+from eisen.state.basestate import BaseState
 
 class TypeCheckerState(BaseState):
     def __init__(self, **kwargs):
@@ -26,7 +22,7 @@ class TypeCheckerState(BaseState):
             context=context,
             mod=mod,
             inside_constructor=inside_constructor,
-            arg_type=arg_type,)
+            arg_type=arg_type)
 
     @classmethod
     def create_from_basestate(cls, state: BaseState):

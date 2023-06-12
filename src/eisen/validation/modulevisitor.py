@@ -2,25 +2,25 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Module
-from eisen.state.basestate import BaseState
+from eisen.state.basestate import BaseState as State
 import eisen.adapters as adapters
 
 class ModuleVisitor(Visitor):
     """this parses the asl and creates the module structure of the program"""
 
-    def run(self, state: BaseState):
+    def run(self, state: State):
         self.apply(state)
         return state
 
-    def apply(self, state: BaseState):
+    def apply(self, state: State):
         return self._route(state.get_asl(), state)
 
     @Visitor.for_asls("start")
-    def start_(fn, state: BaseState):
+    def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
     @Visitor.for_asls("mod")
-    def mod_(fn, state: BaseState) -> Module:
+    def mod_(fn, state: State) -> Module:
         node = adapters.Mod(state)
         node.set_entered_module(
             Module(name=node.get_module_name(), parent=state.get_enclosing_module()))
@@ -28,5 +28,5 @@ class ModuleVisitor(Visitor):
         node.enter_module_and_apply(fn)
 
     @Visitor.for_default
-    def default_(fn, state: BaseState):
+    def default_(fn, state: State):
         return

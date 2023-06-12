@@ -175,7 +175,7 @@ def debug():
     print(asl)
 
     state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
-    state = eisen.Workflow.execute_with_benchmarks(state)
+    result, state = eisen.Workflow.execute_with_benchmarks(state)
     asl = eisen.ToPython().run(state)
     print(asl)
 

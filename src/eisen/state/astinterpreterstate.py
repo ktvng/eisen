@@ -3,9 +3,9 @@ from __future__ import annotations
 from alpaca.concepts import Module, Context
 from alpaca.clr import CLRList
 
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor as State
 
-class AstInterpreterState(StateB):
+class AstInterpreterState(State):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
@@ -25,7 +25,7 @@ class AstInterpreterState(StateB):
             objs=objs)
 
     @classmethod
-    def create_from_state_b(cls, state: StateB):
+    def create_from_state_b(cls, state: State):
         return AstInterpreterState(**state._get(), objs={})
 
     def get_depth(self) -> int:

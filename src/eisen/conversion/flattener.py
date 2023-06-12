@@ -5,10 +5,10 @@ from alpaca.utils import Visitor
 from alpaca.clr import CLRList, CLRToken
 
 import eisen.adapters as adapters
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.common._common import Utils
 
-State = StateB
+State = State_PostInstanceVisitor
 
 # date structure which contains the information obtain from flattening.
 class FlatteningPacket:

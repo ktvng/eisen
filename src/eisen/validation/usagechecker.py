@@ -5,7 +5,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import Type
 
 from eisen.common import binary_ops, boolean_return_ops
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction)
 from eisen.common.initialization import Initializations
@@ -14,9 +14,9 @@ from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenIn
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 
-State = StateB
+State = State_PostInstanceVisitor
 class UsageChecker(Visitor):
-    def run(self, state: StateB):
+    def run(self, state: State):
         self.apply(state)
         return state
 
@@ -39,11 +39,11 @@ class UsageChecker(Visitor):
         return EisenAnonymousInstanceState(tc.restriction, Initializations.Initialized)
 
     @classmethod
-    def add_instancestate(cls, state: StateB, inst: EisenInstanceState):
+    def add_instancestate(cls, state: State_PostInstanceVisitor, inst: EisenInstanceState):
         state.get_context().add_instancestate(inst)
 
     @classmethod
-    def get_instancestate(cls, state: StateB, name: str) -> EisenInstanceState:
+    def get_instancestate(cls, state: State_PostInstanceVisitor, name: str) -> EisenInstanceState:
         """canonical way to access a InstanceState by name"""
         return state.get_context().get_instancestate(name)
 

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from eisen.state.basestate import BaseState
+from eisen.state.basestate import BaseState as State
 import eisen.adapters as adapters
 from eisen.validation.lookupmanager import LookupManager
 
-State = BaseState
 
 class FnConverter(Visitor):
-    def run(self, state: BaseState):
+    def run(self, state: State):
         self.apply(state)
         return state
 

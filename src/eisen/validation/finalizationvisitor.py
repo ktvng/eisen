@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from eisen.state.basestate import BaseState
+from eisen.state.basestate import BaseState as State
 import eisen.adapters as adapters
 from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 
-State = BaseState
 
 class FinalizationVisitor(Visitor):
     """this finalizes proto types into the fully built-out type.
@@ -14,7 +13,7 @@ class FinalizationVisitor(Visitor):
     themselves, or to other types which have yet to be defined, but exist in the
     same module.
     """
-    def run(self, state: BaseState):
+    def run(self, state: State):
         self.apply(state)
         return state
 
@@ -66,7 +65,7 @@ class FinalizationVisitor(Visitor):
 
 
 class Finalization2(Visitor):
-    def run(self, state: BaseState):
+    def run(self, state: State):
         self.apply(state)
         return state
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 from alpaca.concepts import Module, Context, Type
 from alpaca.clr import CLRList
 
-from eisen.state.statea import StateA
+from eisen.state.basestate import BaseState
+from eisen.state.state_posttypecheck import State_PostTypeCheck as State
 
-class InstanceVisitorState(StateA):
+class InstanceVisitorState(State):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
@@ -27,7 +28,7 @@ class InstanceVisitorState(StateA):
             is_ptr=is_ptr,)
 
     @classmethod
-    def create_from_state_A(cls, state: StateA):
+    def create_from_basestate(cls, state: BaseState):
         return InstanceVisitorState(**state._get(),
             arg_type=None,
             is_ptr=None,)

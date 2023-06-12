@@ -6,7 +6,7 @@ import eisen.adapters as adapters
 from eisen.interpretation.obj import Obj
 from eisen.interpretation.passer import Passer
 from eisen.interpretation.printfunction import PrintFunction
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.astinterpreterstate import AstInterpreterState
 
 class ReturnSignal():
@@ -15,7 +15,7 @@ class ReturnSignal():
 State = AstInterpreterState
 
 class AstInterpreter(Visitor):
-    def run(self, state: StateB):
+    def run(self, state: State_PostInstanceVisitor):
         self.apply(AstInterpreterState.create_from_state_b(state))
         return state
 

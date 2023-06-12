@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.clr import CLRList
 
 import eisen.adapters as adapters
-from eisen.state.stateb import StateB
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.memcheckstate import MemcheckState
 State = MemcheckState
 
@@ -13,8 +13,8 @@ class MemCheck():
     def __init__(self) -> None:
         self.get_deps = GetDeps()
 
-    def run(self, state: StateB):
-        self.apply(MemcheckState.create_from_state_b(state))
+    def run(self, state: State_PostInstanceVisitor):
+        self.apply(MemcheckState.create_from_basestate(state))
         return state
 
     def apply(self, state: State):

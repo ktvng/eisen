@@ -5,7 +5,7 @@ from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.state.basestate import BaseState
-from eisen.state.statea import StateA
+from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.typecheckerstate import TypeCheckerState
 from eisen.common.restriction import PrimitiveRestriction, FunctionalRestriction
 import eisen.adapters as adapters
@@ -14,7 +14,7 @@ from eisen.validation.callunwrapper import CallUnwrapper
 from eisen.validation.restructure_is_statement import RestructureIsStatement
 from eisen.validation.typeparser import TypeParser
 
-from eisen.validation.builtin_print import BuiltinPrint
+from eisen.validation.builtin_print import Builtins
 
 State = TypeCheckerState
 
@@ -29,7 +29,7 @@ class TypeChecker(Visitor):
 
     def run(self, state: BaseState):
         self.apply(TypeCheckerState.create_from_basestate(state))
-        return StateA.create_from_basestate(state)
+        return State_PostTypeCheck.create_from_basestate(state)
 
     def apply(self, state: State) -> Type:
         # this guards the function such that if there is a critical exception thrown
@@ -189,7 +189,9 @@ class TypeChecker(Visitor):
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
         node = adapters.RefLike(state.but_with_first_child())
         if node.is_print():
-            return BuiltinPrint.get_type_of_function(state).get_return_type()
+            return Builtins.get_type_of_print(state).get_return_type()
+        if node.is_append():
+            return Builtins.get_type_of_append(state, params_type).get_return_type()
         return TypeChecker._shared_call_checks(state, params_type)
 
     @Visitor.for_asls("is")
@@ -312,7 +314,7 @@ class TypeChecker(Visitor):
     def ref_(fn, state: State) -> Type:
         node = adapters.Ref(state)
         if node.is_print():
-            return BuiltinPrint.get_type_of_function(state)
+            return Builtins.get_type_of_print(state)
 
         type = node.resolve_reference_type()
         if Validate.instance_exists(state, node.get_name(), type).failed():

@@ -5,8 +5,8 @@ from alpaca.concepts import Type
 
 import eisen.adapters as adapters
 from eisen.common.eiseninstance import EisenInstance
-from eisen.state.statea import StateA
-from eisen.state.stateb import StateB
+from eisen.state.state_posttypecheck import State_PostTypeCheck
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.instancevisitorstate import InstanceVisitorState
 
 State = InstanceVisitorState
@@ -14,9 +14,9 @@ State = InstanceVisitorState
 class InstanceVisitor(Visitor):
     """creates and persists instances for terminal asls"""
 
-    def run(self, state: StateA):
-        self.apply(InstanceVisitorState.create_from_state_A(state))
-        return StateB.create_from_state_a(state)
+    def run(self, state: State_PostTypeCheck):
+        self.apply(InstanceVisitorState.create_from_basestate(state))
+        return State_PostInstanceVisitor.create_from_basestate(state)
 
     def apply(self, state: State) -> list[EisenInstance]:
         result: list[EisenInstance] = self._route(state.get_asl(), state)

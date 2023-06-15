@@ -9,6 +9,7 @@ from eisen.common.exceptions import Exceptions
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.memcheckstate import MemcheckState as State
 from eisen.memory.functionalias import FunctionAliasAdder, FunctionAliasResolver
+from eisen.memory.argname_resolver import PossibleParamNamesVisitor
 
 if TYPE_CHECKING:
     from eisen.memory.memcheck import GetDeps
@@ -40,6 +41,12 @@ class Spread():
         """
         return (any([value < 0 for value in self.values]) and self._is_return_value
             or any([value < self.depth for value in self.values]) and not self._is_return_value)
+
+    def restore(self):
+        if self._is_return_value:
+            self.values = set([i for i in self.values if i >= 0])
+        else:
+            self.values = set([i for i in self.values if i >= self.depth])
 
     def is_return_value(self) -> bool:
         return self._is_return_value
@@ -85,7 +92,7 @@ class SpreadVisitor(Visitor):
             spreads += fn.apply(state.but_with(asl=child))
         return spreads
 
-    @Visitor.for_asls(*boolean_return_ops, *no_assign_binary_ops, '!', 'cast')
+    @Visitor.for_asls(*boolean_return_ops, *no_assign_binary_ops, '!')
     def binop_(fn, state: State):
         return [Spread(values={state.depth}, depth=state.depth)]
 
@@ -111,12 +118,17 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("ivar")
     def iletivar2_(fn, state: State):
-        for name in adapters.IletIvar(state).get_names():
-            SpreadVisitor.add_spread(state, name, Spread(values=set(), depth=state.depth))
+        spreads = fn.apply(state.but_with_second_child())
+        for name, spread in zip(adapters.IletIvar(state).get_names(), spreads):
+            SpreadVisitor.add_spread(state, name, Spread(values=set(spread.values), depth=-2))
         return []
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State):
+        return fn.apply(state.but_with_first_child())
+
+    @Visitor.for_asls("cast")
+    def cast_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
     @Visitor.for_asls("ref")
@@ -140,8 +152,10 @@ class SpreadVisitor(Visitor):
         FunctionAliasAdder(spread_visitor=fn).apply(state)
         left_spreads = []
         for name, type, l, r in SpreadVisitor._get_names_type_and_spreads(fn, state):
+            # print(">", state.asl, name, l, r)
+            was_tainted = l.is_tainted()
             l.add(r)
-            if l.is_tainted() and not type.restriction.is_primitive():
+            if not was_tainted and l.is_tainted() and not type.restriction.is_primitive():
                 state.report_exception(
                     Exceptions.ObjectLifetime(
                         msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
@@ -174,7 +188,6 @@ class SpreadVisitor(Visitor):
         spreads = fn.apply(cond_state.but_with_second_child())
 
         # n_iterations = 0
-        seq_state = None
         while (any([spread.is_changed() for spread in spreads])):
             # n_iterations += 1
             for s in spreads: s.changed = False
@@ -183,7 +196,6 @@ class SpreadVisitor(Visitor):
                 asl=cond_state.second_child(),
                 exceptions=[])
             spreads = fn.apply(seq_state)
-        if seq_state:
             state.exceptions.extend(seq_state.get_exceptions())
         # print(f"REQUIRED {n_iterations} additional iterations of the while loop")
         return []
@@ -239,11 +251,33 @@ class SpreadVisitor(Visitor):
         f_deps = fn.get_deps.of_function(state.but_with(
             asl=SpreadVisitor._get_def_asl(node),
             inherited_fns=SpreadVisitor._get_inherited_fns(node)))
-        all_return_value_spreads = f_deps.apply_to_parameter_spreads(param_spreads)
+        all_return_value_spreads, all_argument_value_spreads = f_deps.apply_to_parameter_spreads(param_spreads)
+
+        possible_names = [PossibleParamNamesVisitor(fn.get_deps).apply(state.but_with(asl=param))[0]
+            for param in node.get_params()]
+        types = node.get_param_types()
+
+        # print("========")
+        # print(state.get_asl())
+        # print()
+        # print(all_argument_value_spreads[0][0])
+
+        for type, possible_names, spreads_for_one_argument in zip(types, possible_names, all_argument_value_spreads):
+            for name in possible_names:
+                l = SpreadVisitor.get_spread(state, name)
+                was_tainted = l.is_tainted()
+                l.add(Spread.merge_all(spreads_for_one_argument))
+                if not was_tainted and l.is_tainted() and not type.restriction.is_primitive():
+                    state.report_exception(
+                        Exceptions.ObjectLifetime(
+                            msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
+                            line_number=state.get_line_number()))
+
         return [Spread.merge_all(spreads_for_one_return_value)
             for spreads_for_one_return_value in all_return_value_spreads]
 
     @Visitor.for_default
     def default_(fn, state: State):
         print(f"SpreadVisitor Unhandled state {state.asl}")
+        exit()
         return []

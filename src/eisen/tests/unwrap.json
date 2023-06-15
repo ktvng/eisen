@@ -1,0 +1,8 @@
+{
+    "name": "unwrap",
+    "info": "test for call unwrapping",
+    "expected": {
+        "success": true,
+        "output": "20 moo moo moo moo moo "
+    }
+}

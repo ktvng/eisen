@@ -38,8 +38,7 @@ class TypeChecker(Visitor):
             return state.get_void_type()
 
         result = self._route(state.get_asl(), state)
-        if state.is_asl():
-            TypeChecker.set_returned_type(state, result)
+        TypeChecker.set_returned_type(state, result)
         return result
 
     @classmethod

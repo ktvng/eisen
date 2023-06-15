@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from typing import Self
 from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, AbstractException
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
-
 
 from eisen.state._basemixins import BaseMixins
 
@@ -73,7 +73,7 @@ class BaseState(AbstractParams, BaseMixins):
             context: Context = None,
             mod: Module = None,
             inside_constructor: bool = None
-            ) -> BaseState:
+            ) -> Self:
 
         return self._but_with(
             asl=asl,

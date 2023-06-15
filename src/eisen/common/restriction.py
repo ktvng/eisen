@@ -10,6 +10,7 @@ class RestrictionViolation:
 
     VarAssignedToLiteral = 10
     VarNoNullableAssignment = 11
+    VarAssignedToLetConstruction = 12
 
     PrimitiveToNonPrimitiveAssignment = 20
 
@@ -80,6 +81,8 @@ class VarRestriction(GeneralRestriction):
             return False, RestrictionViolation.VarAssignedToLiteral
         if other.is_nullable():
             return False, RestrictionViolation.VarNoNullableAssignment
+        if other.is_let_construction():
+            return False, RestrictionViolation.VarAssignedToLetConstruction
         return True, None
 
 class NullableVarRestriction(VarRestriction):

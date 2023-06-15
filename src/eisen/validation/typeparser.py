@@ -64,7 +64,7 @@ class TypeParser(Visitor):
         if len(state.get_asl()) == 0:
             return state.get_void_type()
         # TODO: fix this
-        return fn.apply(state.but_with(asl=state.first_child())).with_restriction(LetConstruction())
+        return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("fn_type")
     def fn_type_(fn, state: State) -> Type:

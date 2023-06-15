@@ -8,6 +8,7 @@ from eisen.common.restriction import GeneralRestriction
 
 from eisen.adapters._refs import RefLike
 from eisen.adapters._functionals import Def
+from eisen.state.state_posttypecheck import State_PostTypeCheck
 
 class Call(AbstractNodeInterface):
     asl_type = "call"
@@ -49,6 +50,11 @@ class Call(AbstractNodeInterface):
 
     def get_param_names(self) -> list[str]:
         return Def(self.state.but_with(asl=self.get_asl_defining_the_function())).get_arg_names()
+
+    def get_param_types(self) -> list[Type]:
+        if not isinstance(self.state, State_PostTypeCheck):
+            raise Exception("get_param_types can only be used after typechecker is run")
+        return [self.state.but_with(asl=param).get_returned_type() for param in self.get_params()]
 
     def get_return_names(self) -> list[str]:
         return Def(self.state.but_with(asl=self.get_asl_defining_the_function())).get_ret_names()

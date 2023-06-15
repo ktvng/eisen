@@ -91,8 +91,8 @@ def run_eisen(filename: str):
     print(state.watcher.txt)
 
     # Leave this exit here to prevent transpilation
-    exit()
     input()
+    exit()
     asl = eisen.Flattener().run(state)
     state.asl = asl
     # print(state.asl)
@@ -176,15 +176,22 @@ def debug():
 
     state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
     result, state = eisen.Workflow.execute_with_benchmarks(state)
+
+    print(delim)
+    print(state.watcher.txt)
+
+    if state.watcher.txt:
+        exit()
+
     asl = eisen.ToPython().run(state)
-    print(asl)
+    # print(asl)
 
     proto_code = python.Writer().run(asl)
     code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
 
-    print(code)
+    # print(code)
     # exec(code)
     # exit()
     subprocess.run(["python3", "./build/test.py"])

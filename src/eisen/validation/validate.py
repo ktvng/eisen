@@ -199,6 +199,9 @@ class Validate:
 
     @staticmethod
     def has_member_attribute(state: State, type: Type, attribute_name: str) -> ValidationResult:
+        if TypeCheck.encountered_prior_failure(state, type):
+            return ValidationResult.failure()
+
         if not type.has_member_attribute_with_name(attribute_name):
             return failure_with_exception_added_to(state,
                 ex=Exceptions.MissingAttribute,
@@ -300,15 +303,17 @@ class Validate:
             ex = Exceptions.PrimitiveAssignmentMismatch(
                 msg=f"'{l.name}' must be given a function",
                 line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.VarAssignedToLetConstruction:
+            ex = Exceptions.LetInitializationMismatch(
+                msg=f"'{l.name}' is declared as 'var' but '{r.name}' constructs a 'let' value",
+                line_number=state.get_line_number())
         if ex is None:
             raise Exception(f"no matching exception for {ex_type}")
         state.report_exception(ex)
 
 
-
     @staticmethod
     def assignment_restrictions_met(state: State, left: EisenInstanceState, right: EisenInstanceState):
-        # print(state.asl)
         is_assignable, ex_type = left.assignable_to(right)
         if not is_assignable:
             Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)

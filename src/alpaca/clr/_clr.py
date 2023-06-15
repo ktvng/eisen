@@ -17,6 +17,7 @@ class CLRToken(CLRElement):
         self.type_chain = type_chain
         self.value = value
         self.line_number = line_number
+        self.data = None
 
     def is_classified_as(self, type: str) -> bool:
         return type in self.type_chain

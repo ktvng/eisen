@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 import subprocess
 import argparse
+import os
+import pathlib
 
 import alpaca
 import eisen
@@ -207,6 +209,32 @@ def debug():
     # for b in a:
     #     print(b)
 
+def add_test(name: str):
+    tomlheader = """
+/// [Test]
+/// name = "{0}"
+/// info = \"\"\"\\
+///     _description_
+/// \"\"\"
+
+/// [Expects]
+/// success = _
+/// output = ""
+
+/// [[Expects.Exceptions]]
+/// type = ""
+/// contains = ""
+"""
+    testpath = "./src/eisen/tests/"
+    full_path = testpath + name + ".en"
+    path = pathlib.Path(full_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(full_path, 'w') as f:
+        f.write(tomlheader.format(name))
+    subprocess.run(["code", "-r", full_path])
+
+
 
 if __name__ == "__main__":
     print(delim)
@@ -217,6 +245,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
     parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
+    parser.add_argument("-a", "--add-test", action="store", type=str)
     parser.add_argument("-l", "--lang",
         action="store",
         type=str,
@@ -232,5 +261,7 @@ if __name__ == "__main__":
         eisen.TestRunner.rebuild_cache()
     elif args.debug:
         debug()
+    elif args.add_test:
+        add_test(args.add_test)
 
     print(delim)

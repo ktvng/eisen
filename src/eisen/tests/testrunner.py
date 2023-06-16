@@ -4,7 +4,7 @@ import os
 from os import walk
 import time
 import sys
-import json
+import pathlib
 import traceback
 import multiprocessing
 import subprocess
@@ -39,7 +39,7 @@ class CompilerException:
 class TestExpectation:
     success: bool
     output: str = None
-    match_case: bool = False
+    match_case: bool = True
     Exceptions: Any = None
     compiler_exceptions: list[CompilerException] = None
 
@@ -87,6 +87,7 @@ class Test:
         asl = ToPython().run(state)
         proto_code = python.Writer().run(asl)
         code = python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+        pathlib.Path(self._get_build_file_name()).parent.mkdir(parents=True, exist_ok=True)
         with open(self._get_build_file_name(), 'w') as f:
             f.write(code)
 

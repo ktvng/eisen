@@ -1,0 +1,62 @@
+struct Person {
+    name: str
+    home: Building
+    pet: Animal
+
+    create(name: str, home: () -> Building, pet: () -> Animal) -> self: Person {
+        self.name = name
+        self.home = home()
+        self.pet = pet()
+    }
+}
+
+struct Building {
+    address: str
+    price: int
+
+    create(address: str, price: int) -> self: Building {
+        self.address = address
+        self.price = price
+    }
+}
+
+struct Animal {
+    name: str
+    age: int
+    type: str
+
+    create(name: str, age: int, type: str) -> self: Animal {
+        self.name = name
+        self.age = age
+        self.type = type
+    }
+}
+
+fn main() {
+    let someone = Person (
+        name: "Mike",
+        home: Building {
+            address: "317 St",
+            price: 300000
+        },
+        pet: Animal {
+            name: "Fido",
+            age: 12,
+            type: "Fish"
+        }
+    )
+
+    let myAnimal = Animal("Ducky", 10, "Duck")
+
+    print("%i, %i, Best Friend: %i", someone.name, someone.home.address, someone.pet.name)
+}
+
+/// [Test]
+/// name = "objects"
+/// info = """\
+///     Test the object syntax
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "Mike, 317 St, Best Friend: Fido"

@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import FunctionalRestriction, LetConstruction
+from eisen.common.restriction import FunctionalRestriction, LetConstruction, RestrictionHelper
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -63,8 +63,9 @@ class TypeParser(Visitor):
         """
         if len(state.get_asl()) == 0:
             return state.get_void_type()
-        # TODO: fix this
-        return fn.apply(state.but_with(asl=state.first_child()))
+
+        type = fn.apply(state.but_with(asl=state.first_child()))
+        return RestrictionHelper.process_type_returned_by_function(type)
 
     @Visitor.for_asls("fn_type")
     def fn_type_(fn, state: State) -> Type:
@@ -94,10 +95,8 @@ class TypeParser(Visitor):
         (rets (type ...))
         """
         if state.get_asl():
-            node = adapters.ArgsRets(state)
             type = fn.apply(state.but_with(asl=state.first_child()))
-            node.convert_let_rets_to_let_construction(type)
-            return type
+            return RestrictionHelper.process_type_returned_by_function(type)
         return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")

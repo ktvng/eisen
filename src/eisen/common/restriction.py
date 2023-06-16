@@ -1,7 +1,32 @@
 from __future__ import annotations
 
-from alpaca.concepts import AbstractRestriction
+from alpaca.concepts import AbstractRestriction, Type, TypeFactory
 from eisen.common.initialization import Initializations
+
+class RestrictionHelper:
+    @staticmethod
+    def process_type_returned_by_function(type: Type) -> Type:
+        """
+        If a 'let' object is returned by a function, it should be given the
+        restriction of 'LetConstruction' as this is a function which constructs
+        the object in place.
+
+        :param type: The type returned by the function.
+        :type type: Type
+        :return: The same base type with correct restrictions.
+        :rtype: Type
+        """
+        if type.is_tuple():
+            return TypeFactory.produce_tuple_type(
+                components=[comp._copy_with_restriction(LetConstruction())
+                    if comp.restriction.is_let()
+                    else comp
+                    for comp in type.components])
+
+        elif type.restriction.is_let() or type.restriction.is_functional():
+            return type._copy_with_restriction(LetConstruction())
+        return type
+
 
 class RestrictionViolation:
     LetReassignment = 0

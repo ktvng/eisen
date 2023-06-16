@@ -30,17 +30,3 @@ class ArgsRets(AbstractNodeInterface):
                         component.restriction = VarRestriction()
             elif type.is_struct():
                 type.restriction = VarRestriction()
-
-    def convert_let_rets_to_let_construction(self, type: Type):
-        """For return arguments that are let designation, we should convert the
-        restriction to LetConstruction to indicate that this returned from a
-        function which constructs the memory"""
-        if self.get_node_type() != "rets":
-            raise Exception(f"convert_let_rets_to_let_construction expected 'ret' node but got {self.get_node_type()}")
-
-        if type.is_tuple():
-            for component in type.components:
-                if component.restriction.is_let():
-                    component.restriction = LetConstruction()
-        elif type.restriction.is_let() or type.restriction.is_functional():
-            type.restriction = LetConstruction()

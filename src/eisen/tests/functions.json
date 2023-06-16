@@ -1,8 +1,0 @@
-{
-    "name": "functions",
-    "info": "tests for simple functions",
-    "expected": {
-        "success": true,
-        "output": "after 4 4 8"
-    }
-}

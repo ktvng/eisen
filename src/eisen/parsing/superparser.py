@@ -61,6 +61,8 @@ class ModParser(ContextParser):
         remaining_tokens = tokens[3:-1]
         while remaining_tokens:
             context_tokens, remaining_tokens = self.get_context_tokens(remaining_tokens)
+            if not context_tokens and not remaining_tokens:
+                break
             parser = ParserSelector.select_parser(context_tokens, self.parsers)
             asl = parser.parse(context_tokens)
             contexts.append(asl)
@@ -102,6 +104,8 @@ class SuperParser():
         contexts = []
         while remaining_tokens:
             context_tokens, remaining_tokens = ContextSeparator.split_context(remaining_tokens)
+            if not context_tokens and not remaining_tokens:
+                break
             parser = ParserSelector.select_parser(context_tokens, self.parsers)
             asl = parser.parse(context_tokens)
             contexts.append(asl)
@@ -112,15 +116,25 @@ class SuperParser():
             line_number=tokens[0].line_number)
 
 class ContextSeparator():
+    @staticmethod
+    def remove_comments_and_whitespaces(toks: list[Token]) -> tuple[int, int]:
+        while toks[pos].type == "endl":
+            len_ends += 1
+            pos += 1
+
     @classmethod
     def split_context(cls, toks: list[Token]) -> tuple[list[Token], list[Token]]:
         header_list = []
 
         pos = 0
         len_ends = 0
-        while toks[pos].type == "endl":
+
+        while pos < len(toks) and toks[pos].type == "endl":
             len_ends += 1
             pos += 1
+
+        if pos >= len(toks):
+            return [], []
 
         while toks[pos].type != "{" and pos < len(toks):
             header_list.append(toks[pos])

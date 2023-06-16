@@ -1,0 +1,19 @@
+fn main() {
+    let x: int
+    let y = 4
+    x = y
+    print("%i %i ", x, y)
+
+    x = x + y
+    y = 0
+    print("%i %i", x, y)
+}
+
+/// [Test]
+/// name = "assignment"
+/// info = """\
+///     Tests for simple variable assignment
+/// """
+/// [Expects]
+/// success = true
+/// output = "4 4 8 0"

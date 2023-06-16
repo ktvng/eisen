@@ -1,0 +1,38 @@
+struct point {
+    x: int
+    y: int
+
+    create() -> self: point {
+        self.x = 0
+        self.y = 0
+    }
+}
+
+fn main() {
+    let p = point()
+    p = point()
+    let p2: point
+
+    var myP = p
+    p2 = myP
+
+    let p3: point
+    p3 = p
+}
+
+/// [Test]
+/// name = "e_letvar1"
+/// info = """\
+///     cannot reassign let, cannot assign let to var, cannot assign let to other let
+/// """
+/// [Expects]
+/// success = false
+/// [[Expects.Exceptions]]
+/// type = "LetReassignmentException"
+/// contains = ">> 13"
+/// [[Expects.Exceptions]]
+/// type = "LetInitializationMismatchException"
+/// contains = ">> 17"
+/// [[Expects.Exceptions]]
+/// type = "LetInitializationMismatchException"
+/// contains = ">> 20"

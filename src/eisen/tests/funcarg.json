@@ -1,8 +1,0 @@
-{
-    "name": "funcarg",
-    "info": "function arguments",
-    "expected": {
-        "success": true,
-        "output": "125 25 100 "
-    }
-}

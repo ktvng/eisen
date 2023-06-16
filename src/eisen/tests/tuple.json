@@ -1,8 +1,0 @@
-{
-    "name": "tuple",
-    "info": "tests for simple tuples",
-    "expected": {
-        "success": true,
-        "output": "1 2"
-    }
-}

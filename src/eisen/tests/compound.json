@@ -1,8 +1,0 @@
-{
-    "name": "compound",
-    "info": "tests for simple compound operators",
-    "expected": {
-        "success": true,
-        "output": "14 0 -6 40"
-    }
-}

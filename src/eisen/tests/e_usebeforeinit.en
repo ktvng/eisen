@@ -1,0 +1,23 @@
+fn main() {
+    let x: int
+    4 + x
+    do(x)
+}
+
+fn do(x: int) {
+    return
+}
+
+/// [Test]
+/// name = "e_usebeforeinit"
+/// info = """\
+///     exception if value is used before init
+/// """
+/// [Expects]
+/// success = false
+/// [[Expects.Exceptions]]
+/// type = "UseBeforeInitializeException"
+/// contains = ">> 3"
+/// [[Expects.Exceptions]]
+/// type = "UseBeforeInitializeException"
+/// contains = ">> 4"

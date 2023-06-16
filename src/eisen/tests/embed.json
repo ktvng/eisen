@@ -1,8 +1,0 @@
-{
-    "name": "embeds",
-    "info": "tests for simple embeddings",
-    "expected": {
-        "success": true,
-        "output": "(0,2,0) (3,2,4) "
-    }
-}

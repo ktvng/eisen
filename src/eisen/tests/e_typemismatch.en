@@ -1,0 +1,15 @@
+fn main() {
+    let x = 4
+    x = "four"
+}
+
+/// [Test]
+/// name = "e_typemismatch"
+/// info = """\
+///     type mismatches are caught
+/// """
+/// [Expects]
+/// success = false
+/// [[Expects.Exceptions]]
+/// type = "TypeMismatchException"
+/// contains = ">> 3"

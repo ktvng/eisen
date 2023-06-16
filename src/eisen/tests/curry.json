@@ -1,8 +1,0 @@
-{
-    "name": "curry",
-    "info": "tests for function currying",
-    "expected": {
-        "success": true,
-        "output": "6 7 8 9 10"
-    }
-}

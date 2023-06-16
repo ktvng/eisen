@@ -1,0 +1,45 @@
+struct point {
+    x: int
+    y: int
+
+    create() -> self: point {
+        self.x = 0
+        self.y = 0
+    }
+}
+
+fn say(p: point) {
+    print("(%i,%i) ", p.x, p.y)
+}
+
+struct point3d {
+    embed point
+    z: int
+
+    create() -> self: point3d {
+        self.x = 0
+        self.y = 2
+        self.z = 0
+    }
+}
+
+fn say(p: point3d) {
+    print("(%i,%i,%i) ", p.x, p.y, p.z)
+}
+
+fn main() {
+    let p = point3d()
+    p.say()
+    p.x = 3
+    p.z = 4
+    p.say()
+}
+
+/// [Test]
+/// name = "embed"
+/// info = """\
+///     tests for simple embeddings
+/// """
+/// [Expects]
+/// success = true
+/// output = "(0,2,0) (3,2,4) "

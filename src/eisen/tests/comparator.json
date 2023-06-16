@@ -1,9 +1,0 @@
-{
-    "name": "assignment",
-    "info": "tests for simple comparators",
-    "expected": {
-        "success": true,
-        "match_case": false,
-        "output": "false true false true"
-    }
-}

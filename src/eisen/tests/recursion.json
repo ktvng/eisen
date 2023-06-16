@@ -1,8 +1,0 @@
-{
-    "name": "recursion",
-    "info": "tests for simple recursion",
-    "expected": {
-        "success": true,
-        "output": "13"
-    }
-}

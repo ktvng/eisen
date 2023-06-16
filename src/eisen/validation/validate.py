@@ -46,13 +46,27 @@ class TypeCheck:
         return [TypePair(left=left, right=right)]
 
     @staticmethod
-    def type_pair_is_nil_compatible(state: State, type_pair: TypePair):
+    def type_pair_is_nil_compatible(state: State, type_pair: TypePair) -> bool:
         if not type_pair.left.restriction.is_nullable() and type_pair.right.is_nil():
             add_exception_to(state,
                 ex=Exceptions.NilAssignment,
                 msg=f"cannot assign nil to non-nilable type '{type_pair.left}'")
             return False
         return True
+
+    @staticmethod
+    def equivalent_types(state: State, type_pair: TypePair) -> bool:
+        # 'nil' is considered equivalent to all nullable types
+        if type_pair.left.restriction.is_nullable() and type_pair.right.is_nil():
+            return True
+
+        if type_pair.left != type_pair.right:
+            add_exception_to(state,
+                ex=Exceptions.TypeMismatch,
+                msg=f"'{type_pair.left}' != '{type_pair.right}'")
+            return False
+        return True
+
 
 class ImplementationCheck:
     @staticmethod
@@ -127,15 +141,10 @@ class Validate:
         if TypeCheck.encountered_prior_failure(state, type1, type2):
             return ValidationResult.failure()
 
-        # 'nil' is considered equivalent to all nullable types
-        if type1.restriction.is_nullable() and type2.is_nil():
+        if all([TypeCheck.equivalent_types(state, type_pair)
+                for type_pair in TypeCheck.flatten_to_type_pairs(type1, type2)]):
             return ValidationResult.success()
-
-        if type1 != type2:
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.TypeMismatch,
-                msg=f"'{type1}' != '{type2}'")
-        return ValidationResult.success()
+        return ValidationResult.failure()
 
     @staticmethod
     def tuple_sizes_match(state: State, lst1: list, lst2: list):

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList
 from alpaca.concepts import Type
 
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction)
+from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction,
+                                      LetConstruction, PrimitiveRestriction, VarRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.eiseninstancestate import EisenAnonymousInstanceState, EisenInstanceState
 
@@ -203,6 +203,14 @@ class UsageChecker(Visitor):
             for inst in fn.apply(state.but_with(asl=child)):
                 Validate.instancestate_is_initialized(state, inst)
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.NotNull)]
+
+    @Visitor.for_asls("new_vec")
+    def new_vec_(fn, state: State) -> list[EisenInstanceState]:
+        return [EisenAnonymousInstanceState(LetConstruction(), Initializations.Initialized)]
+
+    @Visitor.for_asls("index")
+    def index_(fn, state: State) -> list[EisenInstanceState]:
+        return [EisenAnonymousInstanceState(state.get_returned_type().restriction, Initializations.Initialized)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[EisenInstanceState]:

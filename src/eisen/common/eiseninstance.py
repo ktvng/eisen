@@ -5,15 +5,22 @@ class EisenInstance(Instance):
     def __init__(self, name: str, type: Type, context: Context, asl: CLRList,
                  is_ptr=False,
                  is_constructor=False,
-                 is_function=False):
+                 is_function=False,
+                 no_mangle=False,
+                 no_lambda=False):
         super().__init__(name, type, context, asl)
         self.is_ptr = is_ptr
         self.is_constructor = is_constructor
         self.is_var = False
         self.is_function = is_function
+        self.no_mangle = no_mangle
+        self.no_lambda = no_lambda
         self.type: Type = type
 
     def get_full_name(self):
+        if self.no_mangle:
+            return self.name
+
         return (self.context.get_full_name()
             + self.name
             + "___"
@@ -36,6 +43,9 @@ class EisenInstance(Instance):
             return type.name
         elif type.classification == Type.classifications.variant:
             return type.name
+        elif type.classification == Type.classifications.parametric:
+            return type.name + "q_" + "_".join([EisenInstance.get_signature_string(t)
+                for t in type.parametrics]) + "_p"
         else:
             raise Exception(f"signature not implemented for type: {type}")
 

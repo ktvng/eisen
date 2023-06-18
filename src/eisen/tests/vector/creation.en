@@ -1,0 +1,24 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn main() {
+    let x = int[]
+    let y = obj[]
+}
+
+/// [Test]
+/// name = "vector/creation"
+/// info = """\
+///     Test creation of vectors
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

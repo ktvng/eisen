@@ -139,7 +139,11 @@ class NilCheck(Visitor):
         fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
         return []
 
+    @Visitor.for_asls("index")
+    def index_(fn, state: State):
+        return []
+
     @Visitor.for_default
     def default_(fn, state: State):
         print(state.get_asl())
-        raise Exception("Nilcheck not implemented for state:", state.asl)
+        raise Exception(f"Nilcheck not implemented for state: {state.asl}")

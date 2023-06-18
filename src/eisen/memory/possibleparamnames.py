@@ -48,5 +48,5 @@ class PossibleParamNamesVisitor(Visitor):
 
     @Visitor.for_default
     def default_(fn, state: State):
-        print(state.asl, "not implemented")
+        print(state.asl, "arg_name resolver not implemented")
         exit()

@@ -111,7 +111,7 @@ class TypeChecker(Visitor):
             return TypeFactory.produce_nil_type()
 
         # debug only
-        raise Exception(f"unexpected token type of {state.get_asl().type}")
+        raise Exception(f"unexpected token type of {state.get_asl().type}, {state.get_asl().value}")
 
     @Visitor.for_asls("start", "return", "cond", "seq")
     @returns_void_type
@@ -178,19 +178,19 @@ class TypeChecker(Visitor):
 
     @Visitor.for_asls("raw_call")
     def raw_call(fn, state: State) -> Type:
+        guessed_params_type = fn.apply_to_second_child_of(state)
+
         # this will actually change the asl inplace, converting (raw_call ...)
         # into (call (ref ...) (params ...))
         params_type = CallUnwrapper.process(
             state=state,
-            guessed_params_type=fn.apply_to_second_child_of(state),
+            guessed_params_type=guessed_params_type,
             fn=fn)
 
         fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
-        node = adapters.RefLike(state.but_with_first_child())
-        if node.is_print():
+        if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()
-        if node.is_append():
-            return Builtins.get_type_of_append(state, params_type).get_return_type()
+
         return TypeChecker._shared_call_checks(state, params_type)
 
     @Visitor.for_asls("is")
@@ -328,3 +328,12 @@ class TypeChecker(Visitor):
         type = fn.apply(state.but_with(asl=state.first_child()))
         node.convert_let_args_to_var(type)
         return type
+
+    @Visitor.for_asls("new_vec")
+    def new_vec_(fn, state: State) -> Type:
+        node = adapters.NewVec(state)
+        return node.get_type()
+
+    @Visitor.for_asls("index")
+    def index_(fn, state: State) -> Type:
+        return fn.apply_to_first_child_of(state).parametrics[0]

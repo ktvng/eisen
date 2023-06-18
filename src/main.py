@@ -84,7 +84,7 @@ def run_eisen(filename: str):
 
     # print("############## EISEN ###############")
     state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
-    eisen.Workflow.steps.append(eisen.AstInterpreter)
+    # eisen.Workflow.steps.append(eisen.AstInterpreter)
     result, state = eisen.Workflow.execute_with_benchmarks(state)
 
     global_end = time.perf_counter_ns()
@@ -158,7 +158,7 @@ def debug():
         filename="./src/eisen/grammar.gm")
 
     # READ FILE TO STR
-    with open("./test.rs", 'r') as f:
+    with open("./test.txt", 'r') as f:
         txt = f.read()
 
     # TOKENIZE
@@ -186,17 +186,18 @@ def debug():
         exit()
 
     asl = eisen.ToPython().run(state)
-    # print(asl)
+    print(asl)
 
     proto_code = python.Writer().run(asl)
-    code = python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
 
     # print(code)
     # exec(code)
     # exit()
-    subprocess.run(["python3", "./build/test.py"])
+    subprocess.run(["python", "./build/test.py"])
+
     print()
 
     # p = "('start A ('def 'main xs4...) xs...)"

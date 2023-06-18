@@ -15,6 +15,7 @@ from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
+from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.memory.memcheck import MemCheck
 from eisen.state.basestate import BaseState as State
 
@@ -58,6 +59,7 @@ class Workflow():
         # which allows us to process them identically later in the
         # TypeClassFlowWrangler.
         FunctionVisitor,
+        VectorVisitor,
 
         # this changes (ref ...) to (fn ...) if they refer to global functions
         FnConverter,
@@ -74,6 +76,7 @@ class Workflow():
 
         NilCheck,
         MemCheck,
+        # PrintAsl,
 
         # note: def, create, fn, ref, ilet, :: need instances!!
     ]

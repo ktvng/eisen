@@ -1,0 +1,32 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn main() {
+    let x = int[]
+    x.append(4)
+    x.append(6)
+    let y = obj[]
+    let a = obj{1, 2}
+    let b = obj{2, 3}
+    y.append(a)
+    y.append(b)
+
+    print("%i %i %i %i", x[0], x[1], y[0].x, y[1].y)
+}
+
+/// [Test]
+/// name = "vector/append"
+/// info = """\
+///     Test appending to a vector
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "4 6 1 3"

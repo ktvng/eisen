@@ -10,13 +10,3 @@ class Builtins():
             arg=state.get_void_type(),
             ret=state.get_void_type(),
             mod=None)
-
-    @staticmethod
-    def get_type_of_append(state: BaseState, params_type: Type) -> Type:
-        print(params_type)
-        exit()
-        # TODO: make this type checked
-        return TypeFactory.produce_function_type(
-            arg=state.get_void_type(),
-            ret=state.get_void_type(),
-            mod=None)

@@ -86,7 +86,7 @@ class Test:
     def _save_python_target(self, state: State) -> None:
         asl = ToPython().run(state)
         proto_code = python.Writer().run(asl)
-        code = python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+        code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
         pathlib.Path(self._get_build_file_name()).parent.mkdir(parents=True, exist_ok=True)
         with open(self._get_build_file_name(), 'w') as f:
             f.write(code)
@@ -106,6 +106,11 @@ class Test:
         if output != expected_output:
             return False, f"expected, got:\n{expected_output}\n-----\n{output}\n-----\n"
         return True, "success"
+
+    def _handle_expected_success(self, state: State):
+        print(state.watcher.txt)
+        return False, "failed"
+
 
     def _evaluate_result(self, succeeded: bool, state: State):
         if self.expects.success:
@@ -211,8 +216,8 @@ class TestRunner():
 
     @classmethod
     def run_all_tests(cls):
-        cls.run_all_tests_threadpooled()
-        return
+        # cls.run_all_tests_threadpooled()
+        # return
         start = time.perf_counter()
         successes = 0
         tests = cls.get_all_test_names()

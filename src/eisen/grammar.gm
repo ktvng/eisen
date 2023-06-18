@@ -219,33 +219,36 @@ STRUCTURE
     # ====================================================
     # Expressions
 
-    E11 ->
+    E12 ->
         @action build_operator
-        |   E11 :: TAG
+        |   E12 :: TAG
         |   TAG :: TAG
 
-    E10 ->
-        @action build_operator
-        |   E10 . TAG
-        @action build raw_call
-        |   E10 PARAMS
-        @action build curry_call
-        |   E10 CURRIED_PARAMS
-        @action filter_build cast
-        |   E10 . as ( TYPE )
+    E11 ->
         @action pass
-        |   E11
+        |   E12
         |   LITERAL
         |   VAR
         @action filter_pass
         |   ( E0 )
 
-    E9 ->
+    E10 ->
         @action filter_build index
-        |   E9 [ E0 ]
+        |   E10 [ E0 ]
+        @action pass
+        |   E11
+
+    E9 ->
+        @action build_operator
+        |   E9 . TAG
+        @action build raw_call
+        |   E9 PARAMS
+        @action build curry_call
+        |   E9 CURRIED_PARAMS
+        @action filter_build cast
+        |   E9 . as ( TYPE )
         @action pass
         |   E10
-
 
     E8 ->
         @action build_operator

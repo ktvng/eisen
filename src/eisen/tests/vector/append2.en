@@ -1,0 +1,32 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn make_obj() -> o: obj {
+    o = obj(5, 5)
+}
+
+fn main() {
+    let y = obj[]
+    let a = obj{1, 2}
+    y.append(a)
+    y.append(make_obj)
+
+    print("%i %i", y[0].x, y[1].y)
+}
+
+/// [Test]
+/// name = "vector/append2"
+/// info = """\
+///     Test appending to vector with functions and lambdas
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "1 5"

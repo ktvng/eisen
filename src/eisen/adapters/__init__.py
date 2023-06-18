@@ -10,3 +10,4 @@ from eisen.adapters._refs import *
 from eisen.adapters.argsrets import ArgsRets
 from eisen.adapters.mod import Mod
 from eisen.adapters.typelike import TypeLike
+from eisen.adapters.new_vec import NewVec

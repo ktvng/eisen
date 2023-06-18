@@ -6,6 +6,7 @@ from alpaca.config import Config
 from alpaca.clr import CLRList
 
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
+from eisen.common.eiseninstance import EisenFunctionInstance
 
 from eisen.state._basemixins import BaseMixins
 
@@ -59,14 +60,18 @@ class BaseState(AbstractParams, BaseMixins):
             print_to_watcher: bool = False,
             inside_constructor: bool = False,
             watcher: Watcher = None,
+            builtin_functions: dict[str, EisenFunctionInstance] = None,
+            global_module: Module = None
             ):
 
         if watcher is None:
             watcher = Watcher()
+        builtin_functions = {} if builtin_functions is None else builtin_functions
         self._init(config=config, asl=asl, txt=txt, context=context,
             mod=mod, exceptions=exceptions, critical_exception=critical_exception,
             print_to_watcher=print_to_watcher, inside_constructor=inside_constructor,
-            watcher=watcher)
+            watcher=watcher, builtin_functions=builtin_functions,
+            global_module=global_module)
 
     def but_with(self,
             asl: CLRList = None,
@@ -97,4 +102,5 @@ class BaseState(AbstractParams, BaseMixins):
             context=None,
             mod=global_mod,
             exceptions=[],
-            print_to_watcher=print_to_watcher)
+            print_to_watcher=print_to_watcher,
+            global_module=global_mod)

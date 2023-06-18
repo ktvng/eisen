@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from typing import List
 from alpaca.clr import CLRList
 
 import eisen.adapters as adapters
@@ -11,9 +11,10 @@ from eisen.memory.spreads import Spread, SpreadVisitor
 
 class MemCheck():
     def __init__(self) -> None:
-        self.get_deps = GetDeps()
+        self.get_deps = None
 
     def run(self, state: State_PostInstanceVisitor):
+        self.get_deps = GetDeps(state)
         self.apply(MemcheckState.create_from_basestate(state))
         return state
 
@@ -26,8 +27,8 @@ class MemCheck():
             if child.type == "def" and child.first().value == "main":
                 return child
 
-ReturnValueDeps = list[list[int]]
-ArgumentDeps = list[list[int]]
+ReturnValueDeps = List[List[int]]
+ArgumentDeps = List[List[int]]
 
 class Deps():
     """For a function F, F_deps is the set of arguments which may impact the lifetime
@@ -90,9 +91,18 @@ class GetDeps():
     """Representation of the function GET_DEPS: F -> F_Deps with local caching and DP to prevent
     unnecessary lookups.
     """
-    def __init__(self):
+    def __init__(self, state: State):
         self.cache: dict[str, Deps] = {}
         self.spread_visitor = SpreadVisitor(self)
+
+        self._add_builtin_function_deps(state)
+
+    def _add_builtin_function_deps(self, state: State):
+        for builtin_func_instance in state.get_all_builtins():
+            self.cache[builtin_func_instance.get_full_name()] = Deps(
+                R = [[0]],
+                A = [[0], []])
+
 
     def _try_cache_lookup(self, state: State) -> Deps | None:
         node = adapters.Def(state)

@@ -7,6 +7,7 @@ from alpaca.utils import Visitor
 from alpaca.config import Config
 from alpaca.clr import CLRList
 
+from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.common.nodedata import NodeData
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
 from eisen.validation.lookupmanager import LookupManager
@@ -329,3 +330,15 @@ class BaseMixins():
         :rtype: list[AbstractException]
         """
         return self.exceptions
+
+    def add_builtin_function(self, instance: EisenFunctionInstance) -> None:
+        self.builtin_functions[instance.name + instance.type.get_uuid_str()] = instance
+
+    def get_builtin_function(self, name: str, type: Type) -> EisenFunctionInstance | None:
+        self.builtin_functions.get(name + type.get_uuid_str(), None)
+
+    def get_global_module(self) -> Module:
+        return self.global_module
+
+    def get_all_builtins(self) -> list[EisenFunctionInstance]:
+        return list(self.builtin_functions.values())

@@ -9,7 +9,7 @@ from eisen.common.exceptions import Exceptions
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.memcheckstate import MemcheckState as State
 from eisen.memory.functionalias import FunctionAliasAdder, FunctionAliasResolver
-from eisen.memory.argname_resolver import PossibleParamNamesVisitor
+from eisen.memory.possibleparamnames import PossibleParamNamesVisitor
 
 if TYPE_CHECKING:
     from eisen.memory.memcheck import GetDeps
@@ -239,6 +239,10 @@ class SpreadVisitor(Visitor):
                     param_state,
                     adapters.RefLike(param_state).get_name()))
         return inherited_fns
+
+    @Visitor.for_asls("index")
+    def index_(fn, state: State):
+        return fn.apply(state.but_with_first_child())
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):

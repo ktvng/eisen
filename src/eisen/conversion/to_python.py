@@ -10,6 +10,14 @@ import eisen.adapters as adapters
 
 
 class ToPython(Visitor):
+    builtins = """
+def append(a, b):
+    if isinstance(b, lmda):
+        b = b()
+    a.append(b)
+
+"""
+
     lmda = """
 class lmda:
     def __init__(self, f):
@@ -23,7 +31,7 @@ class lmda:
         fn = lmda(self.f)
         fn.params = self.params + args
         return fn
-    """
+"""
 
     def __init__(self, debug: bool = False):
         super().__init__(debug)
@@ -173,7 +181,6 @@ class lmda:
 
     @Visitor.for_asls("fn")
     def fn_(fn, state: State):
-        node = adapters.Fn(state)
         instance = state.get_instances()[0]
         # if the function instance is a constructor we don't need
         # to append the function signature
@@ -184,6 +191,8 @@ class lmda:
                 type="fn",
                 lst=[CLRToken(type_chain=["TAG"],
                     value=instance.get_full_name())])
+        if instance.no_lambda:
+            return Pattern("('fn name)").match(asl).to("('ref name)")
         return Pattern("('fn name)").match(asl)\
             .to("('call ('ref 'lmda) ('params name))")
 
@@ -264,6 +273,13 @@ class lmda:
         return Pattern("('curry_call FN ('curried XS...)").match(state.get_asl())\
             .to("('call ('. FN 'curry) ('params ('list XS...)))")
 
+    @Visitor.for_asls("new_vec")
+    def new_vec_(fn, state: State):
+        return CLRList(type="list", lst=[])
+
+    @Visitor.for_asls("index")
+    def index_(fn, state: State):
+        return state.get_asl()
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):

@@ -18,13 +18,13 @@ class RestrictionHelper:
         """
         if type.is_tuple():
             return TypeFactory.produce_tuple_type(
-                components=[comp._copy_with_restriction(LetConstruction())
+                components=[comp.with_restriction(LetConstruction())
                     if comp.restriction.is_let()
                     else comp
                     for comp in type.components])
 
         elif type.restriction.is_let() or type.restriction.is_functional():
-            return type._copy_with_restriction(LetConstruction())
+            return type.with_restriction(LetConstruction())
         return type
 
 

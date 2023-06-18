@@ -275,6 +275,7 @@ class Validate:
             l: EisenInstanceState,
             r: EisenInstanceState):
 
+        # print(state.asl, l, r)
         ex = None
         if ex_type == RestrictionViolation.LetReassignment:
             ex = Exceptions.LetReassignment(
@@ -345,7 +346,7 @@ class Validate:
         # print(state.asl)
         is_assignable, ex_type = argument_requires.assignable_to(given)
         if not is_assignable:
-            Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
+            Validate.compose_assignment_restriction_error_message(state, ex_type, argument_requires, given)
             return ValidationResult.failure()
         return ValidationResult.success()
 

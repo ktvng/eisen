@@ -111,13 +111,18 @@ STRUCTURE
         @action filter_pass
         |   ( E0 )
 
+    E9 ->
+        @action filter_build index
+        |   E9 [ E0 ]
+        @action pass
+        |   E10
 
     E8 ->
         @action build_operator
-        |   E8 * E10
-        |   E8 / E10
+        |   E8 * E9
+        |   E8 / E9
         @action pass
-        |   E10
+        |   E9
 
     E7 ->
         @action build_operator
@@ -198,6 +203,7 @@ STRUCTURE
     E0_LST ->
         @action filter_build list
         |   [ _E0S ]
+        |   [ ]
 
     # tuple of Expressions
     E0S ->

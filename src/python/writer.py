@@ -140,6 +140,10 @@ class Writer(Visitor):
     def named_(fn, asl: CLRList):
         return [*fn.apply(asl.first()), "=", *fn.apply(asl.second())]
 
+    @Visitor.for_asls("index")
+    def index_(fn, asl: CLRList):
+        return [*fn.apply(asl.first()), "[", *fn.apply(asl.second()), "]"]
+
     @Visitor.for_tokens
     def tokens_(fn, asl: CLRList):
         if asl.type == "endl":

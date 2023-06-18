@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
-import uuid
-
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
     from alpaca.concepts._type import Type
@@ -18,7 +16,6 @@ class NestedContainer():
 
         self.children = []
         self.parent = parent
-        self.guid = uuid.uuid4()
         if parent is not None:
             parent._add_child(self)
 
@@ -87,14 +84,13 @@ class NestedContainer():
     def get_instancestate(self, name: str) -> InstanceState:
         return self.get_obj("instance_state", name)
 
-
     def __str__(self) -> str:
         sub_module_lines = []
         for child in self.children:
             sub_module_lines.extend(str(child).split("\n"))
-        object_lines = [str(instance) for instance in self.containers["instance"].values()]
-        sub_text_lines = types_lines + object_lines + [" "] + sub_module_lines
-        indented_subtext = "\n".join(["  | " + line for line in sub_text_lines if line])
+        lines = ["== Functions ==\n"] + [str(instance) for instance in self.containers["function_instance"].values()]
+        lines += ["== Instances ==\n"] + [str(instance) for instance in self.containers["instance"].values()]
+        indented_subtext = "\n".join(["  | " + line for line in lines if line])
         return f"{self.name}\n{indented_subtext}"
 
     def get_full_name(self) -> str:

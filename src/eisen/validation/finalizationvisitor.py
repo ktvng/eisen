@@ -56,7 +56,7 @@ class FinalizationVisitor(Visitor):
     def variant_(fn, state: State) -> None:
         node = adapters.Variant(state)
         this_variant_type = node.get_this_type()
-        this_variant_type.finalize_variant(parent_type=node.get_parent_type())
+        this_variant_type.finalize(parent_type=node.get_parent_type())
 
     @Visitor.for_default
     def default_(fn, state: State) -> None:

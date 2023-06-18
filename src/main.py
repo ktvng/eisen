@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 import subprocess
 import argparse
-import os
 import pathlib
 
 import alpaca
@@ -79,21 +78,30 @@ def run_eisen(filename: str):
     print(asl)
     # exit()
 
-    # asl_str = ["  " + line for line in  str(asl).split("\n")]
-    # print(*asl_str, sep="\n")
-
-    # print("############## EISEN ###############")
     state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
-    # eisen.Workflow.steps.append(eisen.AstInterpreter)
-    result, state = eisen.Workflow.execute_with_benchmarks(state)
+    _, state = eisen.Workflow.execute_with_benchmarks(state)
 
     global_end = time.perf_counter_ns()
     print(f"elapsed in {(global_end-global_start)/1000000}")
     print(delim)
     print(state.watcher.txt)
 
+    if state.watcher.txt:
+        exit()
+
+    asl = eisen.ToPython().run(state)
+    # print(asl)
+
+    proto_code = python.Writer().run(asl)
+    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+    with open("./build/test.py", 'w') as f:
+        f.write(code)
+
     # Leave this exit here to prevent transpilation
-    input()
+    subprocess.run(["python", "./build/test.py"])
+
+    print()
+    print("done")
     exit()
     asl = eisen.Flattener().run(state)
     state.asl = asl
@@ -142,7 +150,7 @@ def run_and_measure(name: str, f, *args, **kwargs):
     print(f"{' '*(24-len(name))}{name}   {round((endtime-starttime)/1000000, 5)}")
     return result;
 
-def run_eisen_tests(name: str):
+def run_eisen_tests(name: str, verbose: bool):
     if name:
         status, msg = eisen.TestRunner.run_test_by_name(name)
         if status:
@@ -150,65 +158,10 @@ def run_eisen_tests(name: str):
         else:
             print(msg)
     else:
-        eisen.TestRunner.run_all_tests()
+        eisen.TestRunner.run_all_tests(verbose)
 
 def debug():
-    config = run_and_measure("ConfigParsing",
-        alpaca.config.parser.run,
-        filename="./src/eisen/grammar.gm")
-
-    # READ FILE TO STR
-    with open("./test.txt", 'r') as f:
-        txt = f.read()
-
-    # TOKENIZE
-    tokens = run_and_measure("Tokenizing",
-        alpaca.lexer.run,
-        text=txt.strip(), config=config, callback=eisen.EisenCallback)
-    # for t in tokens: print(t)
-
-    parser = run_and_measure("InitParser",
-        eisen.SuperParser,
-        config=config)
-
-    asl = run_and_measure("Parser",
-        parser.parse,
-        tokens=tokens)
-    print(asl)
-
-    state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
-    result, state = eisen.Workflow.execute_with_benchmarks(state)
-
-    print(delim)
-    print(state.watcher.txt)
-
-    if state.watcher.txt:
-        exit()
-
-    asl = eisen.ToPython().run(state)
-    print(asl)
-
-    proto_code = python.Writer().run(asl)
-    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
-    with open("./build/test.py", 'w') as f:
-        f.write(code)
-
-    # print(code)
-    # exec(code)
-    # exit()
-    subprocess.run(["python", "./build/test.py"])
-
-    print()
-
-    # p = "('start A ('def 'main xs4...) xs...)"
-    # pat = alpaca.pattern.Pattern(p)
-    # r = pat.match(asl).to("('here ('def 'notmain xs4...) A xs...)")
-    # print(r)
-
-    # print("then...")
-    # a = alpaca.pattern.Pattern("('def name xs...)").map(asl._list, "('name name)")
-    # for b in a:
-    #     print(b)
+    run_eisen("test.txt")
 
 def add_test(name: str):
     tomlheader = """
@@ -244,6 +197,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("-t", "--test", action="store", type=str, nargs="?", const="")
+    parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
     parser.add_argument("-a", "--add-test", action="store", type=str)
@@ -255,7 +209,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.test is not None:
-        run_eisen_tests(args.test)
+        run_eisen_tests(args.test, args.verbose)
     elif args.input and args.lang:
         run(args.lang, args.input)
     elif args.build:

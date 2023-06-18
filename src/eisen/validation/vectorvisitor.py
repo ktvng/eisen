@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeFactory
-from eisen.common.nodedata import NodeData
 from eisen.common.restriction import VarRestriction, LetConstruction, FunctionalRestriction
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.state.basestate import BaseState as State

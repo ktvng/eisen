@@ -5,7 +5,6 @@ from os import walk
 import time
 import sys
 import pathlib
-import traceback
 import multiprocessing
 import subprocess
 import tomllib
@@ -18,11 +17,9 @@ from alpaca.concepts import AbstractException
 from alpaca.utils import VisitorException
 
 from eisen.parsing.callback import EisenCallback
-from eisen.parsing.builder import EisenBuilder
 from eisen.parsing.superparser import SuperParser
 from eisen.state.basestate import BaseState as State
 from eisen.validation.workflow import Workflow
-from eisen.interpretation.ast_interpreter import AstInterpreter
 from eisen.conversion.to_python import ToPython
 
 class StaticParser():
@@ -154,49 +151,26 @@ class Test:
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
-    testdir = "./src/eisen/tests/"
-    cachedir = "./src/eisen/tests/cache/"
-    grammarfile = "./src/eisen/grammar.gm"
+    @staticmethod
+    def run_test_by_name(name: str):
+        return Test(name).run()
 
-    @classmethod
-    def parse_asl(cls, test: dict) -> str:
-        try:
-            config = alpaca.config.parser.run(filename=TestRunner.grammarfile)
-            tokens = alpaca.lexer.run(text=test["code"], config=config, callback=EisenCallback)
-            asl = alpaca.parser.run(config, tokens, builder=EisenBuilder())
-            return str(asl)
-        except:
-            return "error in parsing asl"
-
-    @classmethod
-    def run_test_by_name(cls, name: str):
-        test = Test(name)
-        try:
-            status, msg = test.run()
-        except Exception as e:
-            raise e
-            try:
-                status, msg = False, f"unhandled exception: {e} {traceback.format_exc()}\n" + str(test.parse_asl())
-            except:
-                status, msg = False, f"!! could not parse asl"
-        return status, msg
-
-    @classmethod
-    def get_all_test_names(cls) -> list[str]:
+    @staticmethod
+    def get_all_test_names() -> list[str]:
         filenames = []
-        for root, dirs, files in walk(TestRunner.testdir):
+        for root, _, files in walk(Test.test_dir):
             for file in files:
                 filenames.append(root + os.sep + file)
         # TODO: fix this to remove the prefix ./src/eisen/tests
         test_files = [f[18:] for f in filenames if f.endswith(".en")]
         return [t.split(".")[0] for t in test_files]
 
-    @classmethod
-    def run_all_tests_threadpooled(cls):
+    @staticmethod
+    def run_all_tests_threadpooled():
         start = time.perf_counter()
-        tests = cls.get_all_test_names()
+        tests = TestRunner.get_all_test_names()
         with multiprocessing.Pool(8) as p:
-            data: list[str] = p.map(cls.run_test_in_thread, tests)
+            data: list[str] = p.map(TestRunner.run_test_in_thread, tests)
 
         successes = data.count("success!")
         msg = "\n".join([m for m in data if m != "success!"])
@@ -205,25 +179,24 @@ class TestRunner():
         total_tests= len(tests)
         print(f"finished in {round(end-start, 4)}s\n{successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
 
-    @classmethod
-    def run_test_in_thread(cls, testname: str) -> tuple[bool, str]:
-        status, msg = cls.run_test_by_name(testname)
+    @staticmethod
+    def run_test_in_thread(testname: str) -> str:
+        status, msg = TestRunner.run_test_by_name(testname)
         msg_to_sender = "success!"
         if not status:
             msg_to_sender = f"test failed: {testname}\n" + "\n".join(["   " + l for l in msg.split("\n")])
 
         return msg_to_sender
 
-    @classmethod
-    def run_all_tests(cls):
-        # cls.run_all_tests_threadpooled()
-        # return
-        start = time.perf_counter()
+    @staticmethod
+    def run_tests_sequentially():
         successes = 0
-        tests = cls.get_all_test_names()
+        tests = TestRunner.get_all_test_names()
+
+        start = time.perf_counter()
         for testname in tests:
             print(testname)
-            status, msg = cls.run_test_by_name(testname)
+            status, msg = TestRunner.run_test_by_name(testname)
 
             if status:
                 successes += 1
@@ -231,27 +204,14 @@ class TestRunner():
                 print(f"test failed: {testname}")
                 print("\n".join(["   " + l for l in msg.split("\n")]))
 
-            # test = cls.load_test(filepath=filename)
-            # try:
-            #     status, msg = cls.run_test(test)
-            # except Exception as e:
-            #     status, msg = False, f"unhandled exception: {e}\n"
-            #     raise e
-            # if status:
-            #     successes += 1
-            # else:
-            #     msg += cls.parse_asl(test)
-            #     print(f"test failed: {test['name']}")
-            #     print("\n".join(["   " + l for l in msg.split("\n")]))
-
         end = time.perf_counter()
         total_tests= len(tests)
-        print(f"ran {total_tests} tests in {round(end-start, 4)}s, {successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
+        print(f"finished in {round(end-start, 4)}s\n{successes}/{total_tests} ({round(100.0*successes/total_tests, 2)}%) succeeded")
 
-    @classmethod
-    def rebuild_cache(cls):
-        for testname in cls.get_all_test_names():
-            test = Test(testname)
-            asl_str = str(test.parse_asl())
-            with open(cls.cachedir + testname, 'w') as f:
-                f.write(asl_str)
+    @staticmethod
+    def run_all_tests(verbose: bool):
+        if not verbose:
+            TestRunner.run_all_tests_threadpooled()
+            return
+        else:
+            TestRunner.run_tests_sequentially()

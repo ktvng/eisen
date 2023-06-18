@@ -16,7 +16,6 @@ class NilCheck(Visitor):
         return state
 
     def apply(self, state: State) -> list[NilableStatus]:
-        # print(state.asl)
         return self._route(state.asl, state)
 
     @classmethod

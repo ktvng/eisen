@@ -46,6 +46,9 @@ class NestedContainer():
             return self.parent.get_obj(container_name, name)
         return None
 
+    def get_all_local_objs(self, container_name: str) -> list[Any]:
+        return self.containers[container_name].values()
+
     def get_local_obj(self, container_name: str, name: str) -> Any:
         container = self.containers[container_name]
         if name in container:

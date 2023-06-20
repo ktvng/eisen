@@ -116,7 +116,7 @@ class SpreadVisitor(Visitor):
             SpreadVisitor.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
         return []
 
-    @Visitor.for_asls("ivar")
+    @Visitor.for_asls("ivar", "ivar?")
     def iletivar2_(fn, state: State):
         spreads = fn.apply(state.but_with_second_child())
         for name, spread in zip(adapters.IletIvar(state).get_names(), spreads):

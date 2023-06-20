@@ -359,6 +359,26 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
+    def cannot_be_nil(state: State, nilstate: NilableStatus | list[NilableStatus]) -> ValidationResult:
+        if not isinstance(nilstate, list):
+            nilstate = [nilstate]
+
+        for ns in nilstate:
+            if ns.could_be_nil:
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.NilUsage,
+                    msg=f"'{ns.name}' is being used but could be nil")
+        return ValidationResult.success()
+
+    @staticmethod
+    def cast_into_non_nil_valid(state: State, parent: NilableStatus, child: NilableStatus) -> ValidationResult:
+        if parent.is_nilable and parent.could_be_nil and not child.is_nilable:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.NilCast,
+                msg=f"'{parent.name}' could be nil")
+        return ValidationResult.success()
+
+    @staticmethod
     def _generate_nil_exception_msg(status: NilableStatus) -> str:
         if status.name:
             return f"'{status.name}' is nilable, and may be nil."
@@ -375,7 +395,7 @@ class Validate:
                 msg=Validate._generate_nil_exception_msg(left),
                 line_number=state.get_line_number()))
         if right.is_nilable:
-            state.report_exception(Exception.NilUsage(
+            state.report_exception(Exceptions.NilUsage(
                 msg=Validate._generate_nil_exception_msg(right),
                 line_number=state.get_line_number()))
 

@@ -87,6 +87,10 @@ class Exceptions():
         type = "NilableMismatch"
         description = "a nilable type cannot be assigned to a non-nilable type"
 
+    class NilCast(AbstractException):
+        type = "NilCast"
+        description = "cannot cast nilable into non-nilable if nilable value could be 'nil'"
+
     class PrimitiveAssignmentMismatch(AbstractException):
         type = "PrimitiveAssignmentMismatch"
         description = "a primitive type may only be assigned to other primitives or literals"

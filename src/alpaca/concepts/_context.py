@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from alpaca.concepts._type import Type
@@ -7,17 +7,20 @@ if TYPE_CHECKING:
 from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
-    container_names = ["type", "instance", "instance_state", "nilstate", "function_instance", "reference_type",
+    container_names = ["type", "instance", "instance_state", "nilstatus", "function_instance", "reference_type",
     "depth", "spread", "local_ref", "fn_aliases"]
 
     def _add_child(self, child: NestedContainer):
         return
 
-    def add_nilstate(self, name: str, value: bool):
-        self.add_obj("nilstate", name, value)
+    def add_nilstatus(self, name: str, value: Any):
+        self.add_obj("nilstatus", name, value)
 
-    def get_nilstate(self, name: str) -> bool:
-        return self.get_obj("nilstate", name)
+    def get_nilstatus(self, name: str) -> Any:
+        return self.get_obj("nilstatus", name)
+
+    def get_all_local_nilstatuses(self):
+        return self.get_all_local_objs("nilstatus")
 
     def add_reference_type(self, name: str, type: Type):
         self.add_obj("reference_type", name, type)

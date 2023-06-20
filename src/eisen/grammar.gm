@@ -64,7 +64,6 @@ SYMBOLICS
     keyword destroy     ->  destroy
     keyword var         ->  var
     keyword val         ->  val
-    keyword nil         ->  nil
     keyword interface   ->  interface
     keyword implements  ->  implements
     keyword variant     ->  variant
@@ -115,6 +114,7 @@ SYMBOLICS
     str                 ->  (["'])(?:(?=(\\?))\2.)*?\1
     int                 ->  -?[0-9]+
     bool                ->  true|false
+    nil                 ->  nil
 
     TAG                 ->  [_a-zA-Z]\w*
     none                ->  [ \t]*

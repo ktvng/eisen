@@ -1,0 +1,36 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn main() {
+    let a = obj(3, 3)
+    var? p = a
+    var? q = a
+    p = nil
+    if (p != nil and q != nil) {
+        print("%i", p.x + q.x)
+    }
+
+    let b = obj(4, 4)
+    p = b
+    if (q != nil and p != nil) {
+        print("%i", p.x + q.x)
+    }
+}
+
+/// [Test]
+/// name = "nilcheck/conditional"
+/// info = """\
+///     Test that inside a conditional testing for not being nil, the variables
+///     can be used without error
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "7"

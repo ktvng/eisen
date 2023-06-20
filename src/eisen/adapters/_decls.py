@@ -25,6 +25,8 @@ class IletIvar(AbstractNodeInterface):
     def get_restriction(self) -> GeneralRestriction:
         if self.state.asl.type == "ilet":
             return LetRestriction()
+        if self.state.asl.type == "ivar?":
+            return NullableVarRestriction()
         else:
             return VarRestriction()
 
@@ -49,6 +51,11 @@ class Decl(AbstractNodeInterface):
 
     def get_is_nullable(self) -> bool:
         return self.get_node_type() == "var?"
+
+    def get_is_nilable(self) -> bool:
+        node_type = self.get_node_type()
+        return (node_type == "var"
+             or node_type == ":" and self.get_type_asl().type == node_type == "var_type?")
 
     def get_is_var(self) -> bool:
         node_type = self.get_node_type()

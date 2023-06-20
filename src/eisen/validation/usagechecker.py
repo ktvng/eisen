@@ -111,12 +111,13 @@ class UsageChecker(Visitor):
             UsageChecker.add_instancestate(state, inst)
         return insts
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_asls("ilet", "ivar", "ivar?")
     def ilet_(fn, state: State) -> list[EisenInstanceState]:
         left_insts = [UsageChecker.create_instancestate(i, Initializations.NotInitialized)
             for i in state.get_instances()]
         right_insts = fn.apply(state.but_with(asl=state.second_child()))
         for left, right in zip(left_insts, right_insts):
+            # print(state.asl, left, right)
             Validate.assignment_restrictions_met(state, left, right)
 
             # mark as initialized after validations
@@ -194,8 +195,8 @@ class UsageChecker(Visitor):
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[EisenInstanceState]:
-        # restriction is carried over from the first child
-        return fn.apply(state.but_with(asl=state.first_child()))
+        # restriction is carried over from the second child?
+        return fn.apply(state.but_with_second_child())
 
     @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[EisenInstanceState]:
@@ -208,14 +209,18 @@ class UsageChecker(Visitor):
     def new_vec_(fn, state: State) -> list[EisenInstanceState]:
         return [EisenAnonymousInstanceState(LetConstruction(), Initializations.Initialized)]
 
+    @Visitor.for_asls("type")
+    def type_(fn, state: State) -> list[EisenInstanceState]:
+        return [EisenAnonymousInstanceState(state.get_restriction(), Initializations.Initialized)]
+
     @Visitor.for_asls("index")
     def index_(fn, state: State) -> list[EisenInstanceState]:
-        return [EisenAnonymousInstanceState(state.get_returned_type().restriction, Initializations.Initialized)]
+        return [EisenAnonymousInstanceState(state.get_restriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[EisenInstanceState]:
         if state.asl.value == "nil":
-            return UsageChecker.NoRestrictionInstanceState()
+            return [EisenAnonymousInstanceState(NoRestriction(), Initializations.Initialized)]
         return [EisenAnonymousInstanceState(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default

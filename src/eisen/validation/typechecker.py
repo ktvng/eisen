@@ -263,7 +263,7 @@ class TypeChecker(Visitor):
             TypeChecker.add_reference_type(state, name, t)
         return type
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_asls("ilet", "ivar", "ivar?")
     def idecls_(fn, state: State):
         node = adapters.IletIvar(state)
         names = node.get_names()

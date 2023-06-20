@@ -81,7 +81,7 @@ class InstanceVisitor(Visitor):
                 is_function=type.is_function())
             for name in node.get_names()]
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_asls("ilet", "ivar", "ivar?")
     def iletivar_(fn, state: State) -> list[EisenInstance]:
         fn.apply(state.but_with_second_child())
         node = adapters.IletIvar(state)

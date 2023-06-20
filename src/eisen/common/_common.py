@@ -7,7 +7,9 @@ from alpaca.concepts import Type, Instance, Module
 
 no_assign_binary_ops = ["+", "-", "/", "*", "and", "or"]
 binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="]
-boolean_return_ops = ["<", ">", "<=", ">=", "==", "!=",]
+equality_ops = ["==", "!="]
+compare_ops = ["<", ">", "<=", ">="]
+boolean_return_ops = compare_ops + equality_ops
 implemented_primitive_types = ["str", "int", "bool", "flt"]
 
 def asls_of_type(type: str, *args):

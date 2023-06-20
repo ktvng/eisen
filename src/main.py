@@ -86,6 +86,7 @@ def run_eisen(filename: str):
     print(delim)
     print(state.watcher.txt)
 
+
     if state.watcher.txt:
         exit()
 

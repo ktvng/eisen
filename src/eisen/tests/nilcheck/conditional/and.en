@@ -1,0 +1,24 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: obj {
+        self.x = x
+    }
+}
+
+fn main() {
+    let a = obj(7)
+    var? p = a
+    var? q = a
+    if (p != nil and q != nil) {
+        print("%i", p.x + q.x)
+    }
+}
+
+/// [Test]
+/// name = "nilcheck/conditional/and"
+/// info = "Nil check narrows types for multiple variables"
+
+/// [Expects]
+/// success = true
+/// output = "14"

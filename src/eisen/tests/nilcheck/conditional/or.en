@@ -1,0 +1,27 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: obj {
+        self.x = x
+    }
+}
+
+fn main() {
+    let a = obj(1)
+    var? p = a
+    var? q = a
+    if (p != nil or q != nil) {
+        print("%i", p.x + q.x)
+    }
+}
+
+/// [Test]
+/// name = "nilcheck/conditional/or"
+/// info = "Nil check does not narrow types when used with or"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "NilUsageException"
+/// contains = ">> 14"

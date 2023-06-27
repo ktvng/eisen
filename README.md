@@ -7,7 +7,7 @@ Visit: [https://eisen-lang.org/](https://eisen-lang.org/)
 ### Run a program
 
 ```sh
-python ./src/main.py path/to/file
+python ./src/main.py --input path/to/file
 ```
 
 ### Run tests

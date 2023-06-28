@@ -114,7 +114,7 @@ class NilCheckState(State_PostInstanceVisitor):
         Return a list of NilableStatuses which have been changed in the current
         context.
 
-        Because each Context add's it's own version of a variables NilableStatus,
+        Because each Context adds its own version of a variables NilableStatus,
         after a child context has finished, any changes to the NilableStatus of a
         variable may only be reflected in the child context, not the parent.
 

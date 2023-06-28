@@ -7,6 +7,7 @@ tmp
 idea.txt
 __pycache__
 .vscode/
+.helix/
 *.c
 notes.txt
 *.log

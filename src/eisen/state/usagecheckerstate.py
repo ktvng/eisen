@@ -26,8 +26,8 @@ class UsageCheckerState(State_PostInstanceVisitor):
             inside_constructor=inside_constructor,
             exceptions=exceptions)
 
-    @classmethod
-    def create_from_basestate(cls, state: BaseState) -> UsageCheckerState:
+    @staticmethod
+    def create_from_basestate(state: BaseState) -> UsageCheckerState:
         """
         Create a new instance of NilCheckState from any descendant of BaseState
 

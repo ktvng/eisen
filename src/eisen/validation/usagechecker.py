@@ -11,7 +11,7 @@ from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction,
                                       ValRestriction, VarRestriction)
 from eisen.common.initialization import Initializations
-from eisen.common.usagestatus import UsageStatus
+from eisen.common.usagestatus import UsageStatus, UsageStatusFactory
 
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
@@ -32,15 +32,16 @@ class UsageChecker(Visitor):
     def create_new_statuses_for_instances(
             instances: list[EisenInstance],
             initialization: Initializations = Initializations.NotInitialized) -> list[UsageStatus]:
+        return [UsageStatusFactory.create(i.name, i.type.restriction, initialization) for i in instances]
         return [UsageStatus(i.name, i.type.restriction, initialization) for i in instances]
 
     @staticmethod
     def create_status_from_instance(instance: EisenInstance, init_state: Initializations) -> UsageStatus:
-        return UsageStatus(instance.name, instance.type.restriction, init_state)
+        return UsageStatusFactory.create(instance.name, instance.type.restriction, init_state)
 
     @staticmethod
     def create_status_from_type(tc: Type) -> list[UsageStatus]:
-        return UsageStatus.anonymous(tc.restriction, Initializations.Initialized)
+        return UsageStatusFactory.create_anonymous(tc.restriction, Initializations.Initialized)
 
     @staticmethod
     def handle_assignment(state: State, left_statuses: list[UsageStatus], right_statuses: list[UsageStatus]):
@@ -180,7 +181,7 @@ class UsageChecker(Visitor):
         if parent_inst.restriction.is_val():
             return [parent_inst]
 
-        return [UsageStatus(
+        return [UsageStatusFactory.create(
             name=adapters.Scope(state).get_full_name(),
             restriction=state.get_restriction(),
             initialization=Initializations.Initialized)]
@@ -216,7 +217,7 @@ class UsageChecker(Visitor):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.status_is_initialized(state, given)
 
-        return [UsageStatus.anonymous(FunctionalRestriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(FunctionalRestriction(), Initializations.Initialized)]
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[UsageStatus]:
@@ -228,17 +229,17 @@ class UsageChecker(Visitor):
         for child in state.get_all_children():
             for status in fn.apply(state.but_with(asl=child)):
                 Validate.status_is_initialized(state, status)
-        return [UsageStatus.anonymous(LiteralRestriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_asls("index", "type", "new_vec")
     def index_(fn, state: State) -> list[UsageStatus]:
-        return [UsageStatus.anonymous(state.get_restriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(state.get_restriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[UsageStatus]:
         if state.asl.value == "nil":
-            return [UsageStatus.anonymous(NoRestriction(), Initializations.Initialized)]
-        return [UsageStatus.anonymous(LiteralRestriction(), Initializations.Initialized)]
+            return [UsageStatusFactory.create_anonymous(NoRestriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default
     def default_(fn, state: State) -> list[UsageStatus]:
@@ -283,7 +284,7 @@ class LValUsageVisitor(Visitor):
         parent_status = state.get_usagestatus(adapters.Ref(state).get_name())
         return [LValUsageStatus(
             parent_status=parent_status,
-            branch_status=UsageStatus.anonymous(parent_status.restriction, parent_status.initialization))]
+            branch_status=UsageStatusFactory.create_anonymous(parent_status.restriction, parent_status.initialization))]
 
     @Visitor.for_asls(".")
     def dot_(self, state: State):
@@ -297,7 +298,7 @@ class LValUsageVisitor(Visitor):
             if branch_restriction.is_val(): branch_restriction = VarRestriction()
             return [LValUsageStatus(
                 parent_status=entitystatus.parent_status,
-                branch_status=UsageStatus(node.get_full_name(), branch_restriction, Initializations.NotInitialized),
+                branch_status=UsageStatusFactory.create(node.get_full_name(), branch_restriction, Initializations.NotInitialized),
                 attribute_name=node.get_attribute_name())]
 
         if entitystatus.branch_status.restriction.is_val():
@@ -305,8 +306,8 @@ class LValUsageVisitor(Visitor):
         elif branch_restriction.is_val():
             return [LValUsageStatus(
                 parent_status=entitystatus.parent_status,
-                branch_status=UsageStatus(node.get_full_name(), ValRestriction(), Initializations.Initialized))]
+                branch_status=UsageStatusFactory.create(node.get_full_name(), ValRestriction(), Initializations.Initialized))]
 
         return [LValUsageStatus(
             parent_status=entitystatus.parent_status,
-            branch_status=UsageStatus(node.get_full_name(), branch_restriction, Initializations.Initialized))]
+            branch_status=UsageStatusFactory.create(node.get_full_name(), branch_restriction, Initializations.Initialized))]

@@ -9,9 +9,6 @@ from eisen.common.usagestatus import UsageStatus
 from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
-from eisen.common.restriction import RestrictionViolation
-import eisen.adapters as adapters
-
 
 @dataclass
 class ValidationResult:
@@ -243,7 +240,6 @@ class Validate:
             return ValidationResult.success()
         return ValidationResult.failure()
 
-
     @staticmethod
     def embeddings_dont_conflict(state: State, type: Type):
         conflicts = False
@@ -269,73 +265,12 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def compose_assignment_restriction_error_message(
-            state: State,
-            ex_type: RestrictionViolation,
-            l: UsageStatus,
-            r: UsageStatus):
-
-        # print(state.asl, l, r)
-        ex = None
-        if ex_type == RestrictionViolation.LetReassignment:
-            ex = Exceptions.LetReassignment(
-                msg=f"'{l.name} is declared as 'let' and initialized; '{l.name}' cannot be reassigned",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.LetInitializationToPointer:
-            if state.second_child().type == "call":
-                fn_name = adapters.Call(state.but_with_second_child()).get_function_name()
-                ex = Exceptions.LetInitializationMismatch(
-                    msg=f"'{l.name}' is declared as 'let' but '{fn_name}' returns a type with '{r.restriction.get_name()}' designation",
-                    line_number=state.get_line_number())
-            else:
-                ex = Exceptions.LetInitializationMismatch(
-                    msg=f"'{l.name}' is declared as 'let' but '{r.name}' has designation '{r.restriction.get_name()}'",
-                    line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.LetBadConstruction:
-            ex = Exceptions.LetInitializationMismatch(
-                msg=f"'{l.name}' is declared as 'let', but is initialized to '{r.name}' which is a separate memory allocation",
-                line_number=state.get_line_number())
-
-        elif ex_type == RestrictionViolation.VarAssignedToLiteral:
-            ex = Exceptions.VarImproperAssignment(
-                msg=f"'{l.name}' is declared as 'var', but is being assigned to a literal",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.VarNoNullableAssignment:
-            name = f"'{r.name}'" if r.name else ""
-            ex = Exceptions.NilableMismatch(
-                msg=f"'{l.name}' is not nilable, but is being assigned to a nilable value {name}",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.PrimitiveToNonPrimitiveAssignment:
-            ex = Exceptions.PrimitiveAssignmentMismatch(
-                msg=f"'{l.name}' is a primitive",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.FunctionalMisassigment:
-            ex = Exceptions.PrimitiveAssignmentMismatch(
-                msg=f"'{l.name}' must be given a function",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.VarAssignedToLetConstruction:
-            ex = Exceptions.LetInitializationMismatch(
-                msg=f"'{l.name}' is declared as 'var' but '{r.name}' constructs a 'let' value",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.ValNoReassignment:
-            ex = Exceptions.ImmutableVal(
-                msg=f"'{l.name}' is declared as 'val'",
-                line_number=state.get_line_number())
-        elif ex_type == RestrictionViolation.VarAssignedToVal:
-            ex = Exceptions.VarImproperAssignment(
-                msg=f"'{r.name}' is 'val' cannot be assigned to a 'var' type",
-                line_number=state.get_line_number())
-        if ex is None:
-            raise Exception(f"no matching exception for {ex_type}")
-        state.report_exception(ex)
-
-
-    @staticmethod
     def assignment_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
-        is_assignable, ex_type = left.assignable_to(right)
-        if not is_assignable:
-            Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
-            return ValidationResult.failure()
+        result = left.assignable_to(right)
+        if result.failed():
+            return failure_with_exception_added_to(state,
+                ex=result.ex_type,
+                msg=result.msg)
         if right.is_under_construction():
             return failure_with_exception_added_to(state,
                 ex=Exceptions.IncompleteInitialization,
@@ -344,23 +279,13 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def overwrite_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
-        # print(state.asl)
-        is_assignable = left.restriction.is_var()
-        if not is_assignable:
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.MemoryAssignment,
-                # TODO, figure out how to pass the name of the variable here
-                msg=f"TODO:overwrite_restrictions_met fix error message {left}, {right}")
-        return ValidationResult.success()
-
-    @staticmethod
     def parameter_assignment_restrictions_met(state: State, argument_requires: UsageStatus, given: UsageStatus):
         # print(state.asl)
-        is_assignable, ex_type = argument_requires.assignable_to(given)
-        if not is_assignable:
-            Validate.compose_assignment_restriction_error_message(state, ex_type, argument_requires, given)
-            return ValidationResult.failure()
+        result = argument_requires.assignable_to(given)
+        if result.failed():
+            return failure_with_exception_added_to(state,
+                ex=result.ex_type,
+                msg=result.msg)
         return ValidationResult.success()
 
     @staticmethod

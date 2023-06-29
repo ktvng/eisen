@@ -1,0 +1,29 @@
+struct abc {
+    a: int
+    b: int
+    c: int
+
+    create(n: int) -> self: abc {
+        self.a = n
+        self.b = self.c
+        self.c = n
+    }
+}
+
+fn main() {
+    return
+}
+
+/// [Test]
+/// name = "usage/preinit_usage"
+/// info = """\
+///     Test that using a struct attribute inside a constructor before it is
+///     initialized throws an exception.
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "UseBeforeInitializeException"
+/// contains = ">> 8"

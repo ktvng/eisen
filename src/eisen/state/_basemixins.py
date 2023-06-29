@@ -302,16 +302,6 @@ class BaseMixins():
         return Context(name="isolated", parent=None)
 
 
-    def is_inside_constructor(self) -> bool:
-        """
-        Returns whether or not the current State occurs inside a constructor.
-
-        :return: True if this state occurs inside a constructor.
-        :rtype: bool
-        """
-        return self.inside_constructor
-
-
     def is_asl(self) -> bool:
         """
         Returns whether or not the current State is at an ASL (vs a terminal, CLRToken)

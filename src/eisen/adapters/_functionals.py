@@ -27,12 +27,10 @@ class CommonFunction(AbstractNodeInterface):
     def enter_context_and_apply(self, fn) -> None:
         # must create fn_context here as it is shared by all children
         fn_context = self.state.create_block_context()
-        will_enter_constructor = self.state.asl.type == "create"
         for child in self.state.get_child_asls():
             fn.apply(self.state.but_with(
                 asl=child,
-                context=fn_context,
-                inside_constructor=will_enter_constructor))
+                context=fn_context))
 
 
 class Def(AbstractNodeInterface):

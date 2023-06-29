@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from alpaca.clr import CLRList
+from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.restriction import GeneralRestriction, LetRestriction, VarRestriction, NullableVarRestriction
+from eisen.common.restriction import GeneralRestriction, LetRestriction, VarRestriction, NullableVarRestriction, ValRestriction, FunctionalRestriction
 
 class IletIvar(AbstractNodeInterface):
     asl_types = ["ilet", "ivar"]
@@ -18,6 +19,9 @@ class IletIvar(AbstractNodeInterface):
         if isinstance(self.first_child(), CLRList):
             return [token.value for token in self.first_child()]
         return [self.first_child().value]
+
+    def get_assigned_types(self) -> list[Type]:
+        return self.state.but_with(asl=self.second_child()).get_returned_type().unpack_into_parts()
 
     def assigns_a_tuple(self) -> bool:
         return isinstance(self.first_child(), CLRList)
@@ -46,8 +50,19 @@ class Decl(AbstractNodeInterface):
             return LetRestriction()
         if self.get_node_type() == "var":
             return VarRestriction()
-        elif self.get_node_type() == "var?":
+        if self.get_node_type() == "val":
+            return ValRestriction()
+        if self.get_node_type() == "var?":
             return NullableVarRestriction()
+        if self.get_node_type() == ":":
+            if self.second_child().type == "var_type":
+                return VarRestriction()
+            elif self.second_child().type == "type":
+                return LetRestriction()
+            elif self.second_child().type == "fn_type":
+                return FunctionalRestriction()
+
+        raise Exception(f"not implemented for {self.get_node_type()} {self.state.asl}")
 
     def get_is_nullable(self) -> bool:
         return self.get_node_type() == "var?"

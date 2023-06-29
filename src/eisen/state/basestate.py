@@ -58,7 +58,6 @@ class BaseState(AbstractParams, BaseMixins):
             exceptions: list[AbstractException],
             critical_exception: SharedBool = SharedBool(False),
             print_to_watcher: bool = False,
-            inside_constructor: bool = False,
             watcher: Watcher = None,
             builtin_functions: dict[str, EisenFunctionInstance] = None,
             global_module: Module = None
@@ -69,7 +68,7 @@ class BaseState(AbstractParams, BaseMixins):
         builtin_functions = {} if builtin_functions is None else builtin_functions
         self._init(config=config, asl=asl, txt=txt, context=context,
             mod=mod, exceptions=exceptions, critical_exception=critical_exception,
-            print_to_watcher=print_to_watcher, inside_constructor=inside_constructor,
+            print_to_watcher=print_to_watcher,
             watcher=watcher, builtin_functions=builtin_functions,
             global_module=global_module)
 

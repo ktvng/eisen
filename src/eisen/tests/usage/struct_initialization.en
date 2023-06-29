@@ -1,0 +1,31 @@
+struct abc {
+    a: int
+    b: int
+    c: int
+
+    create(n: int) -> self: abc {
+        self.a = n
+    }
+}
+
+fn main() {
+    return
+}
+
+/// [Test]
+/// name = "usage/struct_initialization"
+/// info = """\
+///     Test that all member attributes of a struct must be initialized inside
+///     the constructor
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompleteInitializationException"
+/// contains = ">> 6"
+
+/// [[Expects.Exceptions]]
+/// type = "IncompleteInitializationException"
+/// contains = ">> 6"

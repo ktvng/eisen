@@ -509,6 +509,7 @@ STRUCTURE
 
     STRUCT_ELEM ->
         @action pool
+        |   DECL
         |   TYPING
         |   FUNC
         @action filter_build create

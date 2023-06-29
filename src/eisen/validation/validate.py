@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from alpaca.concepts import Type, AbstractException
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.exceptions import Exceptions
-from eisen.common.eiseninstancestate import EisenInstanceState
+from eisen.common.usagestatus import UsageStatus
 from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
@@ -272,8 +272,8 @@ class Validate:
     def compose_assignment_restriction_error_message(
             state: State,
             ex_type: RestrictionViolation,
-            l: EisenInstanceState,
-            r: EisenInstanceState):
+            l: UsageStatus,
+            r: UsageStatus):
 
         # print(state.asl, l, r)
         ex = None
@@ -317,13 +317,17 @@ class Validate:
             ex = Exceptions.LetInitializationMismatch(
                 msg=f"'{l.name}' is declared as 'var' but '{r.name}' constructs a 'let' value",
                 line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.ValNoReassignment:
+            ex = Exceptions.ImmutableVal(
+                msg=f"'{l.name}' is declared as 'val'",
+                line_number=state.get_line_number())
         if ex is None:
             raise Exception(f"no matching exception for {ex_type}")
         state.report_exception(ex)
 
 
     @staticmethod
-    def assignment_restrictions_met(state: State, left: EisenInstanceState, right: EisenInstanceState):
+    def assignment_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
         is_assignable, ex_type = left.assignable_to(right)
         if not is_assignable:
             Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
@@ -331,7 +335,7 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def overwrite_restrictions_met(state: State, left: EisenInstanceState, right: EisenInstanceState):
+    def overwrite_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
         # print(state.asl)
         is_assignable = left.restriction.is_var()
         if not is_assignable:
@@ -342,7 +346,7 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def parameter_assignment_restrictions_met(state: State, argument_requires: EisenInstanceState, given: EisenInstanceState):
+    def parameter_assignment_restrictions_met(state: State, argument_requires: UsageStatus, given: UsageStatus):
         # print(state.asl)
         is_assignable, ex_type = argument_requires.assignable_to(given)
         if not is_assignable:
@@ -351,11 +355,22 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def instancestate_is_initialized(state: State, instancestate: EisenInstanceState) -> ValidationResult:
-        if instancestate.initialization == Initializations.NotInitialized:
+    def instancestate_is_initialized(state: State, instancestate: UsageStatus) -> ValidationResult:
+        if instancestate.is_aborted_status():
+            return ValidationResult.failure()
+
+        if instancestate.initialization != Initializations.Initialized:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.UseBeforeInitialize,
                 msg=f"{instancestate.name} is not initialized")
+        return ValidationResult.success()
+
+    @staticmethod
+    def attribute_is_initialized(state: State, attr: str, status: UsageStatus) -> ValidationResult:
+        if not status.get_initialization_of_attribute(attr) == Initializations.Initialized:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompleteInitialization,
+                msg=f"'{attr}' is not initialized")
         return ValidationResult.success()
 
     @staticmethod

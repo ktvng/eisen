@@ -94,3 +94,11 @@ class Exceptions():
     class PrimitiveAssignmentMismatch(AbstractException):
         type = "PrimitiveAssignmentMismatch"
         description = "a primitive type may only be assigned to other primitives or literals"
+
+    class IncompleteInitialization(AbstractException):
+        type = "IncompleteInitialization"
+        description = "a member attribute of a struct is not initialized in the constructor"
+
+    class ImmutableVal(AbstractException):
+        type = "ImmutableVal"
+        description = "cannot modify a value or any of its state"

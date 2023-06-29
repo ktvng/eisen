@@ -15,7 +15,6 @@ class NilCheckState(State_PostInstanceVisitor):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             inside_cond: bool = None,
             exceptions: list = None,
             changed_nilstates: set[NilableStatus] = None
@@ -25,7 +24,6 @@ class NilCheckState(State_PostInstanceVisitor):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             inside_cond=inside_cond,
             exceptions=exceptions,
             changed_nilstates=changed_nilstates)

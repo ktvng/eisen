@@ -14,7 +14,6 @@ class ToPythonState(State):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             ret_names: list[str] = None,
             ) -> ToPythonState:
 
@@ -22,7 +21,6 @@ class ToPythonState(State):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             ret_names=ret_names,)
 
     @classmethod

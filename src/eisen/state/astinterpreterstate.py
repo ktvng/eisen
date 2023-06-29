@@ -13,7 +13,6 @@ class AstInterpreterState(State):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             objs: dict = None
             ) -> AstInterpreterState:
 
@@ -21,7 +20,6 @@ class AstInterpreterState(State):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             objs=objs)
 
     @classmethod

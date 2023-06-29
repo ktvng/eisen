@@ -13,7 +13,6 @@ class TypeCheckerState(BaseState):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             arg_type: Type = None
             ) -> BaseState:
 
@@ -21,7 +20,6 @@ class TypeCheckerState(BaseState):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             arg_type=arg_type)
 
     @classmethod

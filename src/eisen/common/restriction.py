@@ -41,6 +41,8 @@ class RestrictionViolation:
 
     FunctionalMisassigment = 30
 
+    ValNoReassignment = 40
+
 class GeneralRestriction(AbstractRestriction):
     def is_unrestricted(self) -> bool:
         return False
@@ -130,7 +132,7 @@ class LetRestriction(GeneralRestriction):
         return "let"
 
     def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
-        if current_init_state == Initializations.NotNull:
+        if current_init_state == Initializations.Initialized:
             return False, RestrictionViolation.LetReassignment
         if other.is_val() or other.is_var():
             return False, RestrictionViolation.LetInitializationToPointer
@@ -151,6 +153,10 @@ class ValRestriction(GeneralRestriction):
     def get_name(self) -> str:
         return "val"
 
+    def assignable_to(self, other: GeneralRestriction, current_init_state: Initializations) -> bool:
+        if current_init_state == Initializations.NotInitialized:
+            return True, None
+        return False, RestrictionViolation.ValNoReassignment
 
 class LiteralRestriction(GeneralRestriction):
     def is_literal(self) -> bool:

@@ -14,7 +14,6 @@ class InstanceVisitorState(State):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             arg_type: Type = None,
             is_ptr: bool = None,
             ) -> InstanceVisitorState:
@@ -23,7 +22,6 @@ class InstanceVisitorState(State):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             arg_type=arg_type,
             is_ptr=is_ptr,)
 

@@ -1,0 +1,55 @@
+struct abc {
+    a: int
+    b: int
+    c: int
+
+    create(n: int) -> self: abc {
+        self.a = n
+        self.b = self.a + 1
+        self.c = self.b + 1
+    }
+}
+struct obj {
+    x: int
+    y: int
+    val z: abc
+
+    create(x: int, z: abc, z2: abc) -> self: obj {
+        self.x = x
+        self.y = x
+        self.z = z
+        self.z = z2
+
+        print("%i ", self.z.c)
+    }
+}
+
+fn main() {
+    let z = abc(0)
+    let a = abc(1)
+    let o = obj(1, z, a)
+    val v: abc
+    v = a
+    o.z.a = 4
+    v.b = 5
+}
+
+/// [Test]
+/// name = "usage/val_assignment2"
+/// info = """\
+///     Test that val cannot be reassigned inside the constructor, and that
+///     a val state cannot be modified
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ImmutableValException"
+/// contains = ">> 21"
+/// [[Expects.Exceptions]]
+/// type = "ImmutableValException"
+/// contains = ">> 33"
+/// [[Expects.Exceptions]]
+/// type = "ImmutableValException"
+/// contains = ">> 34"

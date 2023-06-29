@@ -1,0 +1,45 @@
+struct abc {
+    a: int
+    b: int
+    c: int
+
+    create(n: int) -> self: abc {
+        self.a = n
+        self.b = self.a + 1
+        self.c = self.b + 1
+    }
+}
+struct obj {
+    x: int
+    y: int
+    val z: abc
+
+    create(x: int, z: abc) -> self: obj {
+        self.x = x
+        self.y = x
+        self.z = z
+        print("%i ", self.z.c)
+    }
+}
+
+fn main() {
+    let z = abc(0)
+    let a = abc(1)
+    let o = obj(1, z)
+    val v: abc
+    v = a
+
+    print("%i ", v.a)
+    a.a = 41
+    print("%i ", v.a)
+}
+
+/// [Test]
+/// name = "usage/val_assignment"
+/// info = """\
+///     Test that val objects can be assigned inside the constructor
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "2 1 41 "

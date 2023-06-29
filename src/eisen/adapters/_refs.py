@@ -26,7 +26,7 @@ class RefLike(AbstractNodeInterface):
         elif type == "fn":
             return Fn(self.state).get_name()
 
-        raise Exception("unknown type")
+        raise Exception(f"unknown type {type}")
 
     def get_module(self):
         if self.state.get_asl().type == "::":
@@ -191,3 +191,6 @@ class Scope(AbstractNodeInterface):
         while primary_asl.type != "ref":
             primary_asl = primary_asl.first()
         return Ref(self.state.but_with(asl=primary_asl)).get_name()
+
+    def get_full_name(self) -> str:
+        return self.get_object_name() + "." + self.get_attribute_name()

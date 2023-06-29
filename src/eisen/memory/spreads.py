@@ -111,9 +111,27 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("ilet")
     def iletivar_(fn, state: State):
+        node = adapters.IletIvar(state)
         FunctionAliasAdder(spread_visitor=fn).apply(state)
-        for name in adapters.IletIvar(state).get_names():
-            SpreadVisitor.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
+        new_spreads = []
+        for name in node.get_names():
+            new_spread = Spread(values={state.depth}, depth=state.depth)
+            SpreadVisitor.add_spread(state, name, new_spread)
+            new_spreads.append(new_spread)
+
+        # TODO: fix this!
+        # right_spreads = fn.apply(state.but_with_second_child())
+        # for name, type, l, r in zip(node.get_names(), node.get_assigned_types(), new_spreads, right_spreads):
+        #     # print(">", state.asl, name, l, r)
+        #     if type.restriction.is_primitive():
+        #         continue
+        #     was_tainted = l.is_tainted()
+        #     l.add(r)
+        #     if not was_tainted and l.is_tainted():
+        #         state.report_exception(
+        #             Exceptions.ObjectLifetime(
+        #                 msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
+        #                 line_number=state.get_line_number()))
         return []
 
     @Visitor.for_asls("ivar", "ivar?")
@@ -152,10 +170,12 @@ class SpreadVisitor(Visitor):
         FunctionAliasAdder(spread_visitor=fn).apply(state)
         left_spreads = []
         for name, type, l, r in SpreadVisitor._get_names_type_and_spreads(fn, state):
-            # print(">", state.asl, name, l, r)
+            # print("!", state.asl, name, l, r)
+            if type.restriction.is_primitive():
+                continue
             was_tainted = l.is_tainted()
             l.add(r)
-            if not was_tainted and l.is_tainted() and not type.restriction.is_primitive():
+            if not was_tainted and l.is_tainted():
                 state.report_exception(
                     Exceptions.ObjectLifetime(
                         msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
@@ -243,6 +263,10 @@ class SpreadVisitor(Visitor):
     @Visitor.for_asls("index")
     def index_(fn, state: State):
         return fn.apply(state.but_with_first_child())
+
+    @Visitor.for_asls("curry_call")
+    def curry_call_(fn, state: State):
+        return []
 
     @Visitor.for_asls("call", "is_call")
     def call_(fn, state: State):

@@ -20,7 +20,6 @@ class FunctionVisitorState(BaseState):
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
-            inside_constructor: bool = None,
             struct_name: str = None
             ) -> FunctionVisitorState:
 
@@ -28,7 +27,6 @@ class FunctionVisitorState(BaseState):
             asl=asl,
             context=context,
             mod=mod,
-            inside_constructor=inside_constructor,
             struct_name=struct_name,)
 
 

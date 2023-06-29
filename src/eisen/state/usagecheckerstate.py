@@ -5,9 +5,9 @@ from alpaca.clr import CLRList
 
 from eisen.state.basestate import BaseState
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
-from eisen.validation.nilablestatus import NilableStatus
+from eisen.common.usagestatus import UsageStatus
 
-class RestrictionVisitorState(State_PostInstanceVisitor):
+class UsageCheckerState(State_PostInstanceVisitor):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
@@ -16,20 +16,18 @@ class RestrictionVisitorState(State_PostInstanceVisitor):
             context: Context = None,
             mod: Module = None,
             inside_constructor: bool = None,
-            left_of_assign: bool = None,
             exceptions: list = None,
-            ) -> RestrictionVisitorState:
+            ) -> UsageCheckerState:
 
         return self._but_with(
             asl=asl,
             context=context,
             mod=mod,
             inside_constructor=inside_constructor,
-            left_of_assign=left_of_assign,
             exceptions=exceptions)
 
     @classmethod
-    def create_from_basestate(cls, state: BaseState) -> RestrictionVisitorState:
+    def create_from_basestate(cls, state: BaseState) -> UsageCheckerState:
         """
         Create a new instance of NilCheckState from any descendant of BaseState
 
@@ -38,8 +36,7 @@ class RestrictionVisitorState(State_PostInstanceVisitor):
         :return: A instance of NilCheckState
         :rtype: NilCheckState
         """
-        return RestrictionVisitorState(**state._get(), inside_constructor=False,
-                                       left_of_assign=False)
+        return UsageCheckerState(**state._get(), inside_constructor=False)
 
 
     def is_inside_constructor(self) -> bool:
@@ -51,5 +48,8 @@ class RestrictionVisitorState(State_PostInstanceVisitor):
         """
         return self.inside_constructor
 
-    def is_left_of_assignment_operator(self) -> bool:
-        return self.left_of_assign
+    def add_usagestatus(self, inst: UsageStatus):
+        self.get_context().add_instancestate(inst)
+
+    def get_usagestatus(self, name: str) -> UsageStatus:
+        return self.get_context().get_instancestate(name)

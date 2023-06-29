@@ -181,12 +181,16 @@ class TestRunner():
 
     @staticmethod
     def run_test_in_thread(testname: str) -> str:
-        status, msg = TestRunner.run_test_by_name(testname)
-        msg_to_sender = "success!"
-        if not status:
-            msg_to_sender = f"test failed: {testname}\n" + "\n".join(["   " + l for l in msg.split("\n")])
+        try:
+            status, msg = TestRunner.run_test_by_name(testname)
+            msg_to_sender = "success!"
+            if not status:
+                msg_to_sender = f"test failed: {testname}\n" + "\n".join(["   " + l for l in msg.split("\n")])
 
-        return msg_to_sender
+            return msg_to_sender
+        except Exception as e:
+            return f"test failed: {testname}\n: {e}"
+
 
     @staticmethod
     def run_tests_sequentially():

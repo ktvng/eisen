@@ -1,12 +1,8 @@
 struct abc {
     a: int
-    b: int
-    c: int
 
     create(n: int) -> self: abc {
-        self.a = n
-        self.b = self.c
-        self.c = n
+        self.a = n + self.a
     }
 }
 
@@ -25,5 +21,5 @@ fn main() {
 /// success = false
 
 /// [[Expects.Exceptions]]
-/// type = "UseBeforeInitializeException"
-/// contains = ">> 8"
+/// type = "IncompleteInitializationException"
+/// contains = ">> 5"

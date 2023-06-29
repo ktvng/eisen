@@ -10,7 +10,14 @@ from eisen.adapters._refs import RefLike
 from eisen.adapters._functionals import Def
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 
-class Call(AbstractNodeInterface):
+class _SharedMixins:
+    def get_function_return_type(self) -> Type:
+        return self.state.get_node_data().returned_type
+
+    def get_function_argument_type(self) -> Type:
+        return self.state.but_with_first_child().get_returned_type().get_argument_type()
+
+class Call(AbstractNodeInterface, _SharedMixins):
     asl_type = "call"
     examples = """
     (call (fn ...) (params ... ))
@@ -26,11 +33,7 @@ class Call(AbstractNodeInterface):
             return self.state.get_asl()
         return self._unravel_scoping(asl=self.state.get_asl().second())
 
-    def get_function_return_type(self) -> Type:
-        return self.state.get_node_data().returned_type
 
-    def get_function_argument_type(self) -> Type:
-        return self.state.but_with_first_child().get_returned_type().get_argument_type()
 
     def get_function_name(self) -> str:
         return RefLike(self.state.but_with_first_child()).get_name()
@@ -77,7 +80,7 @@ class RawCall(AbstractNodeInterface):
     def get_params_asl(self) -> CLRList:
         return self.third_child()
 
-class CurriedCall(AbstractNodeInterface):
+class CurriedCall(AbstractNodeInterface, _SharedMixins):
     asl_type = "curry_call"
     examples = """
         (curry_call (ref space) (curried 4)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from alpaca.clr import CLRList, CLRToken
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
+from eisen.adapters.argsrets import ArgsRets
 from eisen.common.eiseninstance import EisenFunctionInstance
 
 class CommonFunction(AbstractNodeInterface):
@@ -114,6 +115,9 @@ class Create(AbstractNodeInterface):
         """the name of the constructor is the same as the struct it constructs. this
         must be passed into the State as a parameter"""
         return self.state.get_struct_name()
+
+    def get_name_of_created_entity(self) -> str:
+        return ArgsRets(self.state.but_with(asl=self.get_rets_asl())).get_names()[0]
 
 class IsFn(AbstractNodeInterface):
     asl_type = "is_fn"

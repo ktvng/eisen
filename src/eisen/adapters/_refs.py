@@ -193,4 +193,10 @@ class Scope(AbstractNodeInterface):
         return Ref(self.state.but_with(asl=primary_asl)).get_name()
 
     def get_full_name(self) -> str:
-        return self.get_object_name() + "." + self.get_attribute_name()
+        primary_asl = self.state.get_asl()
+        full_name = ""
+        while primary_asl.type != "ref":
+            full_name = Scope(self.state.but_with(asl=primary_asl)).get_attribute_name() + "." + full_name
+            primary_asl = primary_asl.first()
+        full_name = Ref(self.state.but_with(asl=primary_asl)).get_name() + "." + full_name
+        return full_name[:-1]

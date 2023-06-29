@@ -1,0 +1,30 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.init()
+        self.x = x
+        self.y = y
+    }
+}
+
+fn init(self: obj) {
+    self.x = 0
+    self.y = 0
+}
+
+fn main() {
+    let a = obj(3, 3)
+}
+
+/// [Test]
+/// name = "usage/constructor_methods"
+/// info = "Cannot use methods inside the constructor which take an entity under construction."
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompleteInitializationException"
+/// contains = ">> 6"

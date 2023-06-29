@@ -321,6 +321,10 @@ class Validate:
             ex = Exceptions.ImmutableVal(
                 msg=f"'{l.name}' is declared as 'val'",
                 line_number=state.get_line_number())
+        elif ex_type == RestrictionViolation.VarAssignedToVal:
+            ex = Exceptions.VarImproperAssignment(
+                msg=f"'{r.name}' is 'val' cannot be assigned to a 'var' type",
+                line_number=state.get_line_number())
         if ex is None:
             raise Exception(f"no matching exception for {ex_type}")
         state.report_exception(ex)
@@ -332,6 +336,11 @@ class Validate:
         if not is_assignable:
             Validate.compose_assignment_restriction_error_message(state, ex_type, left, right)
             return ValidationResult.failure()
+        if right.is_under_construction():
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompleteInitialization,
+                msg=f"'{right.name}' is being constructed, cannot be assigned")
+
         return ValidationResult.success()
 
     @staticmethod
@@ -355,14 +364,19 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def instancestate_is_initialized(state: State, instancestate: UsageStatus) -> ValidationResult:
-        if instancestate.is_aborted_status():
+    def status_is_initialized(state: State, status: UsageStatus) -> ValidationResult:
+        if status.is_aborted_status():
             return ValidationResult.failure()
 
-        if instancestate.initialization != Initializations.Initialized:
+        if status.is_under_construction():
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompleteInitialization,
+                msg=f"'{status.name}' is being constructed and cannot be used.")
+
+        if status.initialization != Initializations.Initialized:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.UseBeforeInitialize,
-                msg=f"{instancestate.name} is not initialized")
+                msg=f"{status.name} is not initialized")
         return ValidationResult.success()
 
     @staticmethod

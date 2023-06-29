@@ -173,6 +173,12 @@ class Type():
         _copy.restriction = restriction
         return _copy
 
+    def get_all_component_names(self) -> list[str]:
+        names = self.component_names
+        for t in self.embeds:
+            names += t.get_all_component_names()
+        return names
+
 class FunctionType(Type):
     def __init__(self, name: str, mod: Module, arg: Type, ret: Type):
         super().__init__(

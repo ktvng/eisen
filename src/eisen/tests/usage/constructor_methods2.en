@@ -1,0 +1,28 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        self.x = x
+        self.y = y
+        self.init()
+    }
+}
+
+fn init(self: obj) {
+    self.x = 0
+    self.y = 0
+}
+
+fn main() {
+    let a = obj(3, 3)
+    print("%i %i", a.x, a.y)
+}
+
+/// [Test]
+/// name = "usage/constructor_methods2"
+/// info = "After all attributes are initialized, an object is initialized"
+
+/// [Expects]
+/// success = true
+/// output = "0 0"

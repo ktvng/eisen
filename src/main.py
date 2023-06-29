@@ -4,6 +4,7 @@ import time
 import subprocess
 import argparse
 import pathlib
+import os
 
 import alpaca
 import eisen
@@ -184,6 +185,10 @@ def add_test(name: str):
     full_path = testpath + name + ".en"
     path = pathlib.Path(full_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists():
+        print("INFO: test already exists, not creating it again.")
+        return
 
     with open(full_path, 'w') as f:
         f.write(tomlheader.format(name))

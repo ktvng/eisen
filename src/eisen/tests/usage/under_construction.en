@@ -1,0 +1,25 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> self: obj {
+        var a = self
+        self.x = x
+        self.y = a.y
+    }
+}
+
+fn main() {
+    let a = obj(3, 3)
+}
+
+/// [Test]
+/// name = "usage/under_construction"
+/// info = "Cannot assign an entity which is being constructed"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompleteInitializationException"
+/// contains = ">> 6"

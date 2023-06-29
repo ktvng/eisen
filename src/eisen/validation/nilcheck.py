@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.pattern import Pattern
 from alpaca.concepts import Context
 
-from eisen.common import binary_ops, compare_ops
+from eisen.common import math_ops, compare_ops
 from eisen.state.basestate import BaseState
 from eisen.state.nilcheckstate import NilCheckState
 from eisen.validation.validate import Validate
@@ -83,11 +83,11 @@ class NilCheck(Visitor):
         # nothing to do
         return
 
-    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "params", "prod_type", "is")
+    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "prod_type", "is")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("tuple", "curried")
+    @Visitor.for_asls("tuple", "curried", "params")
     def tuple_(fn, state: State):
         states = []
         for child in state.get_all_children():
@@ -109,7 +109,7 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("cond")
     def cond_(fn, state: State):
-        fn.apply(state.but_with(asl=state.first_child(), inside_cond=True))
+        fn.apply(state.but_with(asl=state.first_child(), inside_cond=True, inside_and_domain=True))
         fn.apply(state.but_with(asl=state.second_child()))
 
     @Visitor.for_asls("while")
@@ -124,7 +124,7 @@ class NilCheck(Visitor):
     def not_eq_(fn, state: State):
         match = Pattern("('!= ('ref name) 'nil)").match(state.get_asl())
         if match.matched:
-            if state.is_inside_cond():
+            if state.is_inside_and_domain():
                 state.try_update_nilstatus(match.captures.get("name").value, NilableStatus.not_nil())
         else:
             NilCheck.ensure_operands_not_nil(fn, state)
@@ -144,7 +144,22 @@ class NilCheck(Visitor):
         for name, status in zip(node.get_names_of_parent_objects(), nilstatuses):
             state.try_update_nilstatus(name, status)
 
-    @Visitor.for_asls(*binary_ops, *compare_ops)
+    @Visitor.for_asls("and")
+    def and_(fn, state: State):
+        if not state.is_inside_cond():
+            # ensure narrowing happens locally, as if we are inside a cond, there
+            # is a new context.
+            state = state.but_with(context=state.create_block_context())
+        NilCheck.ensure_operands_not_nil(fn, state)
+        return [NilableStatus.never_nil()]
+
+    @Visitor.for_asls("or")
+    def or_(fn, state: State):
+        state = state.but_with(inside_and_domain=False)
+        NilCheck.ensure_operands_not_nil(fn, state)
+        return [NilableStatus.never_nil()]
+
+    @Visitor.for_asls(*math_ops, *compare_ops)
     def ops_(fn, state: State):
         NilCheck.ensure_operands_not_nil(fn, state)
         return [NilableStatus.never_nil()]
@@ -161,7 +176,13 @@ class NilCheck(Visitor):
 
     @Visitor.for_asls("call", "is_call", "curry_call")
     def call_(fn, state: State):
-        fn.apply(state.but_with(asl=adapters.Call(state).get_params_asl()))
+        params_states = fn.apply(state.but_with(asl=adapters.Call(state).get_params_asl()))
+        arg_types = adapters.Call(state).get_function_argument_type().unpack_into_parts()
+
+        for param_state, _type in zip(params_states, arg_types):
+            if not _type.restriction.is_nullable():
+                Validate.cannot_be_nil(state, param_state)
+
         return [NilableStatus.for_type(type)
             for type in state.get_returned_type().unpack_into_parts()]
 

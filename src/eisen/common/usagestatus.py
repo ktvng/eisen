@@ -124,10 +124,6 @@ class VarStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{self.name}' is declared as 'var', but is being assigned to a literal")
-        if other.is_nilable():
-            return AssignmentResult(
-                ex_type=Exceptions.NilableMismatch,
-                msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_let_construction():
             return AssignmentResult(
                 ex_type=Exceptions.LetInitializationMismatch,

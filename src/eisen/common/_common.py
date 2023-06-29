@@ -6,7 +6,9 @@ if TYPE_CHECKING:
 from alpaca.concepts import Type, Instance, Module
 
 no_assign_binary_ops = ["+", "-", "/", "*", "and", "or"]
-binary_ops = ["+", "-", "/", "*", "and", "or", "+=", "-=", "*=", "/="]
+logic_ops = ["and", "or"]
+math_ops = ["+", "-", "/", "*", "+=", "-=", "*=", "/="]
+binary_ops = math_ops + logic_ops
 equality_ops = ["==", "!="]
 compare_ops = ["<", ">", "<=", ">="]
 boolean_return_ops = compare_ops + equality_ops

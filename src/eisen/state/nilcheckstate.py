@@ -16,6 +16,7 @@ class NilCheckState(State_PostInstanceVisitor):
             context: Context = None,
             mod: Module = None,
             inside_cond: bool = None,
+            inside_and_domain: bool = None,
             exceptions: list = None,
             changed_nilstates: set[NilableStatus] = None
             ) -> NilCheckState:
@@ -25,6 +26,7 @@ class NilCheckState(State_PostInstanceVisitor):
             context=context,
             mod=mod,
             inside_cond=inside_cond,
+            inside_and_domain=inside_and_domain,
             exceptions=exceptions,
             changed_nilstates=changed_nilstates)
 
@@ -38,7 +40,7 @@ class NilCheckState(State_PostInstanceVisitor):
         :return: A instance of NilCheckState
         :rtype: NilCheckState
         """
-        return NilCheckState(**state._get(), inside_cond=False, changed_nilstates=set())
+        return NilCheckState(**state._get(), inside_cond=False, inside_and_domain=True, changed_nilstates=set())
 
     def is_inside_cond(self) -> bool:
         """
@@ -57,6 +59,15 @@ class NilCheckState(State_PostInstanceVisitor):
         :rtype: bool
         """
         return self.inside_cond
+
+    def is_inside_and_domain(self) -> bool:
+        """
+        TODO
+
+        :return: _description_
+        :rtype: bool
+        """
+        return self.inside_and_domain
 
     def get_nilstatus(self, name: str) -> NilableStatus:
         """

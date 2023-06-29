@@ -6,9 +6,13 @@ struct obj {
     }
 }
 
+fn maybe(a: obj?) -> r: obj? {
+    r = a
+}
+
 fn main() {
     let a = obj(7)
-    var? p = a
+    var? p = maybe(a)
     if (p != nil) {
         print("%i", p.x)
     }

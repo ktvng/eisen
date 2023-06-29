@@ -6,10 +6,15 @@ struct obj {
     }
 }
 
+fn maybe(a: obj?) -> r: obj? {
+    r = a
+}
+
 fn main() {
     let a = obj(1)
-    var? p = a
-    var? q = a
+    var? p = maybe(a)
+    var? q = maybe(a)
+
     if (p != nil or q != nil) {
         print("%i", p.x + q.x)
     }
@@ -24,4 +29,8 @@ fn main() {
 
 /// [[Expects.Exceptions]]
 /// type = "NilUsageException"
-/// contains = ">> 14"
+/// contains = ">> 19"
+
+/// [[Expects.Exceptions]]
+/// type = "NilUsageException"
+/// contains = ">> 19"

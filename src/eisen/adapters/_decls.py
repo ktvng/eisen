@@ -57,6 +57,8 @@ class Decl(AbstractNodeInterface):
         if self.get_node_type() == ":":
             if self.second_child().type == "var_type":
                 return VarRestriction()
+            elif self.second_child().type == "var_type?":
+                return NullableVarRestriction()
             elif self.second_child().type == "type":
                 return LetRestriction()
             elif self.second_child().type == "fn_type":

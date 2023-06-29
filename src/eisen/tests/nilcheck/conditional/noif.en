@@ -6,19 +6,23 @@ struct obj {
     }
 }
 
+fn maybe(a: obj?) -> r: obj? {
+    r = a
+}
+
 fn main() {
     let a = obj(7)
-    var? p = a
+    var? p = maybe(a)
     print("%i", p.x)
 }
 
 /// [Test]
-/// name = "nilcheck/conditional/if"
-/// info = "Nil check is required to narrow a type"
+/// name = "nilcheck/conditional/noif"
+/// info = "Nil check requires an if to narrow a type"
 
 /// [Expects]
 /// success = false
 
 /// [[Expects.Exceptions]]
 /// type = "NilUsageException"
-/// contains = ">> 12"
+/// contains = ">> 16"

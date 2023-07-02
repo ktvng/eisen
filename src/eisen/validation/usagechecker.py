@@ -33,7 +33,6 @@ class UsageChecker(Visitor):
             instances: list[EisenInstance],
             initialization: Initializations = Initializations.NotInitialized) -> list[UsageStatus]:
         return [UsageStatusFactory.create(i.name, i.type.restriction, initialization) for i in instances]
-        return [UsageStatus(i.name, i.type.restriction, initialization) for i in instances]
 
     @staticmethod
     def create_status_from_instance(instance: EisenInstance, init_state: Initializations) -> UsageStatus:
@@ -190,6 +189,7 @@ class UsageChecker(Visitor):
     def call_(fn, state: State) -> list[UsageStatus]:
         node = adapters.Call(state)
         if node.is_print():
+            fn.apply(state.but_with(asl=node.get_params_asl()))
             return [UsageStatus.no_restriction()]
 
         argument_insts = [UsageChecker.create_status_from_type(tc)

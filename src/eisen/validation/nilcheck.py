@@ -83,7 +83,7 @@ class NilCheck(Visitor):
         # nothing to do
         return
 
-    @Visitor.for_asls("start", "seq", "mod", "args", "rets", "prod_type", "is")
+    @Visitor.for_asls("start", "seq", "mod", "params", "prod_type", "is", *adapters.ArgsRets.asl_types)
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
@@ -191,29 +191,19 @@ class NilCheck(Visitor):
         node = adapters.Ref(state)
         return [state.get_nilstatus(node.get_name())]
 
-    @Visitor.for_asls("var?")
-    def nullable_var_(fn, state: State):
-        for name in adapters.Decl(state).get_names():
-            state.add_nilstatus(NilableStatus(name, is_nilable=True, could_be_nil=True))
-
-    @Visitor.for_asls("let", "var", "val")
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def let_(fn, state: State):
-        for name in adapters.Decl(state).get_names():
-            state.add_nilstatus(NilableStatus(name, is_nilable=False))
+        node = adapters.Typing(state)
+        for name in node.get_names():
+            state.add_nilstatus(NilableStatus(name, is_nilable=node.get_is_nilable(), could_be_nil=node.get_is_nilable()))
 
-    @Visitor.for_asls("ilet", "ivar", "ival")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def ilet_(fn, state: State):
-        fn.apply(state.but_with_second_child())
-        for name in adapters.IletIvar(state).get_names():
-            state.add_nilstatus(NilableStatus(name, is_nilable=False))
-
-    @Visitor.for_asls("ivar?")
-    def nullable_ivet_(fn, state: State):
-        nilstatuses = fn.apply(state.but_with_second_child())
-        for name, nilstatus in zip(adapters.IletIvar(state).get_names(), nilstatuses):
-            # first add a new nilstate, then update in accordance to the assigned value
-            state.add_nilstatus(NilableStatus(name, is_nilable=True, could_be_nil=True))
-            state.try_update_nilstatus(name, nilstatus)
+        statuses = fn.apply(state.but_with_second_child())
+        node = adapters.InferenceAssign(state)
+        for name, status in zip(node.get_names(), statuses):
+            state.add_nilstatus(NilableStatus(name, is_nilable=node.get_is_nilable(), could_be_nil=node.get_is_nilable()))
+            state.try_update_nilstatus(name, status)
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State):
@@ -222,12 +212,6 @@ class NilCheck(Visitor):
         cast_into_nilstatus = NilableStatus.for_type(node.get_cast_into_type()).update(parent_nilstatus)
         Validate.cast_into_non_nil_valid(state, parent_nilstatus, cast_into_nilstatus)
         return [cast_into_nilstatus]
-
-    @Visitor.for_asls(":")
-    def colon_(fn, state: State):
-        node = adapters.Decl(state)
-        for name in node.get_names():
-            state.add_nilstatus(NilableStatus(name, is_nilable=node.get_is_nilable(), could_be_nil=node.get_is_nilable()))
 
     @Visitor.for_asls(".")
     def dot_(fn, state: State):

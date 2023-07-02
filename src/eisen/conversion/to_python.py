@@ -157,7 +157,7 @@ class lmda:
         return CLRList("seq", lst=[fn.apply(state.but_with(asl=child))
             for child in children])
 
-    @Visitor.for_asls("ilet", "ivar", "ivar?", "ival")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def iletivar_(fn, state: State):
         return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children()])

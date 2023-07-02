@@ -79,10 +79,6 @@ class LiteralRestriction(GeneralRestriction):
     def is_literal(self) -> bool:
         return True
 
-class FunctionalRestriction(GeneralRestriction):
-    def is_functional(self) -> bool:
-        return True
-
 class PrimitiveRestriction(GeneralRestriction):
     def is_primitive(self) -> bool:
         return True

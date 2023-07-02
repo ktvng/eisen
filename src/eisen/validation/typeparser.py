@@ -4,8 +4,8 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import (FunctionalRestriction, VarRestriction,
-                                      ValRestriction, LetConstruction, LetRestriction)
+from eisen.common.restriction import (VarRestriction,
+                                      ValRestriction, LetConstruction)
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -17,18 +17,19 @@ class TypeParser(Visitor):
     def apply(self, state: State) -> Type:
         return self._route(state.get_asl(), state)
 
-    @Visitor.for_asls("type", "var_type", "var_type?")
+    @Visitor.for_asls(*adapters.TypeLike.asl_types)
     def type_(fn, state: State) -> Type:
         """
         (type int)
         (var_type int)
+        (fn_type (fn_type_in ...) (fn_type_out ...))
         """
         node = adapters.TypeLike(state)
         name = node.get_name()
         type = state.get_defined_type(name)
         if Validate.type_exists(state, name, type).failed():
             return state.get_abort_signal()
-        return type.with_restriction(node.get_restriction(type))
+        return type.with_restriction(node.get_restriction())
 
     @Visitor.for_asls(":")
     def colon_(fn, state: State) -> Type:
@@ -43,13 +44,6 @@ class TypeParser(Visitor):
         (val name (type int))
         """
         return fn.apply(state.but_with(asl=state.second_child())).with_restriction(ValRestriction())
-
-    # @Visitor.for_asls("let")
-    # def let_(fn, state: State) -> Type:
-    #     """
-    #     (let name (type int))
-    #     """
-    #     return fn.apply(state.but_with(asl=state.second_child())).with_restriction(LetRestriction())
 
     @Visitor.for_asls("var")
     def var_(fn, state: State) -> Type:
@@ -66,16 +60,6 @@ class TypeParser(Visitor):
         """
         component_types = [fn.apply(state.but_with(asl=component)) for component in state.get_asl()]
         return TypeFactory.produce_tuple_type(components=component_types)
-
-    @Visitor.for_asls("new_type")
-    def new_type_(fn, state: State) -> Type:
-        """
-        (new_type struct_name)
-        """
-        node = adapters.TypeLike(state)
-        name = node.get_name()
-        type = state.get_defined_type(name)
-        return type.with_restriction(LetConstruction())
 
     @Visitor.for_asls("fn_type_in")
     def fn_type_in(fn, state: State) -> Type:
@@ -106,24 +90,12 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=state.first_child())),
             ret=fn.apply(state.but_with(asl=state.second_child())),
-            mod=None).with_restriction(FunctionalRestriction())
+            mod=None).with_restriction(ValRestriction())
 
-    @Visitor.for_asls("args")
+    @Visitor.for_asls(*adapters.ArgsRets.asl_types)
     def args_(fn, state: State) -> Type:
         """
         (args (type ...))
-        """
-        if state.get_asl():
-            node = adapters.ArgsRets(state)
-            type = fn.apply(state.but_with(asl=state.first_child()))
-            node.convert_let_args_to_var(type)
-            return type
-        return state.get_void_type()
-
-    @Visitor.for_asls("rets")
-    def rets_(fn ,state: State) -> Type:
-        """
-        (rets (type ...))
         """
         if state.get_asl():
             return fn.apply(state.but_with(asl=state.first_child()))
@@ -139,7 +111,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),
-            mod=None).with_restriction(FunctionalRestriction())
+            mod=None).with_restriction(ValRestriction())
 
     @Visitor.for_asls("para_type")
     def para_type(fn, state: State) -> Type:

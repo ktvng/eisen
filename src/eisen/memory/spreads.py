@@ -96,22 +96,17 @@ class SpreadVisitor(Visitor):
     def binop_(fn, state: State):
         return [Spread(values={state.depth}, depth=state.depth)]
 
-    @Visitor.for_asls("let")
+    @Visitor.for_asls(*adapters.Decl.asl_types)
     def decl_(fn, state: State):
-        for name in adapters.Decl(state).get_names():
-            SpreadVisitor.add_spread(state, name, Spread(values={state.depth}, depth=state.depth))
-        return []
-
-    @Visitor.for_asls("var", "val", "var?")
-    def decl2_(fn, state: State):
-        # because variables can be assigned to anything, they don't have a spread yet
-        for name in adapters.Decl(state).get_names():
-            SpreadVisitor.add_spread(state, name, Spread(values=set(), depth=state.depth))
+        node = adapters.Decl(state)
+        for name in node.get_names():
+            SpreadVisitor.add_spread(state, name, Spread(
+                values=node.get_spread_values(), depth=state.depth))
         return []
 
     @Visitor.for_asls("ilet")
     def iletivar_(fn, state: State):
-        node = adapters.IletIvar(state)
+        node = adapters.InferenceAssign(state)
         FunctionAliasAdder(spread_visitor=fn).apply(state)
         new_spreads = []
         for name in node.get_names():
@@ -137,7 +132,7 @@ class SpreadVisitor(Visitor):
     @Visitor.for_asls("ivar", "ivar?", "ival")
     def iletivar2_(fn, state: State):
         spreads = fn.apply(state.but_with_second_child())
-        for name, spread in zip(adapters.IletIvar(state).get_names(), spreads):
+        for name, spread in zip(adapters.InferenceAssign(state).get_names(), spreads):
             SpreadVisitor.add_spread(state, name, Spread(values=set(spread.values), depth=-2))
         return []
 

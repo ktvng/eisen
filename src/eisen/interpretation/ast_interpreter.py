@@ -41,7 +41,7 @@ class AstInterpreter(Visitor):
 
     @classmethod
     def _handle_colon_like(cls, state: State):
-        node = adapters.Decl(state)
+        node = adapters.Typing(state)
         names = node.get_names()
         objs = [Obj(None, name=name) for name in names]
         for name, obj in zip(names, objs):
@@ -118,7 +118,7 @@ class AstInterpreter(Visitor):
 
     @Visitor.for_asls("ilet", "ivar")
     def ilet_(fn, state: State):
-        node = adapters.IletIvar(state)
+        node = adapters.InferenceAssign(state)
         names = node.get_names()
         values = fn.apply(state.but_with_second_child())
 

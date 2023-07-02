@@ -44,14 +44,14 @@ class FnConverter(Visitor):
     def variant_(fn, state: State):
         fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
 
-    @Visitor.for_asls("let", "var", "val", ":", "var?")
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def decls_(fn, state: State):
-        for name in adapters.Decl(state).get_names():
+        for name in adapters.Typing(state).get_names():
             state.get_context().add_local_ref(name)
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def iletivar_(fn, state: State):
-        for name in adapters.IletIvar(state).get_names():
+        for name in adapters.InferenceAssign(state).get_names():
             state.get_context().add_local_ref(name)
         fn.apply(state.but_with_second_child())
 

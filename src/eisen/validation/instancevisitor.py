@@ -61,7 +61,7 @@ class InstanceVisitor(Visitor):
     def ref_(fn, state: State) -> list[EisenInstance]:
         return [adapters.Ref(state).resolve_instance()]
 
-    @Visitor.for_asls("rets", "args")
+    @Visitor.for_asls(*adapters.ArgsRets.asl_types)
     def rets_(fn, state: State) -> list[EisenInstance]:
         for child in state.get_child_asls():
             fn.apply(state.but_with(asl=child, is_ptr=True))
@@ -72,19 +72,19 @@ class InstanceVisitor(Visitor):
         node = adapters.ModuleScope(state)
         return [node.get_end_instance()]
 
-    @Visitor.for_asls(":", "var", "var?", "let", "val")
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def alloc_(fn, state: State) -> list[EisenInstance]:
-        node = adapters.Decl(state)
+        node = adapters.Typing(state)
         type = state.get_returned_type()
         return [InstanceVisitor.create_instance_inside_context(
                 name, type, state,
                 is_function=type.is_function())
             for name in node.get_names()]
 
-    @Visitor.for_asls("ilet", "ivar", "ivar?", "ival")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def iletivar_(fn, state: State) -> list[EisenInstance]:
         fn.apply(state.but_with_second_child())
-        node = adapters.IletIvar(state)
+        node = adapters.InferenceAssign(state)
         names = node.get_names()
         type = state.get_returned_type()
         componentwise_types = type.components if type.is_tuple() else [type]

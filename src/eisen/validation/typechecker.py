@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.typecheckerstate import TypeCheckerState
-from eisen.common.restriction import PrimitiveRestriction, FunctionalRestriction
+from eisen.common.restriction import PrimitiveRestriction, ValRestriction
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
@@ -38,6 +37,7 @@ class TypeChecker(Visitor):
             return state.get_void_type()
 
         result = self._route(state.get_asl(), state)
+        if result is None: result = state.get_void_type()
         TypeChecker.set_returned_type(state, result)
         return result
 
@@ -49,7 +49,7 @@ class TypeChecker(Visitor):
                 return TypeFactory.produce_function_type(
                     arg=state.get_void_type(),
                     ret=fn_type.get_return_type(),
-                    mod=fn_type.mod).with_restriction(FunctionalRestriction())
+                    mod=fn_type.mod).with_restriction(ValRestriction())
             raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
 
         if len(argument_type.components) - n_curried_args == 1:
@@ -63,7 +63,7 @@ class TypeChecker(Visitor):
         return TypeFactory.produce_function_type(
             arg=curried_fn_args,
             ret=fn_type.get_return_type(),
-            mod=fn_type.mod).with_restriction(FunctionalRestriction())
+            mod=fn_type.mod).with_restriction(ValRestriction())
 
 
     @classmethod
@@ -89,18 +89,6 @@ class TypeChecker(Visitor):
             return state.get_void_type()
         return decorator
 
-    @classmethod
-    def update_to_primitive_restriction_if_needed(cls, type: Type):
-        """for novel types with let restrictions, we must change the restriction to
-        primitive."""
-        if type.is_novel() and type.restriction.is_let():
-            return type.with_restriction(PrimitiveRestriction())
-        if type.is_tuple() and all([c.is_novel() and c.restriction.is_let() for c in type.components]):
-            return type.with_restriction(PrimitiveRestriction())
-        if type.is_function():
-            return type.with_restriction(FunctionalRestriction())
-        return type
-
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
         if state.get_asl().type in implemented_primitive_types:
@@ -114,12 +102,10 @@ class TypeChecker(Visitor):
         raise Exception(f"unexpected token type of {state.get_asl().type}, {state.get_asl().value}")
 
     @Visitor.for_asls("start", "return", "cond", "seq")
-    @returns_void_type
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
     @Visitor.for_asls("mod")
-    @returns_void_type
     def mod_(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
@@ -153,12 +139,10 @@ class TypeChecker(Visitor):
             components=[fn.apply(state.but_with(asl=child)) for child in state.get_asl()])
 
     @Visitor.for_asls("if")
-    @returns_void_type
     def if_(fn, state: State) -> Type:
         adapters.If(state).enter_context_and_apply(fn)
 
     @Visitor.for_asls("while")
-    @returns_void_type
     def while_(fn, state: State) -> Type:
         adapters.While(state).enter_context_and_apply(fn)
 
@@ -217,19 +201,16 @@ class TypeChecker(Visitor):
         return TypeChecker.get_curried_type(state, fn_type, n_curried_args)
 
     @Visitor.for_asls("struct")
-    @returns_void_type
     def struct(fn, state: State) -> Type:
         node = adapters.Struct(state)
         if node.has_create_asl():
             fn.apply(state.but_with(asl=node.get_create_asl()))
 
     @Visitor.for_asls("variant")
-    @returns_void_type
     def variant_(fn, state: State) -> Type:
         fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
 
     @Visitor.for_asls("interface", "impls")
-    @returns_void_type
     def interface_(fn, state: State) -> Type:
         # no action required
         return
@@ -247,7 +228,6 @@ class TypeChecker(Visitor):
         return right_type
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")
-    @returns_void_type
     def fn(fn, state: State) -> Type:
         adapters.CommonFunction(state).enter_context_and_apply(fn)
 
@@ -263,23 +243,22 @@ class TypeChecker(Visitor):
             TypeChecker.add_reference_type(state, name, t)
         return type
 
-    @Visitor.for_asls("ilet", "ivar", "ivar?", "ival")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def idecls_(fn, state: State):
-        node = adapters.IletIvar(state)
+        node = adapters.InferenceAssign(state)
         names = node.get_names()
-        type = fn.apply_to_second_child_of(state).with_restriction(node.get_restriction())
-        type = TypeChecker.update_to_primitive_restriction_if_needed(type)
+        type = fn.apply_to_second_child_of(state)
+        type = type.with_restriction(node.get_restriction(hint=type))
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls(":", "val", "var", "var?", "let")
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def decls_(fn, state: State):
-        node = adapters.Decl(state)
+        node = adapters.Typing(state)
         names = node.get_names()
         type = fn.apply(state.but_with(asl=node.get_type_asl())).with_restriction(node.get_restriction())
-        type = TypeChecker.update_to_primitive_restriction_if_needed(type)
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls("fn_type", "type", "var_type", "var_type?", "para_type", "new_type")
+    @Visitor.for_asls("fn_type", "para_type", *adapters.TypeLike.asl_types)
     def _type1(fn, state: State) -> Type:
         return fn.typeparser.apply(state)
 
@@ -320,14 +299,11 @@ class TypeChecker(Visitor):
             return state.get_abort_signal()
         return type
 
-    @Visitor.for_asls("args", "rets")
+    @Visitor.for_asls(*adapters.ArgsRets.asl_types)
     def args_(fn, state: State) -> Type:
-        node = adapters.ArgsRets(state)
         if not state.get_asl():
             return state.get_void_type()
-        type = fn.apply(state.but_with(asl=state.first_child()))
-        node.convert_let_args_to_var(type)
-        return type
+        return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("new_vec")
     def new_vec_(fn, state: State) -> Type:

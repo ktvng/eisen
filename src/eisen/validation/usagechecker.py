@@ -8,8 +8,8 @@ from alpaca.concepts import Type, Context
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.state.usagecheckerstate import UsageCheckerState
 from eisen.common.eiseninstance import EisenInstance
-from eisen.common.restriction import (LiteralRestriction, NoRestriction, FunctionalRestriction,
-                                      ValRestriction, VarRestriction)
+from eisen.common.restriction import (LiteralRestriction, NoRestriction,
+                                      ValRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.usagestatus import UsageStatus, UsageStatusFactory
 
@@ -217,7 +217,7 @@ class UsageChecker(Visitor):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.status_is_initialized(state, given)
 
-        return [UsageStatusFactory.create_anonymous(FunctionalRestriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(ValRestriction(), Initializations.Initialized)]
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[UsageStatus]:

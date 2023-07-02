@@ -6,8 +6,7 @@ from alpaca.concepts import InstanceState, Type, AbstractException
 from eisen.common.initialization import Initializations
 
 from eisen.common.restriction import (GeneralRestriction, NoRestriction, ValRestriction, VarRestriction, NullableVarRestriction,
-                                      LetConstruction, LetRestriction, LiteralRestriction, PrimitiveRestriction,
-                                      FunctionalRestriction)
+                                      LetConstruction, LetRestriction, LiteralRestriction, PrimitiveRestriction)
 from eisen.common.exceptions import Exceptions
 
 
@@ -134,7 +133,6 @@ class VarStatus(UsageStatus):
                 ex_type=Exceptions.NilableMismatch,
                 msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_val():
-            print("herere", self)
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{other.name}' is 'val' cannot be assigned to a 'var' type")
@@ -187,10 +185,11 @@ class ValStatus(UsageStatus):
                 ex_type=Exceptions.ImmutableVal,
                 msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_var():
+            print(self)
             print(other)
             return AssignmentResult(
                 ex_type=Exceptions.ImmutableVal,
-                msg=f"'{self.name}' is 'val' cannot be assigned to a 'var' type")
+                msg=f"'{self.name}' is 'val' cannot be assigned to a '{other.name}' which is 'var' type")
 
         return AssignmentResult.success()
         return AssignmentResult(
@@ -199,10 +198,6 @@ class ValStatus(UsageStatus):
 
 class LiteralStatus(UsageStatus):
     def is_literal(self) -> bool:
-        return True
-
-class FunctionalStatus(UsageStatus):
-    def is_functional(self) -> bool:
         return True
 
 class PrimitiveStatus(UsageStatus):
@@ -225,7 +220,6 @@ class UsageStatusFactory():
         hash(LetRestriction()): LetStatus,
         hash(LetConstruction()): LetConstructionStatus,
         hash(LiteralRestriction()): LiteralStatus,
-        hash(FunctionalRestriction()): FunctionalStatus,
         hash(PrimitiveRestriction()): PrimitiveStatus
     }
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeFactory
-from eisen.common.restriction import VarRestriction, LetConstruction, FunctionalRestriction
+from eisen.common.restriction import VarRestriction, LetConstruction, ValRestriction
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.state.basestate import BaseState as State
 
@@ -24,7 +24,7 @@ class VectorVisitor(Visitor):
             element_type = TypeFactory.produce_function_type(
                 arg=state.get_void_type(),
                 ret=element_type.with_restriction(LetConstruction()),
-                mod=None).with_restriction(FunctionalRestriction())
+                mod=None).with_restriction(ValRestriction())
 
         append_fn_type = TypeFactory.produce_function_type(
             arg=TypeFactory.produce_tuple_type(

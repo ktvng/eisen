@@ -25,7 +25,7 @@ class FunctionAliasAdder(Visitor):
 
     @Visitor.for_asls("ilet")
     def ilet_(fn, state: State):
-        node = adapters.IletIvar(state)
+        node = adapters.InferenceAssign(state)
         if not isinstance(state.second_child(), CLRList):
             return
 

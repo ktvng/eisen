@@ -79,7 +79,7 @@ class Writer(Visitor):
             *fn.apply(asl.third()),
             *fn.apply(asl[-1])]
 
-    @Visitor.for_asls("type", "fn_type_in", "args", "rets", "fn_type_out", "ref", "fn")
+    @Visitor.for_asls("type", "fn_type_in", "fn_type_out", "ref", "fn", *adapters.ArgsRets.asl_types)
     def pass_(fn, asl: CLRList):
         if not asl:
             return []

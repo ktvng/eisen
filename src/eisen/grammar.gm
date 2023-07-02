@@ -72,6 +72,7 @@ SYMBOLICS
     keyword is          ->  is
     keyword embed       ->  embed
     keyword new         ->  new
+    keyword mut         ->  mut
 
     symbol @            ->  @
     symbol ,            ->  ,[ \t\n]*
@@ -167,8 +168,6 @@ STRUCTURE
     TYPE ->
         @action filter_build type
         |   TAG
-        @action filter_build var_type
-        |   TAG var
         @action filter_build var_type?
         |   TAG var?
         |   TAG ?

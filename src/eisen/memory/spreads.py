@@ -300,7 +300,6 @@ class SpreadVisitor(Visitor):
                         Exceptions.ObjectLifetime(
                             msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
                             line_number=state.get_line_number()))
-
         return [Spread.merge_all(spreads_for_one_return_value)
             for spreads_for_one_return_value in all_return_value_spreads]
 

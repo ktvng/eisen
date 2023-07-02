@@ -6,7 +6,7 @@ struct Integer {
     }
 }
 
-fn max(x: Integer var, y: Integer var) -> r: Integer var {
+fn max(x: Integer, y: Integer) -> r: Integer {
     if (x.value > y.value) {
         r = x
     }

@@ -27,5 +27,5 @@ class TypeLike(AbstractNodeInterface):
         if self.state.get_asl().first().value in implemented_primitive_types:
             restriction = PrimitiveRestriction()
         elif self.state.get_asl().type == "type":
-            restriction = LetRestriction()
+            restriction = VarRestriction()
         return restriction

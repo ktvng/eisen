@@ -7,9 +7,9 @@ struct obj {
 }
 
 struct refs {
-    o: obj var
+    var o: obj
 
-    create(o: obj var) -> self: new refs {
+    create(o: obj) -> self: new refs {
         self.o = o
     }
 }

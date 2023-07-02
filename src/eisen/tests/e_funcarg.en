@@ -1,21 +1,35 @@
-fn bad(a: int, b: int) -> c: int var {
+fn bad(a: obj, b: obj) -> c: obj {
     c = b
 }
 
-fn good(a: int, b: int) -> c: int var {
+fn good(a: obj, b: obj) -> c: obj {
     c = a
 }
 
-fn pass(f: (int) -> int var, b: int) -> c: int var {
-    let x = 4
+fn pass(f: (obj) -> obj , b: obj) -> c: obj {
+    let x = obj(4)
     c = f(x)
 }
 
 fn main() {
-    let f = bad{12}
-    let g = good{19}
-    print("%i", pass(g, 5))
-    print("%i", pass(f, 5))
+    let a = obj(12)
+    let b = obj(19)
+    let c = obj(5)
+
+    let f = bad{a}
+    let g = good{b}
+
+    print("%i", pass(g, c))
+    // print("%i", pass(f, c))
+    return
+}
+
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
 }
 
 /// [Test]

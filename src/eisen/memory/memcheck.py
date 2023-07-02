@@ -72,6 +72,12 @@ class Deps():
             return_names.append(names_possible_for_single_return_value)
         return return_names
 
+    def __str__(self) -> str:
+        s = ""
+        for i, r_spread in enumerate(self.R):
+            s += str(i) + ": " + str(r_spread)
+        return s
+
 
     @classmethod
     def create_from_return_value_spreads(self, RVS: list[Spread], AS: list[Spread] = None) -> Deps:

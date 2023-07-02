@@ -6,14 +6,14 @@ struct obj {
     }
 }
 
-fn select_o(o: obj) -> ret: obj var {
+fn select_o(o: obj) -> ret: obj {
     let o3 = obj(3)
     var a, b = swap(o3, o)
     a, b = swap(a, b)
     ret = a
 }
 
-fn swap(o1: obj, o2: obj) -> a: obj var, b: obj var {
+fn swap(o1: obj, o2: obj) -> a: obj, b: obj {
     a = o2
     b = o1
 }

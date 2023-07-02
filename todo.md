@@ -9,3 +9,5 @@
 4. Fix var? p = nil (this works but should break)
 
 6. Document nil narrowing
+
+7. Fix FUNCARGS

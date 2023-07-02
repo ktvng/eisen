@@ -14,12 +14,12 @@ struct refs {
     }
 }
 
-fn select_o(r: refs, o: obj) {
+fn select_o(r: mut refs, o: obj) {
     let o3 = obj(3)
     select_o(r, o3, o)
 }
 
-fn select_o(r: refs, oA: obj, oB: obj) {
+fn select_o(r: mut refs, oA: obj, oB: obj) {
     r.o = oA
 }
 

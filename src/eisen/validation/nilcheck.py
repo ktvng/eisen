@@ -201,7 +201,7 @@ class NilCheck(Visitor):
         for name in adapters.Decl(state).get_names():
             state.add_nilstatus(NilableStatus(name, is_nilable=False))
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_asls("ilet", "ivar", "ival")
     def ilet_(fn, state: State):
         fn.apply(state.but_with_second_child())
         for name in adapters.IletIvar(state).get_names():

@@ -56,7 +56,7 @@ class Struct(AbstractNodeInterface):
 
     def get_child_attribute_asls(self) -> list[CLRList]:
         return [child for child in self.state.get_asl()
-                if child.type == ":" or child.type == ":=" or child.type == "var" or child.type == "val"]
+                if child.type == ":" or child.type == ":=" or child.type == "var" or child.type == "let" or child.type == "val"]
 
     def get_child_attribute_names(self) -> list[str]:
         child_asls = self.get_child_attribute_asls()

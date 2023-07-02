@@ -9,7 +9,7 @@ struct obj {
     }
 }
 
-fn init(self: obj) {
+fn init(self: mut obj) {
     self.x = 0
     self.y = 0
 }

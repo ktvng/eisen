@@ -15,10 +15,12 @@ class UsageStatus(InstanceState):
     def __init__(self,
             name: str,
             restriction: GeneralRestriction,
-            initialization: Initializations):
+            initialization: Initializations,
+            modifies_val_state: bool = False):
         self.name = name
         self.restriction = restriction
         self.initialization = initialization
+        self._modifies_val_state = modifies_val_state
         self.attribute_initializations: dict[str, Initializations] = {}
         self._type = None
 
@@ -54,6 +56,9 @@ class UsageStatus(InstanceState):
 
     def is_unrestricted(self) -> bool:
         return False
+
+    def modifies_val_state(self) -> bool:
+        return self._modifies_val_state
 
     def is_var(self) -> bool:
         return False
@@ -129,8 +134,9 @@ class VarStatus(UsageStatus):
                 ex_type=Exceptions.NilableMismatch,
                 msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_val():
+            print("herere", self)
             return AssignmentResult(
-                eex_typex = Exceptions.VarImproperAssignment,
+                ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{other.name}' is 'val' cannot be assigned to a 'var' type")
         return AssignmentResult.success()
 
@@ -171,6 +177,22 @@ class ValStatus(UsageStatus):
     def assignable_to(self, other: UsageStatus):
         if not self.is_initialized():
             return AssignmentResult.success()
+
+        if other.is_literal():
+            return AssignmentResult(
+                ex_type=Exceptions.ImmutableVal,
+                msg=f"'{self.name}' is declared as 'var', but is being assigned to a literal")
+        if other.is_nilable():
+            return AssignmentResult(
+                ex_type=Exceptions.ImmutableVal,
+                msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
+        if other.is_var():
+            print(other)
+            return AssignmentResult(
+                ex_type=Exceptions.ImmutableVal,
+                msg=f"'{self.name}' is 'val' cannot be assigned to a 'var' type")
+
+        return AssignmentResult.success()
         return AssignmentResult(
             ex_type=Exceptions.ImmutableVal,
             msg=f"'{self.name}' is declared as 'val' and cannot be reassigned")
@@ -208,9 +230,10 @@ class UsageStatusFactory():
     }
 
     @staticmethod
-    def create(name: str, restriction: GeneralRestriction, initialization: Initializations = Initializations.NotInitialized):
-        return UsageStatusFactory.restriction_to_status_map[hash(restriction)](name, restriction, initialization)
+    def create(name: str, restriction: GeneralRestriction, initialization: Initializations = Initializations.NotInitialized,
+               modifies_val_state = False):
+        return UsageStatusFactory.restriction_to_status_map[hash(restriction)](name, restriction, initialization, modifies_val_state)
 
     @staticmethod
     def create_anonymous(restriction: GeneralRestriction, initialization: Initializations = Initializations.NotInitialized):
-        return UsageStatusFactory.restriction_to_status_map[hash(restriction)]("", restriction, initialization)
+        return UsageStatusFactory.restriction_to_status_map[hash(restriction)]("", restriction, initialization, False)

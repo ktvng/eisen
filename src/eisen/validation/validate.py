@@ -266,6 +266,11 @@ class Validate:
 
     @staticmethod
     def assignment_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
+        if left.modifies_val_state():
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.ImmutableVal,
+                msg=f"cannot modify val state")
+
         result = left.assignable_to(right)
         if result.failed():
             return failure_with_exception_added_to(state,

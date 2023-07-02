@@ -12,10 +12,10 @@ fn main() {
     var? x: obj
     let o = obj(1, 2)
     x = o
-    var y = x.as(obj)
+    var y = x.as(mut obj)
     x = nil
     print("%i", y.x)
-    var z = x.as(obj)
+    var z = x.as(mut obj)
 }
 
 /// [Test]

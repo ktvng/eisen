@@ -34,6 +34,8 @@ class IletIvar(AbstractNodeInterface):
             return LetRestriction()
         if self.state.asl.type == "ivar?":
             return NullableVarRestriction()
+        if self.state.asl.type == "ival":
+            return ValRestriction()
         else:
             return VarRestriction()
 
@@ -65,7 +67,7 @@ class Decl(AbstractNodeInterface):
             elif self.second_child().type == "type":
                 if self.second_child().first().value in implemented_primitive_types:
                     return PrimitiveRestriction()
-                return VarRestriction()
+                return ValRestriction()
             elif self.second_child().type == "fn_type":
                 return FunctionalRestriction()
             elif self.second_child().type == "new_type":

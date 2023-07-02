@@ -4,7 +4,7 @@ from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common import implemented_primitive_types
 from eisen.common.restriction import (VarRestriction, GeneralRestriction, NullableVarRestriction,
-    PrimitiveRestriction, LetRestriction)
+    PrimitiveRestriction, ValRestriction)
 
 class TypeLike(AbstractNodeInterface):
     asl_type = "type"
@@ -27,5 +27,5 @@ class TypeLike(AbstractNodeInterface):
         if self.state.get_asl().first().value in implemented_primitive_types:
             restriction = PrimitiveRestriction()
         elif self.state.get_asl().type == "type":
-            restriction = VarRestriction()
+            restriction = ValRestriction()
         return restriction

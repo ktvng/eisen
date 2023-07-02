@@ -7,7 +7,7 @@ struct abc {
 }
 
 struct obj {
-    val z: abc
+    var z: abc
 
     create(x: int, z: abc, z2: abc) -> self: new obj {
         self.z = z
@@ -19,7 +19,7 @@ fn main() {
     let z = abc(0)
     let a = abc(1)
     let o = obj(1, z, a)
-    val v: abc
+    var v: abc
     v = a
     o.z.a = 4
     v.a = 5
@@ -35,9 +35,6 @@ fn main() {
 /// [Expects]
 /// success = false
 
-/// [[Expects.Exceptions]]
-/// type = "ImmutableValException"
-/// contains = ">> 14"
 /// [[Expects.Exceptions]]
 /// type = "ImmutableValException"
 /// contains = ">> 24"

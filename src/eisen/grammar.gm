@@ -63,7 +63,6 @@ SYMBOLICS
     keyword create      ->  create
     keyword destroy     ->  destroy
     keyword var         ->  var
-    keyword val         ->  val
     keyword interface   ->  interface
     keyword implements  ->  implements
     keyword variant     ->  variant
@@ -168,8 +167,9 @@ STRUCTURE
     TYPE ->
         @action filter_build type
         |   TAG
+        @action filter_build var_type
+        |   mut TAG
         @action filter_build var_type?
-        |   TAG var?
         |   TAG ?
         @action pass
         |   FN_TYPE
@@ -407,19 +407,20 @@ STRUCTURE
         @action convert_decl let
         |   let TYPING
         @action convert_decl var
-        |   var TYPING
+        |   mut TYPING
         @action convert_decl var?
         |   var ? TYPING
         @action convert_decl val
-        |   val TYPING
+        |   var TYPING
 
         @action filter_build ilet
         |   let INFERENCE
         @action filter_build ivar
-        |   var INFERENCE
+        |   mut INFERENCE
         @action filter_build ivar?
         |   var ? INFERENCE
-
+        @action filter_build ival
+        |   var INFERENCE
 
     # ====================================================
     # LINE

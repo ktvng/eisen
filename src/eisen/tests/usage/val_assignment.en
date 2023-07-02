@@ -6,7 +6,7 @@ struct abc {
     }
 }
 struct obj {
-    val z: abc
+    var z: abc
 
     create(z: abc) -> self: new obj {
         self.z = z
@@ -19,7 +19,7 @@ fn main() {
     let a = abc(1)
     let o = obj(z)
 
-    val v: abc
+    var v: abc
     v = a
 
     print("%i ", v.a)

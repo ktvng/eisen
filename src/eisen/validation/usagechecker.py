@@ -142,7 +142,7 @@ class UsageChecker(Visitor):
             state.add_usagestatus(status)
         return statuses
 
-    @Visitor.for_asls("ilet", "ivar", "ivar?")
+    @Visitor.for_asls("ilet", "ivar", "ivar?", "ival")
     def ilet_(fn, state: State) -> list[UsageStatus]:
         UsageChecker.handle_assignment(state,
             left_statuses=UsageChecker.create_new_statuses_for_instances(state.get_instances()),
@@ -231,7 +231,7 @@ class UsageChecker(Visitor):
                 Validate.status_is_initialized(state, status)
         return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
-    @Visitor.for_asls("index", "type", "new_vec")
+    @Visitor.for_asls("index", "type", "new_vec", "var_type")
     def index_(fn, state: State) -> list[UsageStatus]:
         return [UsageStatusFactory.create_anonymous(state.get_restriction(), Initializations.Initialized)]
 
@@ -295,13 +295,14 @@ class LValUsageVisitor(Visitor):
         if (entitystatus.parent_status.is_under_construction()
                 and entitystatus.parent_status.get_initialization_of_attribute(node.get_attribute_name()) == Initializations.NotInitialized):
             # attribute has not yet been constructed
-            if branch_restriction.is_val(): branch_restriction = VarRestriction()
+            if branch_restriction.is_val(): branch_restriction = ValRestriction()
             return [LValUsageStatus(
                 parent_status=entitystatus.parent_status,
                 branch_status=UsageStatusFactory.create(node.get_full_name(), branch_restriction, Initializations.NotInitialized),
                 attribute_name=node.get_attribute_name())]
 
         if entitystatus.branch_status.restriction.is_val():
+            entitystatus.branch_status._modifies_val_state = True
             return [entitystatus]
         elif branch_restriction.is_val():
             return [LValUsageStatus(

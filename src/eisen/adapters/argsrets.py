@@ -23,10 +23,10 @@ class ArgsRets(AbstractNodeInterface):
     def convert_let_args_to_var(self, type: Type):
         """For function arguments, if the declared type is unspecified, we should
         convert this to let types for structs"""
-        if self.get_node_type() == "args":
-            if type.is_tuple():
-                for component in type.components:
-                    if component.is_struct() or type.is_interface():
-                        component.restriction = VarRestriction()
-            elif type.is_struct() or type.is_interface():
-                type.restriction = VarRestriction()
+        # if self.get_node_type() == "args":
+        #     if type.is_tuple():
+        #         for component in type.components:
+        #             if component.is_struct() or type.is_interface():
+        #                 component.restriction = VarRestriction()
+        #     elif type.is_struct() or type.is_interface():
+        #         type.restriction = VarRestriction()

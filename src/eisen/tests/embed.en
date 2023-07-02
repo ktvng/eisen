@@ -2,7 +2,7 @@ struct point {
     x: int
     y: int
 
-    create() -> self: point {
+    create() -> self: new point {
         self.x = 0
         self.y = 0
     }
@@ -16,7 +16,7 @@ struct point3d {
     embed point
     z: int
 
-    create() -> self: point3d {
+    create() -> self: new point3d {
         self.x = 0
         self.y = 2
         self.z = 0

@@ -1,7 +1,7 @@
 struct ptr {
     x: int var
 
-    create(x: int var) -> self: ptr {
+    create(x: int var) -> self: new ptr {
         self.x = x
     }
 }
@@ -29,13 +29,13 @@ fn one(a: int var, b: int var) -> c: int var {
     c = select(a, y)
 }
 
-fn make_ptr(a: int var) -> p: ptr {
+fn make_ptr(a: int var) -> p: new ptr {
     let y = 5
     p = ptr(y)
     let p2 = ptr(y)
 }
 
-fn make_ptr2(a: int var) -> p: ptr {
+fn make_ptr2(a: int var) -> p: new ptr {
     p = ptr(a)
 }
 

@@ -12,7 +12,7 @@ struct point3d implements positionable {
     y: int
     z: int
 
-    create(x: int, y: int, z: int) -> self: point3d {
+    create(x: int, y: int, z: int) -> self: new point3d {
         self.x = x
         self.y = y
         self.z = z
@@ -24,7 +24,7 @@ struct vector implements positionable {
     y: int
     magnitude: int
 
-    create(x: int, y: int) -> self: vector {
+    create(x: int, y: int) -> self: new vector {
         self.x = x
         self.y = y
         self.magnitude = 0

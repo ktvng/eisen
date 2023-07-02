@@ -4,7 +4,8 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import FunctionalRestriction, VarRestriction, RestrictionHelper, ValRestriction
+from eisen.common.restriction import (FunctionalRestriction, VarRestriction,
+                                      ValRestriction, LetConstruction)
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -59,6 +60,16 @@ class TypeParser(Visitor):
         component_types = [fn.apply(state.but_with(asl=component)) for component in state.get_asl()]
         return TypeFactory.produce_tuple_type(components=component_types)
 
+    @Visitor.for_asls("new_type")
+    def new_type_(fn, state: State) -> Type:
+        """
+        (new_type struct_name)
+        """
+        node = adapters.TypeLike(state)
+        name = node.get_name()
+        type = state.get_defined_type(name)
+        return type.with_restriction(LetConstruction())
+
     @Visitor.for_asls("fn_type_in")
     def fn_type_in(fn, state: State) -> Type:
         """
@@ -78,8 +89,7 @@ class TypeParser(Visitor):
         if len(state.get_asl()) == 0:
             return state.get_void_type()
 
-        type = fn.apply(state.but_with(asl=state.first_child()))
-        return RestrictionHelper.process_type_returned_by_function(type)
+        return fn.apply(state.but_with(asl=state.first_child()))
 
     @Visitor.for_asls("fn_type")
     def fn_type_(fn, state: State) -> Type:
@@ -109,8 +119,7 @@ class TypeParser(Visitor):
         (rets (type ...))
         """
         if state.get_asl():
-            type = fn.apply(state.but_with(asl=state.first_child()))
-            return RestrictionHelper.process_type_returned_by_function(type)
+            return fn.apply(state.but_with(asl=state.first_child()))
         return state.get_void_type()
 
     @Visitor.for_asls("def", "create", ":=", "is_fn")

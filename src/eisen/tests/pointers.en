@@ -1,7 +1,7 @@
 struct Integer {
     value: int
 
-    create(value: int) -> self: Integer {
+    create(value: int) -> self: new Integer {
         self.value = value
     }
 }

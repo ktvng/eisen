@@ -3,7 +3,7 @@ struct Person {
     home: Building
     pet: Animal
 
-    create(name: str, home: () -> Building, pet: () -> Animal) -> self: Person {
+    create(name: str, home: () -> new Building, pet: () -> new Animal) -> self: new Person {
         self.name = name
         self.home = home()
         self.pet = pet()
@@ -14,7 +14,7 @@ struct Building {
     address: str
     price: int
 
-    create(address: str, price: int) -> self: Building {
+    create(address: str, price: int) -> self: new Building {
         self.address = address
         self.price = price
     }
@@ -25,7 +25,7 @@ struct Animal {
     age: int
     type: str
 
-    create(name: str, age: int, type: str) -> self: Animal {
+    create(name: str, age: int, type: str) -> self: new Animal {
         self.name = name
         self.age = age
         self.type = type

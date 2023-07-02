@@ -71,6 +71,7 @@ SYMBOLICS
     keyword as          ->  as
     keyword is          ->  is
     keyword embed       ->  embed
+    keyword new         ->  new
 
     symbol @            ->  @
     symbol ,            ->  ,[ \t\n]*
@@ -173,9 +174,14 @@ STRUCTURE
         |   TAG ?
         @action pass
         |   FN_TYPE
+        |   NEW_TYPE
         @action filter_build para_type
         |   TAG [ TYPE ]
         |   TAG [ _TYPES ]
+
+    NEW_TYPE ->
+        @action filter_build new_type
+        |   new TAG
 
     TYPES ->
         @action filter_build prod_type
@@ -513,12 +519,20 @@ STRUCTURE
         |   TYPING
         |   FUNC
         @action filter_build create
-        |   create ARGS RETS SEQ
+        |   create ARGS CREATE_RETS SEQ
         @action filter_build destroy
         |   destroy ARGS SEQ
         @action filter_build embed
         |   embed TAG
         |   embed TAGS
+
+    CREATE_RETS ->
+        @action filter_build rets
+        |   -> CREATE_TYPING
+
+    CREATE_TYPING ->
+        @action build_operator
+        |   TAG : NEW_TYPE
 
 
     # ====================================================

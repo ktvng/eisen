@@ -24,7 +24,6 @@ class UsageStatus(InstanceState):
 
     def assignable_to(self, other: UsageStatus) -> AssignmentResult:
         return AssignmentResult.success()
-        return self.restriction.assignable_to(other.restriction, self.initialization)
 
     def mark_as_initialized(self, attribute_name=""):
         if attribute_name:
@@ -80,6 +79,9 @@ class UsageStatus(InstanceState):
     def is_primitive(self) -> bool:
         return False
 
+    def __str__(self) -> str:
+        return self.name + "." + str(type(self)) + " = " + self.initialization
+
 
     @staticmethod
     def anonymous(restriction: GeneralRestriction, init: Initializations) -> UsageStatus:
@@ -96,8 +98,6 @@ class UsageStatus(InstanceState):
     def is_aborted_status(self) -> bool:
         return self.name == "__abort__" and self.restriction is None and self.initialization is None
 
-    def __str__(self) -> str:
-        return str(self.restriction) + " " + ("notinit" if self.initialization == Initializations.NotInitialized else "init")
 
 @dataclass
 class AssignmentResult:
@@ -124,10 +124,10 @@ class VarStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{self.name}' is declared as 'var', but is being assigned to a literal")
-        if other.is_let_construction():
+        if other.is_nilable():
             return AssignmentResult(
-                ex_type=Exceptions.LetInitializationMismatch,
-                msg=f"'{self.name}' is declared as 'var' but '{other.name}' constructs a 'let' value")
+                ex_type=Exceptions.NilableMismatch,
+                msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_val():
             return AssignmentResult(
                 eex_typex = Exceptions.VarImproperAssignment,

@@ -2,14 +2,14 @@ struct point {
     x: int
     y: int
 
-    create(x: int, y: int) -> self: point {
+    create(x: int, y: int) -> self: new point {
         self.x = x
         self.y = y
     }
 }
 
 variant origin of point {
-    is(self: point) -> result: bool {
+    is(self: new point) -> result: bool {
         result = self.x == 0 and self.y == 0
     }
 }

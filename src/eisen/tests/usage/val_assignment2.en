@@ -1,7 +1,7 @@
 struct abc {
     a: int
 
-    create(n: int) -> self: abc {
+    create(n: int) -> self: new abc {
         self.a = n
     }
 }
@@ -9,7 +9,7 @@ struct abc {
 struct obj {
     val z: abc
 
-    create(x: int, z: abc, z2: abc) -> self: obj {
+    create(x: int, z: abc, z2: abc) -> self: new obj {
         self.z = z
         self.z = z2
     }

@@ -8,7 +8,7 @@ mod math {
         x: int
         y: int
 
-        create(x: int, y: int) -> self: Point {
+        create(x: int, y: int) -> self: new Point {
             self.x = x
             self.y = y
         }

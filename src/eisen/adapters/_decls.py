@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.clr import CLRList
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.restriction import GeneralRestriction, LetRestriction, VarRestriction, NullableVarRestriction, ValRestriction, FunctionalRestriction
+from eisen.common.restriction import GeneralRestriction, LetRestriction, VarRestriction, NullableVarRestriction, ValRestriction, FunctionalRestriction, LetConstruction
 
 class IletIvar(AbstractNodeInterface):
     asl_types = ["ilet", "ivar"]
@@ -63,6 +63,8 @@ class Decl(AbstractNodeInterface):
                 return LetRestriction()
             elif self.second_child().type == "fn_type":
                 return FunctionalRestriction()
+            elif self.second_child().type == "new_type":
+                return LetConstruction()
 
         raise Exception(f"not implemented for {self.get_node_type()} {self.state.asl}")
 

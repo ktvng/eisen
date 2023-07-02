@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.restriction import VarRestriction, LetConstruction
+from eisen.common.restriction import VarRestriction
 
 from eisen.adapters._decls import Decl
 
@@ -26,7 +26,7 @@ class ArgsRets(AbstractNodeInterface):
         if self.get_node_type() == "args":
             if type.is_tuple():
                 for component in type.components:
-                    if component.is_struct():
+                    if component.is_struct() or type.is_interface():
                         component.restriction = VarRestriction()
-            elif type.is_struct():
+            elif type.is_struct() or type.is_interface():
                 type.restriction = VarRestriction()

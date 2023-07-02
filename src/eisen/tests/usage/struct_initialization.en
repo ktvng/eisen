@@ -3,7 +3,7 @@ struct abc {
     b: int
     c: int
 
-    create(n: int) -> self: abc {
+    create(n: int) -> self: new abc {
         self.a = n
     }
 }

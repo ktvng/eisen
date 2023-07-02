@@ -2,7 +2,7 @@ struct obj {
     x: int
     y: int
 
-    create(x: int, y: int) -> self: obj {
+    create(x: int, y: int) -> self: new obj {
         var a = self
         self.x = x
         self.y = a.y

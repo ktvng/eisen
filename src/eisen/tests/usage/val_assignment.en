@@ -1,14 +1,14 @@
 struct abc {
     a: int
 
-    create(n: int) -> self: abc {
+    create(n: int) -> self: new abc {
         self.a = n
     }
 }
 struct obj {
     val z: abc
 
-    create(z: abc) -> self: obj {
+    create(z: abc) -> self: new obj {
         self.z = z
         print("%i ", self.z.a)
     }

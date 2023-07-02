@@ -279,7 +279,7 @@ class TypeChecker(Visitor):
         type = TypeChecker.update_to_primitive_restriction_if_needed(type)
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls("fn_type", "type", "var_type", "var_type?", "para_type")
+    @Visitor.for_asls("fn_type", "type", "var_type", "var_type?", "para_type", "new_type")
     def _type1(fn, state: State) -> Type:
         return fn.typeparser.apply(state)
 

@@ -2,7 +2,7 @@ struct point {
     x: int
     y: int
 
-    create() -> self: point {
+    create() -> self: new point {
         self.x = 0
         self.y = 0
     }

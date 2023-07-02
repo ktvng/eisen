@@ -11,7 +11,7 @@ struct point {
     x: int
     y: int
 
-    create(x: int, y: int) -> self: point {
+    create(x: int, y: int) -> self: new point {
         self.x = x
         self.y = y
     }

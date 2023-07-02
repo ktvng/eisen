@@ -4,22 +4,22 @@ Functions may be defined over structs, externally, and this allows all instances
 ```eisen
 struct WelcomeMessage {
     name: str
-    getMessage: (self: WelcomeMessage) -> msg: str
+    getMessage: (self: new WelcomeMessage) -> msg: str
 
     create(
         name: str,
         getMessage: (WelcomeMessage) -> str
-    ) -> self: WelcomeMessage {
+    ) -> self: new WelcomeMessage {
         self.name = name
         self.getMessage = getMessage
     }
 }
 
-fn formal(self: WelcomeMessage) -> msg: str {
+fn formal(self: new WelcomeMessage) -> msg: str {
     msg = "Dear {self.name}, we are happy to receive you on this day..."
 }
 
-fn casual(self: WelcomeMessage) -> msg: str {
+fn casual(self: new WelcomeMessage) -> msg: str {
     msg = "Hi {self.name}; welcome!..."
 }
 

@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: obj {
+    create(x: int) -> self: new obj {
         self.x = x
     }
 }
@@ -9,7 +9,7 @@ struct obj {
 struct refs {
     o: obj var
 
-    create(o: obj var) -> self: refs {
+    create(o: obj var) -> self: new refs {
         self.o = o
     }
 }

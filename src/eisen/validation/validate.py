@@ -44,7 +44,7 @@ class TypeCheck:
 
     @staticmethod
     def type_pair_is_nil_compatible(state: State, type_pair: TypePair) -> bool:
-        if not type_pair.left.restriction.is_nullable() and type_pair.right.is_nil():
+        if not type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
             add_exception_to(state,
                 ex=Exceptions.NilAssignment,
                 msg=f"cannot assign nil to non-nilable type '{type_pair.left}'")
@@ -53,8 +53,8 @@ class TypeCheck:
 
     @staticmethod
     def equivalent_types(state: State, type_pair: TypePair) -> bool:
-        # 'nil' is considered equivalent to all nullable types
-        if type_pair.left.restriction.is_nullable() and type_pair.right.is_nil():
+        # 'nil' is considered equivalent to all nilable types
+        if type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
             return True
 
         if type_pair.left != type_pair.right:

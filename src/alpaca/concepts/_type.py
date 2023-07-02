@@ -82,7 +82,7 @@ class Type():
         return hash(self.get_uuid_str())
 
     def __str__(self) -> str:
-        nilable = " var?" if self.restriction and self.restriction.is_nullable() else ""
+        nilable = " var?" if self.restriction and self.restriction.is_nilable() else ""
         return self.get_uuid_str() + nilable
 
     # Return the uuid string which can be hashed to obtain a proper uuid. All

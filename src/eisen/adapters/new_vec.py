@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.restriction import LetConstruction
+from eisen.common.restriction import NewLetRestriction
 from eisen.validation.typeparser import TypeParser, TypeFactory
 
 class NewVec(AbstractNodeInterface):
@@ -15,4 +15,4 @@ class NewVec(AbstractNodeInterface):
         return TypeFactory.produce_parametric_type(
             name="vec",
             parametrics=[TypeParser().apply(self.state.but_with_first_child())]) \
-                .with_restriction(LetConstruction())
+                .with_restriction(NewLetRestriction())

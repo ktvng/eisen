@@ -115,12 +115,12 @@ class Writer(Visitor):
             ") -> ",
             *fn.apply(asl.second())]
 
-    @Visitor.for_asls("ivar", "ilet")
+    @Visitor.for_asls("imut", "ilet")
     def ilet(fn, asl: CLRList):
         decl = asl.type[1:]
         return [decl, " ", *fn.apply(asl.first()), " = ", *fn.apply(asl.second())]
 
-    @Visitor.for_asls("let", "var", "val")
+    @Visitor.for_asls("let", "mut", "val")
     def let_(fn, asl: CLRList):
         decl = asl.type
         return [decl, " ", *fn.apply(asl.first())]

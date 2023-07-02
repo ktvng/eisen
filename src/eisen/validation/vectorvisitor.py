@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeFactory
-from eisen.common.restriction import VarRestriction, LetConstruction, ValRestriction
+from eisen.common.restriction import MutableRestriction, NewLetRestriction, ImmutableRestriction
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.state.basestate import BaseState as State
 
@@ -23,14 +23,14 @@ class VectorVisitor(Visitor):
         if not element_type.restriction.is_primitive():
             element_type = TypeFactory.produce_function_type(
                 arg=state.get_void_type(),
-                ret=element_type.with_restriction(LetConstruction()),
-                mod=None).with_restriction(ValRestriction())
+                ret=element_type.with_restriction(NewLetRestriction()),
+                mod=None).with_restriction(ImmutableRestriction())
 
         append_fn_type = TypeFactory.produce_function_type(
             arg=TypeFactory.produce_tuple_type(
-                components=[vec_type.with_restriction(VarRestriction()),
+                components=[vec_type.with_restriction(MutableRestriction()),
                             element_type]),
-            ret=vec_type.with_restriction(VarRestriction()),
+            ret=vec_type.with_restriction(MutableRestriction()),
             mod=None)
 
         if state.get_builtin_function("append", append_fn_type) is None:

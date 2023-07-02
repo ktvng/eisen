@@ -6,7 +6,7 @@ from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_t
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.typecheckerstate import TypeCheckerState
-from eisen.common.restriction import PrimitiveRestriction, ValRestriction
+from eisen.common.restriction import PrimitiveRestriction, ImmutableRestriction
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
@@ -49,7 +49,7 @@ class TypeChecker(Visitor):
                 return TypeFactory.produce_function_type(
                     arg=state.get_void_type(),
                     ret=fn_type.get_return_type(),
-                    mod=fn_type.mod).with_restriction(ValRestriction())
+                    mod=fn_type.mod).with_restriction(ImmutableRestriction())
             raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
 
         if len(argument_type.components) - n_curried_args == 1:
@@ -63,7 +63,7 @@ class TypeChecker(Visitor):
         return TypeFactory.produce_function_type(
             arg=curried_fn_args,
             ret=fn_type.get_return_type(),
-            mod=fn_type.mod).with_restriction(ValRestriction())
+            mod=fn_type.mod).with_restriction(ImmutableRestriction())
 
 
     @classmethod

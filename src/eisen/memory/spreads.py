@@ -129,7 +129,7 @@ class SpreadVisitor(Visitor):
         #                 line_number=state.get_line_number()))
         return []
 
-    @Visitor.for_asls("ivar", "ivar?", "ival")
+    @Visitor.for_asls("imut", "inil?", "ival")
     def iletivar2_(fn, state: State):
         spreads = fn.apply(state.but_with_second_child())
         for name, spread in zip(adapters.InferenceAssign(state).get_names(), spreads):

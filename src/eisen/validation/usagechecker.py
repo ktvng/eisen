@@ -9,7 +9,7 @@ from eisen.common import binary_ops, boolean_return_ops
 from eisen.state.usagecheckerstate import UsageCheckerState
 from eisen.common.eiseninstance import EisenInstance
 from eisen.common.restriction import (LiteralRestriction, NoRestriction,
-                                      ValRestriction)
+                                      ImmutableRestriction)
 from eisen.common.initialization import Initializations
 from eisen.common.usagestatus import UsageStatus, UsageStatusFactory
 
@@ -135,14 +135,14 @@ class UsageChecker(Visitor):
             instances=state.get_instances(),
             initialization=Initializations.Initialized)
 
-    @Visitor.for_asls(":", "let", "var", "var?", "val")
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def let_(fn, state: State) -> list[UsageStatus]:
         statuses = UsageChecker.create_new_statuses_for_instances(instances=state.get_instances())
         for status in statuses:
             state.add_usagestatus(status)
         return statuses
 
-    @Visitor.for_asls("ilet", "ivar", "ivar?", "ival")
+    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
     def ilet_(fn, state: State) -> list[UsageStatus]:
         UsageChecker.handle_assignment(state,
             left_statuses=UsageChecker.create_new_statuses_for_instances(state.get_instances()),
@@ -177,7 +177,7 @@ class UsageChecker(Visitor):
 
         # Val restrictions carry over from parents. All other restrictions defer to the
         # child.
-        if parent_inst.restriction.is_val():
+        if parent_inst.restriction.is_immutable():
             return [parent_inst]
 
         return [UsageStatusFactory.create(
@@ -217,7 +217,7 @@ class UsageChecker(Visitor):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.status_is_initialized(state, given)
 
-        return [UsageStatusFactory.create_anonymous(ValRestriction(), Initializations.Initialized)]
+        return [UsageStatusFactory.create_anonymous(ImmutableRestriction(), Initializations.Initialized)]
 
     @Visitor.for_asls("cast")
     def cast_(fn, state: State) -> list[UsageStatus]:
@@ -231,7 +231,7 @@ class UsageChecker(Visitor):
                 Validate.status_is_initialized(state, status)
         return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
-    @Visitor.for_asls("index", "type", "new_vec", "var_type")
+    @Visitor.for_asls("index", "type", "new_vec", "mut_type")
     def index_(fn, state: State) -> list[UsageStatus]:
         return [UsageStatusFactory.create_anonymous(state.get_restriction(), Initializations.Initialized)]
 
@@ -295,19 +295,19 @@ class LValUsageVisitor(Visitor):
         if (entitystatus.parent_status.is_under_construction()
                 and entitystatus.parent_status.get_initialization_of_attribute(node.get_attribute_name()) == Initializations.NotInitialized):
             # attribute has not yet been constructed
-            if branch_restriction.is_val(): branch_restriction = ValRestriction()
+            if branch_restriction.is_immutable(): branch_restriction = ImmutableRestriction()
             return [LValUsageStatus(
                 parent_status=entitystatus.parent_status,
                 branch_status=UsageStatusFactory.create(node.get_full_name(), branch_restriction, Initializations.NotInitialized),
                 attribute_name=node.get_attribute_name())]
 
-        if entitystatus.branch_status.restriction.is_val():
+        if entitystatus.branch_status.restriction.is_immutable():
             entitystatus.branch_status._modifies_val_state = True
             return [entitystatus]
-        elif branch_restriction.is_val():
+        elif branch_restriction.is_immutable():
             return [LValUsageStatus(
                 parent_status=entitystatus.parent_status,
-                branch_status=UsageStatusFactory.create(node.get_full_name(), ValRestriction(), Initializations.Initialized))]
+                branch_status=UsageStatusFactory.create(node.get_full_name(), ImmutableRestriction(), Initializations.Initialized))]
 
         return [LValUsageStatus(
             parent_status=entitystatus.parent_status,

@@ -6,22 +6,19 @@ class GeneralRestriction(AbstractRestriction):
     def is_unrestricted(self) -> bool:
         return False
 
-    def is_var(self) -> bool:
+    def is_mutable(self) -> bool:
         return False
 
-    def is_val(self) -> bool:
+    def is_immutable(self) -> bool:
         return False
 
     def is_let(self) -> bool:
         return False
 
-    def is_let_construction(self) -> bool:
+    def is_new_let(self) -> bool:
         return False
 
-    def is_functional(self) -> bool:
-        return False
-
-    def is_nullable(self) -> bool:
+    def is_nilable(self) -> bool:
         return False
 
     def is_literal(self) -> bool:
@@ -43,19 +40,19 @@ class NoRestriction(GeneralRestriction):
     def is_unrestricted(self) -> bool:
         return True
 
-class VarRestriction(GeneralRestriction):
-    def is_var(self) -> bool:
+class MutableRestriction(GeneralRestriction):
+    def is_mutable(self) -> bool:
         return True
 
     def get_name(self) -> str:
-        return "var"
+        return "mut"
 
-class NullableVarRestriction(VarRestriction):
-    def is_nullable(self) -> bool:
+class NilableRestriction(MutableRestriction):
+    def is_nilable(self) -> bool:
         return True
 
     def get_name(self) -> str:
-        return "var?"
+        return "nil?"
 
 class LetRestriction(GeneralRestriction):
     def is_let(self) -> bool:
@@ -64,12 +61,12 @@ class LetRestriction(GeneralRestriction):
     def get_name(self) -> str:
         return "let"
 
-class LetConstruction(LetRestriction):
-    def is_let_construction(self) -> bool:
+class NewLetRestriction(LetRestriction):
+    def is_new_let(self) -> bool:
         return True
 
-class ValRestriction(GeneralRestriction):
-    def is_val(self) -> bool:
+class ImmutableRestriction(GeneralRestriction):
+    def is_immutable(self) -> bool:
         return True
 
     def get_name(self) -> str:

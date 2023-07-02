@@ -34,7 +34,7 @@ class NilableStatus():
     @staticmethod
     def for_type(type: Type) -> NilableStatus:
         r: GeneralRestriction = type.restriction
-        if r.is_nullable():
+        if r.is_nilable():
             return NilableStatus.maybe_nil()
         return NilableStatus.never_nil()
 

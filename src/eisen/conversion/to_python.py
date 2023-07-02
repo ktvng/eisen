@@ -162,7 +162,7 @@ class lmda:
         return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("let", "var", "val", "var?")
+    @Visitor.for_asls(*adapters.Decl.asl_types)
     def decls_(fn, state: State):
         if Pattern("(?? ('tags xs...) _)").match(state.get_asl()):
             tags_asl = Pattern("(?? ('tags xs...) _)").match(state.get_asl())\

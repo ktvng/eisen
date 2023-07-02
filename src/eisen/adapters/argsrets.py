@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.restriction import VarRestriction
+from eisen.common.restriction import MutableRestriction
 
 from eisen.adapters._decls import Typing
 

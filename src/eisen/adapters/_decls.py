@@ -5,8 +5,8 @@ from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common import implemented_primitive_types
 from eisen.common.restriction import (GeneralRestriction, LetRestriction,
-                                      VarRestriction, NullableVarRestriction, ValRestriction,
-                                      LetConstruction, PrimitiveRestriction)
+                                      MutableRestriction, NilableRestriction, ImmutableRestriction,
+                                      NewLetRestriction, PrimitiveRestriction)
 class _SharedMixins():
     def is_single_assignment(self) -> bool:
         return AbstractNodeInterface.first_child_is_token(self)
@@ -17,7 +17,7 @@ class _SharedMixins():
             case False: return [child.value for child in self.first_child()]
 
 class TypeLike(AbstractNodeInterface):
-    asl_types = ["type", "var_type", "var_type?", "new_type"]
+    asl_types = ["type", "mut_type", "nilable_type", "new_type"]
     examples = """
     (type name)
     (var_type name)
@@ -26,26 +26,22 @@ class TypeLike(AbstractNodeInterface):
 
     def get_restriction(self) -> GeneralRestriction:
         if self.get_node_type() == "fn_type":
-            return ValRestriction()
+            return ImmutableRestriction()
         if self.state.get_asl().first().value in implemented_primitive_types:
             return PrimitiveRestriction()
 
-        if self.get_node_type() == "var_type":
-            return VarRestriction()
-        elif self.get_node_type() == "type":
-            return ValRestriction()
-        elif self.get_node_type() == "var_type?":
-            return NullableVarRestriction()
-        elif self.get_node_type() == "new_type":
-            return LetConstruction()
-        else:
-            raise Exception(f"get_restriction not implemented for {self.state.get_asl()}")
+        match self.get_node_type():
+            case "mut_type": return MutableRestriction()
+            case "type": return ImmutableRestriction()
+            case "nilable_type": return NilableRestriction()
+            case "new_type": return NewLetRestriction()
+            case _: raise Exception(f"get_restriction not implemented for {self.state.get_asl()}")
 
     def get_is_nilable(self) -> bool:
-        return self.get_node_type() == "var_type?"
+        return self.get_node_type() == "nilable_type"
 
 class InferenceAssign(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["ilet", "ivar", "ival", "ivar?"]
+    asl_types = ["ilet", "imut", "ival", "inil?"]
     examples = """
     1. (ilet name (call ...))
     2. (ilet name 4)
@@ -64,7 +60,7 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
         if self.hint_is_primitive(hint):
             return PrimitiveRestriction()
 
-        if not hint.is_tuple() and hint.restriction.is_let_construction():
+        if not hint.is_tuple() and hint.restriction.is_new_let():
             return LetRestriction()
         return hint.restriction
 
@@ -73,19 +69,19 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
 
     def get_is_nilable(self) -> bool:
         match self.get_node_type():
-            case "ivar?": return True
+            case "inil?": return True
             case _: return False
 
     def get_restriction(self, hint: Type) -> GeneralRestriction:
         match self.get_node_type():
             case "ilet": return self.get_hint_restriction(hint)
-            case "ivar?": return NullableVarRestriction()
-            case "ival": return ValRestriction()
-            case "ivar": return VarRestriction()
+            case "inil?": return NilableRestriction()
+            case "ival": return ImmutableRestriction()
+            case "ivar": return MutableRestriction()
             case _: raise Exception(f"get_restriction unhandled for {self.get_node_type()}")
 
 class Typing(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["let", "var", "val", "var?", ":"]
+    asl_types = ["let", "mut", "val", "nil?", ":"]
     examples = """
     1. multiple assignment
         (ASL_TYPE (tags ...) (type ...))
@@ -106,7 +102,7 @@ class Typing(AbstractNodeInterface, _SharedMixins):
         return self.second_child()
 
 class Decl(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["let", "var", "val", "var?"]
+    asl_types = ["let", "mut", "val", "nil?"]
     examples = """
     1. multiple assignment
         (ASL_TYPE (tags ...) (type ...))
@@ -119,13 +115,13 @@ class Decl(AbstractNodeInterface, _SharedMixins):
     def get_restriction(self) -> GeneralRestriction:
         match self.get_node_type():
             case "let": return PrimitiveRestriction() if self._is_primitive() else LetRestriction()
-            case "var": return VarRestriction()
-            case "val": return ValRestriction()
-            case "var?": return NullableVarRestriction()
+            case "mut": return MutableRestriction()
+            case "val": return ImmutableRestriction()
+            case "nil?": return NilableRestriction()
             case _: raise Exception(f"not implemented for {self.get_node_type()} {self.state.asl}")
 
     def get_is_nilable(self) -> bool:
-        return self.get_node_type() == "var?"
+        return self.get_node_type() == "nil?"
 
     def get_spread_values(self) -> set[int]:
         # let nodes are locally declared and therefore have local depth

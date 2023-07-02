@@ -167,9 +167,9 @@ STRUCTURE
     TYPE ->
         @action filter_build type
         |   TAG
-        @action filter_build var_type
+        @action filter_build mut_type
         |   mut TAG
-        @action filter_build var_type?
+        @action filter_build nilable_type
         |   TAG ?
         @action pass
         |   FN_TYPE
@@ -406,18 +406,18 @@ STRUCTURE
     DECL ->
         @action convert_decl let
         |   let TYPING
-        @action convert_decl var
+        @action convert_decl mut
         |   mut TYPING
-        @action convert_decl var?
+        @action convert_decl nil?
         |   var ? TYPING
         @action convert_decl val
         |   var TYPING
 
         @action filter_build ilet
         |   let INFERENCE
-        @action filter_build ivar
+        @action filter_build imut
         |   mut INFERENCE
-        @action filter_build ivar?
+        @action filter_build inil?
         |   var ? INFERENCE
         @action filter_build ival
         |   var INFERENCE

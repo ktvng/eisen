@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from alpaca.concepts import InstanceState, Type, AbstractException
 from eisen.common.initialization import Initializations
 
-from eisen.common.restriction import (GeneralRestriction, NoRestriction, ValRestriction, VarRestriction, NullableVarRestriction,
-                                      LetConstruction, LetRestriction, LiteralRestriction, PrimitiveRestriction)
+from eisen.common.restriction import (GeneralRestriction, NoRestriction, ImmutableRestriction, MutableRestriction, NilableRestriction,
+                                      NewLetRestriction, LetRestriction, LiteralRestriction, PrimitiveRestriction)
 from eisen.common.exceptions import Exceptions
 
 
@@ -59,10 +59,10 @@ class UsageStatus(InstanceState):
     def modifies_val_state(self) -> bool:
         return self._modifies_val_state
 
-    def is_var(self) -> bool:
+    def is_mutable(self) -> bool:
         return False
 
-    def is_val(self) -> bool:
+    def is_immutable(self) -> bool:
         return False
 
     def is_let(self) -> bool:
@@ -119,8 +119,8 @@ class UnrestrictedStatus(UsageStatus):
     def is_unrestricted(self) -> bool:
         return True
 
-class VarStatus(UsageStatus):
-    def is_var(self) -> bool:
+class MutableStatus(UsageStatus):
+    def is_mutable(self) -> bool:
         return True
 
     def assignable_to(self, other: UsageStatus):
@@ -132,7 +132,7 @@ class VarStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.NilableMismatch,
                 msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
-        if other.is_val():
+        if other.is_immutable():
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{other.name}' is 'val' cannot be assigned to a 'var' type")
@@ -164,12 +164,12 @@ class LetStatus(UsageStatus):
                 msg=f"'{self.name}' is declared as 'let', and must be constructed by a function")
         return AssignmentResult.success()
 
-class LetConstructionStatus(UsageStatus):
+class NewLetStatus(UsageStatus):
     def is_let_construction(self) -> bool:
         return True
 
-class ValStatus(UsageStatus):
-    def is_val(self) -> bool:
+class ImmutableStatus(UsageStatus):
+    def is_immutable(self) -> bool:
         return True
 
     def assignable_to(self, other: UsageStatus):
@@ -184,7 +184,7 @@ class ValStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.ImmutableVal,
                 msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
-        if other.is_var():
+        if other.is_mutable():
             print(self)
             print(other)
             return AssignmentResult(
@@ -192,9 +192,6 @@ class ValStatus(UsageStatus):
                 msg=f"'{self.name}' is 'val' cannot be assigned to a '{other.name}' which is 'var' type")
 
         return AssignmentResult.success()
-        return AssignmentResult(
-            ex_type=Exceptions.ImmutableVal,
-            msg=f"'{self.name}' is declared as 'val' and cannot be reassigned")
 
 class LiteralStatus(UsageStatus):
     def is_literal(self) -> bool:
@@ -214,11 +211,11 @@ class PrimitiveStatus(UsageStatus):
 class UsageStatusFactory():
     restriction_to_status_map = {
         hash(NoRestriction()): UnrestrictedStatus,
-        hash(VarRestriction()): VarStatus,
-        hash(ValRestriction()): ValStatus,
-        hash(NullableVarRestriction()): NilableStatus,
+        hash(MutableRestriction()): MutableStatus,
+        hash(ImmutableRestriction()): ImmutableStatus,
+        hash(NilableRestriction()): NilableStatus,
         hash(LetRestriction()): LetStatus,
-        hash(LetConstruction()): LetConstructionStatus,
+        hash(NewLetRestriction()): NewLetStatus,
         hash(LiteralRestriction()): LiteralStatus,
         hash(PrimitiveRestriction()): PrimitiveStatus
     }

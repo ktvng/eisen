@@ -4,8 +4,8 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import (VarRestriction,
-                                      ValRestriction, LetConstruction)
+from eisen.common.restriction import (MutableRestriction,
+                                      ImmutableRestriction, NewLetRestriction)
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -43,14 +43,14 @@ class TypeParser(Visitor):
         """
         (val name (type int))
         """
-        return fn.apply(state.but_with(asl=state.second_child())).with_restriction(ValRestriction())
+        return fn.apply(state.but_with(asl=state.second_child())).with_restriction(ImmutableRestriction())
 
-    @Visitor.for_asls("var")
+    @Visitor.for_asls("mut")
     def var_(fn, state: State) -> Type:
         """
-        (var name (type int))
+        (mut name (type int))
         """
-        return fn.apply(state.but_with(asl=state.second_child())).with_restriction(VarRestriction())
+        return fn.apply(state.but_with(asl=state.second_child())).with_restriction(MutableRestriction())
 
     @Visitor.for_asls("prod_type", "types")
     def prod_type_(fn, state: State) -> Type:
@@ -90,7 +90,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=state.first_child())),
             ret=fn.apply(state.but_with(asl=state.second_child())),
-            mod=None).with_restriction(ValRestriction())
+            mod=None).with_restriction(ImmutableRestriction())
 
     @Visitor.for_asls(*adapters.ArgsRets.asl_types)
     def args_(fn, state: State) -> Type:
@@ -111,7 +111,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(asl=node.get_args_asl())),
             ret=fn.apply(state.but_with(asl=node.get_rets_asl())),
-            mod=None).with_restriction(ValRestriction())
+            mod=None).with_restriction(ImmutableRestriction())
 
     @Visitor.for_asls("para_type")
     def para_type(fn, state: State) -> Type:

@@ -18,6 +18,8 @@ class MoveEpoch:
     generation: int = 0
     name: str = None
     uid: uuid.UUID = uuid.UUID(int=0)
+    is_let: bool = False
+    moved_away: bool = False
 
     @staticmethod
     def create_anonymous():
@@ -25,6 +27,9 @@ class MoveEpoch:
 
     def increment_generation(self):
         self.generation += 1
+
+    def mark_as_gone(self):
+        self.moved_away = True
 
 @dataclass
 class Dependency:
@@ -93,25 +98,30 @@ class MoveVisitor(Visitor):
         return state.get_context().get_entity_uuid(name)
 
     @staticmethod
-    def add_new_move_epoch(state: State, name: str) -> MoveEpoch:
+    def add_new_move_epoch(state: State, name: str, is_let: bool = False) -> MoveEpoch:
         uid = uuid.uuid4()
         new_epoch = MoveEpoch(
             dependencies=[],
             generation=0,
             name=name,
-            uid=uid)
+            uid=uid,
+            is_let=is_let)
         MoveVisitor.add_move_epoch(state, new_epoch)
         MoveVisitor.add_entity_uid(state, name, uid)
         return new_epoch
 
     @staticmethod
     def update_move_epoch(lval: LvalIdentity, rval: MoveEpoch):
-        if lval.attribute_is_modified:
-            # add dependency
-            lval.move_epoch.dependencies.append(Dependency(uid=rval.uid, generation=rval.generation))
-        else:
-            # replace dependency
-            lval.move_epoch.dependencies = [Dependency(uid=rval.uid, generation=rval.generation)]
+        match (lval.attribute_is_modified, rval.is_let):
+            case True, True:
+                lval.move_epoch.dependencies.append(
+                    Dependency(uid=rval.uid, generation=rval.generation))
+            case True, False:
+                lval.move_epoch.dependencies.extend(rval.dependencies)
+            case False, True:
+                lval.move_epoch.dependencies = [Dependency(uid=rval.uid, generation=rval.generation)]
+            case False, False:
+                lval.move_epoch.dependencies = rval.dependencies.copy()
 
     # TODO: cond and if need to be handled properly
     @Visitor.for_asls("start", "seq", "cond", "prod_type")
@@ -150,11 +160,6 @@ class MoveVisitor(Visitor):
         if not state.get_asl().has_no_children():
             fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls(":")
-    def _colon(fn, state: State):
-        for name in adapters.Typing(state).get_names():
-            MoveVisitor.add_new_move_epoch(state, name)
-
     @Visitor.for_asls("=")
     def _eq(fn, state: State):
         lvals = LvalMoveVisitor().apply(state.but_with_first_child())
@@ -171,14 +176,14 @@ class MoveVisitor(Visitor):
     def _ref(fn, state: State):
         uid = MoveVisitor.get_entity_uid(state, adapters.Ref(state).get_name())
         epoch = MoveVisitor.get_move_epoch_by_uid(state, uid)
-        Validate.same_generation(state, epoch)
+        Validate.healthy_dependencies(state, epoch)
         return [epoch]
 
     @Visitor.for_asls(".")
     def _dot(fn, state: State):
         uid = MoveVisitor.get_entity_uid(state, adapters.Scope(state).get_object_name())
         epoch = MoveVisitor.get_move_epoch_by_uid(state, uid)
-        Validate.same_generation(state, epoch)
+        Validate.healthy_dependencies(state, epoch)
         return [epoch]
 
     @Visitor.for_asls("cast")
@@ -186,13 +191,15 @@ class MoveVisitor(Visitor):
         return fn.apply(state.but_with_first_child())
 
     # TODO: write this
+    # Note: should we allow references to the moved object here? Might be
+    # necessary if we want to move a pair of objects that refer to each other.
     @Visitor.for_asls("call")
     def _call(fn, state: State):
         node = adapters.Call(state)
         epochs = fn.apply(state.but_with(asl=node.get_params_asl()))
         for type_, epoch in zip(node.get_function_argument_type().unpack_into_parts(), epochs):
             if type_.restriction.is_move():
-                epoch.increment_generation()
+                epoch.mark_as_gone()
 
         n = len(node.get_params_asl()._list)
         return [MoveEpoch.create_anonymous()] * n
@@ -207,16 +214,16 @@ class MoveVisitor(Visitor):
         node = adapters.InferenceAssign(state)
         lvals = []
         for name in node.get_names():
-            lvals.append(LvalIdentity(MoveVisitor.add_new_move_epoch(state, name)))
+            lvals.append(LvalIdentity(MoveVisitor.add_new_move_epoch(state, name, node.get_is_let())))
         rvals = fn.apply(state.but_with_second_child())
         for lval, rval in zip(lvals, rvals):
             MoveVisitor.update_move_epoch(lval, rval)
 
-    @Visitor.for_asls(*adapters.Decl.asl_types)
+    @Visitor.for_asls(*adapters.Typing.asl_types)
     def _decls(fn, state: State):
-        node = adapters.Decl(state)
+        node = adapters.Typing(state)
         for name in node.get_names():
-            MoveVisitor.add_new_move_epoch(state, name)
+            MoveVisitor.add_new_move_epoch(state, name, node.get_is_let())
 
     @Visitor.for_asls(*no_assign_binary_ops, *boolean_return_ops)
     def _binop(fn, state: State):

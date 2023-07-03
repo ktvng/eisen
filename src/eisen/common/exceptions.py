@@ -109,4 +109,4 @@ class Exceptions():
 
     class ReferenceInvalidation(AbstractException):
         type = "ReferenceInvalidation"
-        description = "referece is invalidated after memory unsafe operation"
+        description = "reference is invalidated after memory unsafe operation"

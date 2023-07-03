@@ -16,6 +16,12 @@ class _SharedMixins():
             case True: return [self.first_child().value]
             case False: return [child.value for child in self.first_child()]
 
+    def get_is_let(self) -> bool:
+        match self.get_node_type():
+            case "let": return True
+            case "ilet": return True
+            case _: return False
+
 class TypeLike(AbstractNodeInterface):
     asl_types = ["type", "mut_type", "nilable_type", "new_type", "move_type"]
     examples = """

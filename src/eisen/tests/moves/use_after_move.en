@@ -1,0 +1,33 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn taker(o: move obj) {
+    return
+}
+
+fn say(o: obj) {
+    print("%i", o.x)
+}
+
+fn main() {
+    let o = obj(0)
+    var v = o
+    taker(o)
+    v = o
+}
+
+/// [Test]
+/// name = "moves/use_after_move"
+/// info = "Cannot use an object after it has moved away"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 21"

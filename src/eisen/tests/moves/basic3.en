@@ -1,0 +1,42 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn taker(o: move obj) {
+    return
+}
+
+fn say(o: obj) {
+    print("%i", o.x)
+}
+
+fn main() {
+    let o = obj(0)
+    var v = o
+    var v2 = v
+    taker(o)
+    say(v2)
+    let k = v2
+    v2.x + 1
+}
+
+/// [Test]
+/// name = "moves/basic3"
+/// info = "Single layer of indirection preserves dependency issues."
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 22"
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 23"
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 24"

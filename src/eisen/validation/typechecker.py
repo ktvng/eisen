@@ -166,6 +166,8 @@ class TypeChecker(Visitor):
 
         # this will actually change the asl inplace, converting (raw_call ...)
         # into (call (ref ...) (params ...))
+        if guessed_params_type == state.get_abort_signal():
+            return state.get_abort_signal()
         params_type = CallUnwrapper.process(
             state=state,
             guessed_params_type=guessed_params_type,

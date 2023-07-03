@@ -372,3 +372,25 @@ class Validate:
                     ex=Exceptions.ReferenceInvalidation,
                     msg=f"cannot use {move_epoch.name} after invalidation")
         return ValidationResult.success()
+
+    @staticmethod
+    def is_not_moved_away(state: State, move_epoch: MoveEpoch) -> ValidationResult:
+        if move_epoch.moved_away:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.ReferenceInvalidation,
+                msg=f"cannot use {move_epoch.name} as it has moved away")
+
+        for dependency in move_epoch.dependencies:
+            dep_epoch: MoveEpoch = state.get_context().get_move_epoch(dependency.uid)
+            if dep_epoch.moved_away:
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.ReferenceInvalidation,
+                    msg=f"cannot use {dep_epoch.name} after it has been moved away")
+        return ValidationResult.success()
+
+    @staticmethod
+    def healthy_dependencies(state: State, move_epoch: MoveEpoch) -> ValidationResult:
+        if (Validate.same_generation(state, move_epoch).failed()
+                or Validate.is_not_moved_away(state, move_epoch).failed):
+            return ValidationResult.failure()
+        return ValidationResult.success()

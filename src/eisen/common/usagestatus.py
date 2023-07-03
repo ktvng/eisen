@@ -6,7 +6,8 @@ from alpaca.concepts import InstanceState, Type, AbstractException
 from eisen.common.initialization import Initializations
 
 from eisen.common.restriction import (GeneralRestriction, NoRestriction, ImmutableRestriction, MutableRestriction, NilableRestriction,
-                                      NewLetRestriction, LetRestriction, LiteralRestriction, PrimitiveRestriction)
+                                      NewLetRestriction, LetRestriction, LiteralRestriction, PrimitiveRestriction,
+                                      MoveRestriction)
 from eisen.common.exceptions import Exceptions
 
 
@@ -63,6 +64,9 @@ class UsageStatus(InstanceState):
         return False
 
     def is_immutable(self) -> bool:
+        return False
+
+    def is_move(self) -> bool:
         return False
 
     def is_let(self) -> bool:
@@ -197,6 +201,18 @@ class LiteralStatus(UsageStatus):
     def is_literal(self) -> bool:
         return True
 
+class MoveStatus(UsageStatus):
+    def is_move(self) -> bool:
+        return True
+
+    def assignable_to(self, other: UsageStatus):
+        if other.is_let():
+            return AssignmentResult.success()
+        return AssignmentResult(
+            ex_type=Exceptions.Move,
+            msg=f"{other.name} must be declared as let")
+
+
 class PrimitiveStatus(UsageStatus):
     def is_primitive(self) -> bool:
         return True
@@ -217,7 +233,8 @@ class UsageStatusFactory():
         hash(LetRestriction()): LetStatus,
         hash(NewLetRestriction()): NewLetStatus,
         hash(LiteralRestriction()): LiteralStatus,
-        hash(PrimitiveRestriction()): PrimitiveStatus
+        hash(PrimitiveRestriction()): PrimitiveStatus,
+        hash(MoveRestriction()): MoveStatus
     }
 
     @staticmethod

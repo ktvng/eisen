@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from alpaca.concepts._type import Type
+    import uuid
 
 from alpaca.concepts._nested_container import NestedContainer
 
 class Context(NestedContainer):
     container_names = ["type", "instance", "instance_state", "nilstatus", "function_instance", "reference_type",
-    "depth", "spread", "local_ref", "fn_aliases"]
+    "depth", "spread", "local_ref", "fn_aliases", "move_epoch", "entity_uuids"]
 
     def _add_child(self, child: NestedContainer):
         return
@@ -54,3 +55,15 @@ class Context(NestedContainer):
 
     def add_fn_alias(self, name: str, value):
         self.add_obj("fn_aliases", name, value)
+
+    def get_move_epoch(self, uid: uuid.UUID):
+        return self.get_obj("move_epoch", uid)
+
+    def add_move_epoch(self, uid: uuid.UUID, value: Any):
+        self.add_obj("move_epoch", uid, value)
+
+    def add_entity_uuid(self, name: str, value: uuid.UUID):
+        self.add_obj("entity_uuids", name, value)
+
+    def get_entity_uuid(self, name: str) -> uuid.UUID:
+        return self.get_obj("entity_uuids", name)

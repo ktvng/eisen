@@ -72,6 +72,7 @@ SYMBOLICS
     keyword embed       ->  embed
     keyword new         ->  new
     keyword mut         ->  mut
+    keyword move        ->  move
 
     symbol @            ->  @
     symbol ,            ->  ,[ \t\n]*
@@ -169,6 +170,10 @@ STRUCTURE
         |   TAG
         @action filter_build mut_type
         |   mut TAG
+        @action filter_build mut*_type
+        |   mut * TAG
+        @action filter_build move_type
+        |   move TAG
         @action filter_build nilable_type
         |   TAG ?
         @action pass

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from alpaca.concepts import Type, AbstractException
 from eisen.common.eiseninstance import EisenInstance
@@ -9,6 +10,9 @@ from eisen.common.usagestatus import UsageStatus
 from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
+
+if TYPE_CHECKING:
+    from eisen.moves.movevisitor import Dependency, MoveEpoch
 
 @dataclass
 class ValidationResult:
@@ -358,4 +362,13 @@ class Validate:
                 msg=Validate._generate_nil_exception_msg(right),
                 line_number=state.get_line_number()))
 
+        return ValidationResult.success()
+
+    @staticmethod
+    def same_generation(state: State, move_epoch: MoveEpoch) -> ValidationResult:
+        for dependency in move_epoch.dependencies:
+            if dependency.generation != state.get_context().get_move_epoch(dependency.uid).generation:
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.ReferenceInvalidation,
+                    msg=f"cannot use {move_epoch.name} after invalidation")
         return ValidationResult.success()

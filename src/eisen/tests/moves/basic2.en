@@ -1,0 +1,45 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var x: obj
+
+    create(x: obj) -> self: new ptr {
+        self.x = x
+    }
+}
+
+fn taker(o: move ptr) {
+    return
+}
+
+fn say(o: obj) {
+    print("%i", o.x)
+}
+
+fn main() {
+    let o = obj(0)
+    let p = ptr(o)
+    var v = p
+    taker(p)
+    say(v.x)
+    let k = v
+}
+
+/// [Test]
+/// name = "moves/basic2"
+/// info = "Reference invalidation occurs for methods and assignment"
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 30"
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 31"

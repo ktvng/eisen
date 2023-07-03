@@ -23,7 +23,7 @@ class Spread():
         self.changed = False
 
     def __str__(self) -> str:
-        return str(self.values)
+        return f"(depth: {self.depth}, vals: {str(self.values)})"
 
     def add(self, other: Spread):
         if self.difference(other): self.changed = True

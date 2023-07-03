@@ -1,0 +1,29 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn taker(o: move obj) {
+    o.x = 4
+}
+
+fn main() {
+    let o = obj(0)
+    var x = o
+    taker(o)
+    x.x + 1
+}
+
+/// [Test]
+/// name = "moves/basic"
+/// info = "detects basic unsafe move"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 17"

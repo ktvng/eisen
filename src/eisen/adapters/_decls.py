@@ -6,7 +6,7 @@ from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common import implemented_primitive_types
 from eisen.common.restriction import (GeneralRestriction, LetRestriction,
                                       MutableRestriction, NilableRestriction, ImmutableRestriction,
-                                      NewLetRestriction, PrimitiveRestriction)
+                                      NewLetRestriction, PrimitiveRestriction, MoveRestriction)
 class _SharedMixins():
     def is_single_assignment(self) -> bool:
         return AbstractNodeInterface.first_child_is_token(self)
@@ -17,7 +17,7 @@ class _SharedMixins():
             case False: return [child.value for child in self.first_child()]
 
 class TypeLike(AbstractNodeInterface):
-    asl_types = ["type", "mut_type", "nilable_type", "new_type"]
+    asl_types = ["type", "mut_type", "nilable_type", "new_type", "move_type"]
     examples = """
     (type name)
     (var_type name)
@@ -35,6 +35,7 @@ class TypeLike(AbstractNodeInterface):
             case "type": return ImmutableRestriction()
             case "nilable_type": return NilableRestriction()
             case "new_type": return NewLetRestriction()
+            case "move_type": return MoveRestriction()
             case _: raise Exception(f"get_restriction not implemented for {self.state.get_asl()}")
 
     def get_is_nilable(self) -> bool:

@@ -34,7 +34,7 @@ class PossibleParamNamesVisitor(Visitor):
         return [[adapters.Ref(state).get_name()]]
 
     # TODO: is this correct?
-    @Visitor.for_asls("fn")
+    @Visitor.for_asls("fn", ".")
     def fn_(fn, state: State):
         return [[]]
 

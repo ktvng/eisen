@@ -27,6 +27,9 @@ class GeneralRestriction(AbstractRestriction):
     def is_primitive(self) -> bool:
         return False
 
+    def is_move(self) -> bool:
+        return False
+
     def get_name(self) -> str:
         return ""
 
@@ -78,4 +81,8 @@ class LiteralRestriction(GeneralRestriction):
 
 class PrimitiveRestriction(GeneralRestriction):
     def is_primitive(self) -> bool:
+        return True
+
+class MoveRestriction(GeneralRestriction):
+    def is_move(self) -> bool:
         return True

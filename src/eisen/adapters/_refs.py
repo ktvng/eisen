@@ -187,6 +187,13 @@ class Scope(AbstractNodeInterface):
         return self.first_child()
 
     def get_object_name(self) -> str:
+        """
+        Get the name of the parent object. For example, 'object.attribute' would
+        return 'object'
+
+        :return: Name of the parent object.
+        :rtype: str
+        """
         primary_asl = self.first_child()
         while primary_asl.type != "ref":
             primary_asl = primary_asl.first()

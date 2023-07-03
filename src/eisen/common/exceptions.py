@@ -102,3 +102,11 @@ class Exceptions():
     class ImmutableVal(AbstractException):
         type = "ImmutableVal"
         description = "cannot modify a value or any of its state"
+
+    class Move(AbstractException):
+        type = "Move"
+        description = "can only move a let type"
+
+    class ReferenceInvalidation(AbstractException):
+        type = "ReferenceInvalidation"
+        description = "referece is invalidated after memory unsafe operation"

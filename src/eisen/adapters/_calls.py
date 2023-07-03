@@ -65,6 +65,9 @@ class Call(AbstractNodeInterface, _SharedMixins):
     def get_asl_defining_the_function(self) -> CLRList:
         return self.state.but_with_first_child().get_instances()[0].asl
 
+    def get_function_instance(self) -> CLRList:
+        return self.state.but_with(asl=self.get_asl_defining_the_function()).get_instances()[0]
+
 class RawCall(AbstractNodeInterface):
     asl_type = "raw_call"
     examples = """

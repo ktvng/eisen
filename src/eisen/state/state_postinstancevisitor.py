@@ -10,8 +10,9 @@ class State_PostInstanceVisitor(State_PostTypeCheck):
     After the InstanceVisitor is run, certain nodes will have data about what EisenInstance is
     returned after executing the ASL at that state. This information is now available here.
     """
-    @classmethod
-    def create_from_basestate(cls, state: BaseState):
+
+    @staticmethod
+    def create_from_basestate(state: BaseState):
         return State_PostInstanceVisitor(**state._get())
 
     def get_instances(self) -> list[EisenInstance]:

@@ -385,7 +385,7 @@ class Validate:
             if dep_epoch.moved_away:
                 return failure_with_exception_added_to(state,
                     ex=Exceptions.ReferenceInvalidation,
-                    msg=f"cannot use {dep_epoch.name} after it has been moved away")
+                    msg=f"'{move_epoch.name}' may depend on '{dep_epoch.name}', but '{dep_epoch.name}' has moved away")
         return ValidationResult.success()
 
     @staticmethod

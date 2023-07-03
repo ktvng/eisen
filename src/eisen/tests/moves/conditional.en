@@ -1,0 +1,37 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn taker(o: move obj) {
+    return
+}
+
+fn main() {
+    let ok = obj(1)
+    let o = obj(0)
+    var v: obj
+
+    if(ok.x > 3) {
+        v = o
+    } else {
+        v = ok
+    }
+
+    taker(o)
+    v.x
+}
+
+/// [Test]
+/// name = "moves/conditional"
+/// info = "Moved conditional dependencies are not allowed"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ReferenceInvalidationException"
+/// contains = ">> 25"

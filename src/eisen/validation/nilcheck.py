@@ -83,7 +83,7 @@ class NilCheck(Visitor):
         # nothing to do
         return
 
-    @Visitor.for_asls("start", "seq", "mod", "params", "prod_type", "is", *adapters.ArgsRets.asl_types)
+    @Visitor.for_asls("start", "seq", "mod", "prod_type", "is", *adapters.ArgsRets.asl_types)
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
@@ -180,7 +180,7 @@ class NilCheck(Visitor):
         arg_types = adapters.Call(state).get_function_argument_type().unpack_into_parts()
 
         for param_state, _type in zip(params_states, arg_types):
-            if not _type.restriction.is_nullable():
+            if not _type.restriction.is_nilable():
                 Validate.cannot_be_nil(state, param_state)
 
         return [NilableStatus.for_type(type)

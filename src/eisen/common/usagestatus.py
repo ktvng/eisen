@@ -132,10 +132,6 @@ class MutableStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
                 msg=f"'{self.name}' is declared as 'var', but is being assigned to a literal")
-        if other.is_nilable():
-            return AssignmentResult(
-                ex_type=Exceptions.NilableMismatch,
-                msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_immutable():
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
@@ -184,10 +180,6 @@ class ImmutableStatus(UsageStatus):
             return AssignmentResult(
                 ex_type=Exceptions.ImmutableVal,
                 msg=f"'{self.name}' is declared as 'var', but is being assigned to a literal")
-        if other.is_nilable():
-            return AssignmentResult(
-                ex_type=Exceptions.ImmutableVal,
-                msg=f"'{self.name}' is not nilable, but is being assigned to a nilable value {other.name}")
         if other.is_mutable():
             print(self)
             print(other)

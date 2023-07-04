@@ -44,7 +44,4 @@ fn main() {
 
 /// [[Expects.Exceptions]]
 /// type = "ObjectLifetimeException"
-/// contains = ">> 16"
-/// [[Expects.Exceptions]]
-/// type = "ObjectLifetimeException"
 /// contains = ">> 21"

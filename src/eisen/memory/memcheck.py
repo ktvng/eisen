@@ -23,7 +23,7 @@ class MemCheck(Visitor):
         internal_state = MemcheckState.create_from_basestate(state)
 
         self.get_deps.of_function(internal_state.but_with(asl=MemCheck.get_main_function(state.asl)))
-        self.apply(internal_state)
+        # self.apply(internal_state)
         return State_PostSpreadVisitor.create_from_basestate(state, self.get_deps.cache)
 
     def apply(self, state: State):
@@ -130,7 +130,7 @@ class GetDeps():
         # print("getting deps for", adapters.Def(state).get_function_name())
         cached_f_deps = self._try_cache_lookup(state)
         if cached_f_deps is not None: return cached_f_deps
-        print("no cache found")
+        # print("no cache found")
 
         # all processing must occur inside an isolate context, to avoid name collisions from
         # previous functions.

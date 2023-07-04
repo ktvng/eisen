@@ -1,5 +1,8 @@
 from __future__ import annotations
+
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
 from alpaca.utils import Visitor
 from alpaca.clr import CLRList
 from alpaca.concepts import Type
@@ -10,6 +13,8 @@ from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.memcheckstate import MemcheckState as State
 from eisen.memory.functionalias import FunctionAliasAdder, FunctionAliasResolver
 from eisen.memory.possibleparamnames import PossibleParamNamesVisitor
+
+from eisen.common.eiseninstance import EisenInstance
 
 if TYPE_CHECKING:
     from eisen.memory.memcheck import GetDeps

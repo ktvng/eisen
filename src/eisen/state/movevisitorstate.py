@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from alpaca.clr import CLRList
 from alpaca.concepts import Type, Context, Module
+from alpaca.concepts import AbstractException
 
 from eisen.state.state_postspreadvisitor import State_PostSpreadVisitor
 from eisen.moves.moveepoch import MoveEpoch, Lifetime, Dependency, LvalIdentity
@@ -11,13 +12,15 @@ class MoveVisitorState(State_PostSpreadVisitor):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
+    # note: updated_epoch_uids are outside the context but updated inside it
     def but_with(self,
             asl: CLRList = None,
             context: Context = None,
             mod: Module = None,
             updated_epoch_uids: set[uuid.UUID] = None,
             nest_depth: int = None,
-            place: str = None
+            place: str = None,
+            exceptions: list[AbstractException] = None
             ) -> MoveVisitorState:
 
         return self._but_with(
@@ -26,7 +29,8 @@ class MoveVisitorState(State_PostSpreadVisitor):
             mod=mod,
             updated_epoch_uids=updated_epoch_uids,
             nest_depth=nest_depth,
-            place=place)
+            place=place,
+            exceptions=exceptions)
 
     @staticmethod
     def create_from_basestate(state: State_PostSpreadVisitor) -> MoveVisitorState:

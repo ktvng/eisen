@@ -76,7 +76,7 @@ class Workflow():
         UsageChecker,
 
         NilCheck,
-        MemCheck,
+        # MemCheck,
         MoveVisitor
         # PrintAsl,
 

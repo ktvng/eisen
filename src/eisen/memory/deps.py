@@ -92,5 +92,5 @@ class FunctionDepsDatabase:
         return self._map.get(FunctionDepsDatabase.get_function_uid_str(function_instance), None)
 
     def add_deps_for(self, function_instance: EisenInstance, F_deps: Deps):
-        print("added", function_instance)
+        # print("added", function_instance)
         self._map[FunctionDepsDatabase.get_function_uid_str(function_instance)] = F_deps

@@ -13,6 +13,9 @@ class MoveEpoch:
     is_let: bool = False
     moved_away: bool = False
 
+    def __str__(self) -> str:
+        return f"{self.name}: {self.uid}   ... {[str(d.uid) for d in self.dependencies]}"
+
     @staticmethod
     def create_anonymous():
         return MoveEpoch(dependencies=set(), lifetime=Lifetime.primitive(), uid=uuid.UUID(int=0))

@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 State = MemcheckState
 
 class PossibleParamNamesVisitor(Visitor):
+    """
+    For a function f(a: mut A, b: mut B, c: mut C),
+    """
     def __init__(self, get_deps: GetDeps, debug: bool = False):
         self.get_deps = get_deps
         super().__init__(debug)

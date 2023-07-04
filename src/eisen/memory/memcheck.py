@@ -1,6 +1,8 @@
 from __future__ import annotations
 from alpaca.clr import CLRList
 
+from alpaca.utils import Visitor
+
 import eisen.adapters as adapters
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.state_postspreadvisitor import State_PostSpreadVisitor
@@ -11,17 +13,48 @@ from eisen.memory.deps import FunctionDepsDatabase, Deps
 
 State = MemcheckState
 
-class MemCheck():
-    def __init__(self) -> None:
+class MemCheck(Visitor):
+    def __init__(self, debug: bool = False):
+        super().__init__(debug=debug)
         self.get_deps = None
 
     def run(self, state: State_PostInstanceVisitor) -> State_PostSpreadVisitor:
         self.get_deps = GetDeps(state)
-        self.apply(MemcheckState.create_from_basestate(state))
+        internal_state = MemcheckState.create_from_basestate(state)
+
+        self.get_deps.of_function(internal_state.but_with(asl=MemCheck.get_main_function(state.asl)))
+        self.apply(internal_state)
         return State_PostSpreadVisitor.create_from_basestate(state, self.get_deps.cache)
 
     def apply(self, state: State):
-        self.get_deps.of_function(state.but_with(asl=MemCheck.get_main_function(state.asl)))
+        self._route(state.get_asl(), state)
+
+    @Visitor.for_asls("start")
+    def _start(fn, state: State):
+        state.apply_fn_to_all_children(fn)
+
+    @Visitor.for_asls("mod")
+    def _mod(fn, state: State):
+        adapters.Mod(state).enter_module_and_apply(fn)
+
+    @Visitor.for_asls("def", "create", "is_fn")
+    def _def(fn, state: State):
+        fn.get_deps.of_function(state)
+
+    @Visitor.for_asls("struct")
+    def _create(fn, state: State):
+        node = adapters.Struct(state)
+        if node.has_create_asl():
+            fn.apply(state.but_with(asl=node.get_create_asl()))
+
+    @Visitor.for_asls("variant")
+    def _variant(fn, state: State):
+        node = adapters.Variant(state)
+        fn.apply(state.but_with(asl=node.get_is_asl()))
+
+    @Visitor.for_asls("interface")
+    def _nothing(fn, state: State):
+        return
 
     @classmethod
     def get_main_function(cls, full_asl: CLRList) -> CLRList:
@@ -94,8 +127,10 @@ class GetDeps():
         the pointer to F, and this function will return F_deps. Cache lookups will be performed if
         F takes no free function parameters; else novel computation is required.
         """
+        # print("getting deps for", adapters.Def(state).get_function_name())
         cached_f_deps = self._try_cache_lookup(state)
         if cached_f_deps is not None: return cached_f_deps
+        print("no cache found")
 
         # all processing must occur inside an isolate context, to avoid name collisions from
         # previous functions.

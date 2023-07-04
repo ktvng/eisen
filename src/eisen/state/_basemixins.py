@@ -299,7 +299,7 @@ class BaseMixins():
         :return: A new Context instance.
         :rtype: Context
         """
-        return Context(name="isolated", parent=None)
+        return Context(name="isolated", parent=self.get_enclosing_module())
 
 
     def is_asl(self) -> bool:

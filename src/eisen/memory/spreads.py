@@ -94,6 +94,8 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls(*boolean_return_ops, *no_assign_binary_ops, '!')
     def binop_(fn, state: State):
+        for child in state.get_all_children():
+            fn.apply(state.but_with(asl=child))
         return [Spread(values={state.depth}, depth=state.depth)]
 
     @Visitor.for_asls(*adapters.Decl.asl_types)
@@ -115,18 +117,18 @@ class SpreadVisitor(Visitor):
             new_spreads.append(new_spread)
 
         # TODO: fix this!
-        # right_spreads = fn.apply(state.but_with_second_child())
-        # for name, type, l, r in zip(node.get_names(), node.get_assigned_types(), new_spreads, right_spreads):
-        #     # print(">", state.asl, name, l, r)
-        #     if type.restriction.is_primitive():
-        #         continue
-        #     was_tainted = l.is_tainted()
-        #     l.add(r)
-        #     if not was_tainted and l.is_tainted():
-        #         state.report_exception(
-        #             Exceptions.ObjectLifetime(
-        #                 msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
-        #                 line_number=state.get_line_number()))
+        right_spreads = fn.apply(state.but_with_second_child())
+        for name, type, l, r in zip(node.get_names(), node.get_assigned_types(), new_spreads, right_spreads):
+            # print(">", state.asl, name, l, r)
+            if type.restriction.is_primitive():
+                continue
+            was_tainted = l.is_tainted()
+            l.add(r)
+            # if not was_tainted and l.is_tainted():
+            #     state.report_exception(
+            #         Exceptions.ObjectLifetime(
+            #             msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
+            #             line_number=state.get_line_number()))
         return []
 
     @Visitor.for_asls("imut", "inil?", "ival")
@@ -148,7 +150,8 @@ class SpreadVisitor(Visitor):
     def ref_(fn, state: State):
         return [SpreadVisitor.get_spread(state, adapters.Ref(state).get_name())]
 
-    @Visitor.for_asls("fn", "return")
+    # TODO: fix new_vec
+    @Visitor.for_asls("fn", "return", "new_vec")
     def fn_(fn, state: State):
         return []
 
@@ -170,11 +173,11 @@ class SpreadVisitor(Visitor):
                 continue
             was_tainted = l.is_tainted()
             l.add(r)
-            if not was_tainted and l.is_tainted():
-                state.report_exception(
-                    Exceptions.ObjectLifetime(
-                        msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
-                        line_number=state.get_line_number()))
+            # if not was_tainted and l.is_tainted():
+            #     state.report_exception(
+            #         Exceptions.ObjectLifetime(
+            #             msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
+            #             line_number=state.get_line_number()))
 
             left_spreads.append(l)
         return left_spreads
@@ -261,6 +264,7 @@ class SpreadVisitor(Visitor):
 
     @Visitor.for_asls("curry_call")
     def curry_call_(fn, state: State):
+        # fn.apply(state.but_with_second_child())
         return []
 
     @Visitor.for_asls("call", "is_call")
@@ -271,6 +275,7 @@ class SpreadVisitor(Visitor):
             return []
 
         param_spreads = SpreadVisitor._get_spreads_of_function_parameters(fn, node)
+        print(node.get_function_name(), SpreadVisitor._get_inherited_fns(node))
         f_deps = fn.get_deps.of_function(state.but_with(
             asl=SpreadVisitor._get_def_asl(node),
             inherited_fns=SpreadVisitor._get_inherited_fns(node)))
@@ -290,16 +295,10 @@ class SpreadVisitor(Visitor):
                 l = SpreadVisitor.get_spread(state, name)
                 was_tainted = l.is_tainted()
                 l.add(Spread.merge_all(spreads_for_one_argument))
-                if not was_tainted and l.is_tainted() and not type.restriction.is_primitive():
-                    state.report_exception(
-                        Exceptions.ObjectLifetime(
-                            msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
-                            line_number=state.get_line_number()))
+                # if not was_tainted and l.is_tainted() and not type.restriction.is_primitive():
+                #     state.report_exception(
+                #         Exceptions.ObjectLifetime(
+                #             msg=f"Trying to assign a value to '{name}' with shorter lifetime than '{name}'",
+                #             line_number=state.get_line_number()))
         return [Spread.merge_all(spreads_for_one_return_value)
             for spreads_for_one_return_value in all_return_value_spreads]
-
-    @Visitor.for_default
-    def default_(fn, state: State):
-        print(f"SpreadVisitor Unhandled state {state.asl}")
-        exit()
-        return []

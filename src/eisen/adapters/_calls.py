@@ -68,6 +68,9 @@ class Call(AbstractNodeInterface, _SharedMixins):
     def get_function_instance(self) -> CLRList:
         return self.state.but_with(asl=self.get_asl_defining_the_function()).get_instances()[0]
 
+    def is_pure_function_call(self) -> bool:
+        return self.first_child().type == "fn"
+
 class RawCall(AbstractNodeInterface):
     asl_type = "raw_call"
     examples = """

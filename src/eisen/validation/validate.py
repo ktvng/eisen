@@ -9,10 +9,11 @@ from eisen.common.exceptions import Exceptions
 from eisen.common.usagestatus import UsageStatus
 from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
+from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
 
 if TYPE_CHECKING:
-    from eisen.moves.movevisitor import Dependency, MoveEpoch
+    from eisen.moves.moveepoch import Dependency, MoveEpoch
 
 @dataclass
 class ValidationResult:
@@ -392,5 +393,24 @@ class Validate:
     def healthy_dependencies(state: State, move_epoch: MoveEpoch) -> ValidationResult:
         if (Validate.same_generation(state, move_epoch).failed()
                 or Validate.is_not_moved_away(state, move_epoch).failed):
+            return ValidationResult.failure()
+        return ValidationResult.success()
+
+    @staticmethod
+    def epoch_dependencies_are_ok(state: MoveVisitorState, move_epoch: MoveEpoch) -> ValidationResult:
+        failed = False
+        for dependency in move_epoch.dependencies:
+            dep_epoch = state.get_move_epoch_by_uid(dependency.uid)
+            if move_epoch.lifetime.longer_than(dep_epoch.lifetime):
+                failed = True
+                add_exception_to(state,
+                    ex=Exceptions.ObjectLifetime,
+                    msg=f"cannot assign '{move_epoch.name}' state to '{dep_epoch.name}' which has shorter lifetime")
+            if (move_epoch.lifetime.is_ret() or move_epoch.lifetime.is_arg()) and dep_epoch.lifetime.is_local():
+                failed = True
+                add_exception_to(state,
+                    ex=Exceptions.ObjectLifetime,
+                    msg=f"'{move_epoch.name}' may depend on '{dep_epoch.name}' which is local to the function")
+        if failed:
             return ValidationResult.failure()
         return ValidationResult.success()

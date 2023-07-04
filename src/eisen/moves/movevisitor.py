@@ -8,134 +8,9 @@ from alpaca.concepts import Type, Context, Module
 
 import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
-from eisen.state.state_postspreadvisitor import State_PostSpreadVisitor
+from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.validate import Validate
-
-class MoveVisitorState(State_PostSpreadVisitor):
-    def __init__(self, **kwargs):
-        self._init(**kwargs)
-
-    def but_with(self,
-            asl: CLRList = None,
-            context: Context = None,
-            mod: Module = None,
-            updated_epoch_uids: set[uuid.UUID] = None,
-            ) -> MoveVisitorState:
-
-        return self._but_with(
-            asl=asl,
-            context=context,
-            mod=mod,
-            updated_epoch_uids=updated_epoch_uids)
-
-    @staticmethod
-    def create_from_basestate(state: State_PostSpreadVisitor) -> MoveVisitorState:
-        """
-        Create a new instance of NilCheckState from any descendant of BaseState
-
-        :param state: The BaseState instance
-        :type state: BaseState
-        :return: A instance of NilCheckState
-        :rtype: NilCheckState
-        """
-        return MoveVisitorState(**state._get(), updated_epoch_uids=set())
-
-    def get_move_epoch_by_uid(self, uid: uuid.UUID) -> MoveEpoch:
-        if uid == uuid.UUID(int=0):
-            return MoveEpoch.create_anonymous()
-        return self.get_context().get_move_epoch(uid)
-
-    def get_move_epoch_by_name(self, name: str) -> MoveEpoch:
-        uid = self.get_entity_uid(name)
-        return self.get_move_epoch_by_uid(uid)
-
-    def add_move_epoch(self, epoch: MoveEpoch)-> MoveEpoch:
-        self.get_context().add_move_epoch(epoch.uid, epoch)
-
-    def add_entity_uid(self, name: str, uid: uuid.UUID):
-        self.get_context().add_entity_uuid(name, uid)
-
-    def get_entity_uid(self, name: str) -> uuid.UUID:
-        return self.get_context().get_entity_uuid(name)
-
-    def add_new_move_epoch(self, name: str, is_let: bool = False) -> MoveEpoch:
-        uid = uuid.uuid4()
-        new_epoch = MoveEpoch(
-            dependencies=[],
-            generation=0,
-            name=name,
-            uid=uid,
-            is_let=is_let)
-        self.add_move_epoch(new_epoch)
-        self.add_entity_uid(name, uid)
-        return new_epoch
-
-    def update_move_epoch(self, lval: LvalIdentity, rval: MoveEpoch):
-        new_epoch = MoveEpoch(
-            dependencies=lval.move_epoch.dependencies.copy(),
-            generation=lval.move_epoch.generation,
-            name=lval.move_epoch.name,
-            uid=lval.move_epoch.uid,
-            is_let=lval.move_epoch.is_let)
-
-        match (lval.attribute_is_modified, rval.is_let):
-            case True, True:
-                new_epoch.dependencies.append(
-                    Dependency(uid=rval.uid, generation=rval.generation))
-            case True, False:
-                new_epoch.dependencies.extend(rval.dependencies)
-            case False, True:
-                new_epoch.dependencies = [Dependency(uid=rval.uid, generation=rval.generation)]
-            case False, False:
-                new_epoch.dependencies = rval.dependencies.copy()
-
-        self.add_move_epoch(new_epoch)
-        self.updated_epoch_uids.add(lval.move_epoch.uid)
-
-    def get_updated_epoch_uids(self) -> set[uuid.UUID]:
-        return self.updated_epoch_uids
-
-@dataclass
-class MoveEpoch:
-    dependencies: list[Dependency]
-    generation: int = 0
-    name: str = None
-    uid: uuid.UUID = uuid.UUID(int=0)
-    is_let: bool = False
-    moved_away: bool = False
-
-    @staticmethod
-    def create_anonymous():
-        return MoveEpoch(dependencies=[], uid=uuid.UUID(int=0))
-
-    def increment_generation(self):
-        self.generation += 1
-
-    def mark_as_gone(self):
-        self.moved_away = True
-
-    def merge_dependencies(self, other: list[MoveEpoch]) -> MoveEpoch:
-        new_epoch = MoveEpoch(
-            dependencies=self.dependencies,
-            generation=self.generation,
-            name=self.name,
-            uid=self.uid,
-            is_let=self.is_let,
-            moved_away=self.moved_away)
-        for o in other:
-            new_epoch.dependencies += o.dependencies
-        return new_epoch
-
-@dataclass
-class Dependency:
-    uid: uuid.UUID
-    generation: int
-
-@dataclass
-class LvalIdentity:
-    move_epoch: MoveEpoch
-    attribute_is_modified: bool = False
-
+from eisen.moves.moveepoch import LvalIdentity, MoveEpoch, Dependency
 
 State = MoveVisitorState
 
@@ -171,6 +46,33 @@ class MoveVisitor(Visitor):
         self.apply(MoveVisitorState.create_from_basestate(state))
         return state
 
+    @staticmethod
+    def update_move_epoch(state: State, lval: LvalIdentity, rval: MoveEpoch):
+        new_epoch = MoveEpoch(
+            dependencies=lval.move_epoch.dependencies.copy(),
+            lifetime=lval.move_epoch.lifetime,
+            generation=lval.move_epoch.generation,
+            name=lval.move_epoch.name,
+            uid=lval.move_epoch.uid,
+            is_let=lval.move_epoch.is_let)
+
+        match (lval.attribute_is_modified, rval.is_let):
+            case True, True:
+                new_epoch.dependencies.add(
+                    Dependency(uid=rval.uid, generation=rval.generation))
+            case True, False:
+                for dep in rval.dependencies: new_epoch.dependencies.add(dep)
+            case False, True:
+                new_epoch.dependencies = set([Dependency(uid=rval.uid, generation=rval.generation)])
+            case False, False:
+                new_epoch.dependencies = rval.dependencies.copy()
+
+        if Validate.epoch_dependencies_are_ok(state, new_epoch).failed():
+            state.restore_to_healthy(new_epoch)
+
+        state.add_move_epoch(new_epoch)
+        if lval.move_epoch.lifetime.depth < state.get_nest_depth():
+            state.updated_epoch_uids.add(lval.move_epoch.uid)
 
     # TODO: cond and if need to be handled properly
     @Visitor.for_asls("start", "seq", "cond", "prod_type")
@@ -197,6 +99,7 @@ class MoveVisitor(Visitor):
 
     @Visitor.for_asls("create", "def")
     def _create(fn, state: State):
+        # print(adapters.CommonFunction(state).get_name())
         fn_context = state.create_block_context()
         fn_context.add_move_epoch(uuid.UUID(int=0), MoveEpoch.create_anonymous())
         for child in state.get_child_asls():
@@ -207,14 +110,17 @@ class MoveVisitor(Visitor):
     @Visitor.for_asls(*adapters.ArgsRets.asl_types)
     def _argsrets(fn, state: State):
         if not state.get_asl().has_no_children():
-            fn.apply(state.but_with_first_child())
+            fn.apply(state.but_with(
+                asl=state.first_child(),
+                place=adapters.ArgsRets(state).get_node_type()))
 
     @Visitor.for_asls("=")
     def _eq(fn, state: State):
         lvals = LvalMoveVisitor().apply(state.but_with_first_child())
         rights = fn.apply(state.but_with_second_child())
         for lval, rval in zip(lvals, rights):
-            state.update_move_epoch(lval, rval)
+            # print(lval.move_epoch.name, rval.name, lval.move_epoch.lifetime.is_ret(), rval.lifetime.is_local(), rval)
+            MoveVisitor.update_move_epoch(state, lval, rval)
 
     @Visitor.for_asls("+=", "*=", "/=", "-=")
     def _math_eq(fn, state: State):
@@ -247,15 +153,24 @@ class MoveVisitor(Visitor):
             fn.apply(state.but_with(asl=node.get_params_asl()))
             return []
 
-        F_deps = state.get_deps_of_function(node.get_function_instance())
-        print(node.get_function_instance(), F_deps)
-        epochs = fn.apply(state.but_with(asl=node.get_params_asl()))
-        for type_, epoch in zip(node.get_function_argument_type().unpack_into_parts(), epochs):
-            if type_.restriction.is_move():
-                epoch.mark_as_gone()
+        if node.is_pure_function_call():
+            # print("name", node.get_function_instance())
+            F_deps = state.get_deps_of_function(node.get_function_instance())
+            param_epochs = fn.apply(state.but_with(asl=node.get_params_asl()))
+            for type_, epoch in zip(node.get_function_argument_type().unpack_into_parts(), param_epochs):
+                if type_.restriction.is_move():
+                    epoch.mark_as_gone()
 
-        n = len(node.get_params_asl()._list)
-        return [MoveEpoch.create_anonymous()] * n
+            updated_param_epochs = []
+            for param_epoch, additional_epochs in zip(param_epochs, F_deps.apply_to_parameters_for_arguments(param_epochs)):
+                updated_param_epochs.append(param_epoch.add_dependencies_on(additional_epochs))
+                if Validate.epoch_dependencies_are_ok(state, updated_param_epochs[-1]).failed():
+                    state.restore_to_healthy(updated_param_epochs[-1])
+
+            return [state.merge_epochs(e) for e in F_deps.apply_to_parameters_for_return_values(updated_param_epochs)]
+        else:
+            param_epochs = fn.apply(state.but_with(asl=node.get_params_asl()))
+            return [MoveEpoch.create_anonymous()] * len(param_epochs)
 
     @Visitor.for_asls("curry_call")
     def _curry_call(fn, state: State):
@@ -263,12 +178,12 @@ class MoveVisitor(Visitor):
         epoch = MoveEpoch.create_anonymous()
         lval = LvalIdentity(move_epoch=epoch)
         # this new epoch should have the same dependencies as function being curried
-        state.update_move_epoch(lval, fn.apply(state.but_with_first_child())[0])
+        MoveVisitor.update_move_epoch(state, lval, fn.apply(state.but_with_first_child())[0])
 
         # this new epoch should also have dependencies on each child parameter.
         lval.attribute_is_modified = True
         for rval in fn.apply(state.but_with_second_child()):
-            state.update_move_epoch(lval, rval)
+            MoveVisitor.update_move_epoch(state, lval, rval)
         return [MoveEpoch.create_anonymous()]
 
     @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
@@ -276,16 +191,22 @@ class MoveVisitor(Visitor):
         node = adapters.InferenceAssign(state)
         lvals = []
         for name in node.get_names():
-            lvals.append(LvalIdentity(state.add_new_move_epoch(name, node.get_is_let())))
+            lvals.append(LvalIdentity(state.add_new_move_epoch(
+                name=name,
+                depth=state.get_nest_depth(),
+                is_let=node.get_is_let())))
         rvals = fn.apply(state.but_with_second_child())
         for lval, rval in zip(lvals, rvals):
-            state.update_move_epoch(lval, rval)
+            MoveVisitor.update_move_epoch(state, lval, rval)
 
     @Visitor.for_asls(*adapters.Typing.asl_types)
     def _decls(fn, state: State):
         node = adapters.Typing(state)
         for name in node.get_names():
-            state.add_new_move_epoch(name, node.get_is_let())
+            state.add_new_move_epoch(
+                name=name,
+                depth=state.get_nest_depth(),
+                is_let=node.get_is_let())
 
     @Visitor.for_asls(*no_assign_binary_ops, *boolean_return_ops)
     def _binop(fn, state: State):
@@ -307,7 +228,10 @@ class MoveVisitor(Visitor):
 
     @Visitor.for_asls("while")
     def _while(fn, state: State):
-        adapters.While(state).enter_context_and_apply(fn)
+        fn.apply(state.but_with(
+            asl=state.first_child(),
+            context=state.create_block_context(),
+            nest_depth=state.get_nest_depth() + 1))
 
     @Visitor.for_asls("if")
     def _if(fn, state: State) -> Type:
@@ -319,7 +243,8 @@ class MoveVisitor(Visitor):
             fn.apply(state.but_with(
                 asl=child,
                 context=context,
-                updated_epoch_uids=updated_epoch_uids))
+                updated_epoch_uids=updated_epoch_uids,
+                nest_depth=state.get_nest_depth() + 1))
 
         MoveVisitor._update_epochs_after_conditional(state, if_contexts, updated_epoch_uids)
 
@@ -329,8 +254,13 @@ class MoveVisitor(Visitor):
             branch_epochs = [state.but_with(context=branch_context).get_move_epoch_by_uid(uid)
                 for branch_context in if_contexts]
             branch_epochs = [e for e in branch_epochs if e is not None]
-            new_epoch_for_uid = state.get_move_epoch_by_uid(uid).merge_dependencies(branch_epochs)
+            new_epoch_for_uid = state.get_move_epoch_by_uid(uid).merge_dependencies_of(branch_epochs)
+
+            if Validate.epoch_dependencies_are_ok(state, new_epoch_for_uid).failed():
+                state.restore_to_healthy(new_epoch_for_uid)
+
             state.add_move_epoch(new_epoch_for_uid)
+
 
     @Visitor.for_asls("mod")
     def _mod(fn, state: State):

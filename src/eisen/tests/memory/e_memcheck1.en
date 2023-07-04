@@ -67,6 +67,10 @@ struct obj {
 /// """
 /// [Expects]
 /// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 22"
 /// [[Expects.Exceptions]]
 /// type = "ObjectLifetimeException"
 /// contains = ">> 29"

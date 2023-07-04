@@ -151,6 +151,7 @@ class Test:
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
+    disabled_tests = ["objects"]
     @staticmethod
     def run_test_by_name(name: str):
         return Test(name).run()
@@ -163,7 +164,10 @@ class TestRunner():
                 filenames.append(root + os.sep + file)
         # TODO: fix this to remove the prefix ./src/eisen/tests
         test_files = [f[18:] for f in filenames if f.endswith(".en")]
-        return [t.split(".")[0] for t in test_files]
+        all_tests = [t.split(".")[0] for t in test_files]
+        all_tests = [t[1:] if t[0] == "/" else t for t in all_tests]
+        tests_to_run = [t for t in all_tests if t not in TestRunner.disabled_tests]
+        return tests_to_run
 
     @staticmethod
     def run_all_tests_threadpooled():

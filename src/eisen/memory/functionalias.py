@@ -98,6 +98,8 @@ class FunctionAliasResolver:
     @classmethod
     def get_fn_alias(cls, state: State, name: str) -> CurriedFunction:
         if state.get_asl().type == "ref":
+            if state.get_inherited_fns().get(name, None) is not None:
+                return state.get_inherited_fns().get(name, None)
             return state.get_context().get_fn_alias(name)
         elif state.get_asl().type == "fn":
             return CurriedFunction(state.get_instances()[0], [])

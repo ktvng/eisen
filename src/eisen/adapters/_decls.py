@@ -7,6 +7,8 @@ from eisen.common import implemented_primitive_types
 from eisen.common.restriction import (GeneralRestriction, LetRestriction,
                                       MutableRestriction, NilableRestriction, ImmutableRestriction,
                                       NewLetRestriction, PrimitiveRestriction, MoveRestriction)
+from eisen.state.state_posttypecheck import State_PostTypeCheck
+
 class _SharedMixins():
     def is_single_assignment(self) -> bool:
         return AbstractNodeInterface.first_child_is_token(self)
@@ -86,6 +88,11 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
             case "ival": return ImmutableRestriction()
             case "ivar": return MutableRestriction()
             case _: raise Exception(f"get_restriction unhandled for {self.get_node_type()}")
+
+    def get_assigned_types(self) -> list[Type]:
+        if not isinstance(self.state, State_PostTypeCheck):
+            raise Exception("this method can only be called after typechecker is run")
+        return self.state.get_returned_type().unpack_into_parts()
 
 class Typing(AbstractNodeInterface, _SharedMixins):
     asl_types = ["let", "mut", "val", "nil?", ":"]

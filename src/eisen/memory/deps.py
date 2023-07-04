@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Any
 
 from eisen.common.eiseninstance import EisenInstance
 if TYPE_CHECKING:
@@ -50,6 +50,12 @@ class Deps():
             return_names.append(names_possible_for_single_return_value)
         return return_names
 
+    def apply_to_parameters_for_arguments(self, Args: list[Any]) -> list[list[Any]]:
+        return [[arg_i for i, arg_i in enumerate(Args) if i in S_j] for S_j in self.A]
+
+    def apply_to_parameters_for_return_values(self, Args: list[Any]) -> list[list[Any]]:
+        return [[arg_i for i, arg_i in enumerate(Args) if i in S_j] for S_j in self.R]
+
     def __str__(self) -> str:
         s = "Deps("
         for i, a_spread in enumerate(self.A):
@@ -86,4 +92,5 @@ class FunctionDepsDatabase:
         return self._map.get(FunctionDepsDatabase.get_function_uid_str(function_instance), None)
 
     def add_deps_for(self, function_instance: EisenInstance, F_deps: Deps):
+        print("added", function_instance)
         self._map[FunctionDepsDatabase.get_function_uid_str(function_instance)] = F_deps

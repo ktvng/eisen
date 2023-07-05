@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts import Module, Context
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 from eisen.common.eiseninstance import EisenInstance
 from eisen.state.basestate import BaseState
@@ -9,7 +9,7 @@ from eisen.state.basestate import BaseState
 
 class FunctionVisitorState(BaseState):
     """
-    This is state that is used by the FunctionVisitor when parsing an ASL from the head. It extends
+    This is state that is used by the FunctionVisitor when parsing an ast from the head. It extends
     BaseState to include the 'struct_name' attribute which may be recursively passed down during
     compilation.
     """
@@ -17,14 +17,14 @@ class FunctionVisitorState(BaseState):
         self._init(**kwargs)
 
     def but_with(self,
-            asl: CLRList = None,
+            ast: AST = None,
             context: Context = None,
             mod: Module = None,
             struct_name: str = None
             ) -> FunctionVisitorState:
 
         return self._but_with(
-            asl=asl,
+            ast=ast,
             context=context,
             mod=mod,
             struct_name=struct_name,)

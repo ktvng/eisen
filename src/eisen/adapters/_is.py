@@ -7,7 +7,7 @@ from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.validation.lookupmanager import LookupManager
 
 class Is(AbstractNodeInterface):
-    asl_type = "is"
+    ast_type = "is"
     examples = """
     (is (expr ...) TAG)
     """

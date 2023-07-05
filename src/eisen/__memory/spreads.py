@@ -4,21 +4,21 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 from alpaca.concepts import Type
 
 import eisen.adapters as adapters
 from eisen.common.exceptions import Exceptions
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.state.memcheckstate import MemcheckState as State
-from eisen.memory.functionalias import FunctionAliasAdder, FunctionAliasResolver
-from eisen.memory.possibleparamnames import PossibleParamNamesVisitor
+from eisen.__memory.functionalias import FunctionAliasAdder, FunctionAliasResolver
+from eisen.__memory.possibleparamnames import PossibleParamNamesVisitor
 
 from eisen.common.eiseninstance import EisenInstance
 
 if TYPE_CHECKING:
-    from eisen.memory.memcheck import GetDeps
-    from eisen.memory.functionalias import CurriedFunction
+    from eisen.__memory.memcheck import GetDeps
+    from eisen.__memory.functionalias import CurriedFunction
 
 class Spread():
     def __init__(self, values: set[int], depth: int, is_return_value=False) -> None:
@@ -73,7 +73,7 @@ class SpreadVisitor(Visitor):
         self.get_deps = get_deps
 
     def apply(self, state: State) -> list[Spread]:
-        return self._route(state.asl, state)
+        return self._route(state.get_ast(), state)
 
     @classmethod
     def get_spread(cls, state: State, name: str) -> Spread:
@@ -90,20 +90,20 @@ class SpreadVisitor(Visitor):
         """Return the spread for a literal. Literals have depth of -1"""
         return [Spread(values=set(), depth=-1)]
 
-    @Visitor.for_asls("seq")
+    @Visitor.for_ast_types("seq")
     def seq_(fn, state: State):
         spreads = []
         for child in state.get_all_children():
-            spreads += fn.apply(state.but_with(asl=child))
+            spreads += fn.apply(state.but_with(ast=child))
         return spreads
 
-    @Visitor.for_asls(*boolean_return_ops, *no_assign_binary_ops, '!')
+    @Visitor.for_ast_types(*boolean_return_ops, *no_assign_binary_ops, '!')
     def binop_(fn, state: State):
         for child in state.get_all_children():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(ast=child))
         return [Spread(values={state.depth}, depth=state.depth)]
 
-    @Visitor.for_asls(*adapters.Decl.asl_types)
+    @Visitor.for_ast_types(*adapters.Decl.ast_types)
     def decl_(fn, state: State):
         node = adapters.Decl(state)
         for name in node.get_names():
@@ -111,7 +111,7 @@ class SpreadVisitor(Visitor):
                 values=node.get_spread_values(), depth=state.depth))
         return []
 
-    @Visitor.for_asls("ilet")
+    @Visitor.for_ast_types("ilet")
     def iletivar_(fn, state: State):
         node = adapters.InferenceAssign(state)
         FunctionAliasAdder(spread_visitor=fn).apply(state)
@@ -124,7 +124,7 @@ class SpreadVisitor(Visitor):
         # TODO: fix this!
         right_spreads = fn.apply(state.but_with_second_child())
         for name, type, l, r in zip(node.get_names(), node.get_assigned_types(), new_spreads, right_spreads):
-            # print(">", state.asl, name, l, r)
+            # print(">", state.get_ast(), name, l, r)
             if type.restriction.is_primitive():
                 continue
             was_tainted = l.is_tainted()
@@ -136,27 +136,27 @@ class SpreadVisitor(Visitor):
             #             line_number=state.get_line_number()))
         return []
 
-    @Visitor.for_asls("imut", "inil?", "ival")
+    @Visitor.for_ast_types("imut", "inil?", "ival")
     def iletivar2_(fn, state: State):
         spreads = fn.apply(state.but_with_second_child())
         for name, spread in zip(adapters.InferenceAssign(state).get_names(), spreads):
             SpreadVisitor.add_spread(state, name, Spread(values=set(spread.values), depth=-2))
         return []
 
-    @Visitor.for_asls(".")
+    @Visitor.for_ast_types(".")
     def dot_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):
         return [SpreadVisitor.get_spread(state, adapters.Ref(state).get_name())]
 
     # TODO: fix new_vec
-    @Visitor.for_asls("fn", "return", "new_vec")
+    @Visitor.for_ast_types("fn", "return", "new_vec")
     def fn_(fn, state: State):
         return []
 
@@ -168,12 +168,12 @@ class SpreadVisitor(Visitor):
         left_spreads = [SpreadVisitor.get_spread(state, name) for name in names]
         return zip(names, types, left_spreads, right_spreads)
 
-    @Visitor.for_asls("=", "+=", "-=", "/=", "*=", "<-")
+    @Visitor.for_ast_types("=", "+=", "-=", "/=", "*=", "<-")
     def eq_(fn, state: State):
         FunctionAliasAdder(spread_visitor=fn).apply(state)
         left_spreads = []
         for name, type, l, r in SpreadVisitor._get_names_type_and_spreads(fn, state):
-            # print("!", state.asl, name, l, r)
+            # print("!", state.get_ast(), name, l, r)
             if type.restriction.is_primitive():
                 continue
             was_tainted = l.is_tainted()
@@ -187,22 +187,22 @@ class SpreadVisitor(Visitor):
             left_spreads.append(l)
         return left_spreads
 
-    @Visitor.for_asls("tuple", "params", "curried")
+    @Visitor.for_ast_types("tuple", "params", "curried")
     def tuple_(fn, state: State):
         spreads = []
         for child in state.get_all_children():
-            spreads += fn.apply(state.but_with(asl=child))
+            spreads += fn.apply(state.but_with(ast=child))
         return spreads
 
-    @Visitor.for_asls("if")
+    @Visitor.for_ast_types("if")
     def if_(fn, state: State):
         adapters.If(state.but_with(depth=state.depth-1)).enter_context_and_apply(fn)
         return []
 
-    @Visitor.for_asls("while")
+    @Visitor.for_ast_types("while")
     def while_(fn, state: State):
         cond_state = state.but_with(
-            asl=state.first_child(),
+            ast=state.first_child(),
             context=state.create_block_context(),
             depth=state.depth-1)
 
@@ -216,14 +216,14 @@ class SpreadVisitor(Visitor):
             for s in spreads: s.changed = False
             # we only want to keep the exceptions thrown after no spreads are changed
             seq_state = cond_state.but_with(
-                asl=cond_state.second_child(),
+                ast=cond_state.second_child(),
                 exceptions=[])
             spreads = fn.apply(seq_state)
             state.exceptions.extend(seq_state.get_exceptions())
         # print(f"REQUIRED {n_iterations} additional iterations of the while loop")
         return []
 
-    @Visitor.for_asls("cond")
+    @Visitor.for_ast_types("cond")
     def cond_(fn, state: State):
         cond_context = state.create_block_context()
         state.but_with(
@@ -234,20 +234,20 @@ class SpreadVisitor(Visitor):
 
     @classmethod
     def _get_spreads_of_function_parameters(cls, fn: SpreadVisitor, node: adapters.Call):
-        param_spreads = fn.apply(node.state.but_with(asl=node.get_params_asl()))
-        _, curried_spreads = FunctionAliasResolver.get_def_asl(node.state)
+        param_spreads = fn.apply(node.state.but_with(ast=node.get_params_ast()))
+        _, curried_spreads = FunctionAliasResolver.get_def_ast(node.state)
         return curried_spreads + param_spreads
 
     @classmethod
-    def _get_def_asl(cls, node: adapters.Call):
-        def_asl, _ = FunctionAliasResolver.get_def_asl(node.state)
-        return def_asl
+    def _get_def_ast(cls, node: adapters.Call):
+        def_ast, _ = FunctionAliasResolver.get_def_ast(node.state)
+        return def_ast
 
     @classmethod
-    def _get_name_and_parameter_pairs(cls, node: adapters.Call) -> tuple[str, CLRList]:
-        def_asl = SpreadVisitor._get_def_asl(node)
-        arg_names = adapters.Def(node.state.but_with(asl=def_asl)).get_arg_names()
-        params = node.state.but_with(asl=node.get_params_asl()).get_all_children()
+    def _get_name_and_parameter_pairs(cls, node: adapters.Call) -> tuple[str, AST]:
+        def_ast = SpreadVisitor._get_def_ast(node)
+        arg_names = adapters.Def(node.state.but_with(ast=def_ast)).get_arg_names()
+        params = node.state.but_with(ast=node.get_params_ast()).get_all_children()
         arg_names = arg_names[len(arg_names) - len(params): ]
         return zip(arg_names, params)
 
@@ -256,23 +256,23 @@ class SpreadVisitor(Visitor):
         inherited_fns = {}
         # need to ignore curried parameters
         for inside_name, p in SpreadVisitor._get_name_and_parameter_pairs(node):
-            param_state = node.state.but_with(asl=p)
-            if param_state.is_asl() and param_state.get_returned_type().is_function():
+            param_state = node.state.but_with(ast=p)
+            if param_state.is_ast() and param_state.get_returned_type().is_function():
                 inherited_fns[inside_name] = (FunctionAliasResolver.get_fn_alias(
                     param_state,
                     adapters.RefLike(param_state).get_name()))
         return inherited_fns
 
-    @Visitor.for_asls("index")
+    @Visitor.for_ast_types("index")
     def index_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("curry_call")
+    @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State):
         # fn.apply(state.but_with_second_child())
         return []
 
-    @Visitor.for_asls("call", "is_call")
+    @Visitor.for_ast_types("call", "is_call")
     def call_(fn, state: State):
         node = adapters.Call(state)
         if node.is_print():
@@ -282,16 +282,16 @@ class SpreadVisitor(Visitor):
         param_spreads = SpreadVisitor._get_spreads_of_function_parameters(fn, node)
         print(node.get_function_name(), SpreadVisitor._get_inherited_fns(node))
         f_deps = fn.get_deps.of_function(state.but_with(
-            asl=SpreadVisitor._get_def_asl(node),
+            ast=SpreadVisitor._get_def_ast(node),
             inherited_fns=SpreadVisitor._get_inherited_fns(node)))
         all_return_value_spreads, all_argument_value_spreads = f_deps.apply_to_parameter_spreads(param_spreads)
 
-        possible_names = [PossibleParamNamesVisitor(fn.get_deps).apply(state.but_with(asl=param))[0]
+        possible_names = [PossibleParamNamesVisitor(fn.get_deps).apply(state.but_with(ast=param))[0]
             for param in node.get_params()]
         types = node.get_param_types()
 
         # print("========")
-        # print(state.get_asl())
+        # print(state.get_ast())
         # print()
         # print(all_argument_value_spreads[0][0])
 

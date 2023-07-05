@@ -60,11 +60,11 @@ class Test:
         self.info = self.metadata["Test"]["info"]
         self.expects = TestExpectation(**self.metadata["Expects"])
 
-    def parse_asl(self):
+    def parse_ast(self):
         config = alpaca.config.parser.run(filename=Test.grammarfile)
         tokens = alpaca.lexer.run(text=self.code, config=Test.shared_config, callback=EisenCallback)
-        asl = SuperParser(config).parse(tokens)
-        return asl
+        ast = SuperParser(config).parse(tokens)
+        return ast
 
     @staticmethod
     def _make_exception_error_msg(e, state: State):
@@ -74,15 +74,15 @@ class Test:
 
     def _handle_unexpected_failure(self, state: State):
         print(state.watcher.txt)
-        print(state.asl)
+        print(state.get_ast())
         return False, "test failed due to exception"
 
     def _get_build_file_name(self) -> str:
         return f"./build/{self.name}.py"
 
     def _save_python_target(self, state: State) -> None:
-        asl = ToPython().run(state)
-        proto_code = python.Writer().run(asl)
+        ast = ToPython().run(state)
+        proto_code = python.Writer().run(ast)
         code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
         pathlib.Path(self._get_build_file_name()).parent.mkdir(parents=True, exist_ok=True)
         with open(self._get_build_file_name(), 'w') as f:
@@ -146,12 +146,12 @@ class Test:
 
         sys.excepthook = exceptions_hook
 
-        asl = self.parse_asl()
-        state = State.create_initial(Test.shared_config, asl, txt=self.code, print_to_watcher=True)
+        ast = self.parse_ast()
+        state = State.create_initial(Test.shared_config, ast, txt=self.code, print_to_watcher=True)
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
-    disabled_tests = ["objects", "recursion", "e_funcarg", "unwrap", "funcarg", "vector/append2", "vector/append", "function_args"]
+    disabled_tests = ["recursion"] #["objects", "recursion", "e_funcarg", "unwrap", "funcarg", "vector/append2", "vector/append", "function_args"]
     @staticmethod
     def run_test_by_name(name: str):
         return Test(name).run()

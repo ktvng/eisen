@@ -8,5 +8,5 @@ class parser():
     def run(cls, txt: str) -> CLRList:
         config = alpaca.config.parser.run("./src/alpaca/assets/types.gm")
         tokens = alpaca.lexer.run(txt, config, callback=None)
-        asl = alpaca.parser.run(config, tokens, alpaca.parser.CommonBuilder(), algo="cyk")
-        return asl
+        ast = alpaca.parser.run(config, tokens, alpaca.parser.CommonBuilder(), algo="cyk")
+        return ast

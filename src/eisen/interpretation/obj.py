@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 class Obj:
     def __init__(
@@ -9,7 +9,7 @@ class Obj:
             value: Any,
             name: str = "anon",
             is_var: bool = False,
-            asl: CLRList = None,
+            ast: AST = None,
             param_names: list[str] = None,
             return_names: list[str] = None,
             param_restrictions: list = None,
@@ -20,7 +20,7 @@ class Obj:
         self.name = name
         self.is_var = is_var
         self.params = []
-        self.asl = asl
+        self.ast = ast
         self.param_names = param_names
         self.return_names = return_names
         self.param_restrictions = param_restrictions
@@ -67,7 +67,7 @@ class Obj:
 
     def copy(self, o: Obj):
         self.value = o.value
-        self.asl = o.asl
+        self.ast = o.ast
         self.param_names = o.param_names
         self.return_names = o.return_names
         self.param_restrictions = o.param_restrictions

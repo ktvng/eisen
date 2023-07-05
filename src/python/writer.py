@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import AST, ASTToken
 
 binops = ["+", "-", "/", "*", "<", ">", "<=", ">=",
     "==", "!=", "+=", "-=", "/=", "*=",
@@ -12,75 +12,75 @@ binops = ["+", "-", "/", "*", "<", ">", "<=", ">=",
 ]
 
 class Writer(Visitor):
-    def run(self, asl: CLRList) -> str:
-        p = self.apply(asl)
+    def run(self, ast: AST) -> str:
+        p = self.apply(ast)
         txt = "".join(p)
         return alpaca.utils.formatter.indent(txt)
 
-    def apply(self, asl: CLRList) -> list[str]:
-        return self._route(asl, asl)
+    def apply(self, ast: AST) -> list[str]:
+        return self._route(ast, ast)
 
     @classmethod
-    def apply_fn_to_all_children(cls, fn: Visitor, asl: CLRList) -> list[str]:
-        if isinstance(asl, CLRToken):
-            return fn.tokens_(fn, asl)
+    def apply_fn_to_all_children(cls, fn: Visitor, ast: AST) -> list[str]:
+        if isinstance(ast, ASTToken):
+            return fn.tokens_(fn, ast)
         p = []
-        for child in asl:
+        for child in ast:
             p += fn.apply(child)
         return p
 
-    @Visitor.for_asls("start", "ref")
-    def start_(fn, asl: CLRList):
-        return Writer.apply_fn_to_all_children(fn, asl)
+    @Visitor.for_ast_types("start", "ref")
+    def start_(fn, ast: AST):
+        return Writer.apply_fn_to_all_children(fn, ast)
 
-    @Visitor.for_asls("def")
-    def def_(fn, asl: CLRList):
+    @Visitor.for_ast_types("def")
+    def def_(fn, ast: AST):
         return ["def ",
-            *fn.apply(asl.first()),
-            *fn.apply(asl.second()), ": ",
-            *fn.apply(asl.third())]
+            *fn.apply(ast.first()),
+            *fn.apply(ast.second()), ": ",
+            *fn.apply(ast.third())]
 
-    @Visitor.for_asls("args")
-    def args_(fn, asl: CLRList):
-        return ["(", *Writer.apply_fn_to_all_children(fn, asl), ")"]
+    @Visitor.for_ast_types("args")
+    def args_(fn, ast: AST):
+        return ["(", *Writer.apply_fn_to_all_children(fn, ast), ")"]
 
-    @Visitor.for_asls("tags", "tuple", "lvals")
-    def tags_(fn, asl: CLRList):
-        p = fn.apply(asl.first())
-        for child in asl[1:]:
+    @Visitor.for_ast_types("tags", "tuple", "lvals")
+    def tags_(fn, ast: AST):
+        p = fn.apply(ast.first())
+        for child in ast[1:]:
             p += [", "] + fn.apply(child)
         return p
 
     @staticmethod
-    def write_sequential(fn, asl: CLRList, brackets: str):
+    def write_sequential(fn, ast: AST, brackets: str):
         l, r = brackets[0], brackets[1]
-        if asl.has_no_children():
+        if ast.has_no_children():
             return [f"{l}{r}"]
-        p = [f"{l}"] + fn.apply(asl.first())
-        for child in asl[1:]:
+        p = [f"{l}"] + fn.apply(ast.first())
+        for child in ast[1:]:
             p += [", "] + fn.apply(child)
         return p + [f"{r}"]
 
-    @Visitor.for_asls("params")
-    def params_(fn, asl: CLRList):
-        return Writer.write_sequential(fn, asl, "()")
+    @Visitor.for_ast_types("params")
+    def params_(fn, ast: AST):
+        return Writer.write_sequential(fn, ast, "()")
 
-    @Visitor.for_asls("list")
-    def list_(fn, asl: CLRList):
-        return Writer.write_sequential(fn, asl, "[]")
+    @Visitor.for_ast_types("list")
+    def list_(fn, ast: AST):
+        return Writer.write_sequential(fn, ast, "[]")
 
-    @Visitor.for_asls("seq")
-    def seq_(fn, asl: CLRList):
+    @Visitor.for_ast_types("seq")
+    def seq_(fn, ast: AST):
         p = ["\n{\n"]
-        for child in asl:
+        for child in ast:
             p += fn.apply(child) + ["\n"]
         p.append("}\n")
         return p
 
-    @Visitor.for_asls("if")
-    def if_(fn, asl: CLRList):
-        p = ["if ", *fn.apply(asl.first())]
-        for child in asl[1:]:
+    @Visitor.for_ast_types("if")
+    def if_(fn, ast: AST):
+        p = ["if ", *fn.apply(ast.first())]
+        for child in ast[1:]:
             if child.type == "cond":
                 p.append("elif ")
             elif child.type == "seq":
@@ -88,71 +88,71 @@ class Writer(Visitor):
             p += fn.apply(child)
         return p
 
-    @Visitor.for_asls("while")
-    def while_(fn, asl: CLRList):
-        return ["while ", *fn.apply(asl.first())]
+    @Visitor.for_ast_types("while")
+    def while_(fn, ast: AST):
+        return ["while ", *fn.apply(ast.first())]
 
-    @Visitor.for_asls("for")
-    def for_(fn, asl: CLRList):
-        return ["for ", asl.first().value, " in ", *fn.apply(asl.second()), ":",
-            *fn.apply(asl.third())]
+    @Visitor.for_ast_types("for")
+    def for_(fn, ast: AST):
+        return ["for ", ast.first().value, " in ", *fn.apply(ast.second()), ":",
+            *fn.apply(ast.third())]
 
-    @Visitor.for_asls("cond")
-    def cond_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), ": ", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("cond")
+    def cond_(fn, ast: AST):
+        return [*fn.apply(ast.first()), ": ", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("return")
-    def return_(fn, asl: CLRList):
-        return ["return ", *Writer.apply_fn_to_all_children(fn, asl)]
+    @Visitor.for_ast_types("return")
+    def return_(fn, ast: AST):
+        return ["return ", *Writer.apply_fn_to_all_children(fn, ast)]
 
-    @Visitor.for_asls(*binops)
-    def binops_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), f" {asl.type} ", *fn.apply(asl.second())]
+    @Visitor.for_ast_types(*binops)
+    def binops_(fn, ast: AST):
+        return [*fn.apply(ast.first()), f" {ast.type} ", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("not")
-    def not_(fn ,asl: CLRList):
-        return ["not ", *fn.apply(asl.first())]
+    @Visitor.for_ast_types("not")
+    def not_(fn ,ast: AST):
+        return ["not ", *fn.apply(ast.first())]
 
-    @Visitor.for_asls(".")
-    def close_bind_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), f"{asl.type}", *fn.apply(asl.second())]
+    @Visitor.for_ast_types(".")
+    def close_bind_(fn, ast: AST):
+        return [*fn.apply(ast.first()), f"{ast.type}", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("init")
-    def init_(fn, asl: CLRList):
-        return ["def __init__", *fn.apply(asl.first()), ": ", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("init")
+    def init_(fn, ast: AST):
+        return ["def __init__", *fn.apply(ast.first()), ": ", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("class")
-    def class_(fn, asl: CLRList):
+    @Visitor.for_ast_types("class")
+    def class_(fn, ast: AST):
         elems = []
-        for child in asl[1:]:
+        for child in ast[1:]:
             elems += fn.apply(child)
-        return ["class ", *fn.apply(asl.first()), ": \n{\n", *elems, "}\n"]
+        return ["class ", *fn.apply(ast.first()), ": \n{\n", *elems, "}\n"]
 
-    @Visitor.for_asls("vargs", "unpack")
-    def unpack_(fn, asl: CLRList):
-        return ["*", *fn.apply(asl.first())]
+    @Visitor.for_ast_types("vargs", "unpack")
+    def unpack_(fn, ast: AST):
+        return ["*", *fn.apply(ast.first())]
 
-    @Visitor.for_asls("call")
-    def call_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), *fn.apply(asl.second())]
+    @Visitor.for_ast_types("call")
+    def call_(fn, ast: AST):
+        return [*fn.apply(ast.first()), *fn.apply(ast.second())]
 
-    @Visitor.for_asls("named")
-    def named_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), "=", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("named")
+    def named_(fn, ast: AST):
+        return [*fn.apply(ast.first()), "=", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("index")
-    def index_(fn, asl: CLRList):
-        return [*fn.apply(asl.first()), "[", *fn.apply(asl.second()), "]"]
+    @Visitor.for_ast_types("index")
+    def index_(fn, ast: AST):
+        return [*fn.apply(ast.first()), "[", *fn.apply(ast.second()), "]"]
 
     @Visitor.for_tokens
-    def tokens_(fn, asl: CLRList):
-        if asl.type == "endl":
+    def tokens_(fn, ast: AST):
+        if ast.type == "endl":
             return ["\n"]
-        if asl.type == "str":
-            return ['"', asl.value, '"']
-        return [asl.value]
+        if ast.type == "str":
+            return ['"', ast.value, '"']
+        return [ast.value]
 
     @Visitor.for_default
-    def default_(fn, asl: CLRList):
-        print(f"Python Writer unimplemented for {asl}")
+    def default_(fn, ast: AST):
+        print(f"Python Writer unimplemented for {ast}")
         return []

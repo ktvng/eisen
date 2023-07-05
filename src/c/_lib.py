@@ -5,7 +5,7 @@ import re
 
 from alpaca.utils import Visitor
 from alpaca.parser import CommonBuilder
-from alpaca.clr import CLRRawList, CLRList, CLRToken
+from alpaca.clr import ASTElements, AST, ASTToken
 from alpaca.config import Config
 import alpaca.utils
 
@@ -24,12 +24,12 @@ class Builder(CommonBuilder):
     def handle_call(
             fn,
             config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
+            components : ASTElements,
+            *args) -> ASTElements:
 
         # EXPR . FUNCTION_CALL
         function_call = components[2]
-        if not isinstance(function_call, CLRList):
+        if not isinstance(function_call, AST):
             raise Exception("function call should be CLRList")
 
         params = function_call[1]
@@ -41,18 +41,18 @@ class Builder(CommonBuilder):
     def handle_op_pref(
             fn,
             config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
+            components : ASTElements,
+            *args) -> ASTElements:
 
         flattened_comps = CommonBuilder.flatten_components(components)
         if len(flattened_comps) != 2:
             raise Exception(f"expected size 2 for handle_op_pref, got {flattened_comps}")
 
-        return [CLRList(flattened_comps[0], [flattened_comps[1]], flattened_comps[0].line_number)]
+        return [AST(flattened_comps[0], [flattened_comps[1]], flattened_comps[0].line_number)]
 
 class Writer(Visitor):
-    def run(self, asl: CLRList) -> str:
-        parts = Writer().apply(asl)
+    def run(self, ast: AST) -> str:
+        parts = Writer().apply(ast)
         txt = "".join(parts)
         txt = alpaca.utils.formatter.indent(txt)
         return Writer.filter_extraneous_newlines(txt)
@@ -73,110 +73,110 @@ class Writer(Visitor):
             filtered_txt += line + "\n"
         return filtered_txt
 
-    def apply(self, asl: CLRList) -> list[str]:
-        return self._route(asl, asl)
+    def apply(self, ast: AST) -> list[str]:
+        return self._route(ast, ast)
 
-    def asls_of_type(types: str | list[str]):
+    def asts_of_type(types: str | list[str]):
         if isinstance(types, str):
             types = [types]
-        def predicate(asl: CLRList):
-            return asl.type in types
+        def predicate(ast: AST):
+            return ast.type in types
         return predicate
 
-    def delegate(fn, asl: CLRList) -> list[str]:
-        if asl:
-            return list(itertools.chain(*[fn.apply(child) for child in asl]))
+    def delegate(fn, ast: AST) -> list[str]:
+        if ast:
+            return list(itertools.chain(*[fn.apply(child) for child in ast]))
         return []
 
     @Visitor.for_tokens
-    def token_(fn, asl: CLRToken) -> list[str]:
-        if asl.type == "str":
-            return ['"', asl.value, '"']
-        return [asl.value]
+    def token_(fn, ast: ASTToken) -> list[str]:
+        if ast.type == "str":
+            return ['"', ast.value, '"']
+        return [ast.value]
 
-    @Visitor.for_asls("start")
-    def start_(fn, asl: CLRList) -> list[str]:
-        lists_for_components = [fn.apply(child) for child in asl]
+    @Visitor.for_ast_types("start")
+    def start_(fn, ast: AST) -> list[str]:
+        lists_for_components = [fn.apply(child) for child in ast]
 
         # filter out empty lists and add new lines
         lists_for_components = [l + ["\n"] for l in lists_for_components if l]
         return list(itertools.chain(*lists_for_components))
 
-    @Visitor.for_asls("decl")
-    def decl_(fn, asl: CLRList) -> list[str]:
-        return [*fn.apply(asl.first()), " ", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("decl")
+    def decl_(fn, ast: AST) -> list[str]:
+        return [*fn.apply(ast.first()), " ", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("def")
-    def def_(fn, asl: CLRList) -> list[str]:
-        parts = [*fn.apply(asl.first()), " "]
-        for child in asl[1:]:
+    @Visitor.for_ast_types("def")
+    def def_(fn, ast: AST) -> list[str]:
+        parts = [*fn.apply(ast.first()), " "]
+        for child in ast[1:]:
             parts.extend(fn.apply(child))
         return parts
 
-    @Visitor.for_asls("struct_decl")
-    def struct_decl_(fn, asl: CLRList) -> list[str]:
-        return ["struct ", *fn.apply(asl.first()), " ", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("struct_decl")
+    def struct_decl_(fn, ast: AST) -> list[str]:
+        return ["struct ", *fn.apply(ast.first()), " ", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("type", "call", "fn", "ref")
-    def pass_(fn, asl: CLRList) -> list[str]:
-        return fn.delegate(asl)
+    @Visitor.for_ast_types("type", "call", "fn", "ref")
+    def pass_(fn, ast: AST) -> list[str]:
+        return fn.delegate(ast)
 
-    @Visitor.for_asls("cond")
-    def cond_(fn, asl: CLRList) -> list[str]:
-        return ["(", *fn.apply(asl.first()), ")", *fn.apply(asl.second())]
+    @Visitor.for_ast_types("cond")
+    def cond_(fn, ast: AST) -> list[str]:
+        return ["(", *fn.apply(ast.first()), ")", *fn.apply(ast.second())]
 
-    @Visitor.for_asls("seq")
-    def seq_(fn, asl: CLRList) -> list[str]:
+    @Visitor.for_ast_types("seq")
+    def seq_(fn, ast: AST) -> list[str]:
         contexts = ["if", "while"]
         components = []
-        for child in asl:
+        for child in ast:
             if child.type in contexts:
                 components.append(fn.apply(child) + ["\n"])
             else:
                 components.append(fn.apply(child) + [";\n"])
         return [" {\n"] + list(itertools.chain(*components)) + ["}\n"]
 
-    @Visitor.for_asls("+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->")
-    def op_(fn, asl: CLRList) -> list[str]:
+    @Visitor.for_ast_types("+", "-", "/", "*", "&&", "||", "<", ">", "<=", ">=", "=", "==", "!=", ".", "+=", "-=", "/=", "*=", "->")
+    def op_(fn, ast: AST) -> list[str]:
         ops_which_dont_need_space = [".", "->"]
-        op = asl.type if asl.type in ops_which_dont_need_space else f" {asl.type} "
-        return [*fn.apply(asl.first()), op, *fn.apply(asl.second())]
+        op = ast.type if ast.type in ops_which_dont_need_space else f" {ast.type} "
+        return [*fn.apply(ast.first()), op, *fn.apply(ast.second())]
 
-    @Visitor.for_asls("ptr")
-    def ptr_(fn, asl: CLRList) -> list[str]:
-        return fn.delegate(asl) + ["*"]
+    @Visitor.for_ast_types("ptr")
+    def ptr_(fn, ast: AST) -> list[str]:
+        return fn.delegate(ast) + ["*"]
 
-    @Visitor.for_asls("return")
-    def return_(fn, asl: CLRList) -> list[str]:
-        return_value = fn.delegate(asl)
+    @Visitor.for_ast_types("return")
+    def return_(fn, ast: AST) -> list[str]:
+        return_value = fn.delegate(ast)
         if return_value:
             return ["return "] + return_value
         return ["return"]
 
-    @Visitor.for_asls("params", "args")
-    def params_(fn, asl: CLRList) -> list[str]:
-        if not asl:
+    @Visitor.for_ast_types("params", "args")
+    def params_(fn, ast: AST) -> list[str]:
+        if not ast:
             return ["()"]
-        parts = fn.apply(asl.first())
-        for child in asl[1:]:
+        parts = fn.apply(ast.first())
+        for child in ast[1:]:
             parts += [", "] + fn.apply(child)
         return ["("] + parts + [")"]
 
-    @Visitor.for_asls("while")
-    def while_(fn, asl: CLRList) -> list[str]:
-        return [f"while "] + fn.delegate(asl)
+    @Visitor.for_ast_types("while")
+    def while_(fn, ast: AST) -> list[str]:
+        return [f"while "] + fn.delegate(ast)
 
-    @Visitor.for_asls("struct")
-    def struct_(fn, asl: CLRList) -> list[str]:
-        parts = [f"struct ", *fn.apply(asl.first()), " {\n"]
-        for child in asl[1:]:
+    @Visitor.for_ast_types("struct")
+    def struct_(fn, ast: AST) -> list[str]:
+        parts = [f"struct ", *fn.apply(ast.first()), " {\n"]
+        for child in ast[1:]:
             parts += fn.apply(child) + [";\n"]
         return parts + ["};\n"]
 
-    @Visitor.for_asls("if")
-    def if_(fn, asl: CLRList) -> list[str]:
-        parts = [f"{asl.type} "] + fn.apply(asl.first())
-        for child in asl[1:]:
+    @Visitor.for_ast_types("if")
+    def if_(fn, ast: AST) -> list[str]:
+        parts = [f"{ast.type} "] + fn.apply(ast.first())
+        for child in ast[1:]:
             if child.type == "cond":
                 parts += ["else if "] + fn.apply(child)
             elif child.type == "seq":
@@ -185,10 +185,10 @@ class Writer(Visitor):
                 raise Exception(f"if_ unknown type {child.type}")
         return parts
 
-    @Visitor.for_asls("addr")
-    def addr_(fn, asl: CLRList) -> list[str]:
-        return ["&"] + fn.delegate(asl)
+    @Visitor.for_ast_types("addr")
+    def addr_(fn, ast: AST) -> list[str]:
+        return ["&"] + fn.delegate(ast)
 
-    @Visitor.for_asls("deref")
-    def deref_(fn, asl: CLRList) -> list[str]:
-        return ["*"] + fn.delegate(asl)
+    @Visitor.for_ast_types("deref")
+    def deref_(fn, ast: AST) -> list[str]:
+        return ["*"] + fn.delegate(ast)

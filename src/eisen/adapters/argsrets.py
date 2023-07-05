@@ -7,15 +7,15 @@ from eisen.common.restriction import MutableRestriction
 from eisen.adapters._decls import Typing
 
 class ArgsRets(AbstractNodeInterface):
-    asl_types = ["rets", "args"]
+    ast_types = ["rets", "args"]
     examples = """
     (rets (: ...))
     (rets (prod_type ...))
     """
 
     def get_names(self) -> list[str]:
-        if self.state.asl.has_no_children():
+        if self.state.get_ast().has_no_children():
             return []
         if self.first_child().type == "prod_type":
-            return [Typing(self.state.but_with(asl=child)).get_names()[0] for child in self.first_child()]
+            return [Typing(self.state.but_with(ast=child)).get_names()[0] for child in self.first_child()]
         return Typing(self.state.but_with_first_child()).get_names()

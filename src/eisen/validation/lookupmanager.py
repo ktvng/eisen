@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 from alpaca.concepts import Module, Context, Type, Instance
 
 class LookupManager():
     """manages all lookup logic for resolving instances"""
 
     @classmethod
-    def resolve_module_from_base(cls, global_module: Module, module_asl: CLRList):
+    def resolve_module_from_base(cls, global_module: Module, module_ast: AST):
         pass
 
     @classmethod
-    def resolve_module_from_local(cls, current_module: Module, module_asl: CLRList):
+    def resolve_module_from_local(cls, current_module: Module, module_ast: AST):
         pass
 
 

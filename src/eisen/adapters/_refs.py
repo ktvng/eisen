@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 from alpaca.concepts import Type, Module
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import AST, ASTToken
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import EisenFunctionInstance, EisenInstance
 from eisen.validation.lookupmanager import LookupManager
 
 class RefLike(AbstractNodeInterface):
-    asl_types = ["ref", "::", ".", "fn"]
+    ast_types = ["ref", "::", ".", "fn"]
 
     def is_print(self) -> bool:
-        return self.state.get_asl().type == "ref" and Ref(self.state).is_print()
+        return self.state.get_ast().type == "ref" and Ref(self.state).is_print()
 
     def is_append(self) -> bool:
-        return self.state.get_asl().type == "fn" and Ref(self.state).is_append()
+        return self.state.get_ast().type == "fn" and Ref(self.state).is_append()
 
     def get_name(self) -> str:
-        type = self.state.get_asl().type
+        type = self.state.get_ast().type
         if type == "ref":
             return Ref(self.state).get_name()
         elif type == "::":
@@ -29,7 +29,7 @@ class RefLike(AbstractNodeInterface):
         raise Exception(f"unknown type {type}")
 
     def get_module(self):
-        if self.state.get_asl().type == "::":
+        if self.state.get_ast().type == "::":
             return ModuleScope(self.state).get_module()
         return self.state.get_enclosing_module()
 
@@ -55,13 +55,13 @@ class RefLike(AbstractNodeInterface):
             mod=self.get_module())
 
     def assign_instance(self, instance: EisenInstance):
-        type = self.state.get_asl().type
+        type = self.state.get_ast().type
         if  type == "ref" or type == "::":
             self.state.assign_instances(instance)
 
 
 class Ref(AbstractNodeInterface):
-    asl_type = "ref"
+    ast_type = "ref"
     examples = """
     (ref name)
     """
@@ -102,7 +102,7 @@ class Ref(AbstractNodeInterface):
 
 
 class Fn(AbstractNodeInterface):
-    asl_type = "fn"
+    ast_type = "fn"
     examples = """
     (fn name)
     """
@@ -123,7 +123,7 @@ class Fn(AbstractNodeInterface):
             # TODO: raise compiler message here
 
 class ModuleScope(AbstractNodeInterface):
-    asl_type = "::"
+    ast_type = "::"
     examples = """
     (:: mod_name name))
     (:: outer (:: inner name)))
@@ -132,12 +132,12 @@ class ModuleScope(AbstractNodeInterface):
     def get_module_name(self) -> str:
         return self.first_child().value
 
-    def _follow_chain(self, asl: CLRList) -> list[str]:
-        if isinstance(asl, CLRToken):
-            return [asl.value]
+    def _follow_chain(self, ast: AST) -> list[str]:
+        if isinstance(ast, ASTToken):
+            return [ast.value]
 
-        lst = self._follow_chain(asl.first())
-        lst.append(asl.second().value)
+        lst = self._follow_chain(ast.first())
+        lst.append(ast.second().value)
         return lst
 
     def _unpack_structure(self) -> tuple[str, list[str]]:
@@ -171,19 +171,19 @@ class ModuleScope(AbstractNodeInterface):
         return self.get_end_instance()
 
 class Scope(AbstractNodeInterface):
-    asl_type = "."
+    ast_type = "."
     examples = """
     (. (ref obj) attr)
     (. (. (ref obj) attr1) attr2)
     """
 
-    def get_asl_defining_restriction(self) -> CLRList:
+    def get_ast_defining_restriction(self) -> AST:
         return self.first_child()
 
     def get_attribute_name(self) -> str:
         return self.second_child().value
 
-    def get_object_asl(self) -> CLRList:
+    def get_object_ast(self) -> AST:
         return self.first_child()
 
     def get_object_name(self) -> str:
@@ -194,16 +194,16 @@ class Scope(AbstractNodeInterface):
         :return: Name of the parent object.
         :rtype: str
         """
-        primary_asl = self.first_child()
-        while primary_asl.type != "ref":
-            primary_asl = primary_asl.first()
-        return Ref(self.state.but_with(asl=primary_asl)).get_name()
+        primary_ast = self.first_child()
+        while primary_ast.type != "ref":
+            primary_ast = primary_ast.first()
+        return Ref(self.state.but_with(ast=primary_ast)).get_name()
 
     def get_full_name(self) -> str:
-        primary_asl = self.state.get_asl()
+        primary_ast = self.state.get_ast()
         full_name = ""
-        while primary_asl.type != "ref":
-            full_name = Scope(self.state.but_with(asl=primary_asl)).get_attribute_name() + "." + full_name
-            primary_asl = primary_asl.first()
-        full_name = Ref(self.state.but_with(asl=primary_asl)).get_name() + "." + full_name
+        while primary_ast.type != "ref":
+            full_name = Scope(self.state.but_with(ast=primary_ast)).get_attribute_name() + "." + full_name
+            primary_ast = primary_ast.first()
+        full_name = Ref(self.state.but_with(ast=primary_ast)).get_name() + "." + full_name
         return full_name[:-1]

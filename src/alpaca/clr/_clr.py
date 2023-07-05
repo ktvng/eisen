@@ -4,14 +4,15 @@ from typing import Union, List
 import uuid
 from abc import ABC
 
-class CLRElement(ABC):
-    def is_asl(self) -> bool:
+class ASTElement(ABC):
+    def is_ast(self) -> bool:
         return False
 
     def is_token(self) -> bool:
         return False
 
-class CLRToken(CLRElement):
+
+class ASTToken(ASTElement):
     def __init__(self, type_chain: list[str], value: str, line_number: int = 0):
         self.type = type_chain[0]
         self.type_chain = type_chain
@@ -35,10 +36,10 @@ class CLRToken(CLRElement):
         return True
 
 
-class CLRList(CLRElement):
+class AST(ASTElement):
     indent = "  "
 
-    def __init__(self, type : str, lst : list[CLRList | CLRToken], line_number = 0, guid: uuid.UUID = None, data = None):
+    def __init__(self, type : str, lst : list[AST | ASTToken], line_number = 0, guid: uuid.UUID = None, data = None):
         self.type = type
         self._list = lst
         self.line_number = line_number
@@ -48,45 +49,45 @@ class CLRList(CLRElement):
         else:
             self.guid = guid
 
-    def is_asl(self) -> bool:
+    def is_ast(self) -> bool:
         return True
 
     def has_no_children(self) -> bool:
         return len(self._list) == 0
 
-    def first(self) -> CLRList | CLRToken:
+    def first(self) -> AST | ASTToken:
         if not self._list:
-            raise Exception(f"CLRList: first does not exist; len={len(self._list)}; self={self.type}")
+            raise Exception(f"AST: first does not exist; len={len(self._list)}; self={self.type}")
         return self._list[0]
 
-    def second(self) -> CLRList | CLRToken:
+    def second(self) -> AST | ASTToken:
         if len(self._list) < 2:
-            raise Exception(f"CLRList: second does not exist; len={len(self._list)}; self={self.type}")
+            raise Exception(f"AST: second does not exist; len={len(self._list)}; self={self.type}")
         return self._list[1]
 
-    def third(self) -> CLRList | CLRToken:
+    def third(self) -> AST | ASTToken:
         if len(self._list) < 3:
-            raise Exception(f"CLRList: third does not exist; len={len(self._list)}; self={self.type}")
+            raise Exception(f"AST: third does not exist; len={len(self._list)}; self={self.type}")
         return self._list[2]
 
-    def update(self, type: str, lst: list[CLRList | CLRToken] = None):
+    def update(self, type: str, lst: list[AST | ASTToken] = None):
         self.type = type
         if lst is not None:
             self._list = lst
 
-    def items(self) -> list[CLRList | CLRToken]:
+    def items(self) -> list[AST | ASTToken]:
         return self._list
 
-    def __getitem__(self, key : int) -> CLRList | CLRToken:
+    def __getitem__(self, key : int) -> AST | ASTToken:
         return self._list[key]
 
-    def __setitem__(self, key : int, value : CLRList | CLRToken):
+    def __setitem__(self, key : int, value : AST | ASTToken):
         self._list[key] = value
 
     def __delitem__(self, key : int):
         self._list.__delitem__[key]
 
-    def __getslice__(self, i : int, j : int) -> list[CLRList | CLRToken]:
+    def __getslice__(self, i : int, j : int) -> list[AST | ASTToken]:
         return self._list[i, j]
 
     def __setslice__(self, *args, **kwargs):
@@ -102,7 +103,7 @@ class CLRList(CLRElement):
         str_reps = [str(x) for x in self._list]
         if any([("\n" in s) for s in str_reps]):
             parts = reduce(lambda lst, s: lst + s.split('\n'), str_reps, [])
-            parts = [CLRList.indent + s for s in parts]
+            parts = [AST.indent + s for s in parts]
             parts_str = "\n".join(parts)
             if parts_str.strip()[0] != "(":
                 parts_str = parts_str.strip()
@@ -116,7 +117,7 @@ class CLRList(CLRElement):
                 parts_str = " ".join(str_reps)
                 return f"({self.type} {parts_str})"
             else:
-                parts = [CLRList.indent + s for s in str_reps]
+                parts = [AST.indent + s for s in str_reps]
                 parts_str = "\n".join(parts)
                 if parts_str.strip()[0] != "(":
                     parts_str = parts_str.strip()
@@ -128,4 +129,4 @@ class CLRList(CLRElement):
         return self._list.__iter__()
 
 
-CLRRawList = List[Union[CLRList, CLRToken]]
+ASTElements = List[Union[AST, ASTToken]]

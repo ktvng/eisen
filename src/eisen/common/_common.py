@@ -14,9 +14,9 @@ compare_ops = ["<", ">", "<=", ">="]
 boolean_return_ops = compare_ops + equality_ops
 implemented_primitive_types = ["str", "int", "bool", "flt"]
 
-def asls_of_type(type: str, *args):
+def asts_of_type(type: str, *args):
     def predicate(params: BaseState):
-        return params.asl.type in list(args) + [type]
+        return params.ast.type in list(args) + [type]
     return predicate
 
 class Utils:

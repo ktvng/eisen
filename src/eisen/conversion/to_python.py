@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import AST, ASTToken
 from alpaca.pattern import Pattern
 import alpaca
 from eisen.state.topythonstate import ToPythonState as State
@@ -37,198 +37,198 @@ class lmda:
         super().__init__(debug)
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
 
-    def run(self, state: State_PostInstanceVisitor) -> CLRList:
-        # print(state.get_asl())
+    def run(self, state: State_PostInstanceVisitor) -> AST:
+        # print(state.get_ast())
         # input()
         result = self.apply(State.create_from_basestate(state))
         return result
 
-    def apply(self, state: State) -> CLRList:
-        return self._route(state.asl, state)
+    def apply(self, state: State) -> AST:
+        return self._route(state.get_ast(), state)
 
-    def create_asl(self, txt: str):
+    def create_ast(self, txt: str):
         return alpaca.clr.CLRParser.run(self.python_gm, txt)
 
     @Visitor.for_default
     def default_(fn, state: State):
-        print(f"ToPython unimplemented for {state.asl}")
-        return CLRToken(type_chain=["code"], value="***TODO***")
+        print(f"ToPython unimplemented for {state.get_ast()}")
+        return ASTToken(type_chain=["code"], value="***TODO***")
 
-    @Visitor.for_asls("start")
+    @Visitor.for_ast_types("start")
     def start_(fn, state: State):
         lst = []
         for child in state.get_all_children():
             if child.type == "mod":
-                lst.extend(fn.apply(state.but_with(asl=child)))
+                lst.extend(fn.apply(state.but_with(ast=child)))
             elif child.type != "interface":
-                lst.append(fn.apply(state.but_with(asl=child)))
+                lst.append(fn.apply(state.but_with(ast=child)))
 
-        return CLRList("start", lst=lst)
+        return AST("start", lst=lst)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State):
         node = adapters.Mod(state)
         parts = []
-        for child in state.get_child_asls():
+        for child in state.get_child_asts():
             if child.type == "mod":
                 parts.extend(fn.apply(state.but_with(
-                    asl=child,
+                    ast=child,
                     mod=node.get_entered_module())))
             else:
                 parts.append(fn.apply(state.but_with(
-                    asl=child,
+                    ast=child,
                     mod=node.get_entered_module())))
         return parts
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct_(fn, state: State):
         node = adapters.Struct(state)
 
-        struct_name_token = Pattern("('struct name xs...)").match(state.get_asl()).name
+        struct_name_token = Pattern("('struct name xs...)").match(state.get_ast()).name
 
-        create_asl = node.get_create_asl()
-        self_name_token: CLRToken = Pattern("('create _ _ ('rets (': name _)) _)") \
-            .match(create_asl).name
-        attr_toks = Pattern("(': attr_name _)").map(state.get_asl(),
+        create_ast = node.get_create_ast()
+        self_name_token: ASTToken = Pattern("('create _ _ ('rets (': name _)) _)") \
+            .match(create_ast).name
+        attr_toks = Pattern("(': attr_name _)").map(state.get_ast(),
             into_pattern=f"('= ('. ('ref '{self_name_token.value}) attr_name) 'None)")
 
-        create_node = adapters.Create(state.but_with(asl=create_asl))
-        arg_asl = fn.apply(state.but_with(asl=create_node.get_args_asl()))
-        arg_asl._list = [CLRList("tags", lst=[self_name_token, *arg_asl._list])]
-        seq_asl = fn.apply(state.but_with(asl=create_node.get_seq_asl()))
-        seq_asl._list = [*attr_toks, *seq_asl._list]
-        init_asl = CLRList("init", lst=[arg_asl, seq_asl])
-        return CLRList("class", lst=[struct_name_token, init_asl])
+        create_node = adapters.Create(state.but_with(ast=create_ast))
+        arg_ast = fn.apply(state.but_with(ast=create_node.get_args_ast()))
+        arg_ast._list = [AST("tags", lst=[self_name_token, *arg_ast._list])]
+        seq_ast = fn.apply(state.but_with(ast=create_node.get_seq_ast()))
+        seq_ast._list = [*attr_toks, *seq_ast._list]
+        init_ast = AST("init", lst=[arg_ast, seq_ast])
+        return AST("class", lst=[struct_name_token, init_ast])
 
     @staticmethod
-    def get_ret_names(ret_asl: CLRList) -> list[CLRToken]:
-        if ret_asl.has_no_children():
+    def get_ret_names(ret_ast: AST) -> list[ASTToken]:
+        if ret_ast.has_no_children():
             return []
-        if ret_asl.first().type == "prod_type":
-            return [m.name for m in map(Pattern("(': name _)").match, ret_asl.first()._list) if m]
-        return [Pattern("('rets (': name _))").match(ret_asl).name]
+        if ret_ast.first().type == "prod_type":
+            return [m.name for m in map(Pattern("(': name _)").match, ret_ast.first()._list) if m]
+        return [Pattern("('rets (': name _))").match(ret_ast).name]
 
-    @Visitor.for_asls("variant")
+    @Visitor.for_ast_types("variant")
     def variant_(fn, state: State):
         node = adapters.Variant(state)
-        is_asl = node.get_is_asl()
-        asl = Pattern("('is_fn xs...)").match(is_asl).to("'def xs...")
-        asl.data = is_asl.data
-        return fn.apply(state.but_with(asl=asl))
+        is_ast = node.get_is_ast()
+        ast = Pattern("('is_fn xs...)").match(is_ast).to("'def xs...")
+        ast.data = is_ast.data
+        return fn.apply(state.but_with(ast=ast))
 
-    @Visitor.for_asls("def")
+    @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         node = adapters.Def(state)
-        return_vars = Pattern("(': ret_name _)").map(node.get_rets_asl(),
+        return_vars = Pattern("(': ret_name _)").map(node.get_rets_ast(),
             into_pattern=f"('= ret_name 'None)")
-        ret_names = ToPython.get_ret_names(node.get_rets_asl())
-        arg_asl = fn.apply(state.but_with(asl=node.get_args_asl()))
-        seq_asl = fn.apply(state.but_with(
-            asl=node.get_seq_asl(),
+        ret_names = ToPython.get_ret_names(node.get_rets_ast())
+        arg_ast = fn.apply(state.but_with(ast=node.get_args_ast()))
+        seq_ast = fn.apply(state.but_with(
+            ast=node.get_seq_ast(),
             ret_names=ret_names))
-        returns = CLRList(type="return", lst=([] if not ret_names else [CLRList("tags", lst=ret_names)]))
-        seq_asl._list = [*return_vars, *seq_asl._list, returns]
-        return CLRList("def", lst=[CLRToken(["TAG"], value=node.get_function_instance().get_full_name()), arg_asl, seq_asl])
+        returns = AST(type="return", lst=([] if not ret_names else [AST("tags", lst=ret_names)]))
+        seq_ast._list = [*return_vars, *seq_ast._list, returns]
+        return AST("def", lst=[ASTToken(["TAG"], value=node.get_function_instance().get_full_name()), arg_ast, seq_ast])
 
-    @Visitor.for_asls("return")
+    @Visitor.for_ast_types("return")
     def return_(fn, state: State):
         if state.get_ret_names():
-            return CLRList("return", lst=[CLRList("tags", lst=state.get_ret_names())])
-        return CLRList("return", lst=[])
+            return AST("return", lst=[AST("tags", lst=state.get_ret_names())])
+        return AST("return", lst=[])
 
-    @Visitor.for_asls("args")
+    @Visitor.for_ast_types("args")
     def args_(fn, state: State):
-        if state.get_asl().has_no_children():
-            return CLRList("args", lst=[])
-        return CLRList("args", lst=[fn.apply(state.but_with_first_child())])
+        if state.get_ast().has_no_children():
+            return AST("args", lst=[])
+        return AST("args", lst=[fn.apply(state.but_with_first_child())])
 
-    @Visitor.for_asls(":")
+    @Visitor.for_ast_types(":")
     def colon_(fn, state: State):
-        return Pattern("(': name _)").match(state.get_asl()).name
+        return Pattern("(': name _)").match(state.get_ast()).name
 
-    @Visitor.for_asls("prod_type")
+    @Visitor.for_ast_types("prod_type")
     def prod_type_(fn, state: State):
-        return CLRList("tags", lst=[fn.apply(state.but_with(asl=child))
+        return AST("tags", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("seq")
+    @Visitor.for_ast_types("seq")
     def seq_(fn, state: State):
         children = state.get_all_children()
-        return CLRList("seq", lst=[fn.apply(state.but_with(asl=child))
+        return AST("seq", lst=[fn.apply(state.but_with(ast=child))
             for child in children])
 
-    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
+    @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def iletivar_(fn, state: State):
-        return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
+        return AST("=", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls(*adapters.Decl.asl_types)
+    @Visitor.for_ast_types(*adapters.Decl.ast_types)
     def decls_(fn, state: State):
-        if Pattern("(?? ('tags xs...) _)").match(state.get_asl()):
-            tags_asl = Pattern("(?? ('tags xs...) _)").match(state.get_asl())\
+        if Pattern("(?? ('tags xs...) _)").match(state.get_ast()):
+            tags_ast = Pattern("(?? ('tags xs...) _)").match(state.get_ast())\
                 .to("('tags xs...)")
 
-            number_of_vars = len(tags_asl)
+            number_of_vars = len(tags_ast)
             values = " ".join(["None"]*number_of_vars)
-            values_asl = fn.create_asl(f"(tuple {values})")
-            return CLRList("=", lst=[tags_asl, values_asl])
+            values_ast = fn.create_ast(f"(tuple {values})")
+            return AST("=", lst=[tags_ast, values_ast])
         else:
-            return Pattern("(?? name _)").match(state.get_asl()).to("('= ('ref name) 'None)")
+            return Pattern("(?? name _)").match(state.get_ast()).to("('= ('ref name) 'None)")
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):
-        return CLRList("ref", lst=[state.first_child()])
+        return AST("ref", lst=[state.first_child()])
 
-    @Visitor.for_asls("fn")
+    @Visitor.for_ast_types("fn")
     def fn_(fn, state: State):
         instance = state.get_instances()[0]
         # if the function instance is a constructor we don't need
         # to append the function signature
         if instance.is_constructor:
-            asl = state.get_asl()
+            ast = state.get_ast()
         else:
-            asl = CLRList(
+            ast = AST(
                 type="fn",
-                lst=[CLRToken(type_chain=["TAG"],
+                lst=[ASTToken(type_chain=["TAG"],
                     value=instance.get_full_name())])
         if instance.no_lambda:
-            return Pattern("('fn name)").match(asl).to("('ref name)")
-        return Pattern("('fn name)").match(asl)\
+            return Pattern("('fn name)").match(ast).to("('ref name)")
+        return Pattern("('fn name)").match(ast)\
             .to("('call ('ref 'lmda) ('params name))")
 
-    @Visitor.for_asls("is_call")
+    @Visitor.for_ast_types("is_call")
     def is_call(fn, state: State):
         lst = []
         for child in state.get_all_children():
-            lst.append(fn.apply(state.but_with(asl=child)))
-        return CLRList(type="call", lst=lst)
-        return Pattern("('is_call ('fn name) xs...)").match(state.get_asl())\
+            lst.append(fn.apply(state.but_with(ast=child)))
+        return AST(type="call", lst=lst)
+        return Pattern("('is_call ('fn name) xs...)").match(state.get_ast())\
             .to("('call ('ref name) xs...)")
 
-    @Visitor.for_asls("call")
+    @Visitor.for_ast_types("call")
     def all_(fn, state: State):
         if adapters.Call(state).is_print():
             other_params = state.second_child()[1:]
             value: str = state.second_child().first().value
-            base = CLRToken(type_chain=["str"], value=value.replace("%i", "{}"))
-            return CLRList("call", lst=[
+            base = ASTToken(type_chain=["str"], value=value.replace("%i", "{}"))
+            return AST("call", lst=[
                 fn.apply(state.but_with_first_child()),
-                CLRList("params", lst=[
-                    CLRList("call", lst=[
-                        CLRList(".", lst=[
+                AST("params", lst=[
+                    AST("call", lst=[
+                        AST(".", lst=[
                             base,
-                            CLRList("ref", lst=[CLRToken(type_chain=["TAG"], value="format")])
+                            AST("ref", lst=[ASTToken(type_chain=["TAG"], value="format")])
                         ]),
-                        CLRList("params", lst=[fn.apply(state.but_with(asl=child)) for child in other_params])
+                        AST("params", lst=[fn.apply(state.but_with(ast=child)) for child in other_params])
                     ]),
-                    CLRList("named", lst=[CLRToken(["TAG"], value="end"), CLRToken(["str"], value="")])
+                    AST("named", lst=[ASTToken(["TAG"], value="end"), ASTToken(["str"], value="")])
                 ])
             ])
 
-        return CLRList("call", lst=[fn.apply(state.but_with(asl=child))
+        return AST("call", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("if", "cond", "lvals",
+    @Visitor.for_ast_types("if", "cond", "lvals",
         "params", "tags", "tuple",
         "=", ".", "+", "-",
         "*", "==", "+=", "-=", "*=", "!=",
@@ -236,57 +236,57 @@ class lmda:
         "and", "or",
         "while")
     def binop_(fn, state: State):
-        return CLRList(state.get_asl().type, lst=[fn.apply(state.but_with(asl=child))
+        return AST(state.get_ast().type, lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("::")
+    @Visitor.for_ast_types("::")
     def mod_scope_(fn, state: State):
         node = adapters.ModuleScope(state)
-        return CLRToken(type_chain=["code"], value=node.get_instance().get_full_name())
+        return ASTToken(type_chain=["code"], value=node.get_instance().get_full_name())
 
-    @Visitor.for_asls("<-")
+    @Visitor.for_ast_types("<-")
     def ptr_(fn, state: State):
-        return CLRList("=", lst=[fn.apply(state.but_with(asl=child))
+        return AST("=", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("!")
+    @Visitor.for_ast_types("!")
     def not_(fn, state: State):
-        return CLRList("not", lst=[fn.apply(state.but_with_first_child())])
+        return AST("not", lst=[fn.apply(state.but_with_first_child())])
 
-    @Visitor.for_asls("/=")
+    @Visitor.for_ast_types("/=")
     def div_eq_(fn, state: State):
-        return CLRList("//=", lst=[fn.apply(state.but_with(asl=child))
+        return AST("//=", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("/")
+    @Visitor.for_ast_types("/")
     def div_(fn, state: State):
-        return CLRList("//", lst=[fn.apply(state.but_with(asl=child))
+        return AST("//", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("curry_call")
+    @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State):
-        state.get_asl()[0] = fn.apply(state.but_with_first_child())
-        return Pattern("('curry_call FN ('curried XS...)").match(state.get_asl())\
+        state.get_ast()[0] = fn.apply(state.but_with_first_child())
+        return Pattern("('curry_call FN ('curried XS...)").match(state.get_ast())\
             .to("('call ('. FN 'curry) ('params ('list XS...)))")
 
-    @Visitor.for_asls("new_vec")
+    @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State):
-        return CLRList(type="list", lst=[])
+        return AST(type="list", lst=[])
 
-    @Visitor.for_asls("index")
+    @Visitor.for_ast_types("index")
     def index_(fn, state: State):
-        return state.get_asl()
+        return state.get_ast()
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):
-        if state.get_asl().value == "true":
-            return CLRToken(type_chain=["code"], value="True")
-        if state.get_asl().value == "false":
-            return CLRToken(type_chain=["code"], value="False")
-        if state.get_asl().value == "nil":
-            return CLRToken(type_chain=["code"], value="None")
-        return state.get_asl()
+        if state.get_ast().value == "true":
+            return ASTToken(type_chain=["code"], value="True")
+        if state.get_ast().value == "false":
+            return ASTToken(type_chain=["code"], value="False")
+        if state.get_ast().value == "nil":
+            return ASTToken(type_chain=["code"], value="None")
+        return state.get_ast()

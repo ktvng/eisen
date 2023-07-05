@@ -3,7 +3,7 @@ from typing import List, TYPE_CHECKING, Any
 
 from eisen.common.eiseninstance import EisenInstance
 if TYPE_CHECKING:
-    from eisen.memory.spreads import Spread
+    from eisen.__memory.spreads import Spread
 
 ReturnValueDeps = List[List[int]]
 ArgumentDeps = List[List[int]]

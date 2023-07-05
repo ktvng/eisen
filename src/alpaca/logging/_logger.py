@@ -5,8 +5,8 @@ from datetime import datetime
 class Logger():
     log_dir = "./logs/"
 
-    def __init__(self, file: str, tag: str) -> None:
-        self.log_level = "info"
+    def __init__(self, file: str, tag: str, log_level: str = "info") -> None:
+        self.log_level = log_level
         self.file = file
         self.tag = tag
 

@@ -8,7 +8,7 @@ from eisen.state.memcheckstate import MemcheckState
 State = State_PostInstanceVisitor
 
 if TYPE_CHECKING:
-    from eisen.memory.memcheck import GetDeps
+    from eisen.__memory.memcheck import GetDeps
 
 State = MemcheckState
 
@@ -21,27 +21,27 @@ class PossibleParamNamesVisitor(Visitor):
         super().__init__(debug)
 
     def apply(self, state: State) -> list[list[str]]:
-        return self._route(state.get_asl(), state)
+        return self._route(state.get_ast(), state)
 
-    @Visitor.for_asls("call")
+    @Visitor.for_ast_types("call")
     def call_(fn, state: State):
         node = adapters.Call(state)
-        possible_param_names = [fn.apply(state.but_with(asl=param))[0]
+        possible_param_names = [fn.apply(state.but_with(ast=param))[0]
             for param in node.get_params()]
 
-        f_deps = fn.get_deps.of_function(state.but_with(asl=node.get_fn_asl()))
+        f_deps = fn.get_deps.of_function(state.but_with(ast=node.get_fn_ast()))
         return f_deps.apply_to_parameter_names(possible_param_names)
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):
         return [[adapters.Ref(state).get_name()]]
 
     # TODO: is this correct?
-    @Visitor.for_asls("fn", ".")
+    @Visitor.for_ast_types("fn", ".")
     def fn_(fn, state: State):
         return [[]]
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
@@ -51,5 +51,5 @@ class PossibleParamNamesVisitor(Visitor):
 
     @Visitor.for_default
     def default_(fn, state: State):
-        print(state.asl, "arg_name resolver not implemented")
+        print(state.get_ast(), "arg_name resolver not implemented")
         exit()

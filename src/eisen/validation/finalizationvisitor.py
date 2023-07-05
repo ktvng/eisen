@@ -18,32 +18,32 @@ class FinalizationVisitor(Visitor):
         return state
 
     def apply(self, state: State) -> None:
-        self._route(state.get_asl(), state)
+        self._route(state.get_ast(), state)
 
-    @Visitor.for_asls("start")
+    @Visitor.for_ast_types("start")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_ast_types("interface")
     def interface_(fn, state: State) -> None:
         node = adapters.Interface(state)
         node.get_this_type().finalize(
-            components=[TypeParser().apply(state.but_with(asl=child))
-                for child in node.get_child_attribute_asls()],
+            components=[TypeParser().apply(state.but_with(ast=child))
+                for child in node.get_child_attribute_asts()],
             component_names=node.get_child_attribute_names(),
             inherits=[])
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct_(fn, state: State) -> None:
         node = adapters.Struct(state)
         this_struct_type = node.get_this_type()
         this_struct_type.finalize(
-            components=[TypeParser().apply(state.but_with(asl=asl))
-                for asl in node.get_child_attribute_asls()],
+            components=[TypeParser().apply(state.but_with(ast=ast))
+                for ast in node.get_child_attribute_asts()],
             component_names=node.get_child_attribute_names(),
             inherits=node.get_implemented_interfaces(),
             embeds=node.get_embedded_structs())
@@ -52,7 +52,7 @@ class FinalizationVisitor(Visitor):
         Validate.embeddings_dont_conflict(state, this_struct_type)
         Validate.all_implementations_are_complete(state, this_struct_type)
 
-    @Visitor.for_asls("variant")
+    @Visitor.for_ast_types("variant")
     def variant_(fn, state: State) -> None:
         node = adapters.Variant(state)
         this_variant_type = node.get_this_type()
@@ -70,22 +70,22 @@ class Finalization2(Visitor):
         return state
 
     def apply(self, state: State) -> None:
-        self._route(state.get_asl(), state)
+        self._route(state.get_ast(), state)
 
-    @Visitor.for_asls("start")
+    @Visitor.for_ast_types("start")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct_(fn, state: State) -> None:
         node = adapters.Struct(state)
         this_struct_type = node.get_this_type()
-        this_struct_type.components = [TypeParser().apply(state.but_with(asl=asl))
-            for asl in node.get_child_attribute_asls()]
+        this_struct_type.components = [TypeParser().apply(state.but_with(ast=ast))
+            for ast in node.get_child_attribute_asts()]
 
     @Visitor.for_default
     def default_(fn, state: State) -> None:

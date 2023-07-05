@@ -7,8 +7,8 @@ class LambBuilder(alpaca.parser.CommonBuilder):
     def filter_build_(
             fn,
             config : alpaca.config.Config,
-            components : alpaca.clr.CLRRawList,
-            *args) -> alpaca.clr.CLRRawList:
+            components : alpaca.clr.ASTElements,
+            *args) -> alpaca.clr.ASTElements:
 
         newCLRList = LambBuilder.build(fn, config, components, *args)[0]
         filtered_children = LambBuilder._filter(config, newCLRList)
@@ -170,4 +170,3 @@ class LambRunner():
 #         astnode.visitor = visitor()
 #         for child in astnode.children:
 #             self._add_visitors(child)
-

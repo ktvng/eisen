@@ -3,8 +3,10 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
+from eisen.common.eiseninstance import EisenInstance
+
 @dataclass
-class MoveEpoch:
+class Entity:
     dependencies: set[Dependency]
     lifetime: Lifetime
     generation: int = 0
@@ -18,7 +20,7 @@ class MoveEpoch:
 
     @staticmethod
     def create_anonymous():
-        return MoveEpoch(dependencies=set(), lifetime=Lifetime.primitive(), uid=uuid.UUID(int=0))
+        return Entity(dependencies=set(), lifetime=Lifetime.primitive(), uid=uuid.UUID(int=0))
 
     def increment_generation(self):
         self.generation += 1
@@ -26,8 +28,8 @@ class MoveEpoch:
     def mark_as_gone(self):
         self.moved_away = True
 
-    def add_dependencies_on(self, others: list[MoveEpoch]) -> MoveEpoch:
-        new_epoch = MoveEpoch(
+    def add_dependencies_on(self, others: list[Entity]) -> Entity:
+        new_entity = Entity(
             dependencies=self.dependencies,
             lifetime=self.lifetime,
             generation=self.generation,
@@ -36,11 +38,11 @@ class MoveEpoch:
             is_let=self.is_let,
             moved_away=self.moved_away)
         for o in others:
-            new_epoch.dependencies.add(Dependency(o.uid, o.generation))
-        return new_epoch
+            new_entity.dependencies.add(Dependency(o.uid, o.generation))
+        return new_entity
 
-    def merge_dependencies_of(self, others: list[MoveEpoch]) -> MoveEpoch:
-        new_epoch = MoveEpoch(
+    def merge_dependencies_of(self, others: list[Entity]) -> Entity:
+        new_entity = Entity(
             dependencies=self.dependencies,
             lifetime=self.lifetime,
             generation=self.generation,
@@ -50,8 +52,8 @@ class MoveEpoch:
             moved_away=self.moved_away)
         for o in others:
             for d in o.dependencies:
-                new_epoch.dependencies.add(d)
-        return new_epoch
+                new_entity.dependencies.add(d)
+        return new_entity
 
 varieties = ["arg", "ret", "local", "primitive", "transient"]
 @dataclass
@@ -101,5 +103,11 @@ class Dependency:
 
 @dataclass
 class LvalIdentity:
-    move_epoch: MoveEpoch
+    entity: Entity
     attribute_is_modified: bool = False
+
+@dataclass
+class CurriedObject:
+    function_instance: EisenInstance = None
+    entity: Entity = None
+    curried_params: list[CurriedObject] = None

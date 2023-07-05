@@ -8,7 +8,7 @@ from eisen.state.basestate import BaseState
 class State_PostInstanceVisitor(State_PostTypeCheck):
     """
     After the InstanceVisitor is run, certain nodes will have data about what EisenInstance is
-    returned after executing the ASL at that state. This information is now available here.
+    returned after executing the ast at that state. This information is now available here.
     """
 
     @staticmethod
@@ -17,7 +17,7 @@ class State_PostInstanceVisitor(State_PostTypeCheck):
 
     def get_instances(self) -> list[EisenInstance]:
         """
-        Get the list of instances which would be returned by executing the current ASL.
+        Get the list of instances which would be returned by executing the current ast.
 
         :return: The list of instances.
         :rtype: list[EisenInstance]

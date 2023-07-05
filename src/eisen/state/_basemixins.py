@@ -5,7 +5,7 @@ from typing import Self
 from alpaca.concepts import Module, Context, TypeFactory, Type, AbstractException
 from alpaca.utils import Visitor
 from alpaca.config import Config
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.common.nodedata import NodeData
@@ -25,10 +25,10 @@ class BaseMixins():
 
 
     def __str__(self) -> str:
-        return self.asl.type
+        return self.ast.type
 
     def inspect(self) -> str:
-        if isinstance(self.asl, CLRList):
+        if isinstance(self.ast, AST):
             instances = None
             try:
                 instances = self.get_instances()
@@ -39,14 +39,14 @@ class BaseMixins():
                 else ", ".join([str(i) for i in instances]))
 
             children_strs = []
-            for child in self.asl:
-                if isinstance(child, CLRList):
+            for child in self.ast:
+                if isinstance(child, AST):
                     children_strs.append(f"({child.type} )")
                 else:
                     children_strs.append(str(child))
-            asl_info_str = f"({self.asl.type} {' '.join(children_strs)})"
-            if len(asl_info_str) > 64:
-                asl_info_str = asl_info_str[:64] + "..."
+            ast_info_str = f"({self.ast.type} {' '.join(children_strs)})"
+            if len(ast_info_str) > 64:
+                ast_info_str = ast_info_str[:64] + "..."
 
             type = "N/A"
             try:
@@ -57,8 +57,8 @@ class BaseMixins():
             return f"""
     INSPECT ==================================================
     ----------------------------------------------------------
-    ASL: {asl_info_str}
-    {self.asl}
+    ast: {ast_info_str}
+    {self.ast}
 
     ----------------------------------------------------------
     Module: {self.mod.name} {self.mod.type}
@@ -70,7 +70,7 @@ class BaseMixins():
         else:
             return f"""
     INSPECT ==================================================
-    Token: {self.asl}
+    Token: {self.ast}
     """
 
 
@@ -84,14 +84,14 @@ class BaseMixins():
         return self.config
 
 
-    def get_asl(self) -> CLRList:
+    def get_ast(self) -> AST:
         """
-        Get the abstract syntax list (ASL) which is currently being evaluated.
+        Get the abstract syntax list (ast) which is currently being evaluated.
 
         :return: The current CLRList.
         :rtype: CLRList
         """
-        return self.asl
+        return self.ast
 
 
     def get_txt(self) -> str:
@@ -106,7 +106,7 @@ class BaseMixins():
 
     def get_context(self) -> Context | Module:
         """
-        Get the context which encloses the current ASL. Note that context may be both the module
+        Get the context which encloses the current ast. Note that context may be both the module
         itself, or the function/local context (i.e. if/while context).
 
         :return: The context or module which is a subclass of NestedContainer
@@ -117,7 +117,7 @@ class BaseMixins():
 
     def get_enclosing_module(self) -> Module:
         """
-        Get the module which encloses the current ASL.
+        Get the module which encloses the current ast.
 
         :return: The enclosing module.
         :rtype: Module
@@ -128,12 +128,12 @@ class BaseMixins():
 
     def get_line_number(self) -> int:
         """
-        Get the line number within the source code for the ASL currently being evaluated
+        Get the line number within the source code for the ast currently being evaluated
 
         :return: The integer line number.
         :rtype: int
         """
-        return self.asl.line_number
+        return self.ast.line_number
 
 
     def get_bool_type(self) -> Type:
@@ -168,100 +168,100 @@ class BaseMixins():
         return TypeFactory.produce_novel_type("_abort_")
 
 
-    def first_child(self) -> CLRList:
+    def first_child(self) -> AST:
         """
-        Get the first child of the current ASL.
+        Get the first child of the current ast.
 
         :return: The first child.
         :rtype: CLRList
         """
-        return self.asl.first()
+        return self.ast.first()
 
 
-    def second_child(self) -> CLRList:
+    def second_child(self) -> AST:
         """
-        Get the second child of the current ASL.
+        Get the second child of the current ast.
 
         :return: The second child.
         :rtype: CLRList
         """
-        return self.asl.second()
+        return self.ast.second()
 
 
-    def third_child(self) -> CLRList:
+    def third_child(self) -> AST:
         """
-        Get the third child of the current ASL.
+        Get the third child of the current ast.
 
         :return: The third child.
         :rtype: CLRList
         """
-        return self.asl.third()
+        return self.ast.third()
 
 
-    def get_child_asls(self) -> list[CLRList]:
+    def get_child_asts(self) -> list[AST]:
         """
-        Get a list of the children of this ASL, in the order of that they appear, filtering out any
-        children which are not ASLs themselves. No child tokens will appear.
+        Get a list of the children of this ast, in the order of that they appear, filtering out any
+        children which are not asts themselves. No child tokens will appear.
 
-        :return: The list of children ASLs.
+        :return: The list of children asts.
         :rtype: list[CLRList]
         """
-        return [child for child in self.asl if isinstance(child, CLRList)]
+        return [child for child in self.ast if isinstance(child, AST)]
 
 
-    def get_all_children(self) -> list[CLRList]:
+    def get_all_children(self) -> list[AST]:
         """
-        Get a list of all children of this ASL in the order that they appear, including any token
+        Get a list of all children of this ast in the order that they appear, including any token
         children
 
         :return: The list of children.
         :rtype: list[CLRList]
         """
-        return self.asl._list
+        return self.ast._list
 
 
     def but_with_first_child(self) -> Self:
         """
         Return a new State object with the same properties as this current State, except that the
-        ASL is changed to be the first child of this State's ASL.
+        ast is changed to be the first child of this State's ast.
 
-        :return: A new State object with the ASL changed.
+        :return: A new State object with the ast changed.
         :rtype: Self
         """
-        return self.but_with(asl=self.first_child())
+        return self.but_with(ast=self.first_child())
 
 
     def but_with_second_child(self) -> Self:
         """
         Return a new State object with the same properties as this current State, except that the
-        ASL is change to be the second child of this State's ASL.
+        ast is change to be the second child of this State's ast.
 
-        :return: A new State object with the ASL changed.
+        :return: A new State object with the ast changed.
         :rtype: Self
         """
-        return self.but_with(asl=self.second_child())
+        return self.but_with(ast=self.second_child())
 
 
     def apply_fn_to_all_children(self, fn: Visitor):
         """
-        Apply the given Visitor function to all children of the ASL at State. Returns nothing
+        Apply the given Visitor function to all children of the ast at State. Returns nothing
 
         :param fn: The Visitor function to apply
         :type fn: Visitor
         """
-        for child in self.asl:
-            fn.apply(self.but_with(asl=child))
+        for child in self.ast:
+            fn.apply(self.but_with(ast=child))
 
 
     def get_node_data(self) -> NodeData:
         """
-        Get the NodeData object which contains enriched information about a given ASL that is
+        Get the NodeData object which contains enriched information about a given ast that is
         progressively filled during the compilation.
 
-        :return: The NodeData object stored at this ASL.
+        :return: The NodeData object stored at this ast.
         :rtype: NodeData
         """
-        return self.asl.data
+        return self.ast.data
 
 
     def get_defined_type(self, name: str) -> Type:
@@ -302,14 +302,14 @@ class BaseMixins():
         return Context(name="isolated", parent=self.get_enclosing_module())
 
 
-    def is_asl(self) -> bool:
+    def is_ast(self) -> bool:
         """
-        Returns whether or not the current State is at an ASL (vs a terminal, CLRToken)
+        Returns whether or not the current State is at an ast (vs a terminal, CLRToken)
 
-        :return: True if this state is visiting an ASL.
+        :return: True if this state is visiting an ast.
         :rtype: bool
         """
-        return isinstance(self.asl, CLRList)
+        return isinstance(self.ast, AST)
 
 
     def get_exceptions(self) -> list[AbstractException]:

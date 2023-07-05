@@ -10,14 +10,14 @@ class Initializer(Visitor):
         return state
 
     def apply(self, state: State) -> None:
-        return self._route(state.get_asl(), state)
+        return self._route(state.get_ast(), state)
 
     @Visitor.for_tokens
     def tokens_(fn, state: State) -> None:
-        state.get_asl().data = NodeData()
+        state.get_ast().data = NodeData()
 
     @Visitor.for_default
     def default_(fn, state: State) -> None:
-        state.get_asl().data = NodeData()
+        state.get_ast().data = NodeData()
         for child in state.get_all_children():
-            fn.apply(state.but_with(asl=child))
+            fn.apply(state.but_with(ast=child))

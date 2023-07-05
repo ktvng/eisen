@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 class TaggedTransform():
     def __init__(self, types: list[str], f):
@@ -38,7 +38,7 @@ class Builder():
             return TaggedTransform(args, f)
         return decorator
 
-    def apply(self, type_name: str, config, components: list[CLRList | list[CLRList]], *args):
+    def apply(self, type_name: str, config, components: list[AST | list[AST]], *args):
         transform = self.index.get(type_name, self.new_default_transform)
         if transform is None:
             raise Exception(f"{self._get_loggable_name()} has no transform for {type_name}")

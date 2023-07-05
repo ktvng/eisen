@@ -1,14 +1,14 @@
 from alpaca.concepts import Type, Instance, Context
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 class EisenInstance(Instance):
-    def __init__(self, name: str, type: Type, context: Context, asl: CLRList,
+    def __init__(self, name: str, type: Type, context: Context, ast: AST,
                  is_ptr=False,
                  is_constructor=False,
                  is_function=False,
                  no_mangle=False,
                  no_lambda=False):
-        super().__init__(name, type, context, asl)
+        super().__init__(name, type, context, ast)
         self.is_ptr = is_ptr
         self.is_constructor = is_constructor
         self.is_var = False

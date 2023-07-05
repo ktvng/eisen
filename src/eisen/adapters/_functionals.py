@@ -1,41 +1,41 @@
 from __future__ import annotations
 
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import AST, ASTToken
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters.argsrets import ArgsRets
 from eisen.common.eiseninstance import EisenFunctionInstance
 
 class CommonFunction(AbstractNodeInterface):
-    asl_types = ["def", "create", ":="]
+    ast_types = ["def", "create", ":="]
     examples = """
-    (<asl_type> name
+    (<ast_type> name
         (args ...)
         (rets ...)
         (seq ...))
     """
     get_name = AbstractNodeInterface.get_name_from_first_child
 
-    def get_args_asl(self) -> CLRList:
+    def get_args_ast(self) -> AST:
         return self.second_child()
 
-    def get_rets_asl(self) -> CLRList:
+    def get_rets_ast(self) -> AST:
         return self.third_child()
 
-    def get_seq_asl(self) -> CLRList:
-        return self.state.get_asl()[-1]
+    def get_seq_ast(self) -> AST:
+        return self.state.get_ast()[-1]
 
     def enter_context_and_apply(self, fn) -> None:
         # must create fn_context here as it is shared by all children
         fn_context = self.state.create_block_context()
-        for child in self.state.get_child_asls():
+        for child in self.state.get_child_asts():
             fn.apply(self.state.but_with(
-                asl=child,
+                ast=child,
                 context=fn_context))
 
 
 class Def(AbstractNodeInterface):
-    asl_type = "def"
+    ast_type = "def"
     examples = """
     (def name
         (args ...)
@@ -44,23 +44,23 @@ class Def(AbstractNodeInterface):
     """
     get_function_name = AbstractNodeInterface.get_name_from_first_child
 
-    def get_args_asl(self) -> CLRList:
+    def get_args_ast(self) -> AST:
         return self.second_child()
 
-    def get_rets_asl(self) -> CLRList:
+    def get_rets_ast(self) -> AST:
         return self.third_child()
 
-    def get_seq_asl(self) -> CLRList:
-        return self.state.asl[-1]
+    def get_seq_ast(self) -> AST:
+        return self.state.get_ast()[-1]
 
     def get_arg_names(self) -> list[str]:
-        return Def._unpack_to_get_names(self.get_args_asl())
+        return Def._unpack_to_get_names(self.get_args_ast())
 
     def get_ret_names(self) -> list[str]:
-        return Def._unpack_to_get_names(self.get_rets_asl())
+        return Def._unpack_to_get_names(self.get_rets_ast())
 
     def has_return_value(self) -> list[str]:
-        return not self.get_rets_asl().has_no_children()
+        return not self.get_rets_ast().has_no_children()
 
     def get_function_instance(self) -> EisenFunctionInstance:
         return self.state.get_instances()[0]
@@ -69,7 +69,7 @@ class Def(AbstractNodeInterface):
         return self.get_function_instance().type
 
     @classmethod
-    def _unpack_to_get_names(self, args_or_rets: CLRList) -> list[str]:
+    def _unpack_to_get_names(self, args_or_rets: AST) -> list[str]:
         if args_or_rets.has_no_children():
             return []
         first_arg = args_or_rets.first()
@@ -82,7 +82,7 @@ class Def(AbstractNodeInterface):
 
 
 class Create(AbstractNodeInterface):
-    asl_type = "create"
+    ast_type = "create"
     examples = """
     1. wild
         (create
@@ -98,18 +98,18 @@ class Create(AbstractNodeInterface):
 
     def normalize(self, struct_name: str):
         """adds the struct name as the first parameter. this normalizes the structure
-        of (def ...) and (create ...) asls so we can use the same code to process
+        of (def ...) and (create ...) asts so we can use the same code to process
         them"""
-        self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value=struct_name))
+        self.state.get_ast()._list.insert(0, ASTToken(type_chain=["TAG"], value=struct_name))
 
-    def get_args_asl(self) -> CLRList:
+    def get_args_ast(self) -> AST:
         return self.second_child()
 
-    def get_rets_asl(self) -> CLRList:
+    def get_rets_ast(self) -> AST:
         return self.third_child()
 
-    def get_seq_asl(self) -> CLRList:
-        return self.state.asl[-1]
+    def get_seq_ast(self) -> AST:
+        return self.state.get_ast()[-1]
 
     def get_name(self) -> str:
         """the name of the constructor is the same as the struct it constructs. this
@@ -117,10 +117,10 @@ class Create(AbstractNodeInterface):
         return self.state.get_struct_name()
 
     def get_name_of_created_entity(self) -> str:
-        return ArgsRets(self.state.but_with(asl=self.get_rets_asl())).get_names()[0]
+        return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).get_names()[0]
 
 class IsFn(AbstractNodeInterface):
-    asl_type = "is_fn"
+    ast_type = "is_fn"
     examples = """
     1. wild
         (is
@@ -130,7 +130,7 @@ class IsFn(AbstractNodeInterface):
     """
 
     def normalize(self, variant_name: str):
-        self.state.get_asl()._list.insert(0, CLRToken(type_chain=["TAG"], value="is_" + variant_name))
+        self.state.get_ast()._list.insert(0, ASTToken(type_chain=["TAG"], value="is_" + variant_name))
 
     def get_name(self) -> str:
         return "is_" + self.state.get_variant_name()

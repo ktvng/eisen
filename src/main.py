@@ -31,12 +31,12 @@ def run_python(filename: str):
         text=txt.strip(), config=config, callback=eisen.EisenCallback)
     # for t in tokens: print(t)
 
-    asl = run_and_measure("Parser",
+    ast = run_and_measure("Parser",
         alpaca.parser.run,
         config=config, tokens=tokens, builder=python.Builder())
 
-    print(asl)
-    proto_code = python.Writer().run(asl)
+    print(ast)
+    proto_code = python.Writer().run(ast)
     code = python.PostProcessor.run(proto_code)
     print(code)
 
@@ -45,9 +45,9 @@ def run_c(filename: str):
     with open(filename, 'r') as f:
         txt = f.read()
     tokens = alpaca.lexer.run(text=txt, config=config, callback=c.Callback)
-    asl = alpaca.parser.run(config=config, tokens=tokens, builder=c.Builder())
-    print(asl)
-    recovered_txt = c.Writer().run(asl)
+    ast = alpaca.parser.run(config=config, tokens=tokens, builder=c.Builder())
+    print(ast)
+    recovered_txt = c.Writer().run(ast)
     print()
     print(recovered_txt)
 
@@ -71,15 +71,15 @@ def run_eisen(filename: str):
         eisen.SuperParser,
         config=config)
 
-    asl = run_and_measure("Parser",
+    ast = run_and_measure("Parser",
         parser.parse,
         tokens=tokens)
 
     # Keep this exit to only parse
-    print(asl)
+    print(ast)
     # exit()
 
-    state = eisen.BaseState.create_initial(config, asl, txt, print_to_watcher=True)
+    state = eisen.BaseState.create_initial(config, ast, txt, print_to_watcher=True)
     _, state = eisen.Workflow.execute_with_benchmarks(state)
 
     global_end = time.perf_counter_ns()
@@ -91,10 +91,10 @@ def run_eisen(filename: str):
     if state.watcher.txt:
         exit()
 
-    asl = eisen.ToPython().run(state)
-    # print(asl)
+    ast = eisen.ToPython().run(state)
+    # print(ast)
 
-    proto_code = python.Writer().run(asl)
+    proto_code = python.Writer().run(ast)
     code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
@@ -105,17 +105,17 @@ def run_eisen(filename: str):
     print()
     print("done")
     exit()
-    asl = eisen.Flattener().run(state)
-    state.asl = asl
-    # print(state.asl)
-    transmuted = eisen.CTransmutation(debug=False).run(asl, state)
+    ast = eisen.Flattener().run(state)
+    state.ast = ast
+    # print(state.get_ast())
+    transmuted = eisen.CTransmutation(debug=False).run(ast, state)
     print(transmuted)
 
     # generate c code
     c_config = alpaca.config.parser.run("./src/c/grammar.gm")
-    c_asl = alpaca.clr.CLRParser.run(c_config, transmuted)
-    c_asl = eisen.DotDerefFilter().apply(c_asl)
-    code = c.Writer().run(c_asl)
+    c_ast = alpaca.clr.CLRParser.run(c_config, transmuted)
+    c_ast = eisen.DotDerefFilter().apply(c_ast)
+    code = c.Writer().run(c_ast)
     code = "#include <stdio.h> \n" + code
     # print(code)
     with open("./build/test.c", 'w') as f:
@@ -142,8 +142,8 @@ def run_types(filename: str):
     with open(filename, 'r') as f:
         txt = f.read()
 
-    asl = alpaca.types.parser.run(txt)
-    print(asl)
+    ast = alpaca.types.parser.run(txt)
+    print(ast)
 
 def run_and_measure(name: str, f, *args, **kwargs):
     starttime = time.perf_counter_ns()

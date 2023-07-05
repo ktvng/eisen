@@ -4,7 +4,7 @@ from alpaca.concepts import Module
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 
 class Mod(AbstractNodeInterface):
-    asl_type = "mod"
+    ast_type = "mod"
     examples = """
     (mod name ...)
     """
@@ -16,15 +16,15 @@ class Mod(AbstractNodeInterface):
         self.state.get_node_data().enters_module = mod
 
     def enter_module_and_apply(self, fn):
-        for child in self.state.get_asl()[1:]:
+        for child in self.state.get_ast()[1:]:
             fn.apply(self.state.but_with(
-                asl=child,
+                ast=child,
                 mod=self.get_entered_module()))
 
     def enter_module_and_apply_with_return(self, fn):
         lst = []
-        for child in self.state.get_asl()[1:]:
+        for child in self.state.get_ast()[1:]:
             lst.append(fn.apply(self.state.but_with(
-                asl=child,
+                ast=child,
                 mod=self.get_entered_module())))
         return lst

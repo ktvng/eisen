@@ -1,13 +1,13 @@
 from __future__ import annotations
 from typing import Any
 
-from alpaca.clr._clr import CLRList, CLRToken
+from alpaca.clr._clr import AST, ASTToken
 from alpaca.config._parser import parser as configparser
 from alpaca.lexer._lexer import Lexer, Token
 from alpaca.lexer._abstractcallback import AbstractCallback
 
 class Match:
-    def __init__(self, matched: bool, captures: dict[str, CLRList]={}) -> None:
+    def __init__(self, matched: bool, captures: dict[str, AST]={}) -> None:
         self.matched = matched
         self.captures = captures
 
@@ -17,7 +17,7 @@ class Match:
     def __getattr__(self, __name: str) -> Any:
         return self.captures.get(__name, None)
 
-    def to(self, pattern: str) -> CLRList:
+    def to(self, pattern: str) -> AST:
         return Pattern(pattern)._build(self.captures)
 
 
@@ -35,26 +35,26 @@ class Pattern:
     def _construct_list(self, parts: list[Token]):
         return ListRepresentation.construct(parts)
 
-    def match(self, asl: CLRList) -> Match:
-        return PatternMatcher.match_pattern_head(self.lst, asl)
+    def match(self, ast: AST) -> Match:
+        return PatternMatcher.match_pattern_head(self.lst, ast)
 
-    def map(self, asl: CLRList, into_pattern: str) -> list[CLRList]:
-        return [m.to(into_pattern) for m in map(self.match, asl._list) if m]
+    def map(self, ast: AST, into_pattern: str) -> list[AST]:
+        return [m.to(into_pattern) for m in map(self.match, ast._list) if m]
 
-    def find_all(self, asl: CLRList) -> list[CLRList]:
-        return [child for child in asl._list if self.match(child)]
+    def find_all(self, ast: AST) -> list[AST]:
+        return [child for child in ast._list if self.match(child)]
 
-    def find_first(self, asl: CLRList) -> CLRList:
-        return self.find_all(asl._list)[0]
+    def find_first(self, ast: AST) -> AST:
+        return self.find_all(ast._list)[0]
 
-    def _build(self, lookups: dict[str, CLRList]) -> CLRList:
+    def _build(self, lookups: dict[str, AST]) -> AST:
         return PatternBuilder.construct(self.lst, lookups)
 
 class PatternBuilder:
     @staticmethod
-    def construct(pattern: list, lookups: dict[str, CLRList]) -> CLRList:
-        asl_type_comp = pattern[0]
-        if not isinstance(asl_type_comp, TagComponent):
+    def construct(pattern: list, lookups: dict[str, AST]) -> AST:
+        ast_type_comp = pattern[0]
+        if not isinstance(ast_type_comp, TagComponent):
             raise Exception("expected real tag component to build list")
 
         lst = []
@@ -62,47 +62,47 @@ class PatternBuilder:
             if isinstance(comp, VarComponent):
                 lst.append(lookups.get(comp.get_value()))
             elif isinstance(comp, TagComponent):
-                lst.append(CLRToken(type_chain=["code"], value=comp.get_value()))
+                lst.append(ASTToken(type_chain=["code"], value=comp.get_value()))
             elif isinstance(comp, ListComponent):
                 lst += lookups.get(comp.get_value())
             elif isinstance(comp, list):
                 lst.append(PatternBuilder.construct(comp, lookups))
 
-        return CLRList(type=asl_type_comp.get_value(), lst=lst)
+        return AST(type=ast_type_comp.get_value(), lst=lst)
 
 class PatternMatcher:
     @staticmethod
-    def match_pattern_head(pattern: list, asl: CLRList) -> Match:
-        asl_type_comp = pattern[0]
-        asl_type = None
-        if isinstance(asl_type_comp, TagComponent):
-            asl_type = asl_type_comp.get_value()
-        elif isinstance(asl_type_comp, AnyTagComponent):
-            asl_type = None
+    def match_pattern_head(pattern: list, ast: AST) -> Match:
+        ast_type_comp = pattern[0]
+        ast_type = None
+        if isinstance(ast_type_comp, TagComponent):
+            ast_type = ast_type_comp.get_value()
+        elif isinstance(ast_type_comp, AnyTagComponent):
+            ast_type = None
         else:
             raise Exception("expected match head to start with list type")
 
-        if not (asl_type is None or asl.type == asl_type):
+        if not (ast_type is None or ast.type == ast_type):
             return Match(False)
 
-        asl_parts = list(asl._list)
+        ast_parts = list(ast._list)
         match = Match(True, {})
         for comp in pattern[1: ]:
             if isinstance(comp, TagComponent):
-                if not (asl_parts[0].is_token() and asl_parts[0].value == comp.get_value()):
+                if not (ast_parts[0].is_token() and ast_parts[0].value == comp.get_value()):
                     return Match(False)
-                asl_parts = asl_parts[1: ]
+                ast_parts = ast_parts[1: ]
             if isinstance(comp, VarComponent):
-                match.captures[comp.get_value()] = asl_parts[0]
-                asl_parts = asl_parts[1: ]
+                match.captures[comp.get_value()] = ast_parts[0]
+                ast_parts = ast_parts[1: ]
             if isinstance(comp, list):
-                child_match = PatternMatcher.match_pattern_head(comp, asl_parts[0])
+                child_match = PatternMatcher.match_pattern_head(comp, ast_parts[0])
                 if not child_match:
                     return Match(False)
-                asl_parts = asl_parts[1 :]
+                ast_parts = ast_parts[1 :]
                 match.captures.update(child_match.captures)
             if isinstance(comp, LstComponent):
-                match.captures[comp.get_value()] = asl_parts
+                match.captures[comp.get_value()] = ast_parts
                 return match
         return match
 

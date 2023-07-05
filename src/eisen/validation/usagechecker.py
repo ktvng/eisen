@@ -23,7 +23,7 @@ class UsageChecker(Visitor):
         return state
 
     def apply(self, state: State) -> list[UsageStatus]:
-        result = self._route(state.get_asl(), state)
+        result = self._route(state.get_ast(), state)
         if result is None:
             return []
         return result
@@ -56,46 +56,46 @@ class UsageChecker(Visitor):
     def validate_all_struct_members_initialized_after_constructor(state: State, create_context: Context):
         # check that all attributes are initialized
         internal_state = state.but_with(context=create_context)
-        if state.get_asl().type == "create":
+        if state.get_ast().type == "create":
             for attr in state.get_instances()[0].type.get_return_type().component_names:
                 Validate.attribute_is_initialized(state, attr, internal_state.get_usagestatus(
                     name=adapters.Create(state).get_name_of_created_entity()))
 
 
-    @Visitor.for_asls("rets")
+    @Visitor.for_ast_types("rets")
     def _rets(fn, state: State):
-        if state.get_child_asls():
+        if state.get_child_asts():
             rets = fn.apply(state.but_with_first_child())
             # Return types inside a constructor should be marked as initialized
             if state.is_inside_constructor():
                 for ret, type_ in zip(rets, state.get_returned_type().unpack_into_parts()):
                     ret.mark_as_underconstruction(type_)
 
-    @Visitor.for_asls("args", "prod_type")
+    @Visitor.for_ast_types("args", "prod_type")
     def args_(fn, state: State):
         for child in state.get_all_children():
-            for inst in fn.apply(state.but_with(asl=child)):
+            for inst in fn.apply(state.but_with(ast=child)):
                 inst.mark_as_initialized()
 
-    @Visitor.for_asls("start", "seq", "cond")
+    @Visitor.for_ast_types("start", "seq", "cond")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_asls("def", "is_fn")
+    @Visitor.for_ast_types("def", "is_fn")
     def defs_(fn, state: State) -> list[UsageStatus]:
         adapters.CommonFunction(state).enter_context_and_apply(fn)
 
-    @Visitor.for_asls("create")
+    @Visitor.for_ast_types("create")
     def create_(fn, state: State) -> list[UsageStatus]:
         # must create fn_context here as it is shared by all children
         fn_context = state.create_block_context()
-        for child in state.get_child_asls():
+        for child in state.get_child_asts():
             fn.apply(state.but_with(
-                asl=child,
+                ast=child,
                 context=fn_context,
                 inside_constructor=True))
 
@@ -103,62 +103,62 @@ class UsageChecker(Visitor):
             state=state,
             create_context=fn_context)
 
-    @Visitor.for_asls("interface", "return")
+    @Visitor.for_ast_types("interface", "return")
     def none_(fn, state: State) -> list[UsageStatus]:
         return []
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct_(fn, state: State) -> list[UsageStatus]:
         node = adapters.Struct(state)
-        if node.has_create_asl():
-            fn.apply(state.but_with(asl=node.get_create_asl()))
+        if node.has_create_ast():
+            fn.apply(state.but_with(ast=node.get_create_ast()))
 
-    @Visitor.for_asls("variant")
+    @Visitor.for_ast_types("variant")
     def variant_(fn, state: State) -> list[EisenInstance]:
-        fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(ast=adapters.Variant(state).get_is_ast()))
 
-    @Visitor.for_asls("if")
+    @Visitor.for_ast_types("if")
     def if_(fn, state: State) -> list[UsageStatus]:
         adapters.If(state).enter_context_and_apply(fn)
 
-    @Visitor.for_asls("while")
+    @Visitor.for_ast_types("while")
     def while_(fn, state: State) -> list[UsageStatus]:
         adapters.While(state).enter_context_and_apply(fn)
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State) -> list[UsageStatus]:
         return [state.get_usagestatus(adapters.Ref(state).get_name())]
 
-    @Visitor.for_asls("fn")
+    @Visitor.for_ast_types("fn")
     def fn_(fn, state: State) -> list[UsageStatus]:
         return UsageChecker.create_new_statuses_for_instances(
             instances=state.get_instances(),
             initialization=Initializations.Initialized)
 
-    @Visitor.for_asls(*adapters.Typing.asl_types)
+    @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def let_(fn, state: State) -> list[UsageStatus]:
         statuses = UsageChecker.create_new_statuses_for_instances(instances=state.get_instances())
         for status in statuses:
             state.add_usagestatus(status)
         return statuses
 
-    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
+    @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def ilet_(fn, state: State) -> list[UsageStatus]:
         UsageChecker.handle_assignment(state,
             left_statuses=UsageChecker.create_new_statuses_for_instances(state.get_instances()),
-            right_statuses=fn.apply(state.but_with(asl=state.second_child())))
+            right_statuses=fn.apply(state.but_with(ast=state.second_child())))
 
-    @Visitor.for_asls("tuple", "params", "curried")
+    @Visitor.for_ast_types("tuple", "params", "curried")
     def tuple_(fn, state: State) -> list[UsageStatus]:
         statuses = []
         for child in state.get_all_children():
-            statuses += fn.apply(state.but_with(asl=child))
+            statuses += fn.apply(state.but_with(ast=child))
         return statuses
 
-    @Visitor.for_asls("=")
+    @Visitor.for_ast_types("=")
     def equals_(fn, state: State) -> list[UsageStatus]:
         left_entity_statuses = LValUsageVisitor().apply(state.but_with_first_child())
-        right_statuses = fn.apply(state.but_with(asl=state.second_child()))
+        right_statuses = fn.apply(state.but_with(ast=state.second_child()))
         for status in right_statuses:
             Validate.status_is_initialized(state, status)
 
@@ -170,7 +170,7 @@ class UsageChecker(Visitor):
             if not left.parent_status.is_anonymous():
                 state.add_usagestatus(left.parent_status)
 
-    @Visitor.for_asls(".")
+    @Visitor.for_ast_types(".")
     def dot_(fn, state: State) -> list[UsageStatus]:
         parent_inst = fn.apply(state.but_with_first_child())[0]
         Validate.status_is_initialized(state, parent_inst)
@@ -185,17 +185,17 @@ class UsageChecker(Visitor):
             restriction=state.get_restriction(),
             initialization=Initializations.Initialized)]
 
-    @Visitor.for_asls("call", "is_call")
+    @Visitor.for_ast_types("call", "is_call")
     def call_(fn, state: State) -> list[UsageStatus]:
         node = adapters.Call(state)
         if node.is_print():
-            fn.apply(state.but_with(asl=node.get_params_asl()))
+            fn.apply(state.but_with(ast=node.get_params_ast()))
             return [UsageStatus.no_restriction()]
 
         argument_insts = [UsageChecker.create_status_from_type(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
-        param_insts = fn.apply(state.but_with(asl=node.get_params_asl()))
+        param_insts = fn.apply(state.but_with(ast=node.get_params_ast()))
         for argument_requires, given in zip(argument_insts, param_insts):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.status_is_initialized(state, given)
@@ -205,45 +205,45 @@ class UsageChecker(Visitor):
             for tc in node.get_function_return_type().unpack_into_parts()]
         return returned_insts
 
-    @Visitor.for_asls("curry_call")
+    @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State) -> list[UsageStatus]:
         node = adapters.CurriedCall(state)
 
         argument_insts = [UsageChecker.create_status_from_type(tc)
             for tc in node.get_function_argument_type().unpack_into_parts()]
 
-        param_insts = fn.apply(state.but_with(asl=node.get_params_asl()))
+        param_insts = fn.apply(state.but_with(ast=node.get_params_ast()))
         for argument_requires, given in zip(argument_insts, param_insts):
             Validate.parameter_assignment_restrictions_met(state, argument_requires, given)
             Validate.status_is_initialized(state, given)
 
         return [UsageStatusFactory.create_anonymous(ImmutableRestriction(), Initializations.Initialized)]
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast_(fn, state: State) -> list[UsageStatus]:
         # restriction is carried over from the second child?
         return fn.apply(state.but_with_second_child())
 
-    @Visitor.for_asls(*(binary_ops + boolean_return_ops), "!")
+    @Visitor.for_ast_types(*(binary_ops + boolean_return_ops), "!")
     def ops_(fn, state: State) -> list[UsageStatus]:
         for child in state.get_all_children():
-            for status in fn.apply(state.but_with(asl=child)):
+            for status in fn.apply(state.but_with(ast=child)):
                 Validate.status_is_initialized(state, status)
         return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
-    @Visitor.for_asls("index", "type", "new_vec", "mut_type")
+    @Visitor.for_ast_types("index", "type", "new_vec", "mut_type")
     def index_(fn, state: State) -> list[UsageStatus]:
         return [UsageStatusFactory.create_anonymous(state.get_restriction(), Initializations.Initialized)]
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> list[UsageStatus]:
-        if state.asl.value == "nil":
+        if state.get_ast().value == "nil":
             return [UsageStatusFactory.create_anonymous(NoRestriction(), Initializations.Initialized)]
         return [UsageStatusFactory.create_anonymous(LiteralRestriction(), Initializations.Initialized)]
 
     @Visitor.for_default
     def default_(fn, state: State) -> list[UsageStatus]:
-        print("UsageChecker Unhandled State:", state.get_asl())
+        print("UsageChecker Unhandled State:", state.get_ast())
         exit()
 
 
@@ -267,26 +267,26 @@ class LValUsageVisitor(Visitor):
         return state
 
     def apply(self, state: State) -> list[LValUsageStatus]:
-        result = self._route(state.get_asl(), state)
+        result = self._route(state.get_ast(), state)
         if result is None:
             return []
         return result
 
-    @Visitor.for_asls("lvals")
+    @Visitor.for_ast_types("lvals")
     def lvals_(self, state: State):
         statuses = []
         for child in state.get_all_children():
-            statuses += self.apply(state.but_with(asl=child))
+            statuses += self.apply(state.but_with(ast=child))
         return statuses
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(self, state: State):
         parent_status = state.get_usagestatus(adapters.Ref(state).get_name())
         return [LValUsageStatus(
             parent_status=parent_status,
             branch_status=UsageStatusFactory.create_anonymous(parent_status.restriction, parent_status.initialization))]
 
-    @Visitor.for_asls(".")
+    @Visitor.for_ast_types(".")
     def dot_(self, state: State):
         node = adapters.Scope(state)
         entitystatus = self.apply(state.but_with_first_child())[0]

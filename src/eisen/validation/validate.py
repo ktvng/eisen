@@ -13,7 +13,7 @@ from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
 
 if TYPE_CHECKING:
-    from eisen.moves.moveepoch import Dependency, MoveEpoch
+    from eisen.moves.moveepoch import Dependency, Entity
 
 @dataclass
 class ValidationResult:
@@ -290,7 +290,7 @@ class Validate:
 
     @staticmethod
     def parameter_assignment_restrictions_met(state: State, argument_requires: UsageStatus, given: UsageStatus):
-        # print(state.asl)
+        # print(state.get_ast())
         result = argument_requires.assignable_to(given)
         if result.failed():
             return failure_with_exception_added_to(state,
@@ -366,51 +366,51 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def same_generation(state: State, move_epoch: MoveEpoch) -> ValidationResult:
-        for dependency in move_epoch.dependencies:
-            if dependency.generation != state.get_context().get_move_epoch(dependency.uid).generation:
+    def same_generation(state: State, entity: Entity) -> ValidationResult:
+        for dependency in entity.dependencies:
+            if dependency.generation != state.get_context().get_entity(dependency.uid).generation:
                 return failure_with_exception_added_to(state,
                     ex=Exceptions.ReferenceInvalidation,
-                    msg=f"cannot use {move_epoch.name} after invalidation")
+                    msg=f"cannot use {entity.name} after invalidation")
         return ValidationResult.success()
 
     @staticmethod
-    def is_not_moved_away(state: State, move_epoch: MoveEpoch) -> ValidationResult:
-        if move_epoch.moved_away:
+    def is_not_moved_away(state: State, entity: Entity) -> ValidationResult:
+        if entity.moved_away:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.ReferenceInvalidation,
-                msg=f"cannot use {move_epoch.name} as it has moved away")
+                msg=f"cannot use {entity.name} as it has moved away")
 
-        for dependency in move_epoch.dependencies:
-            dep_epoch: MoveEpoch = state.get_context().get_move_epoch(dependency.uid)
+        for dependency in entity.dependencies:
+            dep_epoch: Entity = state.get_context().get_entity(dependency.uid)
             if dep_epoch.moved_away:
                 return failure_with_exception_added_to(state,
                     ex=Exceptions.ReferenceInvalidation,
-                    msg=f"'{move_epoch.name}' may depend on '{dep_epoch.name}', but '{dep_epoch.name}' has moved away")
+                    msg=f"'{entity.name}' may depend on '{dep_epoch.name}', but '{dep_epoch.name}' has moved away")
         return ValidationResult.success()
 
     @staticmethod
-    def healthy_dependencies(state: State, move_epoch: MoveEpoch) -> ValidationResult:
-        if (Validate.same_generation(state, move_epoch).failed()
-                or Validate.is_not_moved_away(state, move_epoch).failed):
+    def healthy_dependencies(state: State, entity: Entity) -> ValidationResult:
+        if (Validate.same_generation(state, entity).failed()
+                or Validate.is_not_moved_away(state, entity).failed):
             return ValidationResult.failure()
         return ValidationResult.success()
 
     @staticmethod
-    def epoch_dependencies_are_ok(state: MoveVisitorState, move_epoch: MoveEpoch) -> ValidationResult:
+    def epoch_dependencies_are_ok(state: MoveVisitorState, entity: Entity) -> ValidationResult:
         failed = False
-        for dependency in move_epoch.dependencies:
-            dep_epoch = state.get_move_epoch_by_uid(dependency.uid)
-            if move_epoch.lifetime.longer_than(dep_epoch.lifetime):
+        for dependency in entity.dependencies:
+            dep_epoch = state.get_entity_by_uid(dependency.uid)
+            if entity.lifetime.longer_than(dep_epoch.lifetime):
                 failed = True
                 add_exception_to(state,
                     ex=Exceptions.ObjectLifetime,
-                    msg=f"cannot assign '{move_epoch.name}' state to '{dep_epoch.name}' which has shorter lifetime")
-            if (move_epoch.lifetime.is_ret() or move_epoch.lifetime.is_arg()) and dep_epoch.lifetime.is_local():
+                    msg=f"cannot assign '{entity.name}' state to '{dep_epoch.name}' which has shorter lifetime")
+            if (entity.lifetime.is_ret() or entity.lifetime.is_arg()) and dep_epoch.lifetime.is_local():
                 failed = True
                 add_exception_to(state,
                     ex=Exceptions.ObjectLifetime,
-                    msg=f"'{move_epoch.name}' may depend on '{dep_epoch.name}' which is local to the function")
+                    msg=f"'{entity.name}' may depend on '{dep_epoch.name}' which is local to the function")
         if failed:
             return ValidationResult.failure()
         return ValidationResult.success()

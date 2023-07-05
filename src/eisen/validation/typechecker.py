@@ -18,8 +18,8 @@ from eisen.validation.builtin_print import Builtins
 State = TypeCheckerState
 
 class TypeChecker(Visitor):
-    """this evaluates the flow of types throughout the asl, and records which
-    type flows up through each asl.
+    """this evaluates the flow of types throughout the ast, and records which
+    type flows up through each ast.
     """
 
     def __init__(self, debug: bool = False):
@@ -36,7 +36,7 @@ class TypeChecker(Visitor):
         if state.critical_exception:
             return state.get_void_type()
 
-        result = self._route(state.get_asl(), state)
+        result = self._route(state.get_ast(), state)
         if result is None: result = state.get_void_type()
         TypeChecker.set_returned_type(state, result)
         return result
@@ -91,58 +91,58 @@ class TypeChecker(Visitor):
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
-        if state.get_asl().type in implemented_primitive_types:
+        if state.get_ast().type in implemented_primitive_types:
             return (TypeFactory
-                .produce_novel_type(name=state.get_asl().type)
+                .produce_novel_type(name=state.get_ast().type)
                 .with_restriction(PrimitiveRestriction()))
-        elif state.get_asl().type == "nil":
+        elif state.get_ast().type == "nil":
             return TypeFactory.produce_nil_type()
 
         # debug only
-        raise Exception(f"unexpected token type of {state.get_asl().type}, {state.get_asl().value}")
+        raise Exception(f"unexpected token type of {state.get_ast().type}, {state.get_ast().value}")
 
-    @Visitor.for_asls("start", "return", "cond", "seq")
+    @Visitor.for_ast_types("start", "return", "cond", "seq")
     def start_(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_asls("!")
+    @Visitor.for_ast_types("!")
     def not_(fn, state: State) -> Type:
         return fn.apply_to_first_child_of(state)
 
-    @Visitor.for_asls(".")
+    @Visitor.for_ast_types(".")
     def dot_(fn, state: State) -> Type:
         node = adapters.Scope(state)
-        parent_type = fn.apply(state.but_with(asl=node.get_object_asl()))
+        parent_type = fn.apply(state.but_with(ast=node.get_object_ast()))
         attr_name = node.get_attribute_name()
         if Validate.has_member_attribute(state, parent_type, attr_name).failed():
             return state.get_abort_signal()
         return parent_type.get_member_attribute_by_name(attr_name)
 
-    @Visitor.for_asls("::")
+    @Visitor.for_ast_types("::")
     def scope_(fn, state: State) -> Type:
         node = adapters.ModuleScope(state)
         instance = node.get_end_instance()
         return instance.type
 
-    @Visitor.for_asls("tuple", "params", "prod_type", "lvals", "curried")
+    @Visitor.for_ast_types("tuple", "params", "prod_type", "lvals", "curried")
     def tuple_(fn, state: State) -> Type:
-        if len(state.get_asl()) == 0:
+        if len(state.get_ast()) == 0:
             return state.get_void_type()
-        elif len(state.get_asl()) == 1:
+        elif len(state.get_ast()) == 1:
             # if there is only one child, then we simply pass the type back, not as a tuple
             return fn.apply_to_first_child_of(state)
         return TypeFactory.produce_tuple_type(
-            components=[fn.apply(state.but_with(asl=child)) for child in state.get_asl()])
+            components=[fn.apply(state.but_with(ast=child)) for child in state.get_ast()])
 
-    @Visitor.for_asls("if")
+    @Visitor.for_ast_types("if")
     def if_(fn, state: State) -> Type:
         adapters.If(state).enter_context_and_apply(fn)
 
-    @Visitor.for_asls("while")
+    @Visitor.for_ast_types("while")
     def while_(fn, state: State) -> Type:
         adapters.While(state).enter_context_and_apply(fn)
 
@@ -160,11 +160,11 @@ class TypeChecker(Visitor):
                 return state.get_abort_signal()
         return fn_type.get_return_type()
 
-    @Visitor.for_asls("raw_call")
+    @Visitor.for_ast_types("raw_call")
     def raw_call(fn, state: State) -> Type:
         guessed_params_type = fn.apply_to_second_child_of(state)
 
-        # this will actually change the asl inplace, converting (raw_call ...)
+        # this will actually change the ast inplace, converting (raw_call ...)
         # into (call (ref ...) (params ...))
         if guessed_params_type == state.get_abort_signal():
             return state.get_abort_signal()
@@ -173,13 +173,13 @@ class TypeChecker(Visitor):
             guessed_params_type=guessed_params_type,
             fn=fn)
 
-        fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
+        fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()
 
         return TypeChecker._shared_call_checks(state, params_type)
 
-    @Visitor.for_asls("is")
+    @Visitor.for_ast_types("is")
     def is_(fn, state: State) -> Type:
         node = adapters.Is(state)
         # if the check is not against nil, treat this as a call to
@@ -187,12 +187,12 @@ class TypeChecker(Visitor):
         if node.get_type_name() != "nil":
             params_type = node.get_considered_type().parent_type
             RestructureIsStatement.run(state)
-            fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
+            fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
             fn.apply(state.but_with_second_child())
             return TypeChecker._shared_call_checks(state, params_type)
         return state.get_bool_type()
 
-    @Visitor.for_asls("curry_call")
+    @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
         curried_args_type = fn.apply_to_second_child_of(state)
@@ -202,22 +202,22 @@ class TypeChecker(Visitor):
 
         return TypeChecker.get_curried_type(state, fn_type, n_curried_args)
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct(fn, state: State) -> Type:
         node = adapters.Struct(state)
-        if node.has_create_asl():
-            fn.apply(state.but_with(asl=node.get_create_asl()))
+        if node.has_create_ast():
+            fn.apply(state.but_with(ast=node.get_create_ast()))
 
-    @Visitor.for_asls("variant")
+    @Visitor.for_ast_types("variant")
     def variant_(fn, state: State) -> Type:
-        fn.apply(state.but_with(asl=adapters.Variant(state).get_is_asl()))
+        fn.apply(state.but_with(ast=adapters.Variant(state).get_is_ast()))
 
-    @Visitor.for_asls("interface", "impls")
+    @Visitor.for_ast_types("interface", "impls")
     def interface_(fn, state: State) -> Type:
         # no action required
         return
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast(fn, state: State) -> Type:
         # (cast (ref name) (type into))
         left_type = fn.apply_to_first_child_of(state)
@@ -229,7 +229,7 @@ class TypeChecker(Visitor):
             cast_into_type=right_type).failed(): return state.get_abort_signal()
         return right_type
 
-    @Visitor.for_asls("def", "create", ":=", "is_fn")
+    @Visitor.for_ast_types("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
         adapters.CommonFunction(state).enter_context_and_apply(fn)
 
@@ -245,7 +245,7 @@ class TypeChecker(Visitor):
             TypeChecker.add_reference_type(state, name, t)
         return type
 
-    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
+    @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def idecls_(fn, state: State):
         node = adapters.InferenceAssign(state)
         names = node.get_names()
@@ -253,18 +253,18 @@ class TypeChecker(Visitor):
         type = type.with_restriction(node.get_restriction(hint=type))
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls(*adapters.Typing.asl_types)
+    @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def decls_(fn, state: State):
         node = adapters.Typing(state)
         names = node.get_names()
-        type = fn.apply(state.but_with(asl=node.get_type_asl())).with_restriction(node.get_restriction())
+        type = fn.apply(state.but_with(ast=node.get_type_ast())).with_restriction(node.get_restriction())
         return TypeChecker._create_references(state, names, type)
 
-    @Visitor.for_asls("fn_type", "para_type", *adapters.TypeLike.asl_types)
+    @Visitor.for_ast_types("fn_type", "para_type", *adapters.TypeLike.ast_types)
     def _type1(fn, state: State) -> Type:
         return fn.typeparser.apply(state)
 
-    @Visitor.for_asls("=", "<-", *binary_ops)
+    @Visitor.for_ast_types("=", "<-", *binary_ops)
     def binary_ops(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
@@ -273,7 +273,7 @@ class TypeChecker(Visitor):
             return state.get_abort_signal()
         return left_type
 
-    @Visitor.for_asls(*boolean_return_ops)
+    @Visitor.for_ast_types(*boolean_return_ops)
     def boolean_return_ops_(fn, state: State) -> Type:
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
@@ -282,7 +282,7 @@ class TypeChecker(Visitor):
             return state.get_abort_signal()
         return state.get_bool_type()
 
-    @Visitor.for_asls("fn")
+    @Visitor.for_ast_types("fn")
     def fn_(fn, state: State) -> Type:
         node = adapters.Fn(state)
         instance = node.resolve_function_instance(state.get_arg_type())
@@ -290,7 +290,7 @@ class TypeChecker(Visitor):
             return state.get_abort_signal()
         return instance.type
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State) -> Type:
         node = adapters.Ref(state)
         if node.is_print():
@@ -301,17 +301,17 @@ class TypeChecker(Visitor):
             return state.get_abort_signal()
         return type
 
-    @Visitor.for_asls(*adapters.ArgsRets.asl_types)
+    @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
     def args_(fn, state: State) -> Type:
-        if not state.get_asl():
+        if not state.get_ast():
             return state.get_void_type()
-        return fn.apply(state.but_with(asl=state.first_child()))
+        return fn.apply(state.but_with(ast=state.first_child()))
 
-    @Visitor.for_asls("new_vec")
+    @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State) -> Type:
         node = adapters.NewVec(state)
         return node.get_type()
 
-    @Visitor.for_asls("index")
+    @Visitor.for_ast_types("index")
     def index_(fn, state: State) -> Type:
         return fn.apply_to_first_child_of(state).parametrics[0]

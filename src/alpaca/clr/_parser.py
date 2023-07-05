@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 
 from alpaca.config._config import Config
-from alpaca.clr._clr import CLRList, CLRToken
+from alpaca.clr._clr import AST, ASTToken
 
 class CLRParser():
     @classmethod
-    def run(cls, config: Config, txt: str) -> CLRList | CLRToken:
+    def run(cls, config: Config, txt: str) -> AST | ASTToken:
         lst = cls.unpack_single_layer(txt)
         objs = []
         for elem in lst[1:]:
@@ -22,8 +22,8 @@ class CLRParser():
 
                 if longest_match is None:
                     raise Exception(f"no match for {elem}")
-                objs.append(CLRToken(longest_rule.type_chain, longest_match, 0))
-        return CLRList(lst[0], objs)
+                objs.append(ASTToken(longest_rule.type_chain, longest_match, 0))
+        return AST(lst[0], objs)
 
     @classmethod
     def is_list_itself(cls, txt: str):

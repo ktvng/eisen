@@ -6,7 +6,7 @@ from eisen.common.restriction import NewLetRestriction
 from eisen.validation.typeparser import TypeParser, TypeFactory
 
 class NewVec(AbstractNodeInterface):
-    asl_type = "new_vec"
+    ast_type = "new_vec"
     examples = """
     (new_vec (type int))
     """

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.clr import CLRList, CLRToken, CLRRawList
+from alpaca.clr import AST, ASTToken, ASTElements
 from alpaca.parser.cyk._cykalgo import DpTable, DpTableEntry
 from alpaca.parser._builder import Builder
 from alpaca.config import Config
@@ -8,11 +8,11 @@ from alpaca.config import Config
 class AstBuilder:
     def run(self,
             config: Config,
-            nodes: list[CLRToken],
+            nodes: list[ASTToken],
             dp_table: DpTable,
             builder: Builder,
             starting_rule: str="START",
-            fail_if_bad_grammar: bool=True) -> CLRList:
+            fail_if_bad_grammar: bool=True) -> AST:
 
         self.config = config
         self.nodes = nodes
@@ -35,7 +35,7 @@ class AstBuilder:
 
         return head
 
-    def _recursive_descent(self, entry : DpTableEntry) -> CLRRawList:
+    def _recursive_descent(self, entry : DpTableEntry) -> ASTElements:
         if entry.is_main_diagonal:
             components = [self.nodes[entry.x]]
         else:

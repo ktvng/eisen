@@ -19,7 +19,7 @@ fn main() {
     let f = bad{a}
     let g = good{b}
 
-    print("%i", pass(g, c))
+    pass(g, c)
     // print("%i", pass(f, c))
     return
 }

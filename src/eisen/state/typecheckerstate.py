@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts import Module, Context, Type
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 from eisen.state.basestate import BaseState
 
@@ -10,14 +10,14 @@ class TypeCheckerState(BaseState):
         self._init(**kwargs)
 
     def but_with(self,
-            asl: CLRList = None,
+            ast: AST = None,
             context: Context = None,
             mod: Module = None,
             arg_type: Type = None
             ) -> BaseState:
 
         return self._but_with(
-            asl=asl,
+            ast=ast,
             context=context,
             mod=mod,
             arg_type=arg_type)

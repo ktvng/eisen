@@ -1,6 +1,6 @@
 from __future__ import annotations
 from alpaca.config import Config
-from alpaca.clr import CLRList, CLRRawList
+from alpaca.clr import AST, ASTElements
 from alpaca.parser import CommonBuilder
 
 class Builder(CommonBuilder):
@@ -8,7 +8,7 @@ class Builder(CommonBuilder):
     def convert_decl_(
             fn,
             config: Config,
-            components: CLRRawList,
+            components: ASTElements,
             name: str,
-            *args) -> CLRRawList:
+            *args) -> ASTElements:
         return []

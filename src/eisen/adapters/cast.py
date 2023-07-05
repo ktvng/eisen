@@ -4,7 +4,7 @@ from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 
 class Cast(AbstractNodeInterface):
-    asl_type = "cast"
+    ast_type = "cast"
     examples = """
     (cast (ref obj) (type otherObj))
     """

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common import implemented_primitive_types
@@ -25,7 +25,7 @@ class _SharedMixins():
             case _: return False
 
 class TypeLike(AbstractNodeInterface):
-    asl_types = ["type", "mut_type", "nilable_type", "new_type", "move_type"]
+    ast_types = ["type", "mut_type", "nilable_type", "new_type", "move_type"]
     examples = """
     (type name)
     (var_type name)
@@ -35,7 +35,7 @@ class TypeLike(AbstractNodeInterface):
     def get_restriction(self) -> GeneralRestriction:
         if self.get_node_type() == "fn_type":
             return ImmutableRestriction()
-        if self.state.get_asl().first().value in implemented_primitive_types:
+        if self.state.get_ast().first().value in implemented_primitive_types:
             return PrimitiveRestriction()
 
         match self.get_node_type():
@@ -44,13 +44,13 @@ class TypeLike(AbstractNodeInterface):
             case "nilable_type": return NilableRestriction()
             case "new_type": return NewLetRestriction()
             case "move_type": return MoveRestriction()
-            case _: raise Exception(f"get_restriction not implemented for {self.state.get_asl()}")
+            case _: raise Exception(f"get_restriction not implemented for {self.state.get_ast()}")
 
     def get_is_nilable(self) -> bool:
         return self.get_node_type() == "nilable_type"
 
 class InferenceAssign(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["ilet", "imut", "ival", "inil?"]
+    ast_types = ["ilet", "imut", "ival", "inil?"]
     examples = """
     1. (ilet name (call ...))
     2. (ilet name 4)
@@ -74,7 +74,7 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
         return hint.restriction
 
     def assigns_a_tuple(self) -> bool:
-        return isinstance(self.first_child(), CLRList)
+        return isinstance(self.first_child(), AST)
 
     def get_is_nilable(self) -> bool:
         match self.get_node_type():
@@ -95,12 +95,12 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
         return self.state.get_returned_type().unpack_into_parts()
 
 class Typing(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["let", "mut", "val", "nil?", ":"]
+    ast_types = ["let", "mut", "val", "nil?", ":"]
     examples = """
     1. multiple assignment
-        (ASL_TYPE (tags ...) (type ...))
+        (ast_TYPE (tags ...) (type ...))
     2. single_assignment
-        (ASL_TYPE name (type ...))
+        (ast_TYPE name (type ...))
     """
     def get_restriction(self) -> GeneralRestriction:
         match self.get_node_type():
@@ -112,16 +112,16 @@ class Typing(AbstractNodeInterface, _SharedMixins):
             case ":": return TypeLike(self.state.but_with_second_child()).get_is_nilable()
             case _: return Decl(self.state).get_is_nilable()
 
-    def get_type_asl(self) -> CLRList:
+    def get_type_ast(self) -> AST:
         return self.second_child()
 
 class Decl(AbstractNodeInterface, _SharedMixins):
-    asl_types = ["let", "mut", "val", "nil?"]
+    ast_types = ["let", "mut", "val", "nil?"]
     examples = """
     1. multiple assignment
-        (ASL_TYPE (tags ...) (type ...))
+        (ast_TYPE (tags ...) (type ...))
     2. single_assignment
-        (ASL_TYPE name (type ...))
+        (ast_TYPE name (type ...))
     """
     def _is_primitive(self) -> bool:
         return TypeLike(self.state.but_with_second_child()).get_restriction().is_primitive()
@@ -132,7 +132,7 @@ class Decl(AbstractNodeInterface, _SharedMixins):
             case "mut": return MutableRestriction()
             case "val": return ImmutableRestriction()
             case "nil?": return NilableRestriction()
-            case _: raise Exception(f"not implemented for {self.get_node_type()} {self.state.asl}")
+            case _: raise Exception(f"not implemented for {self.get_node_type()} {self.state.get_ast()}")
 
     def get_is_nilable(self) -> bool:
         return self.get_node_type() == "nil?"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import alpaca
 from alpaca.lexer import Token
-from alpaca.clr import CLRList, CLRToken
+from alpaca.clr import AST, ASTToken
 
 from eisen.parsing.builder import EisenBuilder
 
@@ -53,7 +53,7 @@ class ModParser(ContextParser):
 
     def parse(self, tokens: list[Token]):
         line_number = tokens[0].line_number
-        contexts = [CLRToken(type_chain=["TAG"],
+        contexts = [ASTToken(type_chain=["TAG"],
                              value=tokens[1].value,
                              line_number=tokens[1].line_number)]
 
@@ -64,16 +64,16 @@ class ModParser(ContextParser):
             if not context_tokens and not remaining_tokens:
                 break
             parser = ParserSelector.select_parser(context_tokens, self.parsers)
-            asl = parser.parse(context_tokens)
-            contexts.append(asl)
+            ast = parser.parse(context_tokens)
+            contexts.append(ast)
 
-        return self.create_mod_asl(line_number, contexts)
+        return self.create_mod_ast(line_number, contexts)
 
     def get_context_tokens(self, tokens: list[Token]) -> tuple[list[Token], list[Token]]:
         return ContextSeparator.split_context(tokens)
 
-    def create_mod_asl(self, line_number: int, contexts: list[CLRList]):
-        return alpaca.clr.CLRList(
+    def create_mod_ast(self, line_number: int, contexts: list[AST]):
+        return alpaca.clr.AST(
             type="mod",
             lst=contexts,
             line_number=line_number)
@@ -99,7 +99,7 @@ class SuperParser():
             self.mod_parser,
         ]
 
-    def parse(self, tokens: list[Token]) -> CLRList:
+    def parse(self, tokens: list[Token]) -> AST:
         remaining_tokens = tokens
         contexts = []
         while remaining_tokens:
@@ -107,10 +107,10 @@ class SuperParser():
             if not context_tokens and not remaining_tokens:
                 break
             parser = ParserSelector.select_parser(context_tokens, self.parsers)
-            asl = parser.parse(context_tokens)
-            contexts.append(asl)
+            ast = parser.parse(context_tokens)
+            contexts.append(ast)
 
-        return alpaca.clr.CLRList(
+        return alpaca.clr.AST(
             type="start",
             lst=contexts,
             line_number=tokens[0].line_number)

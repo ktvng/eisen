@@ -1,5 +1,5 @@
 from __future__ import annotations
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 from alpaca.utils import Visitor
 
@@ -8,8 +8,8 @@ from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.state_postspreadvisitor import State_PostSpreadVisitor
 from eisen.state.memcheckstate import MemcheckState
 
-from eisen.memory.spreads import Spread, SpreadVisitor
-from eisen.memory.deps import FunctionDepsDatabase, Deps
+from eisen.__memory.spreads import Spread, SpreadVisitor
+from eisen.__memory.deps import FunctionDepsDatabase, Deps
 
 State = MemcheckState
 
@@ -22,43 +22,43 @@ class MemCheck(Visitor):
         self.get_deps = GetDeps(state)
         internal_state = MemcheckState.create_from_basestate(state)
 
-        self.get_deps.of_function(internal_state.but_with(asl=MemCheck.get_main_function(state.asl)))
+        self.get_deps.of_function(internal_state.but_with(ast=MemCheck.get_main_function(state.get_ast())))
         # self.apply(internal_state)
         return State_PostSpreadVisitor.create_from_basestate(state, self.get_deps.cache)
 
     def apply(self, state: State):
-        self._route(state.get_asl(), state)
+        self._route(state.get_ast(), state)
 
-    @Visitor.for_asls("start")
+    @Visitor.for_ast_types("start")
     def _start(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def _mod(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_asls("def", "create", "is_fn")
+    @Visitor.for_ast_types("def", "create", "is_fn")
     def _def(fn, state: State):
         fn.get_deps.of_function(state)
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def _create(fn, state: State):
         node = adapters.Struct(state)
-        if node.has_create_asl():
-            fn.apply(state.but_with(asl=node.get_create_asl()))
+        if node.has_create_ast():
+            fn.apply(state.but_with(ast=node.get_create_ast()))
 
-    @Visitor.for_asls("variant")
+    @Visitor.for_ast_types("variant")
     def _variant(fn, state: State):
         node = adapters.Variant(state)
-        fn.apply(state.but_with(asl=node.get_is_asl()))
+        fn.apply(state.but_with(ast=node.get_is_ast()))
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_ast_types("interface")
     def _nothing(fn, state: State):
         return
 
     @classmethod
-    def get_main_function(cls, full_asl: CLRList) -> CLRList:
-        for child in full_asl:
+    def get_main_function(cls, full_ast: AST) -> AST:
+        for child in full_ast:
             if child.type == "def" and child.first().value == "main":
                 return child
 
@@ -94,17 +94,17 @@ class GetDeps():
         their lifetimes yet.
         """
         node = adapters.Def(state)
-        arg_node = adapters.ArgsRets(state.but_with(asl=node.get_args_asl()))
+        arg_node = adapters.ArgsRets(state.but_with(ast=node.get_args_ast()))
         for i, name in enumerate(arg_node.get_names()):
             SpreadVisitor.add_spread(state, name, Spread(values={i}, depth=0))
 
-        ret_node = adapters.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        ret_node = adapters.ArgsRets(state.but_with(ast=node.get_rets_ast()))
         for name in ret_node.get_names():
             SpreadVisitor.add_spread(state, name, Spread(values=set(), depth=0, is_return_value=True))
 
     def _construct_RVS(self, state: State) -> list[Spread]:
         node = adapters.Def(state)
-        ret_node = adapters.ArgsRets(state.but_with(asl=node.get_rets_asl()))
+        ret_node = adapters.ArgsRets(state.but_with(ast=node.get_rets_ast()))
         RVS: list[Spread] = []
         for name in ret_node.get_names():
             spread_for_this_return_value = SpreadVisitor.get_spread(state, name)
@@ -114,7 +114,7 @@ class GetDeps():
 
     def _construct_AS(self, state: State) -> list[Spread]:
         node = adapters.Def(state)
-        arg_node = adapters.ArgsRets(state.but_with(asl=node.get_args_asl()))
+        arg_node = adapters.ArgsRets(state.but_with(ast=node.get_args_ast()))
         AS: list[Spread] = []
         for name in arg_node.get_names():
             spread_for_this_argument = SpreadVisitor.get_spread(state, name)
@@ -123,7 +123,7 @@ class GetDeps():
         return AS
 
     def of_function(self, state: State) -> Deps:
-        """State should have state.get_asl() return an abstract syntax list of type 'def'. This is
+        """State should have state.get_ast() return an abstract syntax list of type 'def'. This is
         the pointer to F, and this function will return F_deps. Cache lookups will be performed if
         F takes no free function parameters; else novel computation is required.
         """
@@ -143,7 +143,7 @@ class GetDeps():
         # value), and decreasing for each if/while context entered.
         # note: a depth of -1 indicates a literal/token
         self.spread_visitor.apply(state.but_with(
-            asl=node.get_seq_asl(),
+            ast=node.get_seq_ast(),
             depth=-2))
 
         RVS = self._construct_RVS(state)

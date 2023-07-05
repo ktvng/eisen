@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Self
 from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, AbstractException
 from alpaca.config import Config
-from alpaca.clr import CLRList
+from alpaca.clr import AST
 
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
 from eisen.common.eiseninstance import EisenFunctionInstance
@@ -47,11 +47,11 @@ class SharedCounter():
 static_exceptions = []
 
 class BaseState(AbstractParams, BaseMixins):
-    attrs = ["config", "asl", "txt", "context", "mod", "exceptions", "critical_exception"]
+    attrs = ["config", "ast", "txt", "context", "mod", "exceptions", "critical_exception"]
 
     def __init__(self,
             config: Config,
-            asl: CLRList,
+            ast: AST,
             txt: str,
             context: Context,
             mod: Module,
@@ -66,27 +66,27 @@ class BaseState(AbstractParams, BaseMixins):
         if watcher is None:
             watcher = Watcher()
         builtin_functions = {} if builtin_functions is None else builtin_functions
-        self._init(config=config, asl=asl, txt=txt, context=context,
+        self._init(config=config, ast=ast, txt=txt, context=context,
             mod=mod, exceptions=exceptions, critical_exception=critical_exception,
             print_to_watcher=print_to_watcher,
             watcher=watcher, builtin_functions=builtin_functions,
             global_module=global_module)
 
     def but_with(self,
-            asl: CLRList = None,
+            ast: AST = None,
             context: Context = None,
             mod: Module = None,
             inside_constructor: bool = None
             ) -> Self:
 
         return self._but_with(
-            asl=asl,
+            ast=ast,
             context=context,
             mod=mod,
             inside_constructor=inside_constructor)
 
     @classmethod
-    def create_initial(cls, config: Config, asl: CLRList, txt: str, print_to_watcher: bool=False) -> BaseState:
+    def create_initial(cls, config: Config, ast: AST, txt: str, print_to_watcher: bool=False) -> BaseState:
         global_mod = Module("")
         global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
         global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
@@ -96,7 +96,7 @@ class BaseState(AbstractParams, BaseMixins):
 
         return BaseState(
             config=config,
-            asl=asl,
+            ast=ast,
             txt=txt,
             context=None,
             mod=global_mod,

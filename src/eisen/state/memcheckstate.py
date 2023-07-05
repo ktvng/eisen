@@ -1,21 +1,21 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from alpaca.concepts import Module, Context, Type, AbstractException
-from alpaca.clr import CLRList
+from alpaca.concepts import Module, Context, Type
+from alpaca.clr import AST
 
 from eisen.state.basestate import BaseState
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor as State
 from eisen.common.eiseninstance import EisenFunctionInstance
 if TYPE_CHECKING:
-    from eisen.memory.memcheck import CurriedFunction
+    from eisen.__memory.memcheck import CurriedFunction
 
 class MemcheckState(State):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
     def but_with(self,
-            asl: CLRList = None,
+            ast: AST = None,
             context: Context = None,
             mod: Module = None,
             depth: int = None,
@@ -25,7 +25,7 @@ class MemcheckState(State):
             ) -> MemcheckState:
 
         return self._but_with(
-            asl=asl,
+            ast=ast,
             context=context,
             mod=mod,
             depth=depth,

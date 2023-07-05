@@ -16,7 +16,6 @@ from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
 from eisen.validation.vectorvisitor import VectorVisitor
-from eisen.memory.memcheck import MemCheck
 from eisen.moves.movevisitor import MoveVisitor
 from eisen.state.basestate import BaseState as State
 
@@ -28,18 +27,18 @@ from eisen.state.basestate import BaseState as State
 # They are implemented the same.
 
 # class used to debug
-class PrintAsl():
+class Printast():
     def run(self, state: State):
-        print(state.asl)
+        print(state.get_ast())
         return state
 
 class Workflow():
     steps: list[Visitor] = [
-        # initialize the .data attribute for all asls with empty NodeData instances
+        # initialize the .data attribute for all asts with empty NodeData instances
         Initializer,
 
         # create the module structure of the program.
-        #   - the module of a node can be accessed by params.asl_get_mod()
+        #   - the module of a node can be accessed by params.ast_get_mod()
         ModuleVisitor,
 
         # add proto types for struct/interfaces, which are the representation
@@ -56,7 +55,7 @@ class Workflow():
         Finalization2,
 
         # adds types for and constructs the functions. this also normalizes the
-        # (def ...) and (create ...) asls so they have the same child structure,
+        # (def ...) and (create ...) asts so they have the same child structure,
         # which allows us to process them identically later in the
         # TypeClassFlowWrangler.
         FunctionVisitor,
@@ -78,7 +77,7 @@ class Workflow():
         NilCheck,
         # MemCheck,
         MoveVisitor
-        # PrintAsl,
+        # Printast,
 
         # note: def, create, fn, ref, ilet, :: need instances!!
     ]

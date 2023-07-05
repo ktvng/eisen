@@ -20,24 +20,24 @@ class AstInterpreter(Visitor):
         return state
 
     def apply(self, state: State) -> list[Obj]:
-        # print(state.asl)
-        return self._route(state.asl, state)
+        # print(state.get_ast())
+        return self._route(state.get_ast(), state)
 
     @Visitor.for_tokens
     def token_(fn, state: State):
-        value = state.asl.value
-        if state.asl.type == "int":
-            value = int(state.asl.value)
-        if state.asl.type == "bool":
-            value = (state.asl.value == "true")
+        value = state.get_ast().value
+        if state.get_ast().type == "int":
+            value = int(state.get_ast().value)
+        if state.get_ast().type == "bool":
+            value = (state.get_ast().value == "true")
 
         return [Obj(value)]
 
-    @Visitor.for_asls("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or")
+    @Visitor.for_ast_types("+", "-", "/", "*", "<", "<=", "==", "!=", ">", ">=", "and", "or")
     def binop_(fn, state: State):
         left = fn.apply(state.but_with_first_child())[0]
         right = fn.apply(state.but_with_second_child())[0]
-        return [Obj.apply_binary_operation(op=state.get_asl().type, obj1=left, obj2=right)]
+        return [Obj.apply_binary_operation(op=state.get_ast().type, obj1=left, obj2=right)]
 
     @classmethod
     def _handle_colon_like(cls, state: State):
@@ -48,18 +48,18 @@ class AstInterpreter(Visitor):
             state.objs[name] = obj
         return objs
 
-    @Visitor.for_asls("let", ":")
+    @Visitor.for_ast_types("let", ":")
     def let_(fn, state: State):
         return AstInterpreter._handle_colon_like(state)
 
-    @Visitor.for_asls("var", "var?")
+    @Visitor.for_ast_types("var", "var?")
     def var_(fn, state: State):
         objs = AstInterpreter._handle_colon_like(state)
         for obj in objs:
             obj.is_var = True
         return objs
 
-    @Visitor.for_asls("<-")
+    @Visitor.for_ast_types("<-")
     def write_(fn, state: State):
         left = fn.apply(state.but_with_first_child())
         right = fn.apply(state.but_with_second_child())
@@ -67,7 +67,7 @@ class AstInterpreter(Visitor):
             Passer.pass_by_value(state.objs, l, r)
         return []
 
-    @Visitor.for_asls("=")
+    @Visitor.for_ast_types("=")
     def eqs_(fn, state: State):
         left = fn.apply(state.but_with_first_child())
         right = fn.apply(state.but_with_second_child())
@@ -75,19 +75,19 @@ class AstInterpreter(Visitor):
             Passer.handle_assignment(state.objs, l, r)
         return []
 
-    @Visitor.for_asls("!")
+    @Visitor.for_ast_types("!")
     def not_(fn, state: State):
         objs = fn.apply(state.but_with_first_child())
         return [Obj(not objs[0].value)]
 
-    @Visitor.for_asls("tuple", "curried")
+    @Visitor.for_ast_types("tuple", "curried")
     def tuple(fn, state: State):
         objs = []
-        for child in state.asl:
-            objs += fn.apply(state.but_with(asl=child))
+        for child in state.ast:
+            objs += fn.apply(state.but_with(ast=child))
         return objs
 
-    @Visitor.for_asls("+=", "-=", "/=", "*=")
+    @Visitor.for_ast_types("+=", "-=", "/=", "*=")
     def asseqs_(fn, state: State):
         node = adapters.CompoundAssignment(state)
         left = fn.apply(state.but_with_first_child())[0]
@@ -97,32 +97,32 @@ class AstInterpreter(Visitor):
         Passer.handle_assignment(state.objs, left, new_obj)
         return []
 
-    @Visitor.for_asls("mod", "struct", "interface", "variant")
+    @Visitor.for_ast_types("mod", "struct", "interface", "variant")
     def skip_(fn, state: State):
         return []
 
-    @Visitor.for_asls("def")
+    @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         node = adapters.Def(state)
         if node.get_function_name() == "main":
-            fn.apply(state.but_with(asl=node.get_seq_asl()))
+            fn.apply(state.but_with(ast=node.get_seq_ast()))
         return []
 
-    @Visitor.for_asls("start", "seq")
+    @Visitor.for_ast_types("start", "seq")
     def exec_(fn, state: State):
-        for child in state.asl:
-            result = fn.apply(state.but_with(asl=child))
+        for child in state.ast:
+            result = fn.apply(state.but_with(ast=child))
             if isinstance(result, ReturnSignal):
                 return result
         return []
 
-    @Visitor.for_asls("ilet", "ivar")
+    @Visitor.for_ast_types("ilet", "ivar")
     def ilet_(fn, state: State):
         node = adapters.InferenceAssign(state)
         names = node.get_names()
         values = fn.apply(state.but_with_second_child())
 
-        is_var = state.asl.type == "ivar"
+        is_var = state.get_ast().type == "ivar"
         for name, value in zip(names, values):
             if is_var:
                 Passer.add_var(state.objs, name, value)
@@ -130,11 +130,11 @@ class AstInterpreter(Visitor):
                 Passer.add_let(state.objs, name, value)
         return []
 
-    @Visitor.for_asls("cast")
+    @Visitor.for_ast_types("cast")
     def cast_(fn, state: State):
         return fn.apply(state.but_with_first_child())
 
-    @Visitor.for_asls("return")
+    @Visitor.for_ast_types("return")
     def return_(fn, state: State):
         return ReturnSignal()
 
@@ -146,13 +146,13 @@ class AstInterpreter(Visitor):
             new_objs.append(Obj(None, name=name, is_var=restriction.is_var()))
         return new_objs
 
-    @Visitor.for_asls("call", "is_call")
+    @Visitor.for_ast_types("call", "is_call")
     def call_(fn, state: State):
         node = adapters.Call(state)
         fnobj: Obj = fn.apply(state.but_with_first_child())[0]
 
         if node.is_print():
-            args = [fn.apply(state.but_with(asl=asl))[0] for asl in state.asl.second()]
+            args = [fn.apply(state.but_with(ast=ast))[0] for ast in state.get_ast().second()]
             redirect_to = True if state.print_to_watcher else None
             state.watcher.txt += PrintFunction.emulate(redirect_to, *args)
             return []
@@ -161,7 +161,7 @@ class AstInterpreter(Visitor):
         fn_objs = {}
 
         # evaluate the parameters and add them as new objects inside the new function context
-        param_objs_outside_of_fn = fnobj.curried_params + [fn.apply(node.state.but_with(asl=param))[0] for param in node.get_params()]
+        param_objs_outside_of_fn = fnobj.curried_params + [fn.apply(node.state.but_with(ast=param))[0] for param in node.get_params()]
         new_objs = []
         for name, restriction in zip(fnobj.param_names, fnobj.param_restrictions):
             # create new_obj so changes inside the function don't affect the existing obj
@@ -178,9 +178,9 @@ class AstInterpreter(Visitor):
             obj = Obj({}, name=name, is_var=restriction.is_var())
             fn_objs[name] = obj
 
-        # call the function by invoking the seq of the asl_defining_the_function
+        # call the function by invoking the seq of the ast_defining_the_function
         fn.apply(state.but_with(
-            asl=adapters.Def(state.but_with(asl=fnobj.asl)).get_seq_asl(),
+            ast=adapters.Def(state.but_with(ast=fnobj.ast)).get_seq_ast(),
             objs=fn_objs))
 
         # get the actual return values
@@ -189,12 +189,12 @@ class AstInterpreter(Visitor):
             return_values.append(fn_objs[name])
         return return_values
 
-    @Visitor.for_asls("::")
+    @Visitor.for_ast_types("::")
     def modscope_(fn, state: State):
         # TODO: make this work for module variables
         return fn.fn_(fn, state)
 
-    @Visitor.for_asls("fn")
+    @Visitor.for_ast_types("fn")
     def fn_(fn, state: State):
         # this is for functions apparently
         instance = state.get_instances()[0]
@@ -202,13 +202,13 @@ class AstInterpreter(Visitor):
             None,
             "anon",
             False,
-            instance.asl,
-            adapters.Def(state.but_with(asl=instance.asl)).get_arg_names(),
-            adapters.Def(state.but_with(asl=instance.asl)).get_ret_names(),
+            instance.ast,
+            adapters.Def(state.but_with(ast=instance.ast)).get_arg_names(),
+            adapters.Def(state.but_with(ast=instance.ast)).get_ret_names(),
             instance.type.get_argument_type().get_restrictions(),
             instance.type.get_return_type().get_restrictions())]
 
-    @Visitor.for_asls("ref")
+    @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):
         name = adapters.Ref(state).get_name()
         local_obj = state.objs.get(name, None)
@@ -219,41 +219,41 @@ class AstInterpreter(Visitor):
         instance = state.get_instances()[0]
         return [Obj(instance)]
 
-    @Visitor.for_asls(".")
+    @Visitor.for_ast_types(".")
     def dot_(fn, state: State):
         obj = fn.apply(state.but_with_first_child())[0]
         return [obj.get(adapters.Scope(state).get_attribute_name())]
 
-    @Visitor.for_asls("type")
+    @Visitor.for_ast_types("type")
     def type_(fn, state: State):
         return Obj(None)
 
-    @Visitor.for_asls("while")
+    @Visitor.for_ast_types("while")
     def while_(fn, state: State):
         result = fn._handle_cond(state.but_with_first_child())
         while result:
             result = fn._handle_cond(state.but_with_first_child())
         return []
 
-    @Visitor.for_asls("curry_call")
+    @Visitor.for_ast_types("curry_call")
     def curried_(fn, state: State):
         node = adapters.CurriedCall(state)
         fn_obj = Obj(None)
         fn_obj.copy(fn.apply(state.but_with_first_child())[0])
-        params = fn.apply(state.but_with(asl=node.get_params_asl()))
+        params = fn.apply(state.but_with(ast=node.get_params_ast()))
         fn_obj.curried_params += params
         return [fn_obj]
 
-    @Visitor.for_asls("if")
+    @Visitor.for_ast_types("if")
     def if_(fn, state: State):
-        for child in state.asl:
+        for child in state.ast:
             if child.type == "cond":
-                result = fn._handle_cond(state.but_with(asl=child))
+                result = fn._handle_cond(state.but_with(ast=child))
                 if result:
                     break
                 continue
             # this will catch the else stored as (seq ...)
-            result = fn.apply(state.but_with(asl=child))
+            result = fn.apply(state.but_with(ast=child))
         if isinstance(result, ReturnSignal):
             return ReturnSignal()
         return []

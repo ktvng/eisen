@@ -1,39 +1,41 @@
 from __future__ import annotations
 
 import uuid
-from alpaca.clr import CLRList
-from alpaca.concepts import Type, Context, Module
+from alpaca.clr import AST
+from alpaca.concepts import Context, Module
 from alpaca.concepts import AbstractException
 
-from eisen.state.state_postspreadvisitor import State_PostSpreadVisitor
-from eisen.moves.moveepoch import MoveEpoch, Lifetime, Dependency, LvalIdentity
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
+from eisen.moves.moveepoch import Entity, Lifetime, Dependency, CurriedObject
 
-class MoveVisitorState(State_PostSpreadVisitor):
+class MoveVisitorState(State_PostInstanceVisitor):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 
     # note: updated_epoch_uids are outside the context but updated inside it
     def but_with(self,
-            asl: CLRList = None,
+            ast: AST = None,
             context: Context = None,
             mod: Module = None,
             updated_epoch_uids: set[uuid.UUID] = None,
             nest_depth: int = None,
             place: str = None,
-            exceptions: list[AbstractException] = None
+            exceptions: list[AbstractException] = None,
+            curried_objects: dict[uuid.UUID, CurriedObject] = None
             ) -> MoveVisitorState:
 
         return self._but_with(
-            asl=asl,
+            ast=ast,
             context=context,
             mod=mod,
             updated_epoch_uids=updated_epoch_uids,
             nest_depth=nest_depth,
             place=place,
+            curried_objects=curried_objects,
             exceptions=exceptions)
 
     @staticmethod
-    def create_from_basestate(state: State_PostSpreadVisitor) -> MoveVisitorState:
+    def create_from_basestate(state: State_PostInstanceVisitor) -> MoveVisitorState:
         """
         Create a new instance of NilCheckState from any descendant of BaseState
 
@@ -43,19 +45,19 @@ class MoveVisitorState(State_PostSpreadVisitor):
         :rtype: NilCheckState
         """
         return MoveVisitorState(**state._get(), updated_epoch_uids=set(), nest_depth=0,
-                                place="")
+                                place="", curried_objects={})
 
-    def get_move_epoch_by_uid(self, uid: uuid.UUID) -> MoveEpoch:
+    def get_entity_by_uid(self, uid: uuid.UUID) -> Entity:
         if uid == uuid.UUID(int=0):
-            return MoveEpoch.create_anonymous()
-        return self.get_context().get_move_epoch(uid)
+            return Entity.create_anonymous()
+        return self.get_context().get_entity(uid)
 
-    def get_move_epoch_by_name(self, name: str) -> MoveEpoch:
+    def get_entity_by_name(self, name: str) -> Entity:
         uid = self.get_entity_uid(name)
-        return self.get_move_epoch_by_uid(uid)
+        return self.get_entity_by_uid(uid)
 
-    def add_move_epoch(self, epoch: MoveEpoch)-> MoveEpoch:
-        self.get_context().add_move_epoch(epoch.uid, epoch)
+    def add_entity(self, epoch: Entity)-> Entity:
+        self.get_context().add_entity(epoch.uid, epoch)
 
     def add_entity_uid(self, name: str, uid: uuid.UUID):
         self.get_context().add_entity_uuid(name, uid)
@@ -63,7 +65,7 @@ class MoveVisitorState(State_PostSpreadVisitor):
     def get_entity_uid(self, name: str) -> uuid.UUID:
         return self.get_context().get_entity_uuid(name)
 
-    def add_new_move_epoch(self, name: str, is_let: bool = False, depth: int = 0) -> MoveEpoch:
+    def add_new_entity(self, name: str, is_let: bool = False, depth: int = 0) -> Entity:
         lifetime: Lifetime = None
         match self.place:
             case "args": lifetime = Lifetime.arg()
@@ -71,7 +73,7 @@ class MoveVisitorState(State_PostSpreadVisitor):
             case "": lifetime = Lifetime.local(depth)
 
         uid = uuid.uuid4()
-        new_epoch = MoveEpoch(
+        new_epoch = Entity(
             dependencies=set(),
             lifetime=lifetime,
             generation=0,
@@ -79,13 +81,13 @@ class MoveVisitorState(State_PostSpreadVisitor):
             uid=uid,
             is_let=is_let)
         # print("!!", new_epoch)
-        self.add_move_epoch(new_epoch)
+        self.add_entity(new_epoch)
         self.add_entity_uid(name, uid)
         return new_epoch
 
-    def merge_epochs(self, epochs: list[MoveEpoch]) -> MoveEpoch:
+    def merge_epochs(self, epochs: list[Entity]) -> Entity:
         dependencies = set([Dependency(e.uid, e.generation) for e in epochs])
-        return MoveEpoch(
+        return Entity(
             dependencies=dependencies,
             lifetime=Lifetime.transient(),
             generation=0,
@@ -98,6 +100,12 @@ class MoveVisitorState(State_PostSpreadVisitor):
     def get_nest_depth(self) -> int:
         return self.nest_depth
 
-    def restore_to_healthy(self, move_epoch: MoveEpoch):
-        move_epoch.dependencies = set(dep for dep in move_epoch.dependencies
-            if not move_epoch.lifetime.longer_than(self.get_move_epoch_by_uid(dep.uid).lifetime))
+    def restore_to_healthy(self, entity: Entity):
+        entity.dependencies = set(dep for dep in entity.dependencies
+            if not entity.lifetime.longer_than(self.get_entity_by_uid(dep.uid).lifetime))
+
+    def get_curried_object(self, uid: uuid.UUID) -> CurriedObject:
+        return self.curried_objects.get(uid, None)
+
+    def add_curried_object(self, uid: uuid.UUID, obj: CurriedObject):
+        self.curried_objects[uid] = obj

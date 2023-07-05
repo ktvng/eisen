@@ -1,6 +1,6 @@
 from __future__ import annotations
 from alpaca.parser import CommonBuilder
-from alpaca.clr import CLRRawList, CLRList
+from alpaca.clr import ASTElements, AST
 from alpaca.config import Config
 
 class EisenBuilder(CommonBuilder):
@@ -11,26 +11,26 @@ class EisenBuilder(CommonBuilder):
     def handle_def(
             fn,
             config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
+            components : ASTElements,
+            *args) -> ASTElements:
 
         newCLRList = EisenBuilder.filter_build_(fn, config, components, "def")[0]
         if len(newCLRList) == 3:
-            newCLRList._list.insert(2, CLRList(type="rets", lst=[]))
+            newCLRList._list.insert(2, AST(type="rets", lst=[]))
         return [newCLRList]
 
     @CommonBuilder.for_procedure("handle_op_pref")
     def handle_op_pref(
             fn,
             config : Config,
-            components : CLRRawList,
-            *args) -> CLRRawList:
+            components : ASTElements,
+            *args) -> ASTElements:
 
         flattened_comps = CommonBuilder.flatten_components(components)
         if len(flattened_comps) != 2:
             raise Exception("expected size 2 for handle_op_pref")
 
-        return [CLRList(
+        return [AST(
             type=flattened_comps[0].type,
             lst=[flattened_comps[1]],
             line_number=flattened_comps[0].line_number)]
@@ -39,9 +39,9 @@ class EisenBuilder(CommonBuilder):
     def convert_decl_(
             fn,
             config: Config,
-            components: CLRRawList,
+            components: ASTElements,
             name: str,
-            *args) -> CLRRawList:
+            *args) -> ASTElements:
         """this converts (let (: A B)) into (let A B) to remove
         the extraneous (: ...) """
 
@@ -53,9 +53,9 @@ class EisenBuilder(CommonBuilder):
     def strip_annotation(
             fn,
             config: Config,
-            components: CLRRawList,
+            components: ASTElements,
             name: str,
-            *args) -> CLRRawList:
+            *args) -> ASTElements:
 
         typing_component = components[-1]
         return [typing_component]

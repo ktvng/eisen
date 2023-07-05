@@ -14,9 +14,9 @@ class VectorVisitor(Visitor):
         return state
 
     def apply(self, state: State) -> None:
-        return self._route(state.get_asl(), state)
+        return self._route(state.get_ast(), state)
 
-    @Visitor.for_asls("new_vec")
+    @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State) -> None:
         vec_type = adapters.NewVec(state).get_type()
         element_type = vec_type.get_first_parameter_type()
@@ -38,7 +38,7 @@ class VectorVisitor(Visitor):
                 name="append",
                 type=append_fn_type,
                 context=state.get_global_module(),
-                asl=None,
+                ast=None,
                 no_mangle=True,
                 no_lambda=True)
             state.add_builtin_function(instance)
@@ -48,5 +48,5 @@ class VectorVisitor(Visitor):
 
     @Visitor.for_default
     def default_(fn, state: State) -> None:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child))
+        for child in state.get_child_asts():
+            fn.apply(state.but_with(ast=child))

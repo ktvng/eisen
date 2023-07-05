@@ -12,14 +12,14 @@ from eisen.state.instancevisitorstate import InstanceVisitorState
 State = InstanceVisitorState
 
 class InstanceVisitor(Visitor):
-    """creates and persists instances for terminal asls"""
+    """creates and persists instances for terminal asts"""
 
     def run(self, state: State_PostTypeCheck):
         self.apply(InstanceVisitorState.create_from_basestate(state))
         return State_PostInstanceVisitor.create_from_basestate(state)
 
     def apply(self, state: State) -> list[EisenInstance]:
-        result: list[EisenInstance] = self._route(state.get_asl(), state)
+        result: list[EisenInstance] = self._route(state.get_ast(), state)
         if result:
             state.get_node_data().instances = result
         return result
@@ -32,7 +32,7 @@ class InstanceVisitor(Visitor):
             name=name,
             type=type,
             context=state.get_context(),
-            asl=state.get_asl(),
+            ast=state.get_ast(),
             # TODO: fix this abuse of as_ptr
             is_ptr=state.is_ptr,
             is_function=is_function)
@@ -43,7 +43,7 @@ class InstanceVisitor(Visitor):
     def token_(fn, state: State) -> list[EisenInstance]:
         return []
 
-    @Visitor.for_asls("interface")
+    @Visitor.for_ast_types("interface")
     def no_action_(fn, state: State) -> list[EisenInstance]:
         return []
 
@@ -52,27 +52,27 @@ class InstanceVisitor(Visitor):
         state.apply_fn_to_all_children(fn)
         return []
 
-    @Visitor.for_asls("mod")
+    @Visitor.for_ast_types("mod")
     def mod_(fn, state: State) -> list[EisenInstance]:
         adapters.Mod(state).enter_module_and_apply(fn)
         return []
 
-    @Visitor.for_asls("ref", "fn")
+    @Visitor.for_ast_types("ref", "fn")
     def ref_(fn, state: State) -> list[EisenInstance]:
         return [adapters.Ref(state).resolve_instance()]
 
-    @Visitor.for_asls(*adapters.ArgsRets.asl_types)
+    @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
     def rets_(fn, state: State) -> list[EisenInstance]:
-        for child in state.get_child_asls():
-            fn.apply(state.but_with(asl=child, is_ptr=True))
+        for child in state.get_child_asts():
+            fn.apply(state.but_with(ast=child, is_ptr=True))
         return []
 
-    @Visitor.for_asls("::")
+    @Visitor.for_ast_types("::")
     def scope_(fn, state: State) -> list[EisenInstance]:
         node = adapters.ModuleScope(state)
         return [node.get_end_instance()]
 
-    @Visitor.for_asls(*adapters.Typing.asl_types)
+    @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def alloc_(fn, state: State) -> list[EisenInstance]:
         node = adapters.Typing(state)
         type = state.get_returned_type()
@@ -81,7 +81,7 @@ class InstanceVisitor(Visitor):
                 is_function=type.is_function())
             for name in node.get_names()]
 
-    @Visitor.for_asls(*adapters.InferenceAssign.asl_types)
+    @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def iletivar_(fn, state: State) -> list[EisenInstance]:
         fn.apply(state.but_with_second_child())
         node = adapters.InferenceAssign(state)
@@ -93,31 +93,31 @@ class InstanceVisitor(Visitor):
             is_function=type.is_function())
             for name, type in zip(names, componentwise_types)]
 
-    @Visitor.for_asls("if")
+    @Visitor.for_ast_types("if")
     def if_(fn, state: State) -> Type:
         adapters.If(state).enter_context_and_apply(fn)
         return []
 
-    @Visitor.for_asls("while")
+    @Visitor.for_ast_types("while")
     def while_(fn, state: State) -> Type:
         adapters.While(state).enter_context_and_apply(fn)
         return []
 
-    @Visitor.for_asls("def", "create", ":=", "is_fn")
+    @Visitor.for_ast_types("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
         adapters.CommonFunction(state).enter_context_and_apply(fn)
         return []
 
-    @Visitor.for_asls("struct")
+    @Visitor.for_ast_types("struct")
     def struct(fn, state: State) -> Type:
         node = adapters.Struct(state)
-        if node.has_create_asl():
-            fn.apply(state.but_with(asl=node.get_create_asl()))
+        if node.has_create_ast():
+            fn.apply(state.but_with(ast=node.get_create_ast()))
 
-    @Visitor.for_asls("call", "is_call")
+    @Visitor.for_ast_types("call", "is_call")
     def raw_call(fn, state: State) -> Type:
         params_type = state.but_with_second_child().get_returned_type()
-        fn.apply(state.but_with(asl=state.first_child(), arg_type=params_type))
+        fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         fn.apply(state.but_with_second_child())
 
         node = adapters.RefLike(state.but_with_first_child())

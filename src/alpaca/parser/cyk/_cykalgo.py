@@ -4,7 +4,7 @@ import itertools
 import random
 from alpaca.grammar import CFGRule, CFG, CFGNormalizer
 from alpaca.lexer import Token
-from alpaca.clr import CLRToken
+from alpaca.clr import ASTToken
 
 class DpTableEntry():
     def __init__(self,
@@ -100,7 +100,7 @@ class RuleQuery():
                     self._production_lookup_table[key] = [rule]
         pass
 
-    def get_rules_for_token(self, tok: CLRToken) -> list[CFGRule]:
+    def get_rules_for_token(self, tok: ASTToken) -> list[CFGRule]:
         return self._token_lookup_table.get(tok.type, [])
 
     def get_rules(self, lname: str, rname: str) -> list[CFGRule]:
@@ -116,8 +116,8 @@ class CYKAlgo:
         self.query = RuleQuery(cfg)
 
     @classmethod
-    def tokens_to_clrtoken(cls, tokens : list[Token]) -> list[CLRToken]:
-        return [CLRToken(t.rule.type_chain, t.value, t.line_number) for t in tokens]
+    def tokens_to_clrtoken(cls, tokens : list[Token]) -> list[ASTToken]:
+        return [ASTToken(t.rule.type_chain, t.value, t.line_number) for t in tokens]
 
     def _fill_first_diagonal_special(self):
         points = self._get_points_on_diagonal(0)
@@ -129,7 +129,7 @@ class CYKAlgo:
 
 
 
-    def parse_clrtokens(self, tokens: list[CLRToken]):
+    def parse_clrtokens(self, tokens: list[ASTToken]):
         self.n = len(tokens)
         self.tokens = tokens
         self.dp_table = [[[] for y in range(self.n)] for x in range(self.n)]
@@ -154,7 +154,7 @@ class CYKAlgo:
     def _get_points_on_diagonal(self, starting_x : int) -> list[tuple[int, int]]:
         return [(starting_x + delta, delta) for delta in range(self.n - starting_x)]
 
-    def _get_producing_rules_for_clrtoken(self, tok : CLRToken) -> list[CFGRule]:
+    def _get_producing_rules_for_clrtoken(self, tok : ASTToken) -> list[CFGRule]:
         return self.query.get_rules_for_token(tok)
         return [rule for rule in self.cfg.rules
             if len(rule.pattern) == 1 and tok.type == rule.pattern[0]]

@@ -11,9 +11,10 @@ from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
+from eisen.moves.moveepoch import Dependency, Entity
 
 if TYPE_CHECKING:
-    from eisen.moves.moveepoch import Dependency, Entity
+    from eisen.trace.entity import Shadow
 
 @dataclass
 class ValidationResult:
@@ -368,7 +369,7 @@ class Validate:
     @staticmethod
     def same_generation(state: State, entity: Entity) -> ValidationResult:
         for dependency in entity.dependencies:
-            if dependency.generation != state.get_context().get_entity(dependency.uid).generation:
+            if Entity.dependency_is_expired(dependency, state.get_context().get_entity(dependency.uid)):
                 return failure_with_exception_added_to(state,
                     ex=Exceptions.ReferenceInvalidation,
                     msg=f"cannot use {entity.name} after invalidation")
@@ -413,4 +414,13 @@ class Validate:
                     msg=f"'{entity.name}' may depend on '{dep_epoch.name}' which is local to the function")
         if failed:
             return ValidationResult.failure()
+        return ValidationResult.success()
+
+    @staticmethod
+    def dependency_outlives_self(state: State, memory_name: str, self_shadow: Shadow, dependency_shadow: Shadow) -> ValidationResult:
+        if self_shadow.entity.depth < dependency_shadow.entity.depth:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.ObjectLifetime,
+                msg=f"'{self_shadow.entity.name}.{memory_name}' may depend on '{dependency_shadow.entity.name}'")
+
         return ValidationResult.success()

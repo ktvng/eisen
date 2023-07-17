@@ -20,6 +20,7 @@ class MoveVisitorState(State_PostInstanceVisitor):
             updated_epoch_uids: set[uuid.UUID] = None,
             nest_depth: int = None,
             place: str = None,
+            arg_entity_uids: list[uuid.UUID] = None,
             exceptions: list[AbstractException] = None,
             curried_objects: dict[uuid.UUID, CurriedObject] = None
             ) -> MoveVisitorState:
@@ -32,6 +33,7 @@ class MoveVisitorState(State_PostInstanceVisitor):
             nest_depth=nest_depth,
             place=place,
             curried_objects=curried_objects,
+            arg_entity_uids=arg_entity_uids,
             exceptions=exceptions)
 
     @staticmethod
@@ -45,7 +47,7 @@ class MoveVisitorState(State_PostInstanceVisitor):
         :rtype: NilCheckState
         """
         return MoveVisitorState(**state._get(), updated_epoch_uids=set(), nest_depth=0,
-                                place="", curried_objects={})
+                                place="", curried_objects={}, arg_entity_uids=[])
 
     def get_entity_by_uid(self, uid: uuid.UUID) -> Entity:
         if uid == uuid.UUID(int=0):
@@ -68,15 +70,14 @@ class MoveVisitorState(State_PostInstanceVisitor):
     def add_new_entity(self, name: str, is_let: bool = False, depth: int = 0) -> Entity:
         lifetime: Lifetime = None
         match self.place:
-            case "args": lifetime = Lifetime.arg()
+            # case "args": lifetime = Lifetime.arg()
             case "rets": lifetime = Lifetime.ret()
-            case "": lifetime = Lifetime.local(depth)
+            case _: lifetime = Lifetime.local(depth)
 
         uid = uuid.uuid4()
         new_epoch = Entity(
             dependencies=set(),
             lifetime=lifetime,
-            generation=0,
             name=name,
             uid=uid,
             is_let=is_let)
@@ -90,7 +91,6 @@ class MoveVisitorState(State_PostInstanceVisitor):
         return Entity(
             dependencies=dependencies,
             lifetime=Lifetime.transient(),
-            generation=0,
             name="",
             uid=uuid.UUID(int=0))
 
@@ -109,3 +109,9 @@ class MoveVisitorState(State_PostInstanceVisitor):
 
     def add_curried_object(self, uid: uuid.UUID, obj: CurriedObject):
         self.curried_objects[uid] = obj
+
+    def add_arg_entity_uid(self, uid: uuid.UUID):
+        self.arg_entity_uids.append(uid)
+
+    def get_arg_entity_uids(self) -> list[uuid.UUID]:
+        return self.arg_entity_uids

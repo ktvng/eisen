@@ -17,6 +17,7 @@ from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
 from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.moves.movevisitor import MoveVisitor
+from eisen.trace.memoryvisitor import MemoryVisitor
 from eisen.state.basestate import BaseState as State
 
 # Notes:
@@ -75,8 +76,9 @@ class Workflow():
         UsageChecker,
 
         NilCheck,
+        MemoryVisitor,
         # MemCheck,
-        MoveVisitor
+        # MoveVisitor
         # Printast,
 
         # note: def, create, fn, ref, ilet, :: need instances!!

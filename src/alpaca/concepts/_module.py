@@ -7,7 +7,8 @@ if TYPE_CHECKING:
     from alpaca.concepts._type import Type
 
 class Module(NestedContainer):
-    container_names = ["type", "instance", "instance_state", "function_instance", "defined_type"]
+    container_names = ["type", "instance", "instance_state", "function_instance", "defined_type",
+                       "memory", "shadow"]
     """a module is a hierarchical container which holds functions,
     struct/interface definitions, and other modules"""
     def _add_child(self, child: NestedContainer):

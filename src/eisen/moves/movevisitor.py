@@ -9,7 +9,7 @@ from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.common.eiseninstance import EisenInstance
 from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.validate import Validate
-from eisen.moves.moveepoch import LvalIdentity, Entity, Dependency
+from eisen.moves.moveepoch import LvalIdentity, Entity, Dependency, Lifetime
 
 State = MoveVisitorState
 
@@ -56,32 +56,103 @@ class MoveVisitor(Visitor):
         state.add_entity(rval)
 
     @staticmethod
-    def update_entity(state: State, lval: LvalIdentity, rval: Entity):
-        new_epoch = Entity(
-            dependencies=lval.entity.dependencies.copy(),
-            lifetime=lval.entity.lifetime,
-            generation=lval.entity.generation,
-            name=lval.entity.name,
-            uid=lval.entity.uid,
-            is_let=lval.entity.is_let)
+    def update_entity_logic_v2(state: State, lval: LvalIdentity, r_entity: Entity):
+        changed_entities = []
+        print(state.ast, lval.entity.is_let, lval.attribute_is_modified, r_entity.is_let)
+        match (lval.entity.is_let, lval.attribute_is_modified, r_entity.is_let):
+            case True, True, True:
+                changed_entities.append(lval.entity.merge_dependencies_of(r_entity))
+            case True, True, False:
+                changed_entities.append(lval.entity.merge_dependencies_of(r_entity))
+            case True, False, True:
+                changed_entities.append(lval.entity.take_dependencies_of(r_entity))
+            case True, False, False:
+                raise Exception("cannot assign let = var")
+            case False, True, True:
+                raise Exception("cannot assign var.attr = let")
+            case False, True, False:
+                let_entities = [state.get_entity_by_uid(dep.uid) for dep in lval.entity.dependencies]
+                for entity in let_entities:
+                    changed_entities.append(entity.merge_dependencies_of(r_entity))
+            case False, False, True:
+                changed_entities.append(lval.entity.change_dependency_to(r_entity))
+            case False, False, False:
+                changed_entities.append(lval.entity.take_dependencies_of(r_entity))
+
+        return changed_entities
+
+
+    @staticmethod
+    def update_entity_logic(state: State, lval: LvalIdentity, r_entity: Entity):
+        return MoveVisitor.update_entity_logic_v2(state, lval, r_entity)
+        changed_entities = []
 
         # if rval.is_let or rval.lifetime.is_arg, then the lval must depend on the actual identity
         # of the rval, not any of its dependencies.
-        match (lval.attribute_is_modified, rval.is_let | rval.lifetime.is_arg()):
+        match (lval.attribute_is_modified, r_entity.is_let):
             case True, True:
-                new_epoch.dependencies.add(
-                    Dependency(uid=rval.uid, generation=rval.generation))
+                """
+                This is the case for a 'let' entity taking a dependency on an argument
+                or another 'let' entity. In this case, the, left entity must take
+                a dependency on the right entity, as the right entity refers to
+                a real entity.
+
+                e.g.
+                fn fun(o: Obj) {
+                    let x = Obj()
+             >>     x.a = o
+                }
+
+                fn fun() {
+                    let x = Obj()
+                    let y = Obj()
+             >>     x.a = y // <<
+                }
+
+                """
+                if not lval.entity.is_let:
+                    print("not let")
+                    let_entities = [state.get_entity_by_uid(dep.uid) for dep in lval.entity.dependencies]
+                    for entity in let_entities:
+                        changed_entities.append(lval.entity.add_dependencies_on([r_entity]))
+                else:
+                    print("is let")
+                    changed_entities.append(lval.entity.add_dependencies_on([r_entity]))
             case True, False:
-                for dep in rval.dependencies: new_epoch.dependencies.add(dep)
+                """
+                This is the case for a 'let' entity taking a dependency on a variable.
+                In this case, the left entity does not depend on the variable itself, but
+                rather on whatever the variable could refer to.
+
+                e.g.
+                fn main() {
+                    let o1 = obj(1, 2)
+                    let o2 = obj(2, 3)
+                    var v = o2
+             >>     o1.o = v
+                }
+
+                """
+                if not lval.entity.is_let:
+                    let_entities = [state.get_entity_by_uid(dep.uid) for dep in lval.entity.dependencies]
+                    for entity in let_entities:
+                        changed_entities.append(entity.merge_dependencies_of([r_entity]))
+                else:
+                    changed_entities.append(lval.entity.merge_dependencies_of([r_entity]))
             case False, True:
-                new_epoch.dependencies = set([Dependency(uid=rval.uid, generation=rval.generation)])
+                print("took")
+                changed_entities.append(lval.entity.change_dependency_to(r_entity))
             case False, False:
-                new_epoch.dependencies = rval.dependencies.copy()
+                changed_entities.append(lval.entity.take_dependencies_of(r_entity))
+        print(state.ast, changed_entities[-1])
+        return changed_entities
 
-        if Validate.epoch_dependencies_are_ok(state, new_epoch).failed():
-            state.restore_to_healthy(new_epoch)
-
-        MoveVisitor.add_epoch_uid_as_updated(state, lval.entity, new_epoch)
+    @staticmethod
+    def update_entity(state: State, lval: LvalIdentity, r_entity: Entity):
+        for new_epoch in MoveVisitor.update_entity_logic(state, lval, r_entity):
+            if Validate.epoch_dependencies_are_ok(state, new_epoch).failed():
+                state.restore_to_healthy(new_epoch)
+            MoveVisitor.add_epoch_uid_as_updated(state, lval.entity, new_epoch)
 
     # TODO: cond and if need to be handled properly
     @Visitor.for_ast_types("start", "seq", "cond", "prod_type")
@@ -115,13 +186,40 @@ class MoveVisitor(Visitor):
         # print(adapters.CommonFunction(state).get_name())
         fn_context = state.create_isolated_context()
         fn_context.add_entity(uuid.UUID(int=0), Entity.create_anonymous())
+        fn_state = state.but_with(
+            context=fn_context,
+            updated_epoch_uids=set(),
+            arg_entity_uids=[])
         for child in state.get_child_asts():
-            fn.apply(state.but_with(
-                ast=child,
-                context=fn_context,
-                updated_epoch_uids=set()))
-        deps = FunctionDepFactory.create_deps(state.but_with(context=fn_context))
+            fn.apply(fn_state.but_with(ast=child))
+        deps = FunctionDepFactory.create_deps(fn_state)
         fn.deps_db.add_deps_for(adapters.Def(state).get_function_instance(), deps)
+
+    @Visitor.for_ast_types(":")
+    def _typing(fn, state: State):
+        node = adapters.Colon(state)
+        entity = state.add_new_entity(
+            name=node.get_name(),
+            depth=state.get_nest_depth(),
+            is_let=node.is_let())
+
+        print(node.state.ast, node.is_let())
+
+        if state.place == "args":
+            # add an entity for the 'let' entity outside the function
+            outside_entity = state.add_new_entity(name="arg", depth=state.get_nest_depth(), is_let=True)
+            outside_entity.lifetime = Lifetime.arg()
+            state.add_arg_entity_uid(outside_entity.uid)
+            state.add_entity(entity.change_dependency_to(outside_entity))
+
+    @Visitor.for_ast_types(*adapters.Decl.ast_types)
+    def _decls(fn, state: State):
+        node = adapters.Decl(state)
+        for name in node.get_names():
+            state.add_new_entity(
+                name=name,
+                depth=state.get_nest_depth(),
+                is_let=node.get_is_let())
 
     @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
     def _argsrets(fn, state: State):
@@ -139,8 +237,8 @@ class MoveVisitor(Visitor):
                 name=name,
                 depth=state.get_nest_depth(),
                 is_let=node.get_is_let())))
-        rvals = fn.apply(state.but_with_second_child())
-        for lval, rval in zip(lvals, rvals):
+        rights = fn.apply(state.but_with_second_child())
+        for lval, rval in zip(lvals, rights):
             MoveVisitor.update_entity(state, lval, rval)
 
     @Visitor.for_ast_types("=")
@@ -197,12 +295,17 @@ class MoveVisitor(Visitor):
                 if type_.restriction.is_move():
                     epoch.mark_as_gone()
 
-            for old_epoch, new_param_epoch in zip(param_epochs, F_deps.apply_for_args(param_epochs)):
-                if Validate.epoch_dependencies_are_ok(state, new_param_epoch).failed():
-                    state.restore_to_healthy(new_param_epoch)
-                MoveVisitor.add_epoch_uid_as_updated(state, old_epoch, new_param_epoch)
+            F_deps.apply_for_args(state, param_epochs)
+            # for old_epoch, new_param_epoch in zip(param_epochs, F_deps.apply_for_args(param_epochs)):
+            #     print(old_epoch.name, new_param_epoch)
+            #     if Validate.epoch_dependencies_are_ok(state, new_param_epoch).failed():
+            #         state.restore_to_healthy(new_param_epoch)
+            #     MoveVisitor.add_epoch_uid_as_updated(state, old_epoch, new_param_epoch)
 
-            return F_deps.apply_for_rets(param_epochs)
+            x = F_deps.apply_for_rets(state, param_epochs)
+            print(node.get_function_name())
+            for i in x: print(i)
+            return x
         else:
             print("todo: move checking with lambda/curried functions")
             param_epochs = fn.apply(state.but_with(ast=node.get_params_ast()))
@@ -221,15 +324,6 @@ class MoveVisitor(Visitor):
         for rval in fn.apply(state.but_with_second_child()):
             MoveVisitor.update_entity(state, lval, rval)
         return [Entity.create_anonymous()]
-
-    @Visitor.for_ast_types(*adapters.Typing.ast_types)
-    def _decls(fn, state: State):
-        node = adapters.Typing(state)
-        for name in node.get_names():
-            state.add_new_entity(
-                name=name,
-                depth=state.get_nest_depth(),
-                is_let=node.get_is_let())
 
     @Visitor.for_ast_types(*no_assign_binary_ops, *boolean_return_ops)
     def _binop(fn, state: State):
@@ -325,31 +419,49 @@ class MoveVisitor(Visitor):
         return [Entity.create_anonymous()]
 
 class Deps2():
-    def __init__(self, argmap: dict[int, set[int]], retmap: dict[int, set[int]]) -> None:
+    def __init__(self, argmap: dict[int, set[int]], retmap: dict[int, set[int]],
+                 lvals: list[LvalIdentity]) -> None:
         self.argument_dependency_map: dict[int, set[int]] = argmap
         self.return_val_depedency_map: dict[int, set[int]] = retmap
+        self.tranient_return_lvals: list[LvalIdentity] = lvals
 
-    def apply_for_args(self, params: list[Entity]) -> list[Entity]:
+    def apply_for_args(self, state: State, params: list[Entity]) -> list[Entity]:
         new_epochs = []
         for i, param_epoch in enumerate(params):
             additional_dependencies = [params[j] for j in self.argument_dependency_map[i]]
-            new_epochs.append(param_epoch.add_dependencies_on(additional_dependencies))
-        return new_epochs
+            for ad in additional_dependencies:
+                MoveVisitor.update_entity(state, LvalIdentity(entity=param_epoch, attribute_is_modified=True), ad)
+
+            # new_epochs.append(param_epoch.add_dependencies_on(additional_dependencies))
+        # return new_epochs
 
 
-    def apply_for_rets(self, params: list[Entity]) -> list[Entity]:
+    def apply_for_rets(self, state: State, params: list[Entity]) -> list[Entity]:
+        applied = []
         new_epochs = []
-        for deps in self.return_val_depedency_map.values():
-            epoch = Entity.create_anonymous()
+        for lval, deps in zip(self.tranient_return_lvals, self.return_val_depedency_map.values()):
+            # create LVAL with no att
             additional_dependencies = [params[i] for i in deps]
-            for dep in additional_dependencies:
-                # TODO: figure this out
-                if dep.lifetime.is_arg() or dep.is_let:
-                    epoch.add_dependencies_on([dep])
-                else:
-                    epoch.merge_dependencies_of([dep])
-            new_epochs.append(epoch)
-        return new_epochs
+            for r_entity in additional_dependencies:
+                print(r_entity)
+                changed_entities = MoveVisitor.update_entity_logic(state,
+                    lval=lval,
+                    r_entity=r_entity)
+                applied += changed_entities
+                # print(len(changed_entities))
+                # if changed_entities:
+                    # print("changed id", changed_entities[0])
+
+            # applied.append(additional_dependencies)
+        #     for dep in additional_dependencies:
+        #         # TODO: figure this out
+        #         if dep.lifetime.is_arg() or dep.is_let:
+        #             epoch = epoch.add_dependencies_on([dep])
+        #         else:
+        #             epoch = epoch.merge_dependencies_of([dep])
+        #     new_epochs.append(epoch)
+        # return new_epochs
+        return applied
 
     def __str__(self) -> str:
         s = "Deps\n"
@@ -364,7 +476,9 @@ class FunctionDepFactory():
     @staticmethod
     def create_deps(def_final_state: State):
         node = adapters.Def(def_final_state)
-        arg_epochs = [def_final_state.get_entity_by_name(name) for name in node.get_arg_names()]
+        arg_epochs = [def_final_state.get_entity_by_uid(uid)
+            for uid in def_final_state.get_arg_entity_uids()]
+
         ret_epochs = [def_final_state.get_entity_by_name(name) for name in node.get_ret_names()]
 
         arg_uid_to_index = {}
@@ -387,7 +501,18 @@ class FunctionDepFactory():
             dependency_indexes = set([arg_uid_to_index[uid] for uid in dependency_uids])
             retmap[i] = dependency_indexes
 
-        return Deps2(argmap, retmap)
+        lvals = [LvalIdentity(entity=Entity(
+            dependencies=set(),
+            lifetime=Lifetime.ret(),
+            name="ret",
+            is_let=entity.is_let
+        ), attribute_is_modified=entity.is_let)
+            for entity in ret_epochs]
+
+        d = Deps2(argmap, retmap, lvals)
+        print(node.get_function_name(), d)
+        return d
+
 
 
 class FunctionDepsDatabase2:

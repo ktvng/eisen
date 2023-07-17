@@ -5,7 +5,8 @@ from alpaca.concepts import Type, TypeFactory
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.common.restriction import (MutableRestriction,
-                                      ImmutableRestriction, NewLetRestriction)
+                                      ImmutableRestriction,
+                                      LetRestriction)
 from eisen.state.basestate import BaseState as State
 
 class TypeParser(Visitor):
@@ -51,6 +52,13 @@ class TypeParser(Visitor):
         (mut name (type int))
         """
         return fn.apply(state.but_with(ast=state.second_child())).with_restriction(MutableRestriction())
+
+    @Visitor.for_ast_types("let")
+    def val_(fn, state: State) -> Type:
+        """
+        (let name (type int))
+        """
+        return fn.apply(state.but_with(ast=state.second_child())).with_restriction(LetRestriction())
 
     @Visitor.for_ast_types("prod_type", "types")
     def prod_type_(fn, state: State) -> Type:

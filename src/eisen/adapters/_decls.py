@@ -94,6 +94,19 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
             raise Exception("this method can only be called after typechecker is run")
         return self.state.get_returned_type().unpack_into_parts()
 
+class Colon(AbstractNodeInterface):
+    ast_types = [":"]
+    examples = """
+    (: name (type type_name))
+    """
+
+    def get_name(self) -> str:
+        return self.first_child().value
+
+    def is_let(self) -> bool:
+        return (self.state.get_returned_type().restriction.is_let() or
+                self.state.get_returned_type().restriction.is_new_let())
+
 class Typing(AbstractNodeInterface, _SharedMixins):
     ast_types = ["let", "mut", "val", "nil?", ":"]
     examples = """

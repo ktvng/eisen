@@ -63,7 +63,7 @@ class Call(AbstractNodeInterface, _SharedMixins):
     def get_ast_defining_the_function(self) -> AST:
         return self.state.but_with_first_child().get_instances()[0].ast
 
-    def get_function_instance(self) -> AST:
+    def get_function_instance(self) -> EisenFunctionInstance:
         return self.state.but_with(ast=self.get_ast_defining_the_function()).get_instances()[0]
 
     def is_pure_function_call(self) -> bool:

@@ -35,14 +35,14 @@ class VisitorException(Exception):
         return self.msg
 
 
-# orignal_hook = sys.excepthook
-# def exceptions_hook(e_type, e_value: Exception, tb):
-#     if e_type == VisitorException:
-#         orignal_hook(e_type, e_value.with_traceback(None), None)
-#     else:
-#         orignal_hook(e_type, e_value, tb)
+orignal_hook = sys.excepthook
+def exceptions_hook(e_type, e_value: Exception, tb):
+    if e_type == VisitorException:
+        orignal_hook(e_type, e_value.with_traceback(None), None)
+    else:
+        orignal_hook(e_type, e_value, tb)
 
-# sys.excepthook = exceptions_hook
+sys.excepthook = exceptions_hook
 
 class Visitor():
     max_depth = 100

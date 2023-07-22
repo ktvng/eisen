@@ -14,7 +14,7 @@ from eisen.validation.nilablestatus import NilableStatus
 from eisen.moves.moveepoch import Dependency, Entity
 
 if TYPE_CHECKING:
-    from eisen.trace.entity import Shadow
+    from eisen.trace.entity import Shadow, Impression
 
 @dataclass
 class ValidationResult:
@@ -417,10 +417,10 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def dependency_outlives_self(state: State, memory_name: str, self_shadow: Shadow, dependency_shadow: Shadow) -> ValidationResult:
-        if self_shadow.entity.depth < dependency_shadow.entity.depth:
+    def dependency_outlives_self(state: State, memory_name: str, self_shadow: Shadow, dependency_impression: Impression) -> ValidationResult:
+        if self_shadow.entity.depth < dependency_impression.shadow.entity.depth:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.ObjectLifetime,
-                msg=f"'{self_shadow.entity.name}.{memory_name}' may depend on '{dependency_shadow.entity.name}'")
+                msg=f"'{self_shadow.entity.name}.{memory_name}' may depend on '{dependency_impression.shadow.entity.name}'")
 
         return ValidationResult.success()

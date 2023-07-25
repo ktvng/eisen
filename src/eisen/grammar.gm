@@ -427,6 +427,16 @@ STRUCTURE
         @action filter_build ival
         |   var INFERENCE
 
+
+    # ====================================================
+    # ANNOTATION
+
+    ANNOTATION ->
+        @action filter_build annotation
+        |   @ TAG ( _E0S )
+        |   @ TAG ( E0 )
+        |   @ TAG ( )
+
     # ====================================================
     # LINE
 
@@ -436,6 +446,7 @@ STRUCTURE
         |   ASSIGNMENT
         |   DECL
         |   CONTROL
+        |   ANNOTATION
         @action filter_build return
         |   return
 

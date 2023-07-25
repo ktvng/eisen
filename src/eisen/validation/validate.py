@@ -14,7 +14,8 @@ from eisen.validation.nilablestatus import NilableStatus
 from eisen.moves.moveepoch import Dependency, Entity
 
 if TYPE_CHECKING:
-    from eisen.trace.entity import Shadow, Impression
+    from eisen.trace.entity import Shadow, Impression, Memory, Trait
+    from eisen.trace.memoryvisitor import MemoryVisitorState
 
 @dataclass
 class ValidationResult:
@@ -422,5 +423,50 @@ class Validate:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.ObjectLifetime,
                 msg=f"'{self_shadow.entity.name}.{memory_name}' may depend on '{dependency_impression.shadow.entity.name}'")
+
+        return ValidationResult.success()
+
+    @staticmethod
+    def dependency_outlives_memory(state: State, memory: Memory):
+        failed = False
+        for impression in memory.impressions:
+            if memory.depth < impression.shadow.entity.depth:
+                failed = True
+                add_exception_to(state,
+                    ex=Exceptions.ObjectLifetime,
+                    msg=f"'{memory.name}' may depend on '{impression.shadow.entity.name}'")
+
+        if failed:
+            return ValidationResult.failure()
+        return ValidationResult.success()
+
+    @staticmethod
+    def var_has_expected_dependencies(state: MemoryVisitorState, var_name: str, dependency_names: list[str]) -> ValidationResult:
+        var = state.get_memory(var_name)
+        var_dependencies = set([i.shadow.entity for i in var.impressions])
+        expected_entities = set([state.get_entity(name) for name in dependency_names])
+        if var_dependencies != expected_entities:
+            var_dependency_names = [entity.name for entity in list(var_dependencies)]
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.CompilerAssertion,
+                msg=f"assertion 'var_has_dependencies' failed: expected [{', '.join(dependency_names)}] but got [{', '.join(var_dependency_names)}]")
+
+        return ValidationResult.success()
+
+    @staticmethod
+    def object_has_expected_dependencies(state: MemoryVisitorState, obj_name: str, dependency_dict: dict[Trait, set[str]]) -> ValidationResult:
+        obj_shadow = state.get_shadow(state.get_entity(obj_name).uid)
+        for key in obj_shadow.personality.memories:
+            if key not in dependency_dict:
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.CompilerAssertion,
+                    msg=f"'{obj_name}' has extra dependency '{key}'")
+        for key, expected_names in dependency_dict.items():
+            memory = obj_shadow.personality.get_memory(key)
+            dependency_names = set([i.shadow.entity.name for i in memory.impressions])
+            if dependency_names != expected_names:
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.CompilerAssertion,
+                    msg=f"assertion 'object_has_expected_dependencies' failed: expected '{obj_name}.{key}' to be [{', '.join(dependency_names)}], but got [{', '.join(expected_names)}]")
 
         return ValidationResult.success()

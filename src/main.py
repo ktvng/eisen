@@ -206,7 +206,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("-b", "--build", action="store_true")
     parser.add_argument("-i", "--input", action="store", type=str)
-    parser.add_argument("-a", "--add-test", action="store", type=str)
+    parser.add_argument("-a", "--add-test", action="store_true")
     parser.add_argument("-l", "--lang",
         action="store",
         type=str,
@@ -214,7 +214,9 @@ if __name__ == "__main__":
         default="eisen")
 
     args = parser.parse_args()
-    if args.test is not None:
+    if args.add_test:
+        add_test(args.test)
+    elif args.test is not None:
         run_eisen_tests(args.test, args.verbose)
     elif args.input and args.lang:
         run(args.lang, args.input)
@@ -222,7 +224,5 @@ if __name__ == "__main__":
         eisen.TestRunner.rebuild_cache()
     elif args.debug:
         debug()
-    elif args.add_test:
-        add_test(args.add_test)
 
     print(delim)

@@ -1,0 +1,33 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let a, b = obj(), obj()
+    let p = ptr(a)
+    if (true) {
+        p.o = b
+    }
+
+    @compiler_assert(object_has_dependencies, p, "o: a b")
+}
+
+/// [Test]
+/// name = "trace/obj/conditional/branch"
+/// info = "Compiler traces condtional assignment possibilities"
+
+/// [Expects]
+/// success = true
+/// output = ""

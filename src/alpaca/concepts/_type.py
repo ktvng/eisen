@@ -147,9 +147,14 @@ class Type():
     def with_restriction(self, restriction: AbstractRestriction = None):
         # A tuple should not have restrictions, but should have restrictions passed
         # to each component
-        if self.is_tuple() and restriction is not None:
+        if self.is_tuple() and restriction is not None and isinstance(restriction, AbstractRestriction):
             new_type = self._copy_with_restriction(None)
             new_type.components = [t._copy_with_restriction(restriction) for t in new_type.components]
+            return new_type
+
+        if self.is_tuple() and restriction is not None and isinstance(restriction, list):
+            new_type = self._copy_with_restriction(None)
+            new_type.components = [t._copy_with_restriction(r) for t, r in zip(new_type.components, restriction)]
             return new_type
 
         if restriction is not None:

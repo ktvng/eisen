@@ -1,0 +1,29 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn select(a: obj, b: obj) -> c: obj {
+    c = b
+}
+
+fn main() {
+    let o, d = obj(), obj()
+    var p = select(o, d)
+
+    @compiler_assert(reference_has_dependencies, p, d)
+}
+
+
+/// [Test]
+/// name = "trace/functions/var_assign"
+/// info = """\
+///     Compiler tracks variable reassigned through functions
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

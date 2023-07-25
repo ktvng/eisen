@@ -152,6 +152,10 @@ class Writer(Visitor):
             return ['"', ast.value, '"']
         return [ast.value]
 
+    @Visitor.for_ast_types("no_content")
+    def no_content(fn, ast: AST):
+        return []
+
     @Visitor.for_default
     def default_(fn, ast: AST):
         print(f"Python Writer unimplemented for {ast}")

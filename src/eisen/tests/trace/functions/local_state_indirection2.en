@@ -1,0 +1,35 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn select(a: obj, b: obj) -> c: obj {
+    let f = obj()
+    c = select_indirection(a, f)
+}
+
+fn select_indirection(a: obj, b: obj) -> c: obj {
+    c = b
+}
+
+fn main() {
+    let o, d = obj(), obj()
+    var p = select(o, d)
+}
+
+/// [Test]
+/// name = "trace/functions/local_state_indirection1"
+/// info = """\
+///     Compiler detects function returns a variable which could refer to local state
+///     through one layer of indirection.
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 11"

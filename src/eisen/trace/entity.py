@@ -81,6 +81,13 @@ class Shadow():
     def validate_dependencies_outlive_self(self, state: State):
         self.personality.validate_dependencies_outlive_self(state, self)
 
+    def restore_to_healthy(self) -> Shadow:
+        return Shadow(entity=self.entity,
+                      epoch=self.epoch,
+                      faded=self.faded,
+                      personality=self.personality.restore_to_healthy())
+
+
     @staticmethod
     def merge_all(shadows: list[Shadow], depth: int) -> Shadow:
         return Shadow(entity=shadows[0].entity,
@@ -106,27 +113,30 @@ class Impression():
 
 
 class Memory():
-    def __init__(self, rewrites: bool, impressions: set[Impression]) -> None:
-        self.depth = 0
+    def __init__(self, rewrites: bool, impressions: set[Impression], depth: int, name: str = "") -> None:
+        self.name = name
+        self.depth = depth
         self.rewrites = rewrites
         self.impressions = impressions
 
     def update_with(self, other_memory: Memory, extend: bool = False) -> Memory:
         if other_memory.rewrites:
             return Memory(
+                name=self.name,
                 rewrites=other_memory.rewrites,
-                impressions=other_memory.impressions.copy())
+                impressions=other_memory.impressions.copy(),
+                depth=self.depth)
 
         return Memory(
+            name=self.name,
             rewrites=self.rewrites,
-            impressions=self.impressions.union(other_memory.impressions))
+            impressions=self.impressions.union(other_memory.impressions),
+            depth=self.depth)
 
     def with_depth(self, depth: int) -> Memory:
-        m = Memory(self.rewrites, self.impressions)
-        m.depth = depth
-        return m
+        return Memory(self.rewrites, self.impressions, depth, name=self.name)
 
-    def remap_via_index(self, index: dict[uuid.UUID, Memory]):
+    def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Memory:
         impressions = []
         for i in self.impressions:
             found = index.get(i.shadow.entity.uid, None)
@@ -138,19 +148,26 @@ class Memory():
                     impressions += found.impressions
             else:
                 impressions.append(i)
-        return Memory(rewrites=self.rewrites, impressions=set(impressions))
+        return Memory(name=self.name, rewrites=self.rewrites, impressions=set(impressions), depth=self.depth)
 
     def validate_dependencies_outlive_self(self, state: State, memory_name: str, self_shadow: Shadow):
         for impression in self.impressions:
             Validate.dependency_outlives_self(state, memory_name, self_shadow, impression)
 
+    def restore_to_healthy(self) -> Memory:
+        impressions = []
+        for i in self.impressions:
+            if i.shadow.entity.depth > self.depth:
+                continue
+            impressions.append(i)
+        return Memory(name=self.name, rewrites=self.rewrites, impressions=set(impressions), depth=self.depth)
 
     @staticmethod
-    def merge_all(memories: list[Memory]) -> Memory:
+    def merge_all(memories: list[Memory], depth: int) -> Memory:
         impressions = set()
         for m in memories:
             impressions = impressions.union(m.impressions)
-        return Memory(rewrites=True, impressions=impressions)
+        return Memory(rewrites=True, impressions=impressions, depth=depth)
 
     def __str__(self) -> str:
         return " ".join([str(i) for i in self.impressions])
@@ -188,6 +205,12 @@ class Personality():
         Personality._merge_memory_dicts(merged_memories, other_personality, root=root, depth=depth)
         return Personality(merged_memories)
 
+    def restore_to_healthy(self) -> Personality:
+        merged_memories: dict[Trait, Memory] = {}
+        for key, value in self.memories.items():
+            merged_memories[key] = value.restore_to_healthy()
+        return Personality(merged_memories)
+
     def validate_dependencies_outlive_self(self, state: State, self_shadow: Shadow):
         for name, memory in self.memories.items():
             memory.validate_dependencies_outlive_self(state, name, self_shadow)
@@ -217,11 +240,14 @@ class FunctionDelta():
                  arg_shadows: list[Shadow],
                  ret_shadows: list[Shadow],
                  angels: list[Angel],
-                 angel_shadows: dict[uuid.UUID, Shadow]) -> None:
+                 angel_shadows: dict[uuid.UUID, Shadow],
+                 ret_memories: list[Memory]) -> None:
+
         self.arg_shadows = arg_shadows
         self.ret_shadows = ret_shadows
         self.angels = angels
         self.angel_shadows = angel_shadows
+        self.ret_memories = ret_memories
 
 class FunctionDB():
     def __init__(self) -> None:

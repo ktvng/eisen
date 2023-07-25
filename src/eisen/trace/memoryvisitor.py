@@ -89,6 +89,9 @@ class MemoryVisitorState(State_PostInstanceVisitor):
     def get_local_entities(self) -> list[Entity]:
         return self.get_context().containers["entity"].values()
 
+    def get_local_memories(self) -> list[Memory]:
+        return self.get_context().containers["memory"].values()
+
     def get_ret_entities(self) -> list[Entity]:
         return self.rets
 
@@ -101,6 +104,9 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         if isinstance(memory, Shadow):
             shadow = next(iter(lval.memory.impressions)).shadow
             self.update_shadow(shadow.entity.uid, memory, root=lval.trait)
+            new_shadow = self.get_shadow(shadow.entity.uid)
+            new_shadow.validate_dependencies_outlive_self(self)
+            self.add_shadow(new_shadow.restore_to_healthy())
             return
 
         # trait is not empty if we are update state of an entity
@@ -112,9 +118,13 @@ class MemoryVisitorState(State_PostInstanceVisitor):
                 current_shadow_to_update = self.get_shadow(impression.shadow.entity.uid)
                 new_shadow = current_shadow_to_update\
                     .update_personality(other_personality, impression.root, depth=self.get_depth())
-                self.add_shadow(new_shadow)
+                new_shadow.validate_dependencies_outlive_self(self)
+                self.add_shadow(new_shadow.restore_to_healthy())
+
         else:
             self.update_memory(lval.name, memory)
+            Validate.dependency_outlives_memory(self, self.get_memory(lval.name))
+            self.update_memory(lval.name, self.get_memory(lval.name).restore_to_healthy())
 
     def update_memory(self, name: str, with_memory: Memory):
         memory = self.get_memory(name).update_with(with_memory)
@@ -156,8 +166,10 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         entity = Entity(name, self.get_depth())
         shadow = self._recognize_entity(entity)
         self.add_memory(entity.name, Memory(
+            name=name,
             rewrites=True,
-            impressions=set([Impression(shadow=shadow, root=Trait(), place=self.get_line_number())])))
+            impressions=set([Impression(shadow=shadow, root=Trait(), place=self.get_line_number())]),
+            depth=self.get_depth()))
 
     def create_new_angel(self, entity_attribute: Trait, entity: Entity) -> Shadow:
         angel = Angel(trait=entity_attribute, entity=entity)
@@ -171,7 +183,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             impressions=set([Impression(
                 shadow=angel_shadow,
                 root=Trait(),
-                place=-1)]))
+                place=-1)]),
+            depth=self.get_depth())
 
 
     def get_function_base_context(self) -> Context:
@@ -192,7 +205,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             case "seq": has_return_statement = adapters.Seq(self).has_return_statement()
             case _: has_return_statement = False
 
-        if has_return_statement:
+        if has_return_statement and prior_memory and prior_memory.depth > 0:
             return None
 
         memory = self.get_memory(name)
@@ -228,12 +241,19 @@ class LValMemoryVisitor(Visitor):
                      memory=state.get_memory(adapters.Ref(state).get_name()),
                      trait=Trait())]
 
-    @Visitor.for_ast_types("lvals")
+    @Visitor.for_ast_types("lvals", "tags")
     def _lvals(fn, state: State):
         lvals = []
         for child in state.get_all_children():
             lvals += fn.apply(state.but_with(ast=child))
         return lvals
+
+    @Visitor.for_tokens
+    def _tokens(fn, state: State):
+        name = state.get_ast().value
+        return [Lval(name=name,
+                     memory=state.get_memory(name),
+                     trait=Trait())]
 
     @Visitor.for_ast_types(".")
     def _dot(fn, state: State):
@@ -252,11 +272,11 @@ class MemoryVisitor(Visitor):
         self.apply(MemoryVisitorState.create_from_basestate(state))
         return state
 
-    @Visitor.for_ast_types("")
+    @Visitor.for_ast_types("interface")
     def _noop(fn, state: State):
         return
 
-    @Visitor.for_ast_types("params")
+    @Visitor.for_ast_types("params", "tuple")
     def _params(fn, state: State):
         memories = []
         for child in state.get_all_children():
@@ -268,15 +288,13 @@ class MemoryVisitor(Visitor):
         if adapters.Struct(state).has_create_ast():
             fn.apply(state.but_with(ast=adapters.Struct(state).get_create_ast()))
 
-    @Visitor.for_ast_types("start", "prod_type")
+    @Visitor.for_ast_types("start", "prod_type", "seq")
     def _start(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    @Visitor.for_ast_types("seq")
-    def _seq(fn, state: State):
-        state.apply_fn_to_all_children(fn)
-        for entity in state.get_local_entities():
-            state.get_shadow(entity.uid).validate_dependencies_outlive_self(state)
+    @Visitor.for_ast_types("mod")
+    def _mod(fn, state: State):
+        adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_ast_types("rets", "args")
     def _rets(fn, state: State):
@@ -299,12 +317,12 @@ class MemoryVisitor(Visitor):
         ret_entities = [fn_state.get_entity(name) for name in node.get_ret_names()]
 
         angels: list[Angel] = []
-        fn.apply(fn_state.but_with(
-            ast=node.get_seq_ast(),
+        fn_state = fn_state.but_with(
             depth=1,
             rets=ret_entities,
             args=arg_entities,
-            angels=angels))
+            angels=angels)
+        fn.apply(fn_state.but_with(ast=node.get_seq_ast()))
 
         arg_shadows = [fn_state.get_shadow(entity.uid) for entity in arg_entities]
         ret_shadows = [fn_state.get_shadow(entity.uid) for entity in ret_entities]
@@ -313,36 +331,46 @@ class MemoryVisitor(Visitor):
         for angel in angels:
             angel_shadows[angel.uid] = fn_state.get_shadow(angel.uid)
 
+        ret_memories = [fn_state.get_memory(entity.name) for entity in ret_entities]
+
         fn.function_db.add_function_delta(
             name=node.get_function_instance().get_full_name(),
             fc=FunctionDelta(arg_shadows=arg_shadows,
                              ret_shadows=ret_shadows,
                              angels=angels,
-                             angel_shadows=angel_shadows))
+                             angel_shadows=angel_shadows,
+                             ret_memories=ret_memories))
 
         # print("finished for ", node.get_function_name())
         return []
 
     @Visitor.for_ast_types(*no_assign_binary_ops)
     def _no_assign_binary_ops(fn, state: State):
-        pass
+        fn.apply(state.but_with_first_child())
+        fn.apply(state.but_with_second_child())
+        # TODO: formalize
+        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
+
+    @Visitor.for_ast_types(*boolean_return_ops)
+    def _boolean_return_ops(fn, state: State):
+        fn.apply(state.but_with_first_child())
+        fn.apply(state.but_with_second_child())
+        # TODO: formalize
+        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
+
+    @Visitor.for_ast_types("+=", "*=", "/=", "-=")
+    def _assign_binary_ops(fn, state: State):
+        fn.apply(state.but_with_first_child())
+        fn.apply(state.but_with_second_child())
+
+    @Visitor.for_ast_types("!")
+    def _not(fn, state: State):
+        fn.apply(state.but_with_first_child())
+        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
         node = adapters.Ref(state)
-        # kxt debug
-        if node.get_name() == "p2":
-            entity = state.get_entity("p2")
-            print(state.get_shadow(entity.uid))
-        if node.get_name() == "p":
-            entity = state.get_entity("p")
-            print(state.get_shadow(entity.uid))
-        if node.get_name() == "n2":
-            entity = state.get_entity("n2")
-            print(state.get_shadow(entity.uid))
-        if node.get_name() == "a":
-            print(state.get_memory("a"))
-
         return [state.get_memory(node.get_name())]
 
     @Visitor.for_ast_types(".")
@@ -350,6 +378,9 @@ class MemoryVisitor(Visitor):
         memories = AttributeVisitor.get_memories(state)
         return memories
 
+    @Visitor.for_ast_types("cast")
+    def _cast(fn, state: State):
+        return fn.apply(state.but_with_first_child())
 
     @Visitor.for_ast_types("let")
     def _let(fn, state: State):
@@ -361,11 +392,39 @@ class MemoryVisitor(Visitor):
     def _vars(fn, state: State):
         node = adapters.Decl(state)
         for name in node.get_names():
-            state.add_memory(name, Memory(rewrites=True, impressions=set()))
+            state.add_memory(name, Memory(
+                name=name,
+                rewrites=True,
+                impressions=set(),
+                depth=state.get_depth()))
+
+    @Visitor.for_ast_types("ilet")
+    def _ilet(fn, state: State):
+        node = adapters.InferenceAssign(state)
+        for name in node.get_names():
+            state.create_new_entity(name)
+
+        lvals = LValMemoryVisitor().apply(state.but_with_first_child())
+        rvals = fn.apply(state.but_with_second_child())
+        for lval, rval in zip(lvals, rvals):
+            state.update_lval(lval, rval)
+
+    @Visitor.for_ast_types("ival", "imut", "inil?")
+    def _ival(fn, state: State):
+        node = adapters.InferenceAssign(state)
+        for name in node.get_names():
+            state.add_memory(name, Memory(
+                name=name,
+                rewrites=True,
+                impressions=set(),
+                depth=state.get_depth()))
+        lvals = LValMemoryVisitor().apply(state.but_with_first_child())
+        rvals = fn.apply(state.but_with_second_child())
+        for lval, rval in zip(lvals, rvals):
+            state.update_lval(lval, rval)
 
     @Visitor.for_ast_types("=")
     def _eq(fn, state: State):
-        node = adapters.Assignment(state)
         lvals = LValMemoryVisitor().apply(state.but_with_first_child())
         rvals = fn.apply(state.but_with_second_child())
 
@@ -376,6 +435,9 @@ class MemoryVisitor(Visitor):
     @Visitor.for_ast_types("call")
     def _call(fn, state: State):
         node = adapters.Call(state)
+        if node.is_print():
+            return []
+
         # print("call to", node.get_function_name())
         delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
         if delta is None:
@@ -403,23 +465,38 @@ class MemoryVisitor(Visitor):
                 for i in m.impressions:
                     state.update_shadow(i.shadow.entity.uid, angel_shadow_dict.get(angel.uid), root=i.root)
 
+        # update argument shadows
         for memory, update_with_shadow in zip(param_memories, arg_shadows):
             for impression in memory.impressions:
                 state.update_shadow(impression.shadow.entity.uid, update_with_shadow, root=impression.root)
-
-        # TODO: hotfix to be removed
-        if len(node.get_function_return_type().unpack_into_parts()) > 0 and not ( node.get_function_return_type().unpack_into_parts()[0].restriction.is_new_let()
-                                                                             or node.get_function_return_type() == state.get_void_type()):
-            print(node.get_function_name())
-            raise Exception()
-
+                shadow = state.get_shadow(impression.shadow.entity.uid)
+                shadow.validate_dependencies_outlive_self(state)
+                state.add_shadow(shadow.restore_to_healthy())
 
         shadows = [s.remap_via_index(index) for s in delta.ret_shadows]
-        return shadows
+        memories = [m.remap_via_index(index) for m in delta.ret_memories]
+        returned_shadows_or_memories = []
+
+        if node.get_function_return_type() == state.get_void_type():
+            return []
+
+        for i, type_ in enumerate(node.get_function_return_type().unpack_into_parts()):
+            if type_.restriction.is_new_let() or type_.restriction.is_primitive():
+                returned_shadows_or_memories.append(shadows[i])
+            else:
+                returned_shadows_or_memories.append(memories[i])
+
+        return returned_shadows_or_memories
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):
         state.apply_fn_to_all_children(fn)
+
+    # TODO: finish while
+    @Visitor.for_ast_types("while")
+    def _while(fn, state: State):
+        pass
+
 
     @Visitor.for_ast_types("if")
     def _if(fn, state: State) -> Type:
@@ -477,7 +554,7 @@ class MemoryVisitor(Visitor):
 
             if not MemoryVisitor.if_statement_is_exhaustive(state):
                 update_set.append(prior_memory)
-            new_memories.append((name, Memory.merge_all(memories=update_set)))
+            new_memories.append((name, Memory.merge_all(memories=update_set, depth=prior_memory.depth)))
 
         # NEED to do it by personality!
         updated_shadow_uids = MemoryVisitor.all_updated_shadows(state, branch_states)
@@ -490,7 +567,7 @@ class MemoryVisitor(Visitor):
                 update_set = [s.get_conditional_trait_memory(uid, trait, prior_shadow) for s in branch_states]
                 update_set = [s for s in update_set if s is not None]
 
-                new_memory = Memory.merge_all(memories=update_set)
+                new_memory = Memory.merge_all(memories=update_set, depth=prior_shadow.entity.depth)
                 if MemoryVisitor.if_statement_is_exhaustive(state):
                     new_memory.rewrites = True
                 else:
@@ -519,13 +596,47 @@ class MemoryVisitor(Visitor):
         for entity in state.get_ret_entities():
             shadow = state.get_shadow(entity.uid)
             shadow.validate_dependencies_outlive_self(state)
+            state.add_shadow(shadow.restore_to_healthy())
 
         # TODO: should check final state of returns
         return
 
     @Visitor.for_tokens
     def _tokens(fn, state: State):
-        return [Memory(rewrites=True, impressions=set())]
+        return [Memory(rewrites=True, impressions=set(), depth=0)]
+
+    @Visitor.for_ast_types("annotation")
+    def annotation_(fn, state: State):
+        node = adapters.Annotation(state)
+        match node.get_annotation_type():
+            case "compiler_assert":
+                Annotations.handle_compiler_assert(state)
+        return
+
+class Annotations:
+    @staticmethod
+    def parse_dependency_dict(strs: list[str]):
+        key_val_pairs = [s.split(':') for s in strs]
+        key_val_pairs = [(p[0].strip(), p[1].split()) for p in key_val_pairs]
+        key_val_pairs = [(p[0], set([v.strip() for v in p[1]])) for p in key_val_pairs]
+        return { Trait(p[0]): p[1] for p in key_val_pairs}
+
+    @staticmethod
+    def handle_compiler_assert(state: State):
+        node = adapters.CompilerAssertAnnotation(state)
+        function = node.get_functionality()
+        args = node.get_annotation_arguments()
+        match function:
+            case "reference_has_dependencies":
+                Validate.var_has_expected_dependencies(state, args[0], args[1: ])
+            case "object_has_dependencies":
+                Validate.object_has_expected_dependencies(state, args[0],
+                    Annotations.parse_dependency_dict(args[1: ]))
+
+
+
+
+
 
 
 class AttributeVisitor:
@@ -617,12 +728,14 @@ class AttributeVisitor:
         return parents, trait, AttributeVisitor._has_ownership_change(state)
 
     @staticmethod
-    def _form_new_impressions(memories: list[Memory], trait: Trait) -> list[Memory]:
+    def _form_new_impressions(state: State, memories: list[Memory], trait: Trait) -> list[Memory]:
         new_memories = []
         for m in memories:
-            new_memories.append(Memory(rewrites=True,
+            new_memories.append(Memory(
+                rewrites=True,
                 impressions=set([Impression(
-                i.shadow, i.root.join(trait), i.place) for i in m.impressions])))
+                    i.shadow, i.root.join(trait), i.place) for i in m.impressions]),
+                depth=state.get_depth()))
         return new_memories
 
     @staticmethod
@@ -633,7 +746,7 @@ class AttributeVisitor:
             memories = AttributeVisitor._resolve_memories_during_owner_switch(state, trait, memories)
             trait = Trait()
 
-        return AttributeVisitor._form_new_impressions(memories, trait)
+        return AttributeVisitor._form_new_impressions(state, memories, trait)
 
     @staticmethod
     def get_lvals(state: State) -> list[Lval]:

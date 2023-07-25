@@ -54,7 +54,7 @@ class TypeParser(Visitor):
         return fn.apply(state.but_with(ast=state.second_child())).with_restriction(MutableRestriction())
 
     @Visitor.for_ast_types("let")
-    def val_(fn, state: State) -> Type:
+    def let_(fn, state: State) -> Type:
         """
         (let name (type int))
         """

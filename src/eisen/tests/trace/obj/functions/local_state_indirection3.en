@@ -1,0 +1,50 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn select(p: mut ptr, a: obj, b: obj) {
+    let f = obj()
+    var x = a
+    if (true) {
+        x = f
+    }
+
+    select_indirection(p, a, x)
+}
+
+fn select_indirection(p: mut ptr, a: obj, b: obj) {
+    p.o = b
+}
+
+fn main() {
+    let o, d = obj(), obj()
+    let p = ptr(o)
+    select(p, o, d)
+}
+
+/// [Test]
+/// name = "trace/obj/functions/local_state_indirection3"
+/// info = """\
+///     Compiler detects function modifies an attirbute to refer to local state
+///     through one layer of indirection.
+/// """
+
+/// [Expects]
+/// success = false
+/// output = ""
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 24"

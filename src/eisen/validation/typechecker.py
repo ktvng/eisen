@@ -315,3 +315,8 @@ class TypeChecker(Visitor):
     @Visitor.for_ast_types("index")
     def index_(fn, state: State) -> Type:
         return fn.apply_to_first_child_of(state).parametrics[0]
+
+    @Visitor.for_ast_types("annotation")
+    def annotation_(fn, state: State) -> Type:
+        # Not implemented
+        return

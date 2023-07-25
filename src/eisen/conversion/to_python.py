@@ -49,6 +49,10 @@ class lmda:
     def create_ast(self, txt: str):
         return alpaca.clr.CLRParser.run(self.python_gm, txt)
 
+    @Visitor.for_ast_types("annotation")
+    def annotation_(fn, state: State):
+        return AST("no_content", lst=[])
+
     @Visitor.for_default
     def default_(fn, state: State):
         print(f"ToPython unimplemented for {state.get_ast()}")

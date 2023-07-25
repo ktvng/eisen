@@ -246,6 +246,12 @@ class UsageChecker(Visitor):
         print("UsageChecker Unhandled State:", state.get_ast())
         exit()
 
+    @Visitor.for_ast_types("annotation")
+    def annotation_(fn, state: State) -> list[UsageStatus]:
+        # Not implemented
+        return []
+
+
 
 
 

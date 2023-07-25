@@ -48,14 +48,3 @@ class EisenBuilder(CommonBuilder):
         typing_component = components[-1]
         typing_component.type = name
         return [typing_component]
-
-    @CommonBuilder.for_procedure("strip_annotation")
-    def strip_annotation(
-            fn,
-            config: Config,
-            components: ASTElements,
-            name: str,
-            *args) -> ASTElements:
-
-        typing_component = components[-1]
-        return [typing_component]

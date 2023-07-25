@@ -1,0 +1,36 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let a, b = obj(), obj()
+    let p = ptr(a)
+    if (true) {
+        p.o = b
+    }
+    else {
+        p.o = b
+    }
+
+    @compiler_assert(object_has_dependencies, p, "o: b")
+}
+
+/// [Test]
+/// name = "trace/obj/conditional/exhaustive"
+/// info = "Compiler understands exhaustive conditional"
+
+/// [Expects]
+/// success = true
+/// output = ""

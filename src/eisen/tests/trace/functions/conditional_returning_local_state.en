@@ -1,0 +1,32 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn select(a: obj, b: obj) -> c: obj {
+    let f = obj()
+    if (true) {
+        c = f
+    }
+}
+
+fn main() {
+    let o, d = obj(), obj()
+    var p = select(o, d)
+}
+
+/// [Test]
+/// name = "trace/functions/conditional_returning_local_state"
+/// info = """\
+///     Compiler detects function returns a variable which could refer to local state
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 12"

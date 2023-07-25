@@ -233,3 +233,8 @@ class NilCheck(Visitor):
         parent_nilstatus = fn.apply(state.but_with_first_child())[0]
         Validate.cannot_be_nil(state, parent_nilstatus)
         return [NilableStatus.for_type(state.get_returned_type())]
+
+    @Visitor.for_ast_types("annotation")
+    def annotation_(fn, state: State):
+        # Not implemented
+        return []

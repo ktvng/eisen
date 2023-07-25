@@ -128,10 +128,10 @@ class MutableStatus(UsageStatus):
         return True
 
     def assignable_to(self, other: UsageStatus):
-        if other.is_let_construction():
-            return AssignmentResult(
-                ex_type=Exceptions.LetInitializationMismatch,
-                msg=f"'{self.name}' is declared as 'var', and cannot accept a new object (use let instead)")
+        # if other.is_let_construction():
+        #     return AssignmentResult(
+        #         ex_type=Exceptions.LetInitializationMismatch,
+        #         msg=f"'{self.name}' is declared as 'var', and cannot accept a new object (use let instead)")
         if other.is_literal():
             return AssignmentResult(
                 ex_type=Exceptions.VarImproperAssignment,
@@ -177,10 +177,10 @@ class ImmutableStatus(UsageStatus):
         return True
 
     def assignable_to(self, other: UsageStatus):
-        if other.is_let_construction():
-            return AssignmentResult(
-                ex_type=Exceptions.LetInitializationMismatch,
-                msg=f"'{self.name}' is declared as 'var', and cannot accept a new object (use let instead)")
+        # if other.is_let_construction():
+        #     return AssignmentResult(
+        #         ex_type=Exceptions.LetInitializationMismatch,
+        #         msg=f"'{self.name}' is declared as 'var', and cannot accept a new object (use let instead)")
 
         if not self.is_initialized():
             return AssignmentResult.success()

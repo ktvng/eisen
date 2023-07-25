@@ -63,15 +63,18 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
             return hint.components[0].restriction.is_primitive()
         return hint.restriction.is_primitive()
 
-    def get_hint_restriction(self, hint: Type) -> GeneralRestriction:
-        # TODO: fix this logic. How do we infer multiple types when a function could
-        # return multiple restrictions??
-        if self.hint_is_primitive(hint):
-            return PrimitiveRestriction()
+    @staticmethod
+    def map_ilet_restrictions(r: GeneralRestriction) -> GeneralRestriction:
+        match r:
+            case NewLetRestriction(): return LetRestriction()
+            case _: return r
 
-        if not hint.is_tuple() and hint.restriction.is_new_let():
-            return LetRestriction()
-        return hint.restriction
+    @staticmethod
+    def get_hint_restrictions(hint: Type) -> GeneralRestriction:
+        if hint.is_tuple():
+            return [InferenceAssign.map_ilet_restrictions(_type.restriction) for _type in hint.unpack_into_parts()]
+        return InferenceAssign.map_ilet_restrictions(hint.restriction)
+
 
     def assigns_a_tuple(self) -> bool:
         return isinstance(self.first_child(), AST)
@@ -83,7 +86,7 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
 
     def get_restriction(self, hint: Type) -> GeneralRestriction:
         match self.get_node_type():
-            case "ilet": return self.get_hint_restriction(hint)
+            case "ilet": return InferenceAssign.get_hint_restrictions(hint)
             case "inil?": return NilableRestriction()
             case "ival": return ImmutableRestriction()
             case "ivar": return MutableRestriction()

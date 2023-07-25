@@ -6,6 +6,7 @@ from eisen.adapters._functionals import *
 from eisen.adapters._ifwhile import *
 from eisen.adapters._is import *
 from eisen.adapters._refs import *
+from eisen.adapters._annotations import *
 
 from eisen.adapters.argsrets import ArgsRets
 from eisen.adapters.mod import Mod

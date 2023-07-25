@@ -1,0 +1,29 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn main() {
+    let o = obj()
+    var p = o
+    if (true) {
+        let d = obj()
+        p = d
+    }
+}
+
+/// [Test]
+/// name = "trace/var_assign_child_block"
+/// info = """\
+///     Compiler detects assigning a value from a local context
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 14"

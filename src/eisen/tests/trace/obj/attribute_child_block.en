@@ -1,0 +1,35 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let a = obj()
+    let p = ptr(a)
+    if (true) {
+        let b = obj()
+        p.o = b
+    }
+}
+
+/// [Test]
+/// name = "trace/obj/attribute_child_block"
+/// info = "Compiler throws exception if attribute is set to value in shorter context"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 22"

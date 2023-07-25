@@ -110,3 +110,7 @@ class Exceptions():
     class ReferenceInvalidation(AbstractException):
         type = "ReferenceInvalidation"
         description = "reference is invalidated after memory unsafe operation"
+
+    class CompilerAssertion(AbstractException):
+        type = "CompilerAssertion"
+        description = "failed compiler assertion annotation"

@@ -6,7 +6,7 @@ from alpaca.concepts import Context, Module
 from alpaca.concepts import AbstractException
 
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
-from eisen.moves.moveepoch import Entity, Lifetime, Dependency, CurriedObject
+from eisen.__moves.moveepoch import Entity, Lifetime, Dependency, CurriedObject
 
 class MoveVisitorState(State_PostInstanceVisitor):
     def __init__(self, **kwargs):

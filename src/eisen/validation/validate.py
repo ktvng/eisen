@@ -11,11 +11,11 @@ from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
-from eisen.moves.moveepoch import Dependency, Entity
+from eisen.__moves.moveepoch import Dependency, Entity
 
 if TYPE_CHECKING:
     from eisen.trace.entity import Shadow, Impression, Memory, Trait
-    from eisen.trace.memoryvisitor import MemoryVisitorState
+    from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 @dataclass
 class ValidationResult:

@@ -122,7 +122,9 @@ class MemoryVisitor(Visitor):
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
         node = adapters.Ref(state)
-        return [state.get_memory(node.get_name())]
+        memory = state.get_memory(node.get_name())
+        Validate.memory_dependencies_havent_moved_away(state, memory)
+        return [memory]
 
     @Visitor.for_ast_types(".")
     def _dot(fn, state: State):

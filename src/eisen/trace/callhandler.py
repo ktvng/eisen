@@ -141,6 +141,11 @@ class CallHander:
             shadows=[s.remap_via_index(self.index) for s in self.delta.ret_shadows],
             memories=[m.remap_via_index(self.index) for m in self.delta.ret_memories])
 
+    def resolve_entity_moves(self, param_memories: list[Memory]):
+        for type_, memory in zip(self.node.get_function_argument_type().unpack_into_parts(), param_memories):
+            if type_.restriction.is_move():
+                for impression in memory.impressions:
+                    impression.shadow.entity.moved = True
 
     def handle_call(self, param_memories: list[Memory]):
         if self.node.is_print():
@@ -151,4 +156,5 @@ class CallHander:
 
         self.resolve_angels()
         self.resolve_updated_arguments(param_memories)
+        self.resolve_entity_moves(param_memories)
         return self.resolve_updated_returns()

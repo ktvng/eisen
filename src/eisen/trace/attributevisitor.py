@@ -7,12 +7,14 @@ from eisen.trace.memory import Memory, Impression
 from eisen.trace.lval import Lval
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
+from eisen.validation.validate import Validate
 
 State = MemoryVisitorState
 class AttributeVisitor:
     @staticmethod
     def _ref(state: State) -> list[Memory]:
         memory = state.get_memory(adapters.Ref(state).get_name())
+        Validate.memory_dependencies_havent_moved_away(state, memory)
         return [memory]
 
     @staticmethod

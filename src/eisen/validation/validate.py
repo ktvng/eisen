@@ -14,7 +14,9 @@ from eisen.validation.nilablestatus import NilableStatus
 from eisen.__moves.moveepoch import Dependency, Entity
 
 if TYPE_CHECKING:
-    from eisen.trace.entity import Shadow, Impression, Memory, Trait
+    from eisen.trace.entity import Trait
+    from eisen.trace.shadow import Shadow
+    from eisen.trace.memory import Memory, Impression
     from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 @dataclass
@@ -435,6 +437,21 @@ class Validate:
                 add_exception_to(state,
                     ex=Exceptions.ObjectLifetime,
                     msg=f"'{memory.name}' may depend on '{impression.shadow.entity.name}'")
+
+        if failed:
+            return ValidationResult.failure()
+        return ValidationResult.success()
+
+    @staticmethod
+    def memory_dependencies_havent_moved_away(state: State, memory: Memory, override_name: str = ""):
+        failed = False
+        for impression in memory.impressions:
+            if impression.shadow.entity.moved:
+                failed = True
+                name = override_name if override_name else memory.name
+                add_exception_to(state,
+                    ex=Exceptions.ReferenceInvalidation,
+                    msg=f"'{name}' may depend on '{impression.shadow.entity.name}' which is moved away.")
 
         if failed:
             return ValidationResult.failure()

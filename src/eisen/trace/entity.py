@@ -9,6 +9,7 @@ class Entity():
     def __init__(self, name: str, depth: int) -> None:
         self.name = name
         self.depth = depth
+        self.moved = False
         self.uid = uuid.uuid4()
 
     def __str__(self) -> str:

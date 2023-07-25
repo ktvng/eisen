@@ -12,7 +12,7 @@ from eisen.trace.entity import Angel, Trait
 from eisen.trace.memory import Memory
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
-from eisen.trace.conditionalrealities import RealityFuser
+from eisen.trace.conditionalrealities import RealityFuser, IterationManager
 from eisen.trace.callhandler import CallHander
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
@@ -179,7 +179,7 @@ class MemoryVisitor(Visitor):
             rvals=fn.apply(state.but_with_second_child()))
 
 
-    # TODO: why does this return a shadow and not a memory?
+    # TODO: should this sometimes return a list of shadows/memories?
     @Visitor.for_ast_types("call")
     def _call(fn, state: State):
         node = adapters.Call(state)
@@ -196,7 +196,36 @@ class MemoryVisitor(Visitor):
     # TODO: finish while
     @Visitor.for_ast_types("while")
     def _while(fn, state: State):
-        pass
+        cond_state = state.but_with(
+            ast=state.first_child(),
+            context=state.create_block_context())
+
+        updated_memories = set()
+        exceptions = []
+        while True:
+            exceptions.clear()
+            fn.apply(cond_state.but_with(
+                ast=cond_state.first_child(),
+                exceptions=exceptions))
+
+            seq_state = cond_state.but_with(
+                ast=state.first_child().second(),
+                depth=state.get_depth() + 1,
+                exceptions=exceptions)
+            fn.apply(seq_state)
+
+            newly_updated_memories = set(seq_state.get_memories().values())
+            for m in newly_updated_memories:
+                seq_state.add_memory(m.name, m)
+
+            if updated_memories == newly_updated_memories:
+                break
+            updated_memories = newly_updated_memories
+
+        for memory in updated_memories:
+            state.add_memory(memory.name, memory)
+        for e in exceptions:
+            state.report_exception(e)
 
 
     @Visitor.for_ast_types("if")

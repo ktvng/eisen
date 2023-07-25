@@ -212,3 +212,27 @@ class RealityFuser:
         """
         if self.origin_state.get_all_children()[-1].type == "seq":
             return True
+
+class IterationManager:
+    def __init__(self, origin_state: State, seq_state: State) -> None:
+        """
+        Create a new RealityFuser for an (if ...) AST
+
+        :param origin_state: The state prior to any conditional branching
+        :type origin_state: State
+        """
+        self.origin_state = origin_state
+        self.seq_state = seq_state
+
+    def all_updated_memories(self) -> set[Memory]:
+
+        """
+        Returns a set of all memory names which may have been updated
+        in any branch of the conditional.
+        """
+        updated_memories: set[Memory] = set()
+        # TODO: get memories needs to be updated to work with any arbitrary chain
+        # of contexts
+        for key, val in self.seq_state.get_memories().items():
+            updated_memories.add(val)
+        return updated_memories

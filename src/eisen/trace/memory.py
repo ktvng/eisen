@@ -71,6 +71,15 @@ class Memory():
     def __str__(self) -> str:
         return " ".join([str(i) for i in self.impressions])
 
+    def __eq__(self, o: Memory) -> bool:
+        return (self.name == o.name
+            and self.depth == o.depth
+            and self.rewrites == o.rewrites
+            and self.impressions == o.impressions)
+
+    def __hash__(self) -> int:
+        return hash(self.name + str(self.depth))
+
 class Impression():
     def __init__(self, shadow: Shadow, root: Trait, place: int) -> None:
         self.shadow = shadow

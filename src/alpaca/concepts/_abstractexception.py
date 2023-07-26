@@ -57,3 +57,11 @@ class AbstractException():
             str_rep += line
 
         return str_rep
+
+    def __hash__(self) -> int:
+        return hash(self.msg + str(self.line_number) + str(type(self)))
+
+    def __eq__(self, __value: AbstractException) -> bool:
+        return (self.msg == __value.msg
+            and self.line_number == __value.line_number
+            and type(self) == type(__value))

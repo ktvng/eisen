@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from alpaca.concepts._instance import Instance
@@ -18,6 +18,14 @@ class NestedContainer():
         self.parent = parent
         if parent is not None:
             parent._add_child(self)
+
+    def fork(self) -> Self:
+        klass = type(self)
+        new_container = klass(self.name, self.parent)
+        for key in new_container.containers:
+            new_container.containers[key] = self.containers[key].copy()
+        new_container.children = self.children.copy()
+        return new_container
 
     def _initialize_containers(self) -> None:
         for name in self.container_names:

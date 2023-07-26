@@ -1,0 +1,33 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn main() {
+    let x, y, z = obj(2), obj(3), obj(4)
+    var a, b, c = x, y, z
+    var t = z
+
+    while(false) {
+        c = a
+        a = b
+        b = t
+        t = c
+    }
+
+    @compiler_assert(reference_has_dependencies, a, x, y, z)
+    @compiler_assert(reference_has_dependencies, b, x, y, z)
+    @compiler_assert(reference_has_dependencies, c, x, y, z)
+    @compiler_assert(reference_has_dependencies, t, x, y, z)
+}
+
+/// [Test]
+/// name = "trace/while/multiple_iterations"
+/// info = "Compiler runs while loop for multiple iterations until dependencies stabilize"
+
+/// [Expects]
+/// success = true
+/// output = ""

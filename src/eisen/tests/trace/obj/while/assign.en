@@ -1,0 +1,37 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let o, d = obj(), obj()
+    let p = ptr(o)
+
+    var a, b = o, d
+
+    while(false) {
+        p.o = a
+        a = b
+    }
+
+    @compiler_assert(object_has_dependencies, p, "o: o d")
+}
+
+/// [Test]
+/// name = "trace/obj/while/assign"
+/// info = "Compiler executes while enough times to detect change in object dependency"
+
+/// [Expects]
+/// success = true
+/// output = ""

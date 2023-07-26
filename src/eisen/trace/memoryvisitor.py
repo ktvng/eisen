@@ -12,7 +12,7 @@ from eisen.trace.entity import Angel, Trait
 from eisen.trace.memory import Memory
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
-from eisen.trace.conditionalrealities import RealityFuser, IterationManager
+from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHander
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
@@ -196,35 +196,54 @@ class MemoryVisitor(Visitor):
     # TODO: finish while
     @Visitor.for_ast_types("while")
     def _while(fn, state: State):
+        # There is one shared context for the conditional of the while loop
+        # as well as the body
         cond_state = state.but_with(
             ast=state.first_child(),
             context=state.create_block_context())
 
-        updated_memories = set()
+        encountered_memory_states: list[set[Memory]] = []
         exceptions = []
-        while True:
-            exceptions.clear()
-            fn.apply(cond_state.but_with(
-                ast=cond_state.first_child(),
-                exceptions=exceptions))
 
+        # Each time the while loop iterates is considered a "conditional branch" and
+        # is associated with a branch state
+        branch_states: list[State] = []
+        times_run = 0
+        while True:
+            times_run += 1
+
+            fn.apply(cond_state.but_with(exceptions=exceptions))
+            # need to use the same context to keep updating it iteration by iteration
             seq_state = cond_state.but_with(
                 ast=state.first_child().second(),
                 depth=state.get_depth() + 1,
                 exceptions=exceptions)
+
             fn.apply(seq_state)
 
-            newly_updated_memories = set(seq_state.get_memories().values())
-            for m in newly_updated_memories:
-                seq_state.add_memory(m.name, m)
+            # Preserve the state of the branch by forking its context. Add this
+            # as the state in the "conditional" branch for the while loop.
+            preserved_state_for_branch = seq_state.but_with(context=seq_state.get_context().fork())
+            branch_states.append(preserved_state_for_branch)
 
-            if updated_memories == newly_updated_memories:
+            # We use the RealityFuser with the only branch being the seq_state of
+            # this run of the while loop (as an optimization). This returns the final
+            # state of each updated memory.
+            final_memory_states = RealityFuser(state, [seq_state]).all_updated_memories()
+
+            # If we've seen the final state of each Memory, then the while loop has
+            # stabilized and we are done.
+            if final_memory_states in encountered_memory_states:
                 break
-            updated_memories = newly_updated_memories
 
-        for memory in updated_memories:
-            state.add_memory(memory.name, memory)
-        for e in exceptions:
+            # Otherwise, mark the state of each Memory as seen.
+            encountered_memory_states.append(final_memory_states)
+
+        fn.logger.log(f"Runs over while loop {times_run} times.")
+        RealityFuser(origin_state=state, branch_states=branch_states).fuse_realities_after_conditional()
+
+        # Report any unique exceptions encountered through the while loop process.
+        for e in set(exceptions):
             state.report_exception(e)
 
 

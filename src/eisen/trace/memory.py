@@ -75,7 +75,7 @@ class Memory():
         return (self.name == o.name
             and self.depth == o.depth
             and self.rewrites == o.rewrites
-            and self.impressions == o.impressions)
+            and all(x == y for x, y in zip(self.impressions, o.impressions)))
 
     def __hash__(self) -> int:
         return hash(self.name + str(self.depth))
@@ -92,3 +92,9 @@ class Impression():
         if self.root:
             return self.shadow.entity.name + "." + str(self.root)
         return self.shadow.entity.name
+
+    def __hash__(self) -> int:
+        return hash(hash(self.shadow) + hash(self.root))
+
+    def __eq__(self, o: Impression) -> bool:
+        return (self.shadow.entity.uid == o.shadow.entity.uid)

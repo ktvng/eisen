@@ -1,0 +1,43 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn iter(p: mut ptr) -> x: obj {
+    let n = obj()
+    let r, s, t = ptr(p.o), ptr(p.o), ptr(n)
+
+    while(true) {
+        p.o = r.o
+        r.o = s.o
+        s.o = t.o
+    }
+}
+
+fn main() {
+    let o = obj()
+    let p = ptr(o)
+    var a = iter(p)
+}
+
+/// [Test]
+/// name = "trace/obj/while/assign_to_local_var2"
+/// info = "Compiler detects memory violation after multiple iterations"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 22"

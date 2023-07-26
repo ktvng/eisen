@@ -163,7 +163,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
 
     def add_trait(self, shadow: Shadow, trait: Trait, memory: Memory):
         other_personality = Personality( { trait: memory })
-        new_shadow = shadow.update_personality(other_personality, root=Trait(), depth=self.get_depth())
+        new_shadow = shadow.update_personality(other_personality, root=Trait())
         self.add_shadow(new_shadow)
 
     def update_personality(self, uid: uuid.UUID, other_personality: Personality, root=Trait()):

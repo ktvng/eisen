@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import eisen.adapters as adapters
 from eisen.trace.entity import Trait
-from eisen.trace.memory import Memory, Impression
+from eisen.trace.memory import Memory, Impression, ImpressionSet
 from eisen.trace.lval import Lval
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -105,7 +105,7 @@ class AttributeVisitor:
         for m in memories:
             new_memories.append(Memory(
                 rewrites=True,
-                impressions=set([Impression(
+                impressions=ImpressionSet.create_over([Impression(
                     i.shadow, i.root.join(trait), i.place) for i in m.impressions]),
                 depth=state.get_depth()))
         return new_memories

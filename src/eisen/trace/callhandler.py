@@ -59,11 +59,13 @@ class CallHander:
 
     @staticmethod
     def aquire_function_delta(node: adapters.Call, fn: Visitor):
-        delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
-        if delta is None:
-            fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
+        if node.is_pure_function_call():
             delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
-        return delta
+            if delta is None:
+                fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
+                delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
+            return delta
+        raise Exception("not done")
 
 
     def build_remapping_index(self, param_memories: list[Memory]):

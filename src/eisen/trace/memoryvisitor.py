@@ -9,7 +9,7 @@ import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
-from eisen.trace.memory import Memory
+from eisen.trace.memory import Memory, ImpressionSet
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
@@ -98,14 +98,14 @@ class MemoryVisitor(Visitor):
         fn.apply(state.but_with_first_child())
         fn.apply(state.but_with_second_child())
         # TODO: formalize
-        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
+        return [Memory(rewrites=False, impressions=ImpressionSet(), depth=state.get_depth())]
 
     @Visitor.for_ast_types(*boolean_return_ops)
     def _boolean_return_ops(fn, state: State):
         fn.apply(state.but_with_first_child())
         fn.apply(state.but_with_second_child())
         # TODO: formalize
-        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
+        return [Memory(rewrites=False, impressions=ImpressionSet(), depth=state.get_depth())]
 
     @Visitor.for_ast_types("+=", "*=", "/=", "-=")
     def _assign_binary_ops(fn, state: State):
@@ -117,7 +117,11 @@ class MemoryVisitor(Visitor):
     @Visitor.for_ast_types("!")
     def _not(fn, state: State):
         fn.apply(state.but_with_first_child())
-        return [Memory(rewrites=False, impressions=set(), depth=state.get_depth())]
+        return [Memory(rewrites=False, impressions=ImpressionSet(), depth=state.get_depth())]
+
+    @Visitor.for_ast_types("fn")
+    def _fn(fn, state: State):
+        return [Memory(rewrites=False, impressions=ImpressionSet(), depth=state.get_depth())]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
@@ -147,7 +151,7 @@ class MemoryVisitor(Visitor):
             state.add_memory(name, Memory(
                 name=name,
                 rewrites=True,
-                impressions=set(),
+                impressions=ImpressionSet(),
                 depth=state.get_depth()))
 
     @Visitor.for_ast_types("ilet")
@@ -166,7 +170,7 @@ class MemoryVisitor(Visitor):
             state.add_memory(name, Memory(
                 name=name,
                 rewrites=True,
-                impressions=set(),
+                impressions=ImpressionSet(),
                 depth=state.get_depth()))
         state.update_lvals(
             lvals=LValMemoryVisitor().apply(state.but_with_first_child()),
@@ -184,6 +188,7 @@ class MemoryVisitor(Visitor):
     def _call(fn, state: State):
         node = adapters.Call(state)
         if node.is_print():
+            fn.apply(state.but_with_second_child())
             return []
 
         param_memories = fn.apply(state.but_with_second_child())
@@ -264,7 +269,7 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_tokens
     def _tokens(fn, state: State):
-        return [Memory(rewrites=True, impressions=set(), depth=0)]
+        return [Memory(rewrites=True, impressions=ImpressionSet(), depth=0)]
 
     @Visitor.for_ast_types("annotation")
     def annotation_(fn, state: State):

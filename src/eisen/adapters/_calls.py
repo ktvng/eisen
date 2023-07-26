@@ -67,7 +67,7 @@ class Call(AbstractNodeInterface, _SharedMixins):
         return self.state.but_with(ast=self.get_ast_defining_the_function()).get_instances()[0]
 
     def is_pure_function_call(self) -> bool:
-        return self.first_child().type == "fn"
+        return self.first_child().type == "fn" or self.first_child().type == "::"
 
 class RawCall(AbstractNodeInterface):
     ast_type = "raw_call"

@@ -50,7 +50,6 @@ class Shadow():
                       faded=self.faded,
                       personality=self.personality.restore_to_healthy())
 
-
     @staticmethod
     def merge_all(shadows: list[Shadow], depth: int) -> Shadow:
         return Shadow(entity=shadows[0].entity,

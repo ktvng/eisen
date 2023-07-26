@@ -10,7 +10,7 @@ from alpaca.concepts._nested_container import NestedContainer
 class Context(NestedContainer):
     container_names = ["type", "instance", "instance_state", "nilstatus", "function_instance", "reference_type",
     "depth", "spread", "local_ref", "fn_aliases", "entity", "entity_uuids",
-    "memory", "shadow", "entity"]
+    "memory", "shadow", "entity", "function_memory"]
 
     def _add_child(self, child: NestedContainer):
         return

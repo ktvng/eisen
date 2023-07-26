@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 class Memory():
-    def __init__(self, rewrites: bool, impressions: set[Impression], depth: int, name: str = "") -> None:
+    def __init__(self, rewrites: bool, impressions: ImpressionSet, depth: int, name: str = "") -> None:
         self.name = name
         self.depth = depth
         self.rewrites = rewrites
@@ -35,37 +35,37 @@ class Memory():
         return Memory(self.rewrites, self.impressions, depth, name=self.name)
 
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Memory:
-        impressions = []
+        impressions = ImpressionSet()
         for i in self.impressions:
             found = index.get(i.shadow.entity.uid, None)
             if found is not None:
                 if isinstance(found, list):
                     for m in found:
-                        impressions += m.impressions
+                        impressions.add_from(m.impressions)
                 else:
-                    impressions += found.impressions
+                    impressions.add_from(found.impressions)
             else:
-                impressions.append(i)
-        return Memory(name=self.name, rewrites=self.rewrites, impressions=set(impressions), depth=self.depth)
+                impressions.add_impression(i)
+        return Memory(name=self.name, rewrites=self.rewrites, impressions=impressions, depth=self.depth)
 
     def validate_dependencies_outlive_self(self, state: MemoryVisitorState, memory_name: str, self_shadow: Shadow):
         for impression in self.impressions:
             Validate.dependency_outlives_self(state, memory_name, self_shadow, impression)
 
     def restore_to_healthy(self) -> Memory:
-        impressions = []
+        impressions = ImpressionSet()
         for i in self.impressions:
             if i.shadow.entity.depth > self.depth:
                 continue
 
-            impressions.append(i)
-        return Memory(name=self.name, rewrites=self.rewrites, impressions=set(impressions), depth=self.depth)
+            impressions.add_impression(i)
+        return Memory(name=self.name, rewrites=self.rewrites, impressions=impressions, depth=self.depth)
 
     @staticmethod
     def merge_all(memories: list[Memory], depth: int, rewrites: bool) -> Memory:
-        impressions = set()
+        impressions = ImpressionSet()
         for m in memories:
-            impressions = impressions.union(m.impressions)
+            impressions.add_from(m.impressions)
         return Memory(rewrites=rewrites, impressions=impressions, depth=depth)
 
     def __str__(self) -> str:
@@ -75,10 +75,60 @@ class Memory():
         return (self.name == o.name
             and self.depth == o.depth
             and self.rewrites == o.rewrites
-            and all(x == y for x, y in zip(self.impressions, o.impressions)))
+            and self.impressions == o.impressions)
 
     def __hash__(self) -> int:
-        return hash(self.name + str(self.depth))
+        return hash(hash(self.name) + self.depth + int(self.rewrites) + hash(self.impressions))
+
+class ImpressionSet():
+    def __init__(self) -> None:
+        self._impressions: list[Impression] = []
+
+    def add_impression(self, obj: Impression):
+        found_obj = [i for i in self._impressions if i.shadow.entity == obj.shadow.entity]
+        if found_obj:
+            self._impressions.remove(found_obj[0])
+        self._impressions.append(obj)
+
+    def add_from(self, other: ImpressionSet):
+        for i in other._impressions:
+            self.add_impression(i)
+
+    def union(self, other: ImpressionSet) -> ImpressionSet:
+        new_set = ImpressionSet()
+        new_set._impressions = self._impressions.copy()
+        for i in other._impressions:
+            new_set.add_impression(i)
+        return new_set
+
+    def copy(self) -> ImpressionSet:
+        new_set = ImpressionSet()
+        new_set._impressions = self._impressions.copy()
+        return new_set
+
+    def first(self) -> Impression:
+        return self._impressions[0]
+
+    @staticmethod
+    def create_over(impression: Impression | list[Impression]) -> ImpressionSet:
+        new_set = ImpressionSet()
+        if isinstance(impression, Impression):
+            impression = [impression]
+        new_set._impressions = impression.copy()
+        return new_set
+
+    def __iter__(self):
+        return self._impressions.__iter__()
+
+    def __len__(self) -> int:
+        return len(self._impressions)
+
+    def __eq__(self, __value: ImpressionSet) -> bool:
+        return all(x == y for x, y in zip(self._impressions, __value._impressions))
+
+    def __hash__(self) -> int:
+        return hash(sum([hash(x) for x in self._impressions]))
+
 
 class Impression():
     def __init__(self, shadow: Shadow, root: Trait, place: int) -> None:
@@ -93,8 +143,9 @@ class Impression():
             return self.shadow.entity.name + "." + str(self.root)
         return self.shadow.entity.name
 
+    def __eq__(self, o: Impression) -> bool:
+        return (self.shadow == o.shadow
+            and self.root == o.root)
+
     def __hash__(self) -> int:
         return hash(hash(self.shadow) + hash(self.root))
-
-    def __eq__(self, o: Impression) -> bool:
-        return (self.shadow.entity.uid == o.shadow.entity.uid)

@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 import uuid
 
 from eisen.trace.entity import Trait
+from eisen.trace.memory import Memory
 if TYPE_CHECKING:
     from eisen.trace.entity import Entity
-    from eisen.trace.memory import Memory
     from eisen.state.memoryvisitorstate import MemoryVisitorState
     State = MemoryVisitorState
 
@@ -51,11 +51,12 @@ class Shadow():
                       personality=self.personality.restore_to_healthy())
 
     @staticmethod
-    def merge_all(shadows: list[Shadow], depth: int) -> Shadow:
-        return Shadow(entity=shadows[0].entity,
-                            epoch=max([s.epoch for s in shadows]),
-                            faded=any([s.faded for s in shadows]),
-                            personality=Personality.merge_all([s.personality for s in shadows], depth))
+    def merge_all(shadows: list[Shadow]) -> Shadow:
+        return Shadow(
+            entity=shadows[0].entity,
+            epoch=max([s.epoch for s in shadows]),
+            faded=any([s.faded for s in shadows]),
+            personality=Personality.merge_all([s.personality for s in shadows], shadows[0].entity.depth))
 
     def __str__(self) -> str:
         return f"{self.entity.name} === \n{self.personality}"
@@ -105,9 +106,18 @@ class Personality():
 
     @staticmethod
     def merge_all(personalities: list[Personality], depth: int) -> Personality:
+        all_traits: set[Trait] = set()
+        for p in personalities:
+            all_traits = all_traits.union(set(p.memories.keys()))
+
         merged_memories: dict[Trait, Memory] = {}
-        for other_personality in personalities:
-            Personality._merge_memory_dicts(merged_memories, other_personality, depth=depth)
+        for trait in all_traits:
+            memories_for_trait = [p.get_memory(trait) for p in personalities if p.get_memory(trait) is not None]
+            merged_memories[trait] = Memory.merge_all(memories_for_trait, rewrites=True)
+
+        # merged_memories: dict[Trait, Memory] = {}
+        # for other_personality in personalities:
+        #     Personality._merge_memory_dicts(merged_memories, other_personality, depth=depth)
         return Personality(merged_memories)
 
     def __str__(self) -> str:

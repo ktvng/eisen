@@ -1,0 +1,32 @@
+fn select(a: obj, b: obj) -> c: obj {
+    if (false) {
+        c = a
+    }
+    else {
+        c = b
+    }
+}
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn main() {
+    let a, b = obj(), obj()
+    let c = select(a, b)
+    @compiler_assert(reference_has_dependencies, c, a, b)
+}
+
+/// [Test]
+/// name = "trace/functions/as_variable"
+/// info = """\
+///     Functions can be used as variables
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

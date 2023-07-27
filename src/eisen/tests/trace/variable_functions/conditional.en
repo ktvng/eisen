@@ -1,0 +1,37 @@
+fn selectA(a: obj, b: obj) -> c: obj {
+    c = a
+}
+
+fn selectB(a: obj, b: obj) -> c: obj {
+    c = b
+}
+
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+fn main() {
+    let a, b = obj(), obj()
+    let A, B = selectA, selectB
+    var f = B
+
+    if (true) {
+        f = A
+    }
+
+    var c = f(a, b)
+    @compiler_assert(reference_has_dependencies, c, a, b)
+}
+
+/// [Test]
+/// name = "trace/variable_functions/conditional"
+/// info = "Compiler tracks conditional assignment of function variables"
+
+/// [Expects]
+/// success = true
+/// output = ""

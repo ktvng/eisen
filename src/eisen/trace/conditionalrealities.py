@@ -42,6 +42,12 @@ class RealityFuser:
         self.origin_state = origin_state
         self.branch_states = branch_states
 
+    @staticmethod
+    def branch_has_return_statement(branch: State) -> bool:
+        match branch.get_ast().type:
+            case "cond": return adapters.Cond(branch).has_return_statement()
+            case "seq": return adapters.Seq(branch).has_return_statement()
+            case _: return False
 
     def get_memory_in_branch(self, branch: State, name: str, prior_memory: Memory) -> Memory | None:
         """
@@ -53,15 +59,10 @@ class RealityFuser:
         :return: The memory of the variable.
         :rtype: Memory
         """
-        match branch.get_ast().type:
-            case "cond": has_return_statement = adapters.Cond(branch).has_return_statement()
-            case "seq": has_return_statement = adapters.Seq(branch).has_return_statement()
-            case _: has_return_statement = False
-
         # TODO: this logic may not be accurate
         # if a branch has a return statement, then there is no memory at the end of the branch,
         # provided that prior_shadow is not of a return/argument value
-        if has_return_statement and prior_memory and prior_memory.depth > 0:
+        if RealityFuser.branch_has_return_statement(branch) and prior_memory and prior_memory.depth > 0:
             return None
 
         memory = branch.get_memory(name)
@@ -73,15 +74,10 @@ class RealityFuser:
         For the shadow with [uid] after the conditonal [branch], get the memory of it's [trait],
         and if there is no shadow in the branch, return the memory of the [prior_shadow]'s [trait].
         """
-        match branch.get_ast().type:
-            case "cond": has_return_statement = adapters.Cond(branch).has_return_statement()
-            case "seq": has_return_statement = adapters.Seq(branch).has_return_statement()
-            case _: has_return_statement = False
-
         # TODO: this logic may not be accurate
         # if a branch has a return statement, then there is no memory at the end of the branch,
         # provided that prior_shadow is not of a return/argument value
-        if has_return_statement and prior_shadow and prior_shadow.entity.depth > 0:
+        if RealityFuser.branch_has_return_statement(branch) and prior_shadow and prior_shadow.entity.depth > 0:
             return None
 
         shadow = branch.get_shadow(uid)
@@ -123,7 +119,8 @@ class RealityFuser:
             shadow_in_branch = branch_state.get_shadows().get(uid)
             if shadow_in_branch is not None:
                 for trait, memory in shadow_in_branch.personality.memories.items():
-                    if memory.impressions != original_shadow.personality.get_memory(trait).impressions:
+                    if (memory.impressions != original_shadow.personality.get_memory(trait).impressions
+                    and not RealityFuser.branch_has_return_statement(branch_state)):
                         traits.add(trait)
         return traits
 
@@ -140,10 +137,51 @@ class RealityFuser:
         if not self.branching_is_exhaustive():
             update_set.append(prior_memory)
 
+        return RealityFuser.fuse_memories_from_different_realities(memories=update_set)
+
+    @staticmethod
+    def fuse_memories_from_different_realities(memories: list[Memory]) -> Memory:
         return Memory.merge_all(
-            memories=update_set,
-            depth=prior_memory.depth,
+            memories=memories,
             rewrites=True)
+
+    @staticmethod
+    def fuse_shadows_from_different_realities(shadows: list[Shadow]) -> Shadow:
+        return Shadow.merge_all(shadows=shadows)
+
+    @staticmethod
+    def fuse_together(shadows_or_memories_from_different_realities: list[Shadow] | list[Memory]):
+        match shadows_or_memories_from_different_realities[0]:
+            case Shadow(): return RealityFuser.fuse_shadows_from_different_realities(
+                shadows=shadows_or_memories_from_different_realities)
+
+            case Memory(): return RealityFuser.fuse_memories_from_different_realities(
+                memories =shadows_or_memories_from_different_realities)
+
+    @staticmethod
+    def collect_paralleled_shadows_or_memories_from_different_outcomes(pos: int, outcomes: list[list[Shadow | Memory]]) -> list[Shadow] | list[Memory]:
+        """
+        The following transformation:
+            pos:      0    1    2
+        outcome 1:   S_1  S_2  M_3
+        outcome 2:   S_4  S_5  M_6
+        outcome 3:   S_7  S_8  M_9
+
+        Returns for 1:
+            [ S_2, S_5, S_8 ]
+        """
+        return [outcome[pos] for outcome in outcomes]
+
+    @staticmethod
+    def fuse_outcomes_together(outcomes: list[list[Shadow | Memory]]):
+        """
+        An outcome is a list of shadows or memories that get returned. Therefore [outcomes]
+        is a list of these.
+        """
+        parallels = range(len(outcomes[0]))
+        return [RealityFuser.fuse_together(
+            RealityFuser.collect_paralleled_shadows_or_memories_from_different_outcomes(pos, outcomes))
+            for pos in parallels]
 
     def get_all_fused_memories(self) -> list[tuple[str, Memory]]:
         """
@@ -165,10 +203,8 @@ class RealityFuser:
         update_set = [self.get_branched_trait_memory_of_shadow(
             branch, prior_shadow.entity.uid, trait, prior_shadow) for branch in self.branch_states]
         update_set = [s for s in update_set if s is not None]
-
         return Memory.merge_all(
             memories=update_set,
-            depth=prior_shadow.entity.depth,
             rewrites=self.branching_is_exhaustive())
 
     def fuse_personality_for(self, uid: uuid.UUID) -> Personality:

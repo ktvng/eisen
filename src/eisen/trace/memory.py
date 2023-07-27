@@ -3,6 +3,7 @@ import uuid
 
 from typing import TYPE_CHECKING
 
+from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
 
@@ -11,11 +12,13 @@ if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 class Memory():
-    def __init__(self, rewrites: bool, impressions: ImpressionSet, depth: int, name: str = "") -> None:
+    def __init__(self, rewrites: bool, impressions: ImpressionSet, depth: int, name: str = "",
+                 functions: set[Function] = None) -> None:
         self.name = name
         self.depth = depth
         self.rewrites = rewrites
         self.impressions = impressions
+        self.functions = set() if functions is None else functions
 
     def update_with(self, other_memory: Memory) -> Memory:
         if other_memory.rewrites:
@@ -23,16 +26,23 @@ class Memory():
                 name=self.name,
                 rewrites=other_memory.rewrites,
                 impressions=other_memory.impressions.copy(),
-                depth=self.depth)
+                depth=self.depth,
+                functions=other_memory.functions.copy())
 
         return Memory(
             name=self.name,
             rewrites=self.rewrites,
             impressions=self.impressions.union(other_memory.impressions),
-            depth=self.depth)
+            depth=self.depth,
+            functions=self.functions.union(other_memory.functions))
 
     def with_depth(self, depth: int) -> Memory:
-        return Memory(self.rewrites, self.impressions, depth, name=self.name)
+        return Memory(
+            rewrites=self.rewrites,
+            impressions=self.impressions,
+            depth=depth,
+            name=self.name,
+            functions=self.functions)
 
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Memory:
         impressions = ImpressionSet()
@@ -46,7 +56,12 @@ class Memory():
                     impressions.add_from(found.impressions)
             else:
                 impressions.add_impression(i)
-        return Memory(name=self.name, rewrites=self.rewrites, impressions=impressions, depth=self.depth)
+        return Memory(
+            name=self.name,
+            rewrites=self.rewrites,
+            impressions=impressions,
+            depth=self.depth,
+            functions=self.functions)
 
     def validate_dependencies_outlive_self(self, state: MemoryVisitorState, memory_name: str, self_shadow: Shadow):
         for impression in self.impressions:
@@ -59,14 +74,24 @@ class Memory():
                 continue
 
             impressions.add_impression(i)
-        return Memory(name=self.name, rewrites=self.rewrites, impressions=impressions, depth=self.depth)
+        return Memory(name=self.name,
+                      rewrites=self.rewrites,
+                      impressions=impressions,
+                      depth=self.depth,
+                      functions=self.functions)
 
     @staticmethod
-    def merge_all(memories: list[Memory], depth: int, rewrites: bool) -> Memory:
+    def merge_all(memories: list[Memory], rewrites: bool) -> Memory:
         impressions = ImpressionSet()
+        functions = set()
         for m in memories:
             impressions.add_from(m.impressions)
-        return Memory(rewrites=rewrites, impressions=impressions, depth=depth)
+            functions = functions.union(m.functions)
+        return Memory(
+            rewrites=rewrites,
+            impressions=impressions,
+            depth=memories[0].depth,
+            functions=functions)
 
     def __str__(self) -> str:
         return " ".join([str(i) for i in self.impressions])
@@ -79,6 +104,16 @@ class Memory():
 
     def __hash__(self) -> int:
         return hash(hash(self.name) + self.depth + int(self.rewrites) + hash(self.impressions))
+
+class Function():
+    def __init__(self, function_instance: EisenFunctionInstance) -> None:
+        self.function_instance = function_instance
+
+    def __hash__(self) -> int:
+        return hash(self.function_instance)
+
+    def __eq__(self, __value: Function) -> bool:
+        return self.function_instance == __value.function_instance
 
 class ImpressionSet():
     def __init__(self) -> None:

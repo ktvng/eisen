@@ -5,6 +5,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type
 
 import eisen.adapters as adapters
+from eisen.common.eiseninstance import EisenFunctionInstance
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Angel
@@ -14,11 +15,12 @@ from eisen.trace.delta import FunctionDelta
 
 State = MemoryVisitorState
 class CallHander:
-    def __init__(self, node: adapters.Call, delta: FunctionDelta) -> None:
+    def __init__(self, node: adapters.Call, delta: FunctionDelta, param_memories: list[Memory]) -> None:
         self.node = node
         self.state: MemoryVisitorState = node.state
         self.delta = delta
         self.index: dict[uuid.UUID, Memory] = {}
+        self.param_memories: list[Memory] = param_memories
 
     def resolve_angel_into_memories(self, angel: Angel) -> list[Memory]:
         """
@@ -58,15 +60,27 @@ class CallHander:
         return memories
 
     @staticmethod
-    def aquire_function_delta(node: adapters.Call, fn: Visitor):
-        if node.is_pure_function_call():
-            delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
-            if delta is None:
-                fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
-                delta = fn.function_db.get_function_delta(node.get_function_instance().get_full_name())
-            return delta
-        raise Exception("not done")
+    def associate_function_instance_to_delta(node: adapters.Call, function_instance: EisenFunctionInstance, fn: Visitor):
+        delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+        if delta is None:
+            fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
+            delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+        return delta
 
+    @staticmethod
+    def aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[FunctionDelta]:
+        if node.is_pure_function_call():
+            return [CallHander.associate_function_instance_to_delta(
+                node=node,
+                function_instance=node.get_function_instance(),
+                fn=fn)]
+        else:
+            # take the first as there should only be one Memory returned from a (ref ...) node
+            caller_memory: list[Memory] = fn.apply(node.state.but_with_first_child())[0]
+            return [CallHander.associate_function_instance_to_delta(
+                node=node,
+                function_instance=f.function_instance,
+                fn=fn) for f in caller_memory.functions]
 
     def build_remapping_index(self, param_memories: list[Memory]):
         """
@@ -149,14 +163,15 @@ class CallHander:
                 for impression in memory.impressions:
                     impression.shadow.entity.moved = True
 
-    def handle_call(self, param_memories: list[Memory]):
+    def start(self) -> CallHander:
         if self.node.is_print():
-            return []
+            return self
 
-        # print("call to", node.get_function_name())
-        self.build_remapping_index(param_memories)
+        self.build_remapping_index(self.param_memories)
+        return self
 
+    def resolve_outcome(self) -> list[Shadow | Memory]:
         self.resolve_angels()
-        self.resolve_updated_arguments(param_memories)
-        self.resolve_entity_moves(param_memories)
+        self.resolve_updated_arguments(self.param_memories)
+        self.resolve_entity_moves(self.param_memories)
         return self.resolve_updated_returns()

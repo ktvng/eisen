@@ -82,6 +82,8 @@ class Visitor():
         self.token_transform: TokenTaggedTransform = None
         self._build_transform_index()
 
+    def apply(self, state: Any):
+        pass
 
     def _add_tagged_transform_to_index(self, transform: TaggedTransform):
         for type_name in transform.handles_types:

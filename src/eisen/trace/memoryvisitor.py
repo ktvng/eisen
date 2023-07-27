@@ -9,7 +9,8 @@ import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
-from eisen.trace.memory import Memory, ImpressionSet
+from eisen.trace.memory import Memory, ImpressionSet, Function
+from eisen.trace.shadow import Shadow
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
@@ -121,7 +122,11 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("fn")
     def _fn(fn, state: State):
-        return [Memory(rewrites=False, impressions=ImpressionSet(), depth=state.get_depth())]
+        return [Memory(
+            rewrites=True,
+            impressions=ImpressionSet(),
+            depth=state.get_depth(),
+            functions=set([Function(state.get_instances()[0])]))]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
@@ -182,7 +187,6 @@ class MemoryVisitor(Visitor):
             lvals=LValMemoryVisitor().apply(state.but_with_first_child()),
             rvals=fn.apply(state.but_with_second_child()))
 
-
     # TODO: should this sometimes return a list of shadows/memories?
     @Visitor.for_ast_types("call")
     def _call(fn, state: State):
@@ -192,13 +196,15 @@ class MemoryVisitor(Visitor):
             return []
 
         param_memories = fn.apply(state.but_with_second_child())
-        return CallHander(node=node, delta=CallHander.aquire_function_delta(node, fn)).handle_call(param_memories)
+        realities = [CallHander(node=node, delta=delta, param_memories=param_memories).start()
+            for delta in CallHander.aquire_function_deltas(node, fn)]
+        outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
+        return RealityFuser.fuse_outcomes_together(outcomes)
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):
         state.apply_fn_to_all_children(fn)
 
-    # TODO: finish while
     @Visitor.for_ast_types("while")
     def _while(fn, state: State):
         # There is one shared context for the conditional of the while loop

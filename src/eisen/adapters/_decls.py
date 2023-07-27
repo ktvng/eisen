@@ -89,7 +89,7 @@ class InferenceAssign(AbstractNodeInterface, _SharedMixins):
             case "ilet": return InferenceAssign.get_hint_restrictions(hint)
             case "inil?": return NilableRestriction()
             case "ival": return ImmutableRestriction()
-            case "ivar": return MutableRestriction()
+            case "imut": return MutableRestriction()
             case _: raise Exception(f"get_restriction unhandled for {self.get_node_type()}")
 
     def get_assigned_types(self) -> list[Type]:

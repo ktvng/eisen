@@ -2,6 +2,7 @@
   "name": "eisen-docs",
   "version": "0.0.1",
   "description": "documentation for the eisen programming language",
+  "type": "module",
   "scripts": {
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
@@ -11,16 +12,17 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "vitepress": "1.0.0-alpha.43"
+    "vitepress": "1.0.0-rc.10"
   },
   "pnpm": {
     "patchedDependencies": {
-      "shiki@0.13.0": "patches/shiki@0.13.0.patch",
-      "vitepress@1.0.0-alpha.43": "patches/vitepress@1.0.0-alpha.43.patch"
+      "shiki@0.14.4": "patches/shiki@0.14.4.patch",
+      "vitepress@1.0.0-rc.10": "patches/vitepress@1.0.0-rc.10.patch"
     },
     "peerDependencyRules": {
       "ignoreMissing": [
-        "@algolia/client-search"
+        "@algolia/client-search",
+        "search-insights"
       ]
     }
   }

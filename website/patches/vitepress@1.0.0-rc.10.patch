@@ -1,0 +1,105 @@
+diff --git a/dist/client/theme-default/components/VPContent.vue b/dist/client/theme-default/components/VPContent.vue
+index a1479dc693a8261b30b88663ba1de523cceaf877..8df5231fd320e5248db441319a0b8890a4b5f01e 100644
+--- a/dist/client/theme-default/components/VPContent.vue
++++ b/dist/client/theme-default/components/VPContent.vue
+@@ -16,7 +16,6 @@ const { hasSidebar } = useSidebar()
+     id="VPContent"
+     :class="{
+       'has-sidebar': hasSidebar,
+-      'is-home': frontmatter.layout === 'home'
+     }"
+   >
+     <slot name="not-found" v-if="page.isNotFound"><NotFound /></slot>
+@@ -66,15 +65,16 @@ const { hasSidebar } = useSidebar()
+   width: 100%;
+ }
+ 
+-.VPContent.is-home {
+-  width: 100%;
+-  max-width: 100%;
+-}
+-
+ .VPContent.has-sidebar {
+   margin: 0;
+ }
+ 
++@media (min-width: 768px) {
++  .VPContent {
++    width: 100vw;
++  }
++}
++
+ @media (min-width: 960px) {
+   .VPContent {
+     padding-top: var(--vp-nav-height);
+diff --git a/dist/client/theme-default/components/VPFooter.vue b/dist/client/theme-default/components/VPFooter.vue
+index d1dd939cf68a66d5952ace121160f477da5ff16a..03222da1698180ca37a8721e86ddd9d16d5f0541 100644
+--- a/dist/client/theme-default/components/VPFooter.vue
++++ b/dist/client/theme-default/components/VPFooter.vue
+@@ -30,6 +30,7 @@ const { hasSidebar } = useSidebar()
+ 
+ @media (min-width: 768px) {
+   .VPFooter {
++    width: 100vw;
+     padding: 32px;
+   }
+ }
+diff --git a/dist/client/theme-default/components/VPLocalNav.vue b/dist/client/theme-default/components/VPLocalNav.vue
+index 35379095a2f6493b2604aafc9dfbf0be62e3a8ef..40f91a6e5f3878d74dbee91d705f378317056515 100644
+--- a/dist/client/theme-default/components/VPLocalNav.vue
++++ b/dist/client/theme-default/components/VPLocalNav.vue
+@@ -119,6 +119,10 @@ const classes = computed(() => {
+ }
+ 
+ @media (min-width: 768px) {
++  .VPLocalNav {
++    width: 100vw;
++  }
++
+   .menu {
+     padding: 0 32px;
+   }
+diff --git a/dist/client/theme-default/components/VPNav.vue b/dist/client/theme-default/components/VPNav.vue
+index b654a043fd0902099c47dba49856d5d8e0d3962d..19c2e93f8488a1d3f5f511996ce511bf5c630161 100644
+--- a/dist/client/theme-default/components/VPNav.vue
++++ b/dist/client/theme-default/components/VPNav.vue
+@@ -36,6 +36,12 @@ provide('close-screen', closeScreen)
+   transition: background-color 0.5s;
+ }
+ 
++@media (min-width: 768px) {
++  .VPNav {
++    width: 100vw;
++  }
++}
++
+ @media (min-width: 960px) {
+   .VPNav {
+     position: fixed;
+diff --git a/dist/client/theme-default/components/VPSidebar.vue b/dist/client/theme-default/components/VPSidebar.vue
+index b5d4cadffeffde0897fce34c9897189b504eec5e..93e66d35b75d93645131393cc78a9edadc31db17 100644
+--- a/dist/client/theme-default/components/VPSidebar.vue
++++ b/dist/client/theme-default/components/VPSidebar.vue
+@@ -102,8 +102,8 @@ watch(
+ 
+ @media (min-width: 1440px) {
+   .VPSidebar {
+-    padding-left: max(32px, calc((100% - (var(--vp-layout-max-width) - 64px)) / 2));
+-    width: calc((100% - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px);
++    padding-left: max(32px, calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2));
++    width: calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px);
+   }
+ }
+ 
+diff --git a/dist/client/theme-default/styles/base.css b/dist/client/theme-default/styles/base.css
+index 7505df4af61a5e86c9994b9be081a0fb18f3e6de..2fe66d4bb4416bad03be3bf943cbe59e6ffc0296 100644
+--- a/dist/client/theme-default/styles/base.css
++++ b/dist/client/theme-default/styles/base.css
+@@ -44,6 +44,7 @@ body {
+   text-rendering: optimizeLegibility;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
++  overflow-x: hidden;
+ }
+ 
+ main {

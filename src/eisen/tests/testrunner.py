@@ -22,11 +22,6 @@ from eisen.state.basestate import BaseState as State
 from eisen.validation.workflow import Workflow
 from eisen.conversion.to_python import ToPython
 
-class StaticParser():
-    grammarfile = "./src/eisen/grammar.gm"
-    config = alpaca.config.parser.run(filename=grammarfile)
-    parser = SuperParser(config)
-
 @dataclass
 class CompilerException:
     type: str
@@ -47,7 +42,8 @@ class TestExpectation:
 class Test:
     test_dir = "./src/eisen/tests/"
     grammarfile = "./src/eisen/grammar.gm"
-    shared_config = alpaca.config.parser.run(filename=grammarfile)
+    # This needs to be init before use.
+    shared_config = None
 
     def __init__(self, test_path: str) -> None:
         with open(Test.test_dir + test_path + ".en", 'r') as f:
@@ -137,6 +133,8 @@ class Test:
         return True, "success"
 
     def run(self) -> tuple[bool, str]:
+        if Test.shared_config is None:
+            Test.shared_config = alpaca.config.parser.run(filename=Test.grammarfile)
         orignal_hook = sys.excepthook
         def exceptions_hook(e_type, e_value: Exception, tb):
             if e_type == VisitorException:

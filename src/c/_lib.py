@@ -48,7 +48,7 @@ class Builder(CommonBuilder):
         if len(flattened_comps) != 2:
             raise Exception(f"expected size 2 for handle_op_pref, got {flattened_comps}")
 
-        return [AST(flattened_comps[0], [flattened_comps[1]], flattened_comps[0].line_number)]
+        return [AST(flattened_comps[0].value, [flattened_comps[1]], flattened_comps[0].line_number)]
 
 class Writer(Visitor):
     def run(self, ast: AST) -> str:
@@ -94,6 +94,10 @@ class Writer(Visitor):
             return ['"', ast.value, '"']
         return [ast.value]
 
+    @Visitor.for_ast_types("!")
+    def stop_(fn, ast: AST):
+        return ["!", *fn.apply(ast.first())]
+
     @Visitor.for_ast_types("start")
     def start_(fn, ast: AST) -> list[str]:
         lists_for_components = [fn.apply(child) for child in ast]
@@ -127,7 +131,7 @@ class Writer(Visitor):
 
     @Visitor.for_ast_types("seq")
     def seq_(fn, ast: AST) -> list[str]:
-        contexts = ["if", "while"]
+        contexts = ["if", "while", "for"]
         components = []
         for child in ast:
             if child.type in contexts:
@@ -166,6 +170,25 @@ class Writer(Visitor):
     def while_(fn, ast: AST) -> list[str]:
         return [f"while "] + fn.delegate(ast)
 
+    @Visitor.for_ast_types("for")
+    def for_(fn, ast: AST) -> list[str]:
+        return ["for (",
+                *fn.apply(ast.first()), "; ",
+                *fn.apply(ast.second()), "; ",
+                *fn.apply(ast.third()), ")"] + fn.apply((ast[-1]))
+
+    @Visitor.for_ast_types("index")
+    def index_(fn, ast: AST) -> list[str]:
+        return [*fn.apply(ast.first()), "[", *fn.apply(ast.second()), "]"]
+
+    @Visitor.for_ast_types("or")
+    def or_(fn, ast: AST) -> list[str]:
+        return fn.apply(ast.first()) + [" || "] + fn.apply(ast.second())
+
+    @Visitor.for_ast_types("and")
+    def and_(fn, ast: AST) -> list[str]:
+        return fn.apply(ast.first()) + [" && "] + fn.apply(ast.second())
+
     @Visitor.for_ast_types("struct")
     def struct_(fn, ast: AST) -> list[str]:
         parts = [f"struct ", *fn.apply(ast.first()), " {\n"]
@@ -192,3 +215,10 @@ class Writer(Visitor):
     @Visitor.for_ast_types("deref")
     def deref_(fn, ast: AST) -> list[str]:
         return ["*"] + fn.delegate(ast)
+
+    @Visitor.for_ast_types("array_decl")
+    def array_decl_(fn, ast: AST) -> list[str]:
+        if len(ast) == 3:
+            return fn.apply(ast.first()) + [" "] + fn.apply(ast.second()) + ["["] + fn.apply(ast.third()) + ["]"]
+        else:
+            return fn.apply(ast.first()) + [" "] + fn.apply(ast.second()) + ["[]"]

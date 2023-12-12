@@ -3,31 +3,29 @@
 # GrammarMaster (.gm)
 #
 # ========================================================
+#
+# TODO: Need to fix parsing of A-B as A and -B
 
 SYMBOLICS
     <type>              ->  <regex>
-    keyword def         ->  def
-    keyword class       ->  class
+    keyword void        ->  void
+    keyword struct      ->  struct
     keyword if          ->  if
-    keyword elif        ->  \s*elif
-    keyword else        ->  \s*else
+    keyword else        ->  else
     keyword while       ->  while
     keyword for         ->  for
     keyword return      ->  return
-    keyword None        ->  None
-    keyword is          ->  is
-    keyword in          ->  in
-    keyword init        ->  __init__
+    keyword break       ->  break
+    keyword continue    ->  continue
 
-    symbol @            ->  @
-    symbol ,            ->  ,\s*
+    symbol ,            ->  ,
     symbol {            ->  \s*{\s*
-    symbol }            ->  \s*}
+    symbol }            ->  }\s*
     symbol [            ->  \[
     symbol ]            ->  \]
-    symbol (            ->  \(\s*
-    symbol )            ->  \s*\)
-    symbol endl         ->  \n\s*
+    symbol (            ->  \(
+    symbol )            ->  \)
+    symbol ;            ->  ;[ \t\\n]*
 
     operator =          ->  =
     operator +=         ->  \+=
@@ -41,9 +39,10 @@ SYMBOLICS
     operator -          ->  -
     operator /          ->  /
     operator *          ->  \*
-    operator and        ->  and
-    operator or         ->  or
-    operator not        ->  not
+    operator &          ->  &
+    operator and        ->  &&
+    operator or         ->  \|\|
+    operator !          ->  !
     operator %          ->  %
     operator |          ->  \|
     operator <          ->  <
@@ -51,17 +50,16 @@ SYMBOLICS
     operator <=         ->  <=
     operator >=         ->  >=
     operator .          ->  \.
-    operator :          ->  :\s*
+    operator ->         ->  ->
 
-    str                 ->  (["'])(?:(?=(\\?))\2.)*?\1
+    str                 ->  (["])(?:(?=(\\?))\2.)*?\1
+    char                ->  '.'
     int                 ->  -?[0-9]+
-    bool                ->  True|False
 
-    TAG                 ->  [_a-zA-Z]+
-    none                ->  [ \t]*
+    TAG                 ->  [_a-zA-Z]\w*
+    none                ->  [ \t\n]*
     none                ->  [ \t]*\/\/.*?\n+
     none                ->  [ \t]*\/\/[^\n]*
-
 
 STRUCTURE
     # ====================================================
@@ -70,7 +68,6 @@ STRUCTURE
     OP_ASSIGN ->
         @action pass
         |   =
-        |   <-
         |   +=
         |   -=
         |   *=
@@ -82,7 +79,6 @@ STRUCTURE
         |   str
         |   bool
         |   flt
-        |   nil
 
     VAR ->
         @action convert ref
@@ -97,23 +93,27 @@ STRUCTURE
     # ====================================================
     # Expressions
 
-    E10 ->
-        @action build_operator
-        |   E10 . TAG
-        @action filter_build unpack
-        |   * VAR
-        @action build call
-        |   E10 PARAMS
+    E11 ->
         @action pass
         |   LITERAL
         |   VAR
-        |   E0_LST
         @action filter_pass
         |   ( E0 )
 
-    E9 ->
+    E10 ->
         @action filter_build index
-        |   E9 [ E0 ]
+        |   E10 [ E0 ]
+        @action build_operator
+        |   E10 . TAG
+        |   E10 -> TAG
+        @action filter_build call
+        |   E10 PARAMS
+        @action pass
+        |   E11
+
+    E9 ->
+        @action filter_build deref
+        |   * E0
         @action pass
         |   E10
 
@@ -144,7 +144,7 @@ STRUCTURE
 
     E5 ->
         @action handle_op_pref
-        |   not E5
+        |   ! E5
         @action pass
         |   E6
 
@@ -155,16 +155,9 @@ STRUCTURE
         @action pass
         |   E5
 
-    E3 ->
-        @action filter_build is
-        |   E3 is TAG
-        |   E3 is None
-        @action pass
-        |   E4
-
     E0 ->
         @action pass
-        |   E3
+        |   E4
 
 
     # ====================================================
@@ -179,31 +172,7 @@ STRUCTURE
         |   ( )
         |   ( E0 )
         |   ( _E0S )
-        |   ( E0 , KV )
-        |   ( E0 , _KVS )
-        |   ( _E0S , KV )
-        |   ( _E0S , _KVS )
 
-    KV ->
-        @action filter_build named
-        |   TAG = E0
-
-    _KVS ->
-        @action pool
-        |   KV , KV
-        |   KV , _KVS
-
-    # tuple of tags
-    _TAGS ->
-        @action pool
-        |   TAG , TAG
-        |   TAG , _TAGS
-
-    # list of Expressions
-    E0_LST ->
-        @action filter_build list
-        |   [ _E0S ]
-        |   [ ]
 
     # tuple of Expressions
     E0S ->
@@ -220,13 +189,24 @@ STRUCTURE
     # ====================================================
     # LValues
 
-    L1 ->
+    L2 ->
         @action pass
         |   VAR
+        @action filter_pass
+        |   ( L0 )
+
+    L1 ->
+        @action build_operator
+        |   L1 . TAG
+        |   L1 -> TAG
+        @action filter_build index
+        |   L1 [ E0 ]
+        @action pass
+        |   L2
 
     L0 ->
-        @action build_operator
-        |   L0 . TAG
+       @action filter_build deref
+        |   * L0
         @action pass
         |   L1
 
@@ -246,21 +226,82 @@ STRUCTURE
     ASSIGNMENT ->
         @action build_operator
         |   L0 OP_ASSIGN E0
-        |   L0S OP_ASSIGN E0S
-        |   L0S OP_ASSIGN E0
+
+    DECL_ASSIGNMENT ->
+        @action build_operator
+        |   DECL = E0
+
 
     # ====================================================
-    # LINE
+    # DECL
 
-    LINE ->
+    @action build type
+    TYPE -> TYPE_
+
+    TYPE_ ->
         @action pass
-        |   E0
-        |   ASSIGNMENT
-        |   CONTROL
-        @action filter_build return
-        |   return
-        |   return E0
-        |   return E0S
+        |   TAG
+        @action filter_build ptr
+        |   TYPE_ *
+        @action pass
+        |   void
+
+    STRUCT_DECL ->
+        @action filter_build struct_decl
+        |   struct TYPE TAG
+
+    ARRAY_DECL ->
+        @action filter_build array_decl
+        |   TYPE TAG [ int ]
+        |   TYPE TAG [ ]
+
+    DECL ->
+        @action pass
+        |   STRUCT_DECL
+        |   ARRAY_DECL
+        @action filter_build decl
+        |   TYPE TAG
+
+    DECLS ->
+        @action pool
+        |   DECL
+        |   DECL , DECLS
+
+
+    # ====================================================
+    # Control flow
+
+    COND ->
+        @action filter_build cond
+        |   ( E0 ) SEQ
+
+    CONTROL ->
+        @action filter_build if
+        |   IF_CONTEXT
+        @action filter_build while
+        |   while COND
+        @action pass
+        |   FOR_LOOP
+
+    IF_CONTEXT ->
+        @action pool
+        |   if COND
+        |   if COND ELSES
+
+    ELSES ->
+        @action pool
+        |   else SEQ
+        |   else if COND
+        |   else if COND ELSES
+
+
+    # ====================================================
+    # For Loops
+
+    FOR_LOOP ->
+        @action filter_build for
+        |   for ( DECL_ASSIGNMENT ; E0 ; ASSIGNMENT ) SEQ
+        |   for ( ASSIGNMENT ; E0 ; ASSIGNMENT ) SEQ
 
 
     # ====================================================
@@ -272,37 +313,27 @@ STRUCTURE
         |   { LINE }
         |   { LINES }
 
-    LINES ->
-        @action pool
-        |   LINE ENDLS LINE
-        |   LINE ENDLS LINES
+    RETURN ->
+        @action filter_build return
+        |   return E0
 
 
     # ====================================================
-    # Control flow
+    # LINE
 
-    COND ->
-        @action filter_build cond
-        |   E0 : SEQ
+    LINE ->
+        @action pass
+        |   E0 ;
+        |   ASSIGNMENT ;
+        |   DECL_ASSIGNMENT ;
+        |   DECL ;
+        |   CONTROL
+        |   RETURN ;
 
-    CONTROL ->
-        @action filter_build if
-        |   IF_CONTEXT
-        @action filter_build while
-        |   while COND
-        @action filter_build for
-        |   for TAG in E0 : SEQ
-
-    IF_CONTEXT ->
+    LINES ->
         @action pool
-        |   if COND
-        |   if COND ELSES
-
-    ELSES ->
-        @action pool
-        |   else : SEQ
-        |   elif COND
-        |   elif COND ELSES
+        |   LINE LINE
+        |   LINE LINES
 
 
     # ====================================================
@@ -310,55 +341,50 @@ STRUCTURE
 
     FUNC ->
         @action filter_build def
-        |   def TAG ARGS : SEQ
-
-    VARGS ->
-        @action filter_build vargs
-        |   * TAG
+        |   TYPE TAG ARGS SEQ
 
     ARGS ->
         @action filter_build args
         |   ( )
-        |   ( TAG )
-        |   ( VARGS )
-        |   ( TAG , VARGS )
-        |   ( TAGS )
-        |   ( TAGS , VARGS )
+        |   ( DECL )
+        |   ( DECLS )
+
 
     # ====================================================
-    # Classes
+    # Structs
 
-    CLASS ->
-        @action filter_build class
-        |   class TAG : { CLASS_ELEMS }
+    STRUCT ->
+        @action filter_build struct
+        |   struct TAG { STRUCT_ELEMS } ;
 
-    CLASS_ELEMS ->
+    STRUCT_ELEMS ->
         @action pool
-        |   CLASS_ELEM ENDLS CLASS_ELEMS
-        |   CLASS_ELEM
+        |   STRUCT_ELEM STRUCT_ELEMS
+        |   STRUCT_ELEM
 
-    CLASS_ELEM ->
-        @action filter_build init
-        |   def init ARGS : SEQ
-        @action filter_build def
-        |   def TAG ARGS : SEQ
+    STRUCT_ELEM ->
+        @action pool
+        |   DECL ;
 
 
     # ====================================================
-    # Program
+    # Contexts
 
     CONTEXTS ->
         @action pool
-        |   CONTEXT ENDLS CONTEXTS
+        |   CONTEXT CONTEXTS
         |   CONTEXT
 
     CONTEXT ->
         @action pass
         |   FUNC
-        |   CLASS
-        |   LINE
+        |   STRUCT
+        |   ENDLS
 
 
+    ############################################################################
+    # TESTING
+
+    @action filter_build start
     START ->
-        @action build start
         |   CONTEXTS

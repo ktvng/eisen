@@ -31,7 +31,7 @@ class DpTableEntry():
         self.rname = rname
 
     def __str__(self) -> str:
-        return f"({self.x}, {self.y}: {self.rule} <{self.lname}, {self.rname}>)"
+        return f"({self.x}, {self.y}): {self.rule.original_entry}"
 
     def _get_unique_rules(self, entries: list[DpTableEntry]):
         unique_entries = []
@@ -70,8 +70,8 @@ class DpTableEntry():
         if len(unique_entries) > 1:
             print("non-uniqueness, multiple production pathways (picked first)")
             random.shuffle(unique_entries)
-            print(self.rname)
-            print(self.name)
+            for entry in unique_entries:
+                print(entry)
 
         return unique_entries[0]
 
@@ -128,7 +128,6 @@ class CYKAlgo:
             self.dp_table[x][y] = [DpTableEntry(bootstrap_rule, x, y)]
 
 
-
     def parse_clrtokens(self, tokens: list[ASTToken]):
         self.n = len(tokens)
         self.tokens = tokens
@@ -156,15 +155,9 @@ class CYKAlgo:
 
     def _get_producing_rules_for_clrtoken(self, tok : ASTToken) -> list[CFGRule]:
         return self.query.get_rules_for_token(tok)
-        return [rule for rule in self.cfg.rules
-            if len(rule.pattern) == 1 and tok.type == rule.pattern[0]]
 
     def _get_producing_rules_for(self, lname : str, rname : str) -> list[CFGRule]:
         return self.query.get_rules(lname, rname)
-        return [rule for rule in self.cfg.rules
-            if len(rule.pattern) == 2
-                and rule.pattern[0] == lname
-                and rule.pattern[1] == rname]
 
     def _fill_first_diagonal(self):
         points = self._get_points_on_diagonal(0)

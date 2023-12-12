@@ -189,7 +189,8 @@ class StateMachine:
     def structure_rule_full(p: Params) -> str:
         match = StateMachine.full_rule_definition_regex.match(p.current_line)
         p.production_rules.append(
-            CFGRule(match.group(1), match.group(2), p.current_action))
+            CFGRule(match.group(1), match.group(2), p.current_action,
+                    original_entry=f"{match.group(1)} -> {match.group(2)}"))
 
         p.transition_to_next_line()
         return state("structure_section")
@@ -205,7 +206,8 @@ class StateMachine:
     def structure_rule_definition(p: Params) -> str:
         match = StateMachine.production_pattern_definition_regex.match(p.current_line)
         p.production_rules.append(
-            CFGRule(p.current_production_symbol, match.group(1), p.current_action))
+            CFGRule(p.current_production_symbol, match.group(1), p.current_action,
+                    original_entry=f"{p.current_production_symbol} -> {match.group(1)}"))
 
         p.transition_to_next_line()
         return state("structure_section")

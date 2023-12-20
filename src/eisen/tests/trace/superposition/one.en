@@ -1,0 +1,46 @@
+fn test(b: obj, B: mut ptr) {
+    let a = obj()
+    let A = ptr(a)
+
+    var p = a
+    mut P = A
+
+    if (true) {
+        p = b
+        P = B
+    }
+
+    @compiler_assert(reference_has_dependencies, p, a, b)
+    P.o = p
+}
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let b = obj()
+    let B = ptr(b)
+}
+
+/// [Test]
+/// name = "trace/superposition/one"
+/// info = """\
+///     Superposition test
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

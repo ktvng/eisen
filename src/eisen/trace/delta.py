@@ -7,12 +7,14 @@ from eisen.trace.memory import Memory
 
 class FunctionDelta():
     def __init__(self,
+                 function_name: str,
                  arg_shadows: list[Shadow],
                  ret_shadows: list[Shadow],
                  angels: list[Angel],
                  angel_shadows: dict[uuid.UUID, Shadow],
                  ret_memories: list[Memory]) -> None:
 
+        self.function_name = function_name
         self.arg_shadows = arg_shadows
         self.ret_shadows = ret_shadows
         self.angels = angels

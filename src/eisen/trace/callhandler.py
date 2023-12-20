@@ -1,5 +1,6 @@
 from __future__ import annotations
 import uuid
+import itertools
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Type
@@ -12,15 +13,27 @@ from eisen.trace.entity import Angel
 from eisen.trace.memory import Memory
 from eisen.trace.shadow import Shadow
 from eisen.trace.delta import FunctionDelta
+from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 State = MemoryVisitorState
 class CallHander:
-    def __init__(self, node: adapters.Call, delta: FunctionDelta, param_memories: list[Memory]) -> None:
+    def __init__(self,
+                 node: adapters.Call,
+                 delta: FunctionDelta,
+                 param_memories: list[Memory],
+                 tags: set[BranchedRealityTag],
+                 all_reality_tags: set[BranchedRealityTag]) -> None:
+
+        print("CALL HANDLER", delta.function_name)
+        for t in tags:
+            print("calling with tags", t)
         self.node = node
         self.state: MemoryVisitorState = node.state
         self.delta = delta
         self.index: dict[uuid.UUID, Memory] = {}
-        self.param_memories: list[Memory] = param_memories
+        self.param_memories: list[Memory] = [m.for_the_given_realities(tags, all_reality_tags) for m in param_memories]
+        self.tags = tags
+        self.all_reality_tags = all_reality_tags
 
     def resolve_angel_into_memories(self, angel: Angel) -> list[Memory]:
         """
@@ -68,19 +81,30 @@ class CallHander:
         return delta
 
     @staticmethod
-    def aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[FunctionDelta]:
+    def aquire_function_deltas_and_tags(node: adapters.Call, fn: Visitor) -> list[FunctionDelta]:
         if node.is_pure_function_call():
-            return [CallHander.associate_function_instance_to_delta(
+            return [(CallHander.associate_function_instance_to_delta(
                 node=node,
                 function_instance=node.get_function_instance(),
-                fn=fn)]
+                fn=fn), set([BranchedRealityTag(uuid.UUID(int=0), 0)]), set())]
         else:
             # take the first as there should only be one Memory returned from a (ref ...) node
-            caller_memory: list[Memory] = fn.apply(node.state.but_with_first_child())[0]
-            return [CallHander.associate_function_instance_to_delta(
+            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
+            all_realities = set()
+            for f in caller_memory.functions:
+                for tag in f.tags:
+                    all_realities.add(tag)
+            x = [(CallHander.associate_function_instance_to_delta(
                 node=node,
                 function_instance=f.function_instance,
-                fn=fn) for f in caller_memory.functions]
+                fn=fn), f.tags, all_realities) for f in caller_memory.functions]
+            x = []
+            for f in caller_memory.functions:
+                for t in f.tags:
+                    x.append((CallHander.associate_function_instance_to_delta(
+                        node=node,
+                        function_instance=f.function_instance, fn=fn), set([t]), all_realities))
+            return x
 
     def build_remapping_index(self, param_memories: list[Memory]):
         """
@@ -129,25 +153,27 @@ class CallHander:
     def resolve_updated_arguments(self, param_memories: list[Memory]):
         arg_shadows = [s.remap_via_index(self.index) for s in self.delta.arg_shadows]
         for memory, update_with_shadow in zip(param_memories, arg_shadows):
-            for impression in memory.impressions:
-                self.state.update_source_of_impression(impression, update_with_shadow)
+            for impression in memory.for_the_given_realities(self.tags, self.all_reality_tags).impressions:
+                self.state.update_source_of_impression(impression,
+                    update_with_shadow.for_the_given_realities(impression.tags, self.all_reality_tags))
 
     @staticmethod
     def should_select_shadow(type: Type):
         return type.restriction.is_new_let() or type.restriction.is_primitive()
 
-    @staticmethod
-    def select_shadow_or_memory(i: int, type: Type, shadows: list[Shadow], memories: list[Memory]) -> Shadow | Memory:
+    def select_shadow_or_memory(self, i: int, type: Type, shadows: list[Shadow], memories: list[Memory]) -> Shadow | Memory:
         match CallHander.should_select_shadow(type):
-            case True: return shadows[i]
-            case False: return memories[i]
+            case True: return shadows[i].for_the_given_realities(self.tags, self.all_reality_tags)
+            case False:
+                print("original memory: ", memories[i])
+                memory = memories[i].for_the_given_realities(self.tags, self.all_reality_tags).with_tag(next(iter(self.tags))) #.replace_base_with_tag(next(iter(self.tags)))
+                return memory
 
 
     def filter_return_values(self, shadows: list[Shadow], memories: list[Memory]):
         return_types = self.node.get_function_return_type().unpack_into_parts()
-        return [CallHander.select_shadow_or_memory(i, type, shadows, memories)
+        return [self.select_shadow_or_memory(i, type, shadows, memories)
             for i, type in enumerate(return_types)]
-
 
     def resolve_updated_returns(self) -> list[Shadow | Memory]:
         if self.node.get_function_return_type() == self.state.get_void_type():
@@ -174,4 +200,7 @@ class CallHander:
         self.resolve_angels()
         self.resolve_updated_arguments(self.param_memories)
         self.resolve_entity_moves(self.param_memories)
-        return self.resolve_updated_returns()
+        ret = self.resolve_updated_returns()
+        for r in ret:
+            print(f"{self.delta.function_name} returning   ", r)
+        return ret

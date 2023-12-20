@@ -11,7 +11,8 @@ from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
-from eisen.__moves.moveepoch import Dependency, Entity
+from eisen.__moves.moveepoch import Entity
+from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 if TYPE_CHECKING:
     from eisen.trace.entity import Trait
@@ -484,6 +485,6 @@ class Validate:
             if dependency_names != expected_names:
                 return failure_with_exception_added_to(state,
                     ex=Exceptions.CompilerAssertion,
-                    msg=f"assertion 'object_has_expected_dependencies' failed: expected '{obj_name}.{key}' to be [{', '.join(dependency_names)}], but got [{', '.join(expected_names)}]")
+                    msg=f"assertion 'object_has_expected_dependencies' failed: expected '{obj_name}.{key}' to be [{', '.join(expected_names)}], but got [{', '.join(dependency_names)}]")
 
         return ValidationResult.success()

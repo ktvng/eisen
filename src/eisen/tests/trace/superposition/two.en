@@ -1,0 +1,63 @@
+fn pickFirst(a: obj, b: obj) -> c: obj {
+    c = a
+}
+
+fn pickSecond(a: obj, b: obj) -> c: obj{
+    c = b
+}
+
+fn test(b: obj, B: mut ptr, C: mut ptr) {
+    let a = obj()
+    let x = obj()
+    let A = ptr(a)
+
+    var p1, p2 = b, b
+    mut P = B
+
+    var f = pickSecond
+
+    if (true) {
+        p1 = a
+        f = pickFirst
+    }
+
+    P.o = f(p1, p2)
+}
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let b = obj()
+    let B = ptr(b)
+    let C = ptr(b)
+
+    test(b, B, C)
+}
+
+/// [Test]
+/// name = "trace/superposition/two"
+/// info = """\
+///     Partial rewrite in a conditional fails
+/// """
+
+/// [Expects]
+/// success = false
+/// output = ""
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 24"

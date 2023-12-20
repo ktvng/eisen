@@ -1,0 +1,73 @@
+fn pickFirst(a: obj, b: obj, p: mut ptr) {
+    p.o = a
+}
+
+fn pickSecond(a: obj, b: obj, p: mut ptr) {
+    p.o = b
+}
+
+fn ok(a: obj, b: obj, p: mut ptr) {
+    p.o = p.o
+}
+
+fn test(b: obj, B: mut ptr, C: mut ptr) {
+    let a = obj()
+    let x = obj()
+    let A = ptr(a)
+
+    var p1, p2 = b, b
+    mut P = A
+
+    var f = ok
+
+    if (true) {
+        p1 = b
+        p2 = x
+        P = B
+        f = pickSecond
+    }
+    else {
+        p1 = a
+        p2 = b
+        P = C
+        f = pickFirst
+    }
+
+    f = pickSecond
+
+    f(p1, p2, P)
+}
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let b = obj()
+    let B = ptr(b)
+    let C = ptr(b)
+
+    test(b, B, C)
+}
+/// [Test]
+/// name = "trace/superposition/dual_error_collapse1"
+/// info = "Collapse to first branch"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = "'B.o' may depend on 'x'"

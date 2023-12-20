@@ -9,6 +9,7 @@ from eisen.trace.entity import Entity, Angel, Trait
 from eisen.trace.shadow import Shadow, Personality
 from eisen.trace.memory import Memory, Impression, ImpressionSet
 from eisen.trace.lval import Lval
+from eisen.trace.branchedrealitytag import BranchedRealityTag
 from alpaca.clr import AST
 from alpaca.concepts import Context, Module
 from alpaca.concepts import AbstractException
@@ -27,7 +28,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             depth: int = None,
             rets: list[Entity] = None,
             args: list[Entity] = None,
-            angels: list[Angel] = None
+            angels: list[Angel] = None,
+            branch_tag: BranchedRealityTag = None,
             ) -> MemoryVisitorState:
 
         return self._but_with(
@@ -39,7 +41,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             depth=depth,
             rets=rets,
             args=args,
-            angels=angels
+            angels=angels,
+            branch_tag=branch_tag,
             )
 
     @staticmethod
@@ -54,7 +57,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         """
         return MemoryVisitorState(**state._get(), depth=0,
                                   function_base_context=None,
-                                  rets=None, args=None, angels=None)
+                                  rets=None, args=None, angels=None,
+                                  branch_tag=None)
 
     def get_depth(self) -> int:
         """
@@ -62,6 +66,9 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         the depth by 1.
         """
         return self.depth
+
+    def get_branch_tag(self) -> BranchedRealityTag:
+        return self.branch_tag
 
     def get_function_base_context(self) -> Context:
         return self.function_base_context
@@ -130,12 +137,24 @@ class MemoryVisitorState(State_PostInstanceVisitor):
 
         x.y = z
         """
+        print("\n=================")
+        print(self.ast)
+        possible_tags = set()
         for impression in lval.memory.impressions:
+            possible_tags = possible_tags.union(impression.tags)
+        for impression in lval.memory.impressions:
+            print(impression.shadow)
+            print("     realities:",)
+            for t in impression.tags:
+                print(t, end=" ")
+            print()
+            print("     mem", memory)
+            print("     sol", memory.for_the_given_realities(impression.tags, possible_tags))
             self.update_personality(
                 uid=impression.shadow.entity.uid,
-                other_personality=Personality( { lval.trait: memory }),
+                other_personality=Personality(
+                { lval.trait: memory.for_the_given_realities(impression.tags, possible_tags)}),
                 root=impression.root)
-
 
     def _update_lval_variable(self, lval: Lval, memory: Memory):
         """
@@ -143,7 +162,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
 
         x = y
         """
-        memory = self.get_memory(lval.name).update_with(memory)
+        memory = self.get_memory(lval.name).update_with(memory, self.get_branch_tag())
         if Validate.dependency_outlives_memory(self, memory).failed():
             memory = memory.restore_to_healthy()
         self.add_memory(lval.name, memory)
@@ -184,7 +203,10 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             name=name,
             rewrites=True,
             impressions=ImpressionSet.create_over(
-                Impression(shadow=shadow, root=Trait(), place=self.get_line_number())),
+                Impression(shadow=shadow,
+                           root=Trait(),
+                           place=self.get_line_number(),
+                           tags=set([self.get_branch_tag()]))),
             depth=self.get_depth()))
 
     def create_new_angel_memory(self, trait: Trait, entity: Entity) -> Memory:
@@ -196,5 +218,6 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             impressions=ImpressionSet.create_over(Impression(
                 shadow=angel_shadow,
                 root=Trait(),
-                place=-1)),
+                place=-1,
+                tags=set([self.get_branch_tag()]))),
             depth=self.get_depth())

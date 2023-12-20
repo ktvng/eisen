@@ -4,8 +4,9 @@ import uuid
 import eisen.adapters as adapters
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Trait
-from eisen.trace.memory import Memory
+from eisen.trace.memory import Memory, Impression, ImpressionSet, Function
 from eisen.trace.shadow import Shadow, Personality
+from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 State = MemoryVisitorState
 class RealityFuser:
@@ -92,7 +93,7 @@ class RealityFuser:
         updated_memories: set[str] = set()
         for branch_state in self.branch_states:
             for key in branch_state.get_memories():
-                if key in self.origin_state.get_memories():
+                if self.origin_state.get_memory(key):
                     updated_memories.add(key)
         return updated_memories
 
@@ -104,7 +105,7 @@ class RealityFuser:
         updated_shadows: set[uuid.UUID] = set()
         for branch_state in self.branch_states:
             for key in branch_state.get_shadows():
-                if key in self.origin_state.get_shadows():
+                if self.origin_state.get_shadow(key):
                     updated_shadows.add(key)
         return updated_shadows
 
@@ -140,10 +141,20 @@ class RealityFuser:
         return RealityFuser.fuse_memories_from_different_realities(memories=update_set)
 
     @staticmethod
+    def decompose_superposition(memories: list[Memory]) -> set[BranchedRealityTag]:
+        tags: set[BranchedRealityTag] = set()
+        for m in memories:
+            for i in m.impressions:
+                tags.add(i)
+        return tags
+
+    @staticmethod
     def fuse_memories_from_different_realities(memories: list[Memory]) -> Memory:
-        return Memory.merge_all(
-            memories=memories,
-            rewrites=True)
+        # for tag in RealityFuser.decompose_superposition(memories):
+
+            return Memory.merge_all(
+                memories=memories,
+                rewrites=True)
 
     @staticmethod
     def fuse_shadows_from_different_realities(shadows: list[Shadow]) -> Shadow:

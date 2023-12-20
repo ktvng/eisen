@@ -9,12 +9,13 @@ import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
-from eisen.trace.memory import Memory, ImpressionSet, Function
+from eisen.trace.memory import Memory, ImpressionSet, Function, FunctionSet
 from eisen.trace.shadow import Shadow
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHander
+from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -67,7 +68,8 @@ class MemoryVisitor(Visitor):
         # print(node.get_function_name())
 
         fn_context = state.create_isolated_context()
-        fn_state = state.but_with(context=fn_context, function_base_context=fn_context, depth=0)
+        fn_state = state.but_with(context=fn_context, function_base_context=fn_context, depth=0,
+            branch_tag=BranchedRealityTag(uuid.UUID(int=0), 0))
 
         fn.apply(fn_state.but_with(ast=node.get_args_ast()))
         fn.apply(fn_state.but_with(ast=node.get_rets_ast()))
@@ -85,6 +87,7 @@ class MemoryVisitor(Visitor):
         fn.function_db.add_function_delta(
             name=node.get_function_instance().get_full_name(),
             fc=FunctionDelta(
+                function_name=node.get_function_name(),
                 arg_shadows=[fn_state.get_shadow(entity) for entity in fn_state.get_arg_entities()],
                 ret_shadows=[fn_state.get_shadow(entity) for entity in fn_state.get_ret_entities()],
                 angels=angels,
@@ -126,7 +129,8 @@ class MemoryVisitor(Visitor):
             rewrites=True,
             impressions=ImpressionSet(),
             depth=state.get_depth(),
-            functions=set([Function(state.get_instances()[0])]))]
+            functions=FunctionSet.create_over(
+                Function(state.get_instances()[0], set([state.get_branch_tag()]))))]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
@@ -196,8 +200,11 @@ class MemoryVisitor(Visitor):
             return []
 
         param_memories = fn.apply(state.but_with_second_child())
-        realities = [CallHander(node=node, delta=delta, param_memories=param_memories).start()
-            for delta in CallHander.aquire_function_deltas(node, fn)]
+        # print(len(CallHander.aquire_function_deltas_and_tags(node, fn)))
+        realities = [CallHander(node=node, delta=delta, param_memories=param_memories, tags=tags, all_reality_tags=all_reality_tags).start()
+            for delta, tags, all_reality_tags in CallHander.aquire_function_deltas_and_tags(node, fn)]
+
+        # print("calling function", node.get_function_name())
         outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
         return RealityFuser.fuse_outcomes_together(outcomes)
 
@@ -260,16 +267,24 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("if")
     def _if(fn, state: State) -> Type:
-        branch_states = [MemoryVisitor.apply_fn_in_branch_and_return_branch_state(state, fn, child)
-                         for child in state.get_child_asts()]
+        if_complex_uid = uuid.uuid4()
+        branch_states = [MemoryVisitor.apply_fn_in_branch_and_return_branch_state(state, fn, if_complex_uid, i, child)
+                         for i, child in enumerate(state.get_child_asts())]
         RealityFuser(origin_state=state, branch_states=branch_states).fuse_realities_after_conditional()
 
     @staticmethod
-    def apply_fn_in_branch_and_return_branch_state(parent_state: State, fn: Visitor, child: AST) -> State:
+    def apply_fn_in_branch_and_return_branch_state(
+            parent_state: State,
+            fn: Visitor,
+            uid: uuid.UUID,
+            number: int,
+            child: AST) -> State:
+
         branch_state = parent_state.but_with(
             ast=child,
             context=parent_state.create_block_context(),
-            depth=parent_state.get_depth() + 1)
+            depth=parent_state.get_depth() + 1,
+            branch_tag=BranchedRealityTag(uid, number, parent_state.get_branch_tag()))
         fn.apply(branch_state)
         return branch_state
 
@@ -304,3 +319,14 @@ class Annotations:
             case "object_has_dependencies":
                 Validate.object_has_expected_dependencies(state, args[0],
                     Annotations.parse_dependency_dict(args[1: ]))
+            case "debug":
+                Annotations.debug(state)
+
+    @staticmethod
+    def debug(state: State):
+        print("===================")
+        print("====== DEBUG ======")
+        print("===================")
+        print(state.get_memory("p1"))
+        print(state.get_memory("p2"))
+        print(state.get_memory("P"))

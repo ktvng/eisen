@@ -9,7 +9,7 @@ import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
-from eisen.trace.memory import Memory, ImpressionSet, Function, FunctionSet
+from eisen.trace.memory import Memory, ImpressionSet, Function, MemorySet
 from eisen.trace.shadow import Shadow
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
@@ -129,7 +129,7 @@ class MemoryVisitor(Visitor):
             rewrites=True,
             impressions=ImpressionSet(),
             depth=state.get_depth(),
-            functions=FunctionSet.create_over(
+            functions=MemorySet.create_over(
                 Function(state.get_instances()[0])))]
 
     @Visitor.for_ast_types("ref")

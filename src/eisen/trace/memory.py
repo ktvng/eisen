@@ -19,7 +19,7 @@ class Memory():
         self.depth = depth
         self.rewrites = rewrites
         self.impressions = impressions
-        self.functions = FunctionSet() if functions is None else functions
+        self.functions = MemorySet() if functions is None else functions
 
     def update_with(self, other_memory: Memory) -> Memory:
         if other_memory.rewrites:
@@ -120,7 +120,7 @@ class Memory():
     @staticmethod
     def merge_all(memories: list[Memory], rewrites: bool) -> Memory:
         impressions = ImpressionSet()
-        functions = FunctionSet()
+        functions = MemorySet()
         for m in memories:
             impressions.add_from(m.impressions)
             functions.add_from(m.functions)
@@ -168,65 +168,44 @@ class Function():
             self.function_instance,
             self.entanglement.with_sub_entanglement(entanglement.uid))
 
+class MemorySet():
+    def __init__(self, objs: set[Function] | set[Impression] = None) -> None:
+        self.objs = objs if objs else set()
 
-class FunctionSet():
-    def __init__(self) -> None:
-        self._functions: list[Function] = []
+    def add(self, obj: Function | Impression):
+        self.objs.add(obj)
 
-    def add_function(self, obj: Function):
-        # found_obj = [f for f in self._functions if f.function_instance == obj.function_instance]
-        # if found_obj:
-        #     self._functions.remove(found_obj[0])
-        self._functions.append(obj)
+    def add_from(self, other: MemorySet):
+        for i in other.objs:
+            self.add(i)
 
-    def add_from(self, other: FunctionSet):
-        for i in other._functions:
-            self.add_function(i)
+    def union(self, other: MemorySet) -> MemorySet:
+        return MemorySet(self.objs.union(other.objs))
 
-    def union(self, other: FunctionSet) -> FunctionSet:
-        new_set = FunctionSet()
-        new_set._functions = self._functions.copy()
-        for f in other._functions:
-            new_set.add_function(f)
-        return new_set
+    def copy(self) -> MemorySet:
+        return MemorySet(self.objs.copy())
 
-    def copy(self) -> FunctionSet:
-        new_set = FunctionSet()
-        new_set._functions = self._functions.copy()
-        return new_set
+    def with_entanglement(self, entanglement: Entanglement) -> MemorySet:
+        return MemorySet(set([obj.with_entanglement(entanglement) for obj in self.objs]))
 
-    def with_entanglement(self, entanglement: Entanglement) -> FunctionSet:
-        new_set = FunctionSet()
-        for f in self._functions:
-            new_set.add_function(f.with_entanglement(entanglement))
-        return new_set
+    def for_entanglement(self, entanglement: Entanglement) -> MemorySet:
+        if entanglement is None: return self
+        return MemorySet(set([obj.for_entanglement(entanglement) for obj in self.objs]))
 
-    def for_entanglement(self, entanglement: Entanglement) -> FunctionSet:
-        new_set = FunctionSet()
-        if entanglement is None:
-            new_set._functions = set([f for f in self._functions])
-        else:
-            new_set._functions = set([f for f in self._functions if entanglement.matches(f.entanglement)])
-        return new_set
-
-    def not_for_entanglement(self, entanglement: Entanglement) -> FunctionSet:
-        new_set = FunctionSet()
-        new_set._functions = set([f for f in self._functions if not entanglement.matches(f.entanglement) or f.entanglement is None])
-        return new_set
-
-    @staticmethod
-    def create_over(function: Function | list[Function]) -> FunctionSet:
-        new_set = FunctionSet()
-        if isinstance(function, Function):
-            function = [function]
-        new_set._functions = function.copy()
-        return new_set
+    def not_for_entanglement(self, entanglement: Entanglement) -> MemorySet:
+        return MemorySet(set([obj.not_for_entanglement(entanglement) for obj in self.objs]))
 
     def __iter__(self):
-        return self._functions.__iter__()
+        return self.objs.__iter__()
 
     def __len__(self) -> int:
-        return len(self._functions)
+        return len(self.objs)
+
+    @staticmethod
+    def create_over(obj) -> MemorySet:
+        if not isinstance(obj, list):
+            obj = [obj]
+        return MemorySet(set(obj))
 
 class ImpressionSet():
     def __init__(self) -> None:

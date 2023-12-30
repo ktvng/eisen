@@ -205,8 +205,13 @@ class MemoryVisitor(Visitor):
     @Visitor.for_ast_types("curry_call")
     def _curry_call(fn, state: State):
         node = adapters.CurriedCall(state)
-        fn.apply(state.but_with_second_child())
-        return fn.apply(state.but_with_first_child())
+
+        # there is only one function of a (fn ...) node
+        function_memory = fn.apply(state.but_with_first_child())[0]
+        curried_memories = fn.apply(state.but_with_second_child())
+        for f in function_memory.functions:
+            f.curried_memories += curried_memories
+        return [function_memory]
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):

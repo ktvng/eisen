@@ -1,5 +1,6 @@
 from __future__ import annotations
 import uuid
+from dataclasses import dataclass, field
 
 from typing import TYPE_CHECKING
 
@@ -192,10 +193,11 @@ class MemorableSet():
             obj = [obj]
         return MemorableSet(set(obj))
 
+@dataclass
 class Function():
-    def __init__(self, function_instance: EisenFunctionInstance, entanglement: Entanglement = None) -> None:
-        self.function_instance = function_instance
-        self.entanglement = entanglement
+    function_instance: EisenFunctionInstance
+    entanglement: Entanglement | None = None
+    curried_memories: list[Memory] = field(default_factory=lambda: list())
 
     def __hash__(self) -> int:
         return hash(self.function_instance)

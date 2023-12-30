@@ -1,0 +1,48 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn add(p: mut ptr, o: obj) -> r: int {
+    p.o = o
+    r = p.o.x + o.x
+}
+
+fn indirect(p: mut ptr, o: obj) {
+    let o3 = obj(3)
+    let f = add{p}
+    print("%i", f(o3))
+}
+
+fn main() {
+    let o = obj(4)
+    let p = ptr(o)
+
+    indirect(p, o)
+    print(" %i", p.o.x)
+}
+
+/// [Test]
+/// name = "trace/curry/curry2"
+/// info = """\
+///     Fails if introducing a shorter dependency
+/// """
+
+/// [Expects]
+/// success = false
+/// output = ""
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = "Line 25:"

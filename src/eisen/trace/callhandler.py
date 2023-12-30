@@ -236,11 +236,12 @@ class CallHandlerFactory:
         """
         handlers = []
         for function, delta in CallHandlerFactory._aquire_function_deltas(node, fn):
+            curried_memories = function.curried_memories if function else []
             handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
                 function=function,
                 node=node,
                 delta=delta,
-                param_memories=param_memories))
+                param_memories=curried_memories + param_memories))
 
         return handlers
 

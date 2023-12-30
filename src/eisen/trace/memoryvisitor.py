@@ -14,7 +14,7 @@ from eisen.trace.shadow import Shadow
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
-from eisen.trace.callhandler import CallHander
+from eisen.trace.callhandler import CallHandlerFactory
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -36,7 +36,7 @@ class MemoryVisitor(Visitor):
     def _noop(fn, state: State):
         return
 
-    @Visitor.for_ast_types("params", "tuple")
+    @Visitor.for_ast_types("params", "tuple", "curried")
     def _params(fn, state: State):
         memories = []
         for child in state.get_all_children():
@@ -200,10 +200,16 @@ class MemoryVisitor(Visitor):
             return []
 
         param_memories = fn.apply(state.but_with_second_child())
-        realities = CallHander.get_call_handlers(node, fn, param_memories)
+        realities = CallHandlerFactory.get_call_handlers(node, fn, param_memories)
 
         outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
         return RealityFuser.fuse_outcomes_together(outcomes)
+
+    @Visitor.for_ast_types("curry_call")
+    def _curry_call(fn, state: State):
+        node = adapters.CurriedCall(state)
+        fn.apply(state.but_with_second_child())
+        return fn.apply(state.but_with_first_child())
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):

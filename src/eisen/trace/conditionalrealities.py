@@ -12,10 +12,12 @@ from eisen.trace.entanglement import Entanglement
 @dataclass
 class ConditionalMemory():
     """
-    This represents a memory defined outside of a conditional context, that may have
-    been modified inside the conditional context
-    """
+    This is a wrapper for a Memory object.
 
+    Specifically, this represents a memory defined outside of a conditional context, that may have
+    been modified inside the conditional context. The branch_id of the conditional context
+    is used to identify the entanglement (if any).
+    """
     memory: Memory | None
     branch_id: uuid.UUID
 
@@ -26,27 +28,42 @@ class ConditionalMemory():
         if self.memory is None: return None
         return set([i.shadow.entity.depth for i in self.memory.impressions])
 
-    def get_memory(self, with_entanglement: bool):
+    def get_memory(self, is_entangled: bool):
+        """
+        Return the underlying memory, with its conditional branch as its entanglement the memory
+        [is_entangled]
+        """
         if self.memory is None: return None
-        if with_entanglement: return self.memory.with_entanglement(Entanglement(self.branch_id))
+        if is_entangled: return self.memory.with_entanglement(Entanglement(self.branch_id))
         else: return self.memory
 
     def get_function_set(self) -> set:
+        """
+        Return the set of all functions of this memory.
+        """
         if self.memory is None: return None
         return set([f.function_instance for f in self.memory.functions._functions])
 
 @dataclass
 class ConditionalContext():
+    """
+    This represents a slice accross conditonal branches of all conditional memories for a single,
+    named variable. For instance, if 'x' is defined before a conditonal statement, and modified in
+    each of the three branches, then a ConditionalContext for 'x' would contain three
+    ConditionalMemories, one for it's memory in each branch.
+    """
     memory_name: str
     conditional_memories: list[ConditionalMemory]
     has_possible_entanglement: bool = False
 
     def check_for_entanglement(self) -> bool:
         """
-        Returns true of the [memories] contain a superposition
-        """
-        if len(self.conditional_memories) < 2: return False # TODO: will this ever get called?
+        Returns true if this variable may contain an entanglement. A conditional context always has
+        at least two conditional memories. (if/else; if/default).
 
+        Possible entanglement is defined as having different depths across different branchs of
+        the conditional.
+        """
         # case for impressions
         depth_sets = [memory.get_dependency_depths_set() for memory in self.conditional_memories]
         impressions_entangled = not all(sets == depth_sets[0] for sets in depth_sets if sets is not None)
@@ -58,16 +75,27 @@ class ConditionalContext():
         self.has_possible_entanglement = impressions_entangled or functions_entangled
         return self.has_possible_entanglement
 
-    def get_memories(self, should_use_entanglement: bool) -> list[Memory]:
-        memories = [cm.get_memory(should_use_entanglement)
-                    for cm in self.conditional_memories]
+    def get_memories(self, are_entangled: bool) -> list[Memory]:
+        """
+        Return the list of memories for all branches of this conditional context, with optional
+        entanglement if they [are_entangled]
+        """
+        memories = [cm.get_memory(are_entangled) for cm in self.conditional_memories]
         return [m for m in memories if m is not None]
 
 @dataclass
 class FusionContext():
+    """
+    Represents the entire context after a conditional, including ConditionalContexts for all
+    modified memories.
+    """
     conditional_contexts: list[ConditionalContext]
 
     def has_entanglement(self):
+        """
+        Per the isolation principle, a context after a conditional may be entangled if there are
+        at least two conditional contexts (variables) which exhibit possible entanglement.
+        """
         possible_entanglements = [context.check_for_entanglement() for context in self.conditional_contexts]
         return possible_entanglements.count(True) > 1
 
@@ -135,7 +163,7 @@ class RealityFuser:
         tuples = []
         for conditional_context in fusion_context.conditional_contexts:
             memory = RealityFuser.fuse_memories_from_different_realities(
-                memories=conditional_context.get_memories(should_use_entanglement=is_entangled))
+                memories=conditional_context.get_memories(are_entangled=is_entangled))
             tuples.append((conditional_context.memory_name, memory))
 
         return tuples

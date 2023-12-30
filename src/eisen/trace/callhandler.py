@@ -15,13 +15,26 @@ from eisen.trace.delta import FunctionDelta
 from eisen.trace.entanglement import Entanglement
 
 State = MemoryVisitorState
-class CallHander:
+class CallHandler:
     def __init__(self,
                  function: Function,
                  node: adapters.Call,
                  delta: FunctionDelta,
                  param_memories: list[Memory]) -> None:
+        """
+        Create a new CallHandler
 
+        :param function: The function which is being called (if from a variable), or None if it is
+        a pure function call
+        :type function: Function
+        :param node: The AST node of the function
+        :type node: adapters.Call
+        :param delta: The delta caused by the function
+        :type delta: FunctionDelta
+        :param param_memories: An list of memories, corresponding to, and in the same order, as the
+        parameters passed into the eisen function call.
+        :type param_memories: list[Memory]
+        """
         self.function = function
         self.node = node
         self.state: MemoryVisitorState = node.state
@@ -66,31 +79,6 @@ class CallHander:
             memories.append(m)
         return memories
 
-    @staticmethod
-    def _associate_function_instance_to_delta(node: adapters.Call, function_instance: EisenFunctionInstance, fn: Visitor):
-        delta = fn.function_db.get_function_delta(function_instance.get_full_name())
-        if delta is None:
-            fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
-            delta = fn.function_db.get_function_delta(function_instance.get_full_name())
-        return delta
-
-    @staticmethod
-    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Function, FunctionDelta]]:
-        if node.is_pure_function_call():
-            return [(None, CallHander._associate_function_instance_to_delta(
-                node=node,
-                function_instance=node.get_function_instance(),
-                fn=fn))]
-        else:
-            # take the first as there should only be one Memory returned from a (ref ...) node
-            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            x = []
-            for f in caller_memory.functions:
-                x.append((f, CallHander._associate_function_instance_to_delta(
-                    node=node,
-                    function_instance=f.function_instance, fn=fn)))
-            return x
-
     def build_remapping_index(self, param_memories: list[Memory]):
         """
         This generates an index between entities used internal to f, and the actual memories
@@ -108,22 +96,23 @@ class CallHander:
         # Likewise, each Angel uid is mapped to the list of Memories which it could
         # refer to.
         for angel in self.delta.angels:
-            possible_argument_trait_memories = self.resolve_angel_into_memories(angel)
-            self.index[angel.uid] = possible_argument_trait_memories
+            self.index[angel.uid] = self.resolve_angel_into_memories(angel)
 
     def resolve_angels(self):
+        """
+        Resolve any changes to angels inside of the function call to the corresponding changes
+        to real entities in the parent of that function call.
+        """
         # Remapping is necessary so that any dependency uids stored in the Shadow within the
         # delta of f now refer to the uids of parameters which were passed into f.
         angel_shadow_dict = { s.entity.uid: s.remap_via_index(self.index)
                                 for s in self.delta.angel_shadows.values() }
         for angel in self.delta.angels:
-            possible_argument_trait_memories = self.resolve_angel_into_memories(angel)
-
             # The Angel carries any dependencies that were added within f. We need to update the
             # entities which the Angel could 'guard' that exists outside of f.
             #
             # First we determine the possible Memories which could be associated to the angel
-            for m in possible_argument_trait_memories:
+            for m in self.resolve_angel_into_memories(angel):
                 # For each impression of that Memory, we can identify the entity that the Angel
                 # could refer to. Having the impression allows us to modify the latest shadow
                 # of that entity with the shadow of the Angel, noting that we use the remapped
@@ -134,27 +123,53 @@ class CallHander:
                         with_shadow=angel_shadow_dict.get(angel.uid))
 
 
-    def resolve_updated_arguments(self, param_memories: list[Memory]):
+    def resolve_updated_parameters(self, param_memories: list[Memory]):
+        """
+        Resolve any changes to the parameters of the function call which to the corresponding
+        changes to the real entities that were supplied as paramters in the parent of that function
+        call.
+        """
         arg_shadows = [s.remap_via_index(self.index) for s in self.delta.arg_shadows]
         for memory, update_with_shadow in zip(param_memories, arg_shadows):
             for impression in memory.impressions:
                 self.state.update_source_of_impression(impression, update_with_shadow)
 
     @staticmethod
-    def should_select_shadow(type: Type):
+    def should_select_shadow(type: Type) -> bool:
+        """
+        Return true if, based on the [type], we should return the shadow instead of a memory. This
+        is the case for creating new objects (as the object is created as a real entity inside the
+        parent function), and in the case of primitives, which do not have memories.
+
+        In short, this should return true if we are returning a "true object" and not a pointer/
+        memory of one.
+        """
         return type.restriction.is_new_let() or type.restriction.is_primitive()
 
-    def select_shadow_or_memory(self, i: int, type: Type, shadows: list[Shadow], memories: list[Memory]) -> Shadow | Memory:
-        match CallHander.should_select_shadow(type):
+    @staticmethod
+    def _select_shadow_or_memory(
+            i: int,
+            type: Type,
+            shadows: list[Shadow],
+            memories: list[Memory]) -> Shadow | Memory:
+        """
+        For the [i]th return value and its [type], return either the shadow or memory that
+        corresponds to it.
+        """
+        match CallHandler.should_select_shadow(type):
             case True: return shadows[i]
             case False: return memories[i]
 
-    def filter_return_values(self, shadows: list[Shadow], memories: list[Memory]):
+    def _filter_return_values(self, shadows: list[Shadow], memories: list[Memory]) -> list[Shadow | Memory]:
+        """
+        Return an ordered list of return values of this function, where each value is either a
+        Shadow or a Memory depending on the eisen type of that return value.
+        """
         return_types = self.node.get_function_return_type().unpack_into_parts()
-        return [self.select_shadow_or_memory(i, type, shadows, memories)
+        return [CallHandler._select_shadow_or_memory(i, type, shadows, memories)
             for i, type in enumerate(return_types)]
 
-    def add_entanglement(self, memory: Memory) -> Memory:
+    def _add_entanglement(self, memory: Memory) -> Memory:
         """
         If the current function call occurs in the context of an function that is entangled,
         then the resulting return value must also have this entanglement.
@@ -164,40 +179,64 @@ class CallHander:
         return memory
 
     def resolve_updated_returns(self) -> list[Shadow | Memory]:
+        """
+        Resolve the correct return values for this function.
+        """
         if self.node.get_function_return_type() == self.state.get_void_type():
             return []
 
-        return self.filter_return_values(
+        # TODO: should shadows also get entanglements? Probably not as conditional initialization
+        # should not be supported
+
+        # We need to remap all shadows/memories in the delta so that they correctly refer to the
+        # real entities in the parent of this function call.
+        return self._filter_return_values(
             shadows=[s.remap_via_index(self.index) for s in self.delta.ret_shadows],
-            memories=[self.add_entanglement(m.remap_via_index(self.index))
+            memories=[self._add_entanglement(m.remap_via_index(self.index))
                       for m in self.delta.ret_memories])
 
     def resolve_entity_moves(self, param_memories: list[Memory]):
+        """
+        Resole any parameters which may be moved into the child function call.
+        """
         for type_, memory in zip(self.node.get_function_argument_type().unpack_into_parts(), param_memories):
             if type_.restriction.is_move():
                 for impression in memory.impressions:
                     impression.shadow.entity.moved = True
 
     def resolve_outcome(self) -> list[Shadow | Memory]:
+        """
+        Perform all resolutions and return a list of return values from the child function call.
+        """
         if self.node.is_print():
             return self
 
         self.build_remapping_index(self.param_memories)
         self.resolve_angels()
-        self.resolve_updated_arguments(self.param_memories)
+        self.resolve_updated_parameters(self.param_memories)
         self.resolve_entity_moves(self.param_memories)
-        ret = self.resolve_updated_returns()
-        return ret
+        return self.resolve_updated_returns()
+
+class CallHandlerFactory:
+    """
+    Create the list of CallHandlers required to process a function call, being aware of separate
+    realities due to entanglements.
+    """
 
     @staticmethod
     def get_call_handlers(
             node: adapters.Call,
             fn: Visitor,
-            param_memories: list[Memory]) -> list[CallHander]:
-
+            param_memories: list[Memory]) -> list[CallHandler]:
+        """
+        Return a list of CallHandlers to process a function call, where each CallHandler processes
+        the inputs for a single entanglement. [param_memories] should be the memories possible for
+        each parameter to the function call, ordered in the same way such that the nth element in
+        this list is the nth parameters supplied to the function.
+        """
         handlers = []
-        for function, delta in CallHander._aquire_function_deltas(node, fn):
-            handlers.extend(CallHander._get_call_handlers_for_each_reality(
+        for function, delta in CallHandlerFactory._aquire_function_deltas(node, fn):
+            handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
                 function=function,
                 node=node,
                 delta=delta,
@@ -206,24 +245,66 @@ class CallHander:
         return handlers
 
     @staticmethod
+    def _associate_function_instance_to_delta(
+            node: adapters.Call,
+            function_instance: EisenFunctionInstance,
+            fn: Visitor):
+        """
+        Obtain the function delta for a given [function_instance]
+        """
+        delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+        if delta is None:
+            fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
+            delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+        return delta
+
+    @staticmethod
+    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Function, FunctionDelta]]:
+        """
+        Returns tuples of Function and FunctionDelta, where Function is the eisen/trace/Fuction
+        that wraps the function being called (it is called from a variable) and FunctionDelta is
+        the delta which should be applied
+        """
+        if node.is_pure_function_call():
+            return [(None,
+                     CallHandlerFactory._associate_function_instance_to_delta(
+                        node=node, function_instance=node.get_function_instance(), fn=fn))]
+        else:
+            # take the first as there should only be one Memory returned from a (ref ...)
+            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
+            return [(f,
+                     CallHandlerFactory._associate_function_instance_to_delta(
+                        node=node, function_instance=f.function_instance, fn=fn)
+                    ) for f in caller_memory.functions]
+
+    @staticmethod
     def _get_call_handlers_for_each_reality(
             function: Function,
             node: adapters.Call,
             delta: FunctionDelta,
-            param_memories: list[Memory]) -> list[CallHander]:
-
+            param_memories: list[Memory]) -> list[CallHandler]:
+        """
+        Return a list of CallHandlers where each handler exclusively processes the call for a given
+        entanglement.
+        """
         if function and function.entanglement:
-            return [CallHander(
+            return [CallHandler(
                 function, node, delta,
                 [memory.for_entanglement(function.entanglement) for memory in param_memories])]
 
-        realities = CallHander._divide_parameters_by_entanglement(param_memories)
-        if realities:
-            return CallHander._construct_call_handler_for_realities(function, node, delta, realities)
-        return [CallHander(function, node, delta, param_memories)]
+        realities = CallHandlerFactory._divide_parameters_by_entanglement(param_memories)
+        # if there are no entanglements, then simply return a call handler with the entire
+        # param_memories
+        if not realities:
+            return [CallHandler(function, node, delta, param_memories)]
+        return [CallHandler(function, node, delta, reality) for reality in realities]
 
     @staticmethod
     def _find_next_entanglement_present(param_memories: list[Memory]) -> Entanglement:
+        """
+        Iterates through all memories nad their entanglements to find a the next entanglement
+        present in the set and returns it.
+        """
         for memory in param_memories:
             for impression in memory.impressions:
                 if impression.entanglement:
@@ -232,18 +313,14 @@ class CallHander:
 
     @staticmethod
     def _divide_parameters_by_entanglement(param_memories: list[Memory]) -> list[list[Memory]]:
+        """
+        Provided an ordered list of memories in the same order as the parameters to this function
+        call, [param_memories], splits this list into multiple lists of memories, preserving the
+        order, but ensuring that each list only contains a single entanglement.
+        """
         realities: list[list[Memory]] = []
-        while entanglement := CallHander._find_next_entanglement_present(param_memories):
+        while entanglement := CallHandlerFactory._find_next_entanglement_present(param_memories):
             entangled_memories = [memory.for_entanglement(entanglement) for memory in param_memories]
             realities.append(entangled_memories)
             param_memories = [memory.not_for_entanglement(entanglement) for memory in param_memories]
         return realities
-
-    @staticmethod
-    def _construct_call_handler_for_realities(
-            function: Function,
-            node: adapters.Call,
-            delta: FunctionDelta,
-            realities: list[list[Memory]]) -> list[CallHander]:
-
-        return [CallHander(function, node, delta, reality) for reality in realities]

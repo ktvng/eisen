@@ -7,7 +7,7 @@ from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Entity, Angel, Trait
 from eisen.trace.shadow import Shadow, Personality
-from eisen.trace.memory import Memory, Impression, ImpressionSet
+from eisen.trace.memory import Memory, Impression, MemorableSet
 from eisen.trace.lval import Lval
 from alpaca.clr import AST
 from alpaca.concepts import Context, Module
@@ -120,8 +120,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         if len(lval.memory.impressions) != 1:
             raise Exception("expected length 1?!")
 
-        self.update_source_of_impression(
-            lval.memory.impressions.first(), with_shadow=shadow, trait=lval.trait)
+        for impression in lval.memory.impressions:
+            self.update_source_of_impression(impression, with_shadow=shadow, trait=lval.trait)
 
 
     def _update_lval_attribute(self, lval: Lval, memory: Memory):
@@ -182,7 +182,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         self.add_memory(entity.name, Memory(
             name=name,
             rewrites=True,
-            impressions=ImpressionSet.create_over(
+            impressions=MemorableSet.create_over(
                 Impression(shadow=shadow,
                            root=Trait(),
                            place=self.get_line_number())),
@@ -194,7 +194,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         angel_shadow = self.but_with(context=self.get_function_base_context())._recognize_entity(angel)
         return Memory(
             rewrites=True,
-            impressions=ImpressionSet.create_over(Impression(
+            impressions=MemorableSet.create_over(Impression(
                 shadow=angel_shadow,
                 root=Trait(),
                 place=-1)),

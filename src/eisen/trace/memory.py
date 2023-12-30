@@ -13,13 +13,14 @@ if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 class Memory():
-    def __init__(self, rewrites: bool, impressions: ImpressionSet, depth: int, name: str = "",
-                 functions: FunctionSet = None) -> None:
+    def __init__(self, rewrites: bool, depth: int, name: str = "",
+                 functions: MemorableSet = None,
+                 impressions: MemorableSet = None):
         self.name = name
         self.depth = depth
         self.rewrites = rewrites
-        self.impressions = impressions
-        self.functions = MemorySet() if functions is None else functions
+        self.impressions = MemorableSet() if impressions is None else impressions
+        self.functions = MemorableSet() if functions is None else functions
 
     def update_with(self, other_memory: Memory) -> Memory:
         if other_memory.rewrites:
@@ -80,9 +81,8 @@ class Memory():
             name=self.name,
             functions=self.functions.not_for_entanglement(entanglement))
 
-
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Memory:
-        impressions = ImpressionSet()
+        impressions = MemorableSet()
         for i in self.impressions:
             found = index.get(i.shadow.entity.uid, None)
             if found is not None:
@@ -92,7 +92,7 @@ class Memory():
                 else:
                     impressions.add_from(found.impressions)
             else:
-                impressions.add_impression(i)
+                impressions.add(i)
         return Memory(
             name=self.name,
             rewrites=self.rewrites,
@@ -105,12 +105,12 @@ class Memory():
             Validate.dependency_outlives_self(state, memory_name, self_shadow, impression)
 
     def restore_to_healthy(self) -> Memory:
-        impressions = ImpressionSet()
+        impressions = MemorableSet()
         for i in self.impressions:
             if i.shadow.entity.depth > self.depth:
                 continue
 
-            impressions.add_impression(i)
+            impressions.add(i)
         return Memory(name=self.name,
                       rewrites=self.rewrites,
                       impressions=impressions,
@@ -119,8 +119,8 @@ class Memory():
 
     @staticmethod
     def merge_all(memories: list[Memory], rewrites: bool) -> Memory:
-        impressions = ImpressionSet()
-        functions = MemorySet()
+        impressions = MemorableSet()
+        functions = MemorableSet()
         for m in memories:
             impressions.add_from(m.impressions)
             functions.add_from(m.functions)
@@ -142,6 +142,55 @@ class Memory():
 
     def __hash__(self) -> int:
         return hash(hash(self.name) + self.depth + int(self.rewrites) + hash(self.impressions))
+
+class MemorableSet():
+    def __init__(self, objs: set[Function] | set[Impression] = None) -> None:
+        self.objs = objs if objs else set()
+
+    def add(self, obj: Function | Impression):
+        self.objs.add(obj)
+
+    def add_from(self, other: MemorableSet):
+        for i in other.objs:
+            self.add(i)
+
+    def union(self, other: MemorableSet) -> MemorableSet:
+        return MemorableSet(self.objs.union(other.objs))
+
+    def copy(self) -> MemorableSet:
+        return MemorableSet(self.objs.copy())
+
+    def with_entanglement(self, entanglement: Entanglement) -> MemorableSet:
+        return MemorableSet(set([obj.with_entanglement(entanglement) for obj in self.objs]))
+
+    def for_entanglement(self, entanglement: Entanglement) -> MemorableSet:
+        if entanglement is None: return self
+        return MemorableSet(set([o for o in self.objs if entanglement.matches(o.entanglement)]))
+
+    def not_for_entanglement(self, entanglement: Entanglement) -> MemorableSet:
+        return MemorableSet(set([o for o in self.objs
+            if not entanglement.matches(o.entanglement) or o.entanglement is None]))
+
+    def first(self) -> Impression | Function:
+        return self.objs[0]
+
+    def __iter__(self):
+        return self.objs.__iter__()
+
+    def __len__(self) -> int:
+        return len(self.objs)
+
+    def __eq__(self, __value: MemorableSet) -> bool:
+        return all(x == y for x, y in zip(self.objs, __value.objs))
+
+    def __hash__(self) -> int:
+        return hash(sum([hash(x) for x in self.objs]))
+
+    @staticmethod
+    def create_over(obj) -> MemorableSet:
+        if not isinstance(obj, list):
+            obj = [obj]
+        return MemorableSet(set(obj))
 
 class Function():
     def __init__(self, function_instance: EisenFunctionInstance, entanglement: Entanglement = None) -> None:
@@ -167,111 +216,6 @@ class Function():
         return Function(
             self.function_instance,
             self.entanglement.with_sub_entanglement(entanglement.uid))
-
-class MemorySet():
-    def __init__(self, objs: set[Function] | set[Impression] = None) -> None:
-        self.objs = objs if objs else set()
-
-    def add(self, obj: Function | Impression):
-        self.objs.add(obj)
-
-    def add_from(self, other: MemorySet):
-        for i in other.objs:
-            self.add(i)
-
-    def union(self, other: MemorySet) -> MemorySet:
-        return MemorySet(self.objs.union(other.objs))
-
-    def copy(self) -> MemorySet:
-        return MemorySet(self.objs.copy())
-
-    def with_entanglement(self, entanglement: Entanglement) -> MemorySet:
-        return MemorySet(set([obj.with_entanglement(entanglement) for obj in self.objs]))
-
-    def for_entanglement(self, entanglement: Entanglement) -> MemorySet:
-        if entanglement is None: return self
-        return MemorySet(set([obj.for_entanglement(entanglement) for obj in self.objs]))
-
-    def not_for_entanglement(self, entanglement: Entanglement) -> MemorySet:
-        return MemorySet(set([obj.not_for_entanglement(entanglement) for obj in self.objs]))
-
-    def __iter__(self):
-        return self.objs.__iter__()
-
-    def __len__(self) -> int:
-        return len(self.objs)
-
-    @staticmethod
-    def create_over(obj) -> MemorySet:
-        if not isinstance(obj, list):
-            obj = [obj]
-        return MemorySet(set(obj))
-
-class ImpressionSet():
-    def __init__(self) -> None:
-        self._impressions: set[Impression] = set()
-
-    def add_impression(self, obj: Impression):
-        self._impressions.add(obj)
-
-    def add_from(self, other: ImpressionSet):
-        for i in other._impressions:
-            self.add_impression(i)
-
-    def union(self, other: ImpressionSet) -> ImpressionSet:
-        new_set = ImpressionSet()
-        new_set._impressions = self._impressions.copy()
-        for i in other._impressions:
-            new_set.add_impression(i)
-        return new_set
-
-    def copy(self) -> ImpressionSet:
-        new_set = ImpressionSet()
-        new_set._impressions = self._impressions.copy()
-        return new_set
-
-    def first(self) -> Impression:
-        return self._impressions[0]
-
-    def for_entanglement(self, entanglement: Entanglement) -> ImpressionSet:
-        new_set = ImpressionSet()
-        if entanglement is None:
-            new_set._impressions = set([i for i in self._impressions])
-        else:
-            new_set._impressions = set([i for i in self._impressions if entanglement.matches(i.entanglement)])
-        return new_set
-
-    def not_for_entanglement(self, entanglement: Entanglement) -> ImpressionSet:
-        new_set = ImpressionSet()
-        new_set._impressions = set([i for i in self._impressions if not entanglement.matches(i.entanglement) or i.entanglement is None])
-        return new_set
-
-    def with_entanglement(self, entanglement: Entanglement) -> ImpressionSet:
-        new_set = ImpressionSet()
-        for i in self._impressions:
-            new_set.add_impression(i.with_entanglement(entanglement))
-        return new_set
-
-    @staticmethod
-    def create_over(impression: Impression | list[Impression]) -> ImpressionSet:
-        new_set = ImpressionSet()
-        if isinstance(impression, Impression):
-            impression = [impression]
-        new_set._impressions = impression.copy()
-        return new_set
-
-    def __iter__(self):
-        return self._impressions.__iter__()
-
-    def __len__(self) -> int:
-        return len(self._impressions)
-
-    def __eq__(self, __value: ImpressionSet) -> bool:
-        return all(x == y for x, y in zip(self._impressions, __value._impressions))
-
-    def __hash__(self) -> int:
-        return hash(sum([hash(x) for x in self._impressions]))
-
 
 class Impression():
     def __init__(self, shadow: Shadow, root: Trait, place: int, entanglement: Entanglement = None) -> None:

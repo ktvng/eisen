@@ -1,0 +1,53 @@
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+struct indirect {
+    mut p: ptr
+
+    create(p: mut ptr) -> self: new indirect {
+        self.p = p
+    }
+}
+
+fn main() {
+    let b = obj()
+    let B = ptr(b)
+    let Bin = indirect(B)
+
+    let c = obj()
+    test(c, Bin)
+
+    @compiler_assert(object_has_dependencies, B, "o: c")
+}
+
+fn test(b: obj, Bin: mut indirect) {
+    let a = obj()
+    test2(b, Bin)
+}
+
+fn test2(b: obj, Bin: mut indirect) {
+    Bin.p.o = b
+}
+
+/// [Test]
+/// name = "trace/angels/angels2"
+/// info = """\
+///     Angels map the correct dependency
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

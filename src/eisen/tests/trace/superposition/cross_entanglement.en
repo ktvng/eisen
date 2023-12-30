@@ -1,0 +1,60 @@
+fn pickFirst(a: obj, b: obj) -> c: obj {
+    c = a
+}
+
+fn pickSecond(a: obj, b: obj) -> c: obj{
+    c = b
+}
+
+fn test(b: obj, B: mut ptr, C: mut ptr) {
+    let a = obj()
+    let A = ptr(a)
+
+    var p1, p2 = b, a
+    mut P = B
+
+    var f = pickSecond
+
+    if (true) {
+        P = A
+    }
+    else {
+        f = pickFirst
+    }
+
+    P.o = f(p1, p2)
+}
+
+struct obj {
+    x: int
+
+    create() -> self: new obj {
+        self.x = 0
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn main() {
+    let b = obj()
+    let B = ptr(b)
+    let C = ptr(b)
+
+    test(b, B, C)
+}
+
+/// [Test]
+/// name = "trace/superposition/cross_entanglement"
+/// info = """\
+///     Test that crossed entanglement succeeds
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

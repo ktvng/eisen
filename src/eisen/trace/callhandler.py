@@ -1,6 +1,5 @@
 from __future__ import annotations
 import uuid
-import itertools
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Type
@@ -10,30 +9,25 @@ from eisen.common.eiseninstance import EisenFunctionInstance
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Angel
-from eisen.trace.memory import Memory
+from eisen.trace.memory import Memory, Function
 from eisen.trace.shadow import Shadow
 from eisen.trace.delta import FunctionDelta
-from eisen.trace.branchedrealitytag import BranchedRealityTag
+from eisen.trace.entanglement import Entanglement
 
 State = MemoryVisitorState
 class CallHander:
     def __init__(self,
+                 function: Function,
                  node: adapters.Call,
                  delta: FunctionDelta,
-                 param_memories: list[Memory],
-                 tags: set[BranchedRealityTag],
-                 all_reality_tags: set[BranchedRealityTag]) -> None:
+                 param_memories: list[Memory]) -> None:
 
-        print("CALL HANDLER", delta.function_name)
-        for t in tags:
-            print("calling with tags", t)
+        self.function = function
         self.node = node
         self.state: MemoryVisitorState = node.state
         self.delta = delta
         self.index: dict[uuid.UUID, Memory] = {}
-        self.param_memories: list[Memory] = [m.for_the_given_realities(tags, all_reality_tags) for m in param_memories]
-        self.tags = tags
-        self.all_reality_tags = all_reality_tags
+        self.param_memories: list[Memory] = param_memories
 
     def resolve_angel_into_memories(self, angel: Angel) -> list[Memory]:
         """
@@ -73,7 +67,7 @@ class CallHander:
         return memories
 
     @staticmethod
-    def associate_function_instance_to_delta(node: adapters.Call, function_instance: EisenFunctionInstance, fn: Visitor):
+    def _associate_function_instance_to_delta(node: adapters.Call, function_instance: EisenFunctionInstance, fn: Visitor):
         delta = fn.function_db.get_function_delta(function_instance.get_full_name())
         if delta is None:
             fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
@@ -81,29 +75,20 @@ class CallHander:
         return delta
 
     @staticmethod
-    def aquire_function_deltas_and_tags(node: adapters.Call, fn: Visitor) -> list[FunctionDelta]:
+    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Function, FunctionDelta]]:
         if node.is_pure_function_call():
-            return [(CallHander.associate_function_instance_to_delta(
+            return [(None, CallHander._associate_function_instance_to_delta(
                 node=node,
                 function_instance=node.get_function_instance(),
-                fn=fn), set([BranchedRealityTag(uuid.UUID(int=0), 0)]), set())]
+                fn=fn))]
         else:
             # take the first as there should only be one Memory returned from a (ref ...) node
             caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            all_realities = set()
-            for f in caller_memory.functions:
-                for tag in f.tags:
-                    all_realities.add(tag)
-            x = [(CallHander.associate_function_instance_to_delta(
-                node=node,
-                function_instance=f.function_instance,
-                fn=fn), f.tags, all_realities) for f in caller_memory.functions]
             x = []
             for f in caller_memory.functions:
-                for t in f.tags:
-                    x.append((CallHander.associate_function_instance_to_delta(
-                        node=node,
-                        function_instance=f.function_instance, fn=fn), set([t]), all_realities))
+                x.append((f, CallHander._associate_function_instance_to_delta(
+                    node=node,
+                    function_instance=f.function_instance, fn=fn)))
             return x
 
     def build_remapping_index(self, param_memories: list[Memory]):
@@ -125,7 +110,6 @@ class CallHander:
         for angel in self.delta.angels:
             possible_argument_trait_memories = self.resolve_angel_into_memories(angel)
             self.index[angel.uid] = possible_argument_trait_memories
-
 
     def resolve_angels(self):
         # Remapping is necessary so that any dependency uids stored in the Shadow within the
@@ -153,9 +137,8 @@ class CallHander:
     def resolve_updated_arguments(self, param_memories: list[Memory]):
         arg_shadows = [s.remap_via_index(self.index) for s in self.delta.arg_shadows]
         for memory, update_with_shadow in zip(param_memories, arg_shadows):
-            for impression in memory.for_the_given_realities(self.tags, self.all_reality_tags).impressions:
-                self.state.update_source_of_impression(impression,
-                    update_with_shadow.for_the_given_realities(impression.tags, self.all_reality_tags))
+            for impression in memory.impressions:
+                self.state.update_source_of_impression(impression, update_with_shadow)
 
     @staticmethod
     def should_select_shadow(type: Type):
@@ -163,17 +146,22 @@ class CallHander:
 
     def select_shadow_or_memory(self, i: int, type: Type, shadows: list[Shadow], memories: list[Memory]) -> Shadow | Memory:
         match CallHander.should_select_shadow(type):
-            case True: return shadows[i].for_the_given_realities(self.tags, self.all_reality_tags)
-            case False:
-                print("original memory: ", memories[i])
-                memory = memories[i].for_the_given_realities(self.tags, self.all_reality_tags).with_tag(next(iter(self.tags))) #.replace_base_with_tag(next(iter(self.tags)))
-                return memory
-
+            case True: return shadows[i]
+            case False: return memories[i]
 
     def filter_return_values(self, shadows: list[Shadow], memories: list[Memory]):
         return_types = self.node.get_function_return_type().unpack_into_parts()
         return [self.select_shadow_or_memory(i, type, shadows, memories)
             for i, type in enumerate(return_types)]
+
+    def add_entanglement(self, memory: Memory) -> Memory:
+        """
+        If the current function call occurs in the context of an function that is entangled,
+        then the resulting return value must also have this entanglement.
+        """
+        if self.function is not None and self.function.entanglement is not None:
+            return memory.with_entanglement(self.function.entanglement)
+        return memory
 
     def resolve_updated_returns(self) -> list[Shadow | Memory]:
         if self.node.get_function_return_type() == self.state.get_void_type():
@@ -181,7 +169,8 @@ class CallHander:
 
         return self.filter_return_values(
             shadows=[s.remap_via_index(self.index) for s in self.delta.ret_shadows],
-            memories=[m.remap_via_index(self.index) for m in self.delta.ret_memories])
+            memories=[self.add_entanglement(m.remap_via_index(self.index))
+                      for m in self.delta.ret_memories])
 
     def resolve_entity_moves(self, param_memories: list[Memory]):
         for type_, memory in zip(self.node.get_function_argument_type().unpack_into_parts(), param_memories):
@@ -189,18 +178,72 @@ class CallHander:
                 for impression in memory.impressions:
                     impression.shadow.entity.moved = True
 
-    def start(self) -> CallHander:
+    def resolve_outcome(self) -> list[Shadow | Memory]:
         if self.node.is_print():
             return self
 
         self.build_remapping_index(self.param_memories)
-        return self
-
-    def resolve_outcome(self) -> list[Shadow | Memory]:
         self.resolve_angels()
         self.resolve_updated_arguments(self.param_memories)
         self.resolve_entity_moves(self.param_memories)
         ret = self.resolve_updated_returns()
-        for r in ret:
-            print(f"{self.delta.function_name} returning   ", r)
         return ret
+
+    @staticmethod
+    def get_call_handlers(
+            node: adapters.Call,
+            fn: Visitor,
+            param_memories: list[Memory]) -> list[CallHander]:
+
+        handlers = []
+        for function, delta in CallHander._aquire_function_deltas(node, fn):
+            handlers.extend(CallHander._get_call_handlers_for_each_reality(
+                function=function,
+                node=node,
+                delta=delta,
+                param_memories=param_memories))
+
+        return handlers
+
+    @staticmethod
+    def _get_call_handlers_for_each_reality(
+            function: Function,
+            node: adapters.Call,
+            delta: FunctionDelta,
+            param_memories: list[Memory]) -> list[CallHander]:
+
+        if function and function.entanglement:
+            return [CallHander(
+                function, node, delta,
+                [memory.for_entanglement(function.entanglement) for memory in param_memories])]
+
+        realities = CallHander._divide_parameters_by_entanglement(param_memories)
+        if realities:
+            return CallHander._construct_call_handler_for_realities(function, node, delta, realities)
+        return [CallHander(function, node, delta, param_memories)]
+
+    @staticmethod
+    def _find_next_entanglement_present(param_memories: list[Memory]) -> Entanglement:
+        for memory in param_memories:
+            for impression in memory.impressions:
+                if impression.entanglement:
+                    return impression.entanglement
+        return None
+
+    @staticmethod
+    def _divide_parameters_by_entanglement(param_memories: list[Memory]) -> list[list[Memory]]:
+        realities: list[list[Memory]] = []
+        while entanglement := CallHander._find_next_entanglement_present(param_memories):
+            entangled_memories = [memory.for_entanglement(entanglement) for memory in param_memories]
+            realities.append(entangled_memories)
+            param_memories = [memory.not_for_entanglement(entanglement) for memory in param_memories]
+        return realities
+
+    @staticmethod
+    def _construct_call_handler_for_realities(
+            function: Function,
+            node: adapters.Call,
+            delta: FunctionDelta,
+            realities: list[list[Memory]]) -> list[CallHander]:
+
+        return [CallHander(function, node, delta, reality) for reality in realities]

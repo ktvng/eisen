@@ -1,12 +1,76 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import uuid
 
 import eisen.adapters as adapters
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Trait
-from eisen.trace.memory import Memory, Impression, ImpressionSet, Function
+from eisen.trace.memory import Memory
 from eisen.trace.shadow import Shadow, Personality
-from eisen.trace.branchedrealitytag import BranchedRealityTag
+from eisen.trace.entanglement import Entanglement
+
+@dataclass
+class ConditionalMemory():
+    """
+    This represents a memory defined outside of a conditional context, that may have
+    been modified inside the conditional context
+    """
+
+    memory: Memory | None
+    branch_id: uuid.UUID
+
+    def get_dependency_depths_set(self) -> set[int]:
+        """
+        Return a set of the depths of all impressions of this memory
+        """
+        if self.memory is None: return None
+        return set([i.shadow.entity.depth for i in self.memory.impressions])
+
+    def get_memory(self, with_entanglement: bool):
+        if self.memory is None: return None
+        if with_entanglement: return self.memory.with_entanglement(Entanglement(self.branch_id))
+        else: return self.memory
+
+    def get_function_set(self) -> set:
+        if self.memory is None: return None
+        return set([f.function_instance for f in self.memory.functions._functions])
+
+@dataclass
+class ConditionalContext():
+    memory_name: str
+    conditional_memories: list[ConditionalMemory]
+    has_possible_entanglement: bool = False
+
+    def check_for_entanglement(self) -> bool:
+        """
+        Returns true of the [memories] contain a superposition
+        """
+        if len(self.conditional_memories) < 2: return False # TODO: will this ever get called?
+
+        # case for impressions
+        depth_sets = [memory.get_dependency_depths_set() for memory in self.conditional_memories]
+        impressions_entangled = not all(sets == depth_sets[0] for sets in depth_sets if sets is not None)
+
+        # case for functions
+        function_sets = [memory.get_function_set() for memory in self.conditional_memories]
+        functions_entangled = not all(sets == function_sets[0] for sets in function_sets if sets is not None)
+
+        self.has_possible_entanglement = impressions_entangled or functions_entangled
+        return self.has_possible_entanglement
+
+    def get_memories(self, should_use_entanglement: bool) -> list[Memory]:
+        memories = [cm.get_memory(should_use_entanglement)
+                    for cm in self.conditional_memories]
+        return [m for m in memories if m is not None]
+
+@dataclass
+class FusionContext():
+    conditional_contexts: list[ConditionalContext]
+
+    def has_entanglement(self):
+        possible_entanglements = [context.check_for_entanglement() for context in self.conditional_contexts]
+        return possible_entanglements.count(True) > 1
+
 
 State = MemoryVisitorState
 class RealityFuser:
@@ -42,6 +106,39 @@ class RealityFuser:
         """
         self.origin_state = origin_state
         self.branch_states = branch_states
+
+    def number_of_realities(self) -> int:
+        """
+        :return: The number of realties (branches) of a conditional, including the default reality
+        :rtype: int
+        """
+        return len(self.branch_states) + (0 if self.branching_is_exhaustive() else 1)
+
+    def fuse_memory_with_entanglements(self, names: list[str]):
+        reality_ids = [uuid.uuid4() for i in range(self.number_of_realities())]
+        fusion_context = FusionContext([])
+
+        # init the fusion context
+        for name in names:
+            prior_memory = self.origin_state.get_memory(name)
+
+            # update set contains the individual memories from each branch reality
+            update_set = [self.get_memory_in_branch(branch, name, prior_memory)
+                        for branch in self.branch_states]
+            if not self.branching_is_exhaustive():
+                update_set.append(prior_memory)
+            conditional_memories = [ConditionalMemory(memory, id) for memory, id in zip(update_set, reality_ids)]
+            fusion_context.conditional_contexts.append(ConditionalContext(name, conditional_memories))
+
+        is_entangled = fusion_context.has_entanglement()
+
+        tuples = []
+        for conditional_context in fusion_context.conditional_contexts:
+            memory = RealityFuser.fuse_memories_from_different_realities(
+                memories=conditional_context.get_memories(should_use_entanglement=is_entangled))
+            tuples.append((conditional_context.memory_name, memory))
+
+        return tuples
 
     @staticmethod
     def branch_has_return_statement(branch: State) -> bool:
@@ -125,36 +222,11 @@ class RealityFuser:
                         traits.add(trait)
         return traits
 
-    def fuse_memory_for(self, name: str):
-        """
-        Fuse the memory by [name] after a conditional branch.
-        """
-        prior_memory = self.origin_state.get_memory(name)
-
-        # update set contains the individual memories from each branch reality
-        update_set = [self.get_memory_in_branch(branch, name, prior_memory)
-                      for branch in self.branch_states]
-        update_set = [m for m in update_set if m is not None]
-        if not self.branching_is_exhaustive():
-            update_set.append(prior_memory)
-
-        return RealityFuser.fuse_memories_from_different_realities(memories=update_set)
-
-    @staticmethod
-    def decompose_superposition(memories: list[Memory]) -> set[BranchedRealityTag]:
-        tags: set[BranchedRealityTag] = set()
-        for m in memories:
-            for i in m.impressions:
-                tags.add(i)
-        return tags
-
     @staticmethod
     def fuse_memories_from_different_realities(memories: list[Memory]) -> Memory:
-        # for tag in RealityFuser.decompose_superposition(memories):
-
-            return Memory.merge_all(
-                memories=memories,
-                rewrites=True)
+        return Memory.merge_all(
+            memories=memories,
+            rewrites=True)
 
     @staticmethod
     def fuse_shadows_from_different_realities(shadows: list[Shadow]) -> Shadow:
@@ -200,8 +272,7 @@ class RealityFuser:
         (memory.name, memory) for each fused memory.
         """
         updated_memories_names = self.all_updated_memory_names()
-        return [(name, self.fuse_memory_for(name))
-                for name in updated_memories_names]
+        return self.fuse_memory_with_entanglements(updated_memories_names)
 
     def fuse_memory_for_trait(self, trait: Trait, prior_shadow: Shadow) -> Memory:
         """
@@ -262,7 +333,6 @@ class RealityFuser:
         return False
 
     def all_updated_memories(self) -> set[Memory]:
-
         """
         Returns a set of all memory names which may have been updated
         in any branch of the conditional.

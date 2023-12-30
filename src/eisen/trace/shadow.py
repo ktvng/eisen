@@ -5,7 +5,6 @@ import uuid
 
 from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory
-from eisen.trace.branchedrealitytag import BranchedRealityTag
 if TYPE_CHECKING:
     from eisen.trace.entity import Entity
     from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -46,23 +45,6 @@ class Shadow():
                       epoch=self.epoch,
                       faded=self.faded,
                       personality=self.personality.update_with(other_personality, root, depth=self.entity.depth))
-
-    def for_the_given_realities(self, tags: set[BranchedRealityTag], possible_tags: set[BranchedRealityTag]) -> Shadow:
-        # no filtering needed
-        if not tags:
-            return self
-        return Shadow(entity=self.entity,
-                      epoch=self.epoch,
-                      faded=self.faded,
-                      personality=self.personality.for_the_given_realities(tags, possible_tags))
-
-
-    def for_reality_of_superposition(self, tag: BranchedRealityTag) -> Shadow:
-        return Shadow(entity=self.entity,
-                      epoch=self.epoch,
-                      faded=self.faded,
-                      personality=self.personality.for_reality_of_superposition(tag))
-
 
     # TODO: need to validate that personality doesn't depend on higher depth
     # objects.
@@ -122,24 +104,6 @@ class Personality():
 
         merged_memories: dict[Trait, Memory] = { **self.memories }
         Personality._merge_memory_dicts(merged_memories, other_personality, root=root, depth=depth)
-        return Personality(merged_memories)
-
-    def for_the_given_realities(self, tags: set[BranchedRealityTag]) -> Personality:
-        merged_memories: dict[Trait, Memory] = { }
-        for key, memory in self.memories.items():
-            merged_memories[key] = memory.for_the_given_realities(tags)
-        return Personality(merged_memories)
-
-    def for_the_given_realities(self, tags: set[BranchedRealityTag], possible_tags: set[BranchedRealityTag] = None) -> Memory:
-        merged_memories: dict[Trait, Memory] = { }
-        for key, memory in self.memories.items():
-            merged_memories[key] = memory.for_the_given_realities(tags, possible_tags)
-        return Personality(merged_memories)
-
-    def for_reality_of_superposition(self, tag: BranchedRealityTag) -> Personality:
-        merged_memories: dict[Trait, Memory] = { }
-        for key, memory in self.memories.items():
-            merged_memories[key] = memory.for_reality_of_superposition(tag)
         return Personality(merged_memories)
 
     def restore_to_healthy(self) -> Personality:

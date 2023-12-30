@@ -15,7 +15,6 @@ from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHander
-from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -66,10 +65,11 @@ class MemoryVisitor(Visitor):
     def _def(fn, state: State):
         node = adapters.Def(state)
         # print(node.get_function_name())
+        if fn.function_db.get_function_delta(node.get_function_instance().get_full_name()) is not None:
+            return []
 
         fn_context = state.create_isolated_context()
-        fn_state = state.but_with(context=fn_context, function_base_context=fn_context, depth=0,
-            branch_tag=BranchedRealityTag(uuid.UUID(int=0), 0))
+        fn_state = state.but_with(context=fn_context, function_base_context=fn_context, depth=0)
 
         fn.apply(fn_state.but_with(ast=node.get_args_ast()))
         fn.apply(fn_state.but_with(ast=node.get_rets_ast()))
@@ -80,7 +80,7 @@ class MemoryVisitor(Visitor):
             depth=1,
             rets=[fn_state.get_entity(name) for name in node.get_ret_names()],
             args=[fn_state.get_entity(name) for name in node.get_arg_names()],
-            angels=[])
+            angels=angels)
         fn.apply(fn_state.but_with(ast=node.get_seq_ast()))
 
         # add a new function_delta for this function
@@ -130,7 +130,7 @@ class MemoryVisitor(Visitor):
             impressions=ImpressionSet(),
             depth=state.get_depth(),
             functions=FunctionSet.create_over(
-                Function(state.get_instances()[0], set([state.get_branch_tag()]))))]
+                Function(state.get_instances()[0])))]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
@@ -200,11 +200,8 @@ class MemoryVisitor(Visitor):
             return []
 
         param_memories = fn.apply(state.but_with_second_child())
-        # print(len(CallHander.aquire_function_deltas_and_tags(node, fn)))
-        realities = [CallHander(node=node, delta=delta, param_memories=param_memories, tags=tags, all_reality_tags=all_reality_tags).start()
-            for delta, tags, all_reality_tags in CallHander.aquire_function_deltas_and_tags(node, fn)]
+        realities = CallHander.get_call_handlers(node, fn, param_memories)
 
-        # print("calling function", node.get_function_name())
         outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
         return RealityFuser.fuse_outcomes_together(outcomes)
 
@@ -283,8 +280,7 @@ class MemoryVisitor(Visitor):
         branch_state = parent_state.but_with(
             ast=child,
             context=parent_state.create_block_context(),
-            depth=parent_state.get_depth() + 1,
-            branch_tag=BranchedRealityTag(uid, number, parent_state.get_branch_tag()))
+            depth=parent_state.get_depth() + 1)
         fn.apply(branch_state)
         return branch_state
 
@@ -327,6 +323,4 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        print(state.get_memory("p1"))
-        print(state.get_memory("p2"))
-        print(state.get_memory("P"))
+        print(state.get_memory("x"))

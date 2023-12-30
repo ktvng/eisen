@@ -12,7 +12,6 @@ from eisen.state.basestate import BaseState as State
 from eisen.state.movevisitorstate import MoveVisitorState
 from eisen.validation.nilablestatus import NilableStatus
 from eisen.__moves.moveepoch import Entity
-from eisen.trace.branchedrealitytag import BranchedRealityTag
 
 if TYPE_CHECKING:
     from eisen.trace.entity import Trait

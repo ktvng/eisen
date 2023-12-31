@@ -184,8 +184,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             rewrites=True,
             impressions=MemorableSet.create_over(
                 Impression(shadow=shadow,
-                           root=Trait(),
-                           place=self.get_line_number())),
+                           root=Trait())),
             depth=self.get_depth()))
 
     def create_new_angel_memory(self, trait: Trait, entity: Entity) -> Memory:
@@ -196,6 +195,5 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             rewrites=True,
             impressions=MemorableSet.create_over(Impression(
                 shadow=angel_shadow,
-                root=Trait(),
-                place=-1)),
+                root=Trait())),
             depth=self.get_depth())

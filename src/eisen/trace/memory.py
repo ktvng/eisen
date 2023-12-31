@@ -219,25 +219,22 @@ class Function():
             self.function_instance,
             self.entanglement.with_sub_entanglement(entanglement.uid))
 
+@dataclass
 class Impression():
-    def __init__(self, shadow: Shadow, root: Trait, place: int, entanglement: Entanglement = None) -> None:
-        self.shadow = shadow
-        self.root = root
-        self.place = place
-        self.entanglement = entanglement
+    shadow: Shadow
+    root: Trait
+    entanglement: Entanglement | None = None
 
     def with_entanglement(self, entanglement: Entanglement) -> Impression:
         if self.entanglement is None:
             return Impression(
                 self.shadow,
                 self.root,
-                self.place,
                 entanglement)
 
         return Impression(
             self.shadow,
             self.root,
-            self.place,
             self.entanglement.with_sub_entanglement(entanglement.uid))
 
     def __str__(self) -> str:

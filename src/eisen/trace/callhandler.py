@@ -30,6 +30,7 @@ class CallHandler:
         :param param_memories: An list of memories, corresponding to, and in the same order, as the
         parameters passed into the eisen function call.
         """
+        # print("call handling for", delta.function_name)
         self.impression = impression
         self.node = node
         self.state: MemoryVisitorState = node.state
@@ -267,10 +268,13 @@ class CallHandlerFactory:
         else:
             # take the first as there should only be one Memory returned from a (ref ...)
             caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            return [(i,
+            tuples = []
+            for i in caller_memory.impressions:
+                for inst in i.shadow.function_instances:
+                    tuples.append((i,
                      CallHandlerFactory._associate_function_instance_to_delta(
-                        node=node, function_instance=i.shadow.function_instances, fn=fn)
-                    ) for i in caller_memory.impressions]
+                        node=node, function_instance=inst, fn=fn)))
+            return tuples
 
     @staticmethod
     def _get_call_handlers_for_each_reality(

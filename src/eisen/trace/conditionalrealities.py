@@ -37,12 +37,13 @@ class ConditionalMemory():
         if is_entangled: return self.memory.with_entanglement(Entanglement(self.branch_id))
         else: return self.memory
 
+    # TODO: smoothen out this logic
     def get_function_set(self) -> set:
         """
         Return the set of all functions of this memory.
         """
         if self.memory is None: return None
-        return set([i.shadow.function_instances for i in self.memory.impressions])
+        return set([instance for i in self.memory.impressions for instance in i.shadow.function_instances])
 
 @dataclass
 class ConditionalContext():

@@ -132,7 +132,7 @@ class MemoryVisitor(Visitor):
             rewrites=True,
             depth=state.get_depth(),
             impressions=MemorableSet.create_over(
-                Impression(Shadow(entity=origin_entity, function_instances=state.get_instances()[0]), root=Trait())
+                Impression(Shadow(entity=origin_entity, function_instances=state.get_instances()), root=Trait())
             ))]
 
     @Visitor.for_ast_types("ref")
@@ -210,14 +210,17 @@ class MemoryVisitor(Visitor):
     def _curry_call(fn, state: State):
         # there is only one function of a (fn ...) node
         function_memory = fn.apply(state.but_with_first_child())[0]
-        if len(function_memory.impressions) != 1:
-            raise Exception("expected only one function why was there more?")
+        personalities = []
+        for impression in function_memory.impressions:
+            # add curried memories (if existing) from the parent function, then any additionals.
+            curried_memories = impression.shadow.personality.as_curried_params() + fn.apply(state.but_with_second_child())
+            traits = [Trait(str(i)) for i in range(len(curried_memories))]
+            personality = Personality({ trait: memory for trait, memory in zip(traits, curried_memories) })
+            personalities.append(personality)
 
-        # add curried memories (if existing) from the parent function, then any additionals.
-        curried_memories = function_memory.impressions.first().shadow.personality.as_curried_params() + fn.apply(state.but_with_second_child())
-        traits = [Trait(str(i)) for i in range(len(curried_memories))]
-        personality = Personality({ trait: memory for trait, memory in zip(traits, curried_memories) })
-        return [function_memory.impressions.first().shadow.update_personality(personality, root=Trait())]
+        personality = Personality.merge_all(personalities)
+        shadow = Shadow.merge_all([impression.shadow for impression in function_memory.impressions])
+        return [shadow.update_personality(personality, root=Trait())]
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):
@@ -334,4 +337,7 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        print(state.get_memory("g").impressions.first().shadow)
+        s = state.get_shadow(state.get_entity("g"))
+        print(s)
+        for i in s.function_instances:
+            print(i)

@@ -24,7 +24,7 @@ class Shadow():
 
     def update_with(self, other: Shadow, root: Trait, depth: int) -> Shadow:
         return Shadow(entity=self.entity,
-                      function_instances=self.function_instances if self.function_instances else other.function_instances,
+                      function_instances=self.function_instances + other.function_instances,
                       personality=self.personality.update_with(other.personality, root, depth))
 
     def update_personality(self, other_personality: Personality, root: Trait,) -> Shadow:
@@ -47,7 +47,7 @@ class Shadow():
     def merge_all(shadows: list[Shadow]) -> Shadow:
         return Shadow(
             entity=shadows[0].entity,
-            function_instances=None, # TODO: does this work
+            function_instances=[instance for shadow in shadows for instance in shadow.function_instances],
             personality=Personality.merge_all([s.personality for s in shadows]))
 
     def __str__(self) -> str:

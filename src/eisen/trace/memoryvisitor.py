@@ -9,16 +9,18 @@ import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Angel, Trait
-from eisen.trace.memory import Memory, Function, MemorableSet
-from eisen.trace.shadow import Shadow
+from eisen.trace.memory import Memory, MemorableSet, Impression
+from eisen.trace.shadow import Shadow, Personality
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHandlerFactory
+from eisen.trace.entity import Entity
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 
+origin_entity = Entity("origin", -1)
 State = MemoryVisitorState
 class MemoryVisitor(Visitor):
     def __init__(self, debug: bool = False):
@@ -125,11 +127,13 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("fn")
     def _fn(fn, state: State):
+        # TODO: can entity not be none?
         return [Memory(
             rewrites=True,
             depth=state.get_depth(),
-            functions=MemorableSet.create_over(
-                Function(state.get_instances()[0])))]
+            impressions=MemorableSet.create_over(
+                Impression(Shadow(entity=origin_entity, function_instances=state.get_instances()[0]), root=Trait())
+            ))]
 
     @Visitor.for_ast_types("ref")
     def _ref(fn, state: State):
@@ -204,14 +208,16 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("curry_call")
     def _curry_call(fn, state: State):
-        node = adapters.CurriedCall(state)
-
         # there is only one function of a (fn ...) node
         function_memory = fn.apply(state.but_with_first_child())[0]
-        curried_memories = fn.apply(state.but_with_second_child())
-        for f in function_memory.functions:
-            f.curried_memories += curried_memories
-        return [function_memory]
+        if len(function_memory.impressions) != 1:
+            raise Exception("expected only one function why was there more?")
+
+        # add curried memories (if existing) from the parent function, then any additionals.
+        curried_memories = function_memory.impressions.first().shadow.personality.as_curried_params() + fn.apply(state.but_with_second_child())
+        traits = [Trait(str(i)) for i in range(len(curried_memories))]
+        personality = Personality({ trait: memory for trait, memory in zip(traits, curried_memories) })
+        return [function_memory.impressions.first().shadow.update_personality(personality, root=Trait())]
 
     @Visitor.for_ast_types("cond")
     def _cond(fn, state: State):
@@ -272,17 +278,14 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("if")
     def _if(fn, state: State) -> Type:
-        if_complex_uid = uuid.uuid4()
-        branch_states = [MemoryVisitor.apply_fn_in_branch_and_return_branch_state(state, fn, if_complex_uid, i, child)
-                         for i, child in enumerate(state.get_child_asts())]
+        branch_states = [MemoryVisitor.apply_fn_in_branch_and_return_branch_state(state, fn, child)
+                         for child in state.get_child_asts()]
         RealityFuser(origin_state=state, branch_states=branch_states).fuse_realities_after_conditional()
 
     @staticmethod
     def apply_fn_in_branch_and_return_branch_state(
             parent_state: State,
             fn: Visitor,
-            uid: uuid.UUID,
-            number: int,
             child: AST) -> State:
 
         branch_state = parent_state.but_with(
@@ -331,4 +334,4 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        print(state.get_memory("P"))
+        print(state.get_memory("g").impressions.first().shadow)

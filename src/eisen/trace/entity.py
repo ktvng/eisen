@@ -38,6 +38,9 @@ class Trait():
     def __str__(self) -> str:
         return self.value
 
+    def __lt__(self, other) -> bool:
+        return self.value < other.value
+
 class Angel(Entity):
     def __init__(self, trait: Trait, entity: Entity) -> None:
         super().__init__(entity.name + "." + trait.value, entity.depth)

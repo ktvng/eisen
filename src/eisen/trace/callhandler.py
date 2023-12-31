@@ -9,7 +9,7 @@ from eisen.common.eiseninstance import EisenFunctionInstance
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Angel
-from eisen.trace.memory import Memory, Function
+from eisen.trace.memory import Memory, Impression
 from eisen.trace.shadow import Shadow
 from eisen.trace.delta import FunctionDelta
 from eisen.trace.entanglement import Entanglement
@@ -17,25 +17,20 @@ from eisen.trace.entanglement import Entanglement
 State = MemoryVisitorState
 class CallHandler:
     def __init__(self,
-                 function: Function,
+                 impression: Impression,
                  node: adapters.Call,
                  delta: FunctionDelta,
                  param_memories: list[Memory]) -> None:
         """
         Create a new CallHandler
 
-        :param function: The function which is being called (if from a variable), or None if it is
-        a pure function call
-        :type function: Function
+        :param impression: The impression of with entanglement/function information.
         :param node: The AST node of the function
-        :type node: adapters.Call
         :param delta: The delta caused by the function
-        :type delta: FunctionDelta
         :param param_memories: An list of memories, corresponding to, and in the same order, as the
         parameters passed into the eisen function call.
-        :type param_memories: list[Memory]
         """
-        self.function = function
+        self.impression = impression
         self.node = node
         self.state: MemoryVisitorState = node.state
         self.delta = delta
@@ -174,8 +169,8 @@ class CallHandler:
         If the current function call occurs in the context of an function that is entangled,
         then the resulting return value must also have this entanglement.
         """
-        if self.function is not None and self.function.entanglement is not None:
-            return memory.with_entanglement(self.function.entanglement)
+        if self.impression is not None and self.impression.entanglement is not None:
+            return memory.with_entanglement(self.impression.entanglement)
         return memory
 
     def resolve_updated_returns(self) -> list[Shadow | Memory]:
@@ -235,10 +230,10 @@ class CallHandlerFactory:
         this list is the nth parameters supplied to the function.
         """
         handlers = []
-        for function, delta in CallHandlerFactory._aquire_function_deltas(node, fn):
-            curried_memories = function.curried_memories if function else []
+        for impression, delta in CallHandlerFactory._aquire_function_deltas(node, fn):
+            curried_memories = impression.shadow.personality.as_curried_params() if impression else []
             handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
-                function=function,
+                impression=impression,
                 node=node,
                 delta=delta,
                 param_memories=curried_memories + param_memories))
@@ -260,11 +255,10 @@ class CallHandlerFactory:
         return delta
 
     @staticmethod
-    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Function, FunctionDelta]]:
+    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Impression | None, FunctionDelta]]:
         """
-        Returns tuples of Function and FunctionDelta, where Function is the eisen/trace/Fuction
-        that wraps the function being called (it is called from a variable) and FunctionDelta is
-        the delta which should be applied
+        Returns tuples of Impression? and FunctionDelta, where impression is the impression of a
+        function (if it is called from a variable) and FunctionDelta is the delta which should be applied
         """
         if node.is_pure_function_call():
             return [(None,
@@ -273,14 +267,14 @@ class CallHandlerFactory:
         else:
             # take the first as there should only be one Memory returned from a (ref ...)
             caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            return [(f,
+            return [(i,
                      CallHandlerFactory._associate_function_instance_to_delta(
-                        node=node, function_instance=f.function_instance, fn=fn)
-                    ) for f in caller_memory.functions]
+                        node=node, function_instance=i.shadow.function_instances, fn=fn)
+                    ) for i in caller_memory.impressions]
 
     @staticmethod
     def _get_call_handlers_for_each_reality(
-            function: Function,
+            impression: Impression,
             node: adapters.Call,
             delta: FunctionDelta,
             param_memories: list[Memory]) -> list[CallHandler]:
@@ -288,17 +282,17 @@ class CallHandlerFactory:
         Return a list of CallHandlers where each handler exclusively processes the call for a given
         entanglement.
         """
-        if function and function.entanglement:
+        if impression and impression.entanglement:
             return [CallHandler(
-                function, node, delta,
-                [memory.for_entanglement(function.entanglement) for memory in param_memories])]
+                impression, node, delta,
+                [memory.for_entanglement(impression.entanglement) for memory in param_memories])]
 
         realities = CallHandlerFactory._divide_parameters_by_entanglement(param_memories)
         # if there are no entanglements, then simply return a call handler with the entire
         # param_memories
         if not realities:
-            return [CallHandler(function, node, delta, param_memories)]
-        return [CallHandler(function, node, delta, reality) for reality in realities]
+            return [CallHandler(impression, node, delta, param_memories)]
+        return [CallHandler(impression, node, delta, reality) for reality in realities]
 
     @staticmethod
     def _find_next_entanglement_present(param_memories: list[Memory]) -> Entanglement:

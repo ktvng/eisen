@@ -121,8 +121,10 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             raise Exception("expected length 1?!")
 
         for impression in lval.memory.impressions:
-            self.update_source_of_impression(impression, with_shadow=shadow, trait=lval.trait)
-
+            shadow = self.update_source_of_impression(impression, with_shadow=shadow, trait=lval.trait)
+            memory = Memory(rewrites=True, depth=self.get_depth(), name=lval.name,
+                   impressions=MemorableSet.create_over(Impression(shadow=shadow, root=Trait())))
+            self._update_lval_variable(lval, memory)
 
     def _update_lval_attribute(self, lval: Lval, memory: Memory):
         """
@@ -155,10 +157,11 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             case Memory(), Trait(value = ""): self._update_lval_variable(lval, memory_or_shadow)
             case Memory(), _: self._update_lval_attribute(lval, memory_or_shadow)
 
-    def update_source_of_impression(self, impression: Impression, with_shadow: Shadow, trait: Trait = Trait()):
+    def update_source_of_impression(self, impression: Impression, with_shadow: Shadow, trait: Trait = Trait()) -> Shadow:
         new_shadow = self.get_shadow(impression.shadow.entity)\
             .update_with(with_shadow, impression.root.join(trait), self.get_depth())
         self.add_shadow(new_shadow)
+        return new_shadow
 
     def add_trait(self, shadow: Shadow, trait: Trait, memory: Memory):
         other_personality = Personality( { trait: memory })
@@ -172,7 +175,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
 
     def _recognize_entity(self, entity: Entity) -> Shadow:
         self.add_entity(entity.name, entity)
-        shadow = Shadow(entity, epoch=0, faded=False, personality=Personality(memories={}))
+        shadow = Shadow(entity=entity)
         self.add_shadow(shadow)
         return shadow
 

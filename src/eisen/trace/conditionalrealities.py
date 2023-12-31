@@ -42,7 +42,7 @@ class ConditionalMemory():
         Return the set of all functions of this memory.
         """
         if self.memory is None: return None
-        return set([f.function_instance for f in self.memory.functions])
+        return set([i.shadow.function_instances for i in self.memory.impressions])
 
 @dataclass
 class ConditionalContext():

@@ -1,74 +1,60 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-
+from dataclasses import dataclass, field
 import uuid
 
+from eisen.common.eiseninstance import EisenFunctionInstance
 from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory
+from eisen.trace.entity import Entity
 if TYPE_CHECKING:
-    from eisen.trace.entity import Entity
     from eisen.state.memoryvisitorstate import MemoryVisitorState
     State = MemoryVisitorState
 
+@dataclass(kw_only=True)
 class Shadow():
-    def __init__(self,
-                 entity: Entity,
-                 epoch: int,
-                 faded: bool,
-                 personality: Personality) -> None:
-        self.entity = entity
-        self.epoch = epoch
-        self.faded = faded
-        self.personality = personality
+    entity: Entity
+    personality: Personality = field(default_factory=lambda: Personality(memories={}))
+    function_instances: list[EisenFunctionInstance] = field(default_factory=list)
 
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Shadow:
         return Shadow(entity=self.entity,
-                      epoch=self.epoch,
-                      faded=self.faded,
+                      function_instances=self.function_instances,
                       personality=self.personality.remap_via_index(index))
 
-    def update_with(self,
-            other: Shadow,
-            root: Trait,
-            depth: int) -> Shadow:
-
+    def update_with(self, other: Shadow, root: Trait, depth: int) -> Shadow:
         return Shadow(entity=self.entity,
-                      epoch=other.epoch,
-                      faded=other.faded,
+                      function_instances=self.function_instances if self.function_instances else other.function_instances,
                       personality=self.personality.update_with(other.personality, root, depth))
 
-    def update_personality(self,
-                other_personality: Personality,
-                root: Trait,) -> Shadow:
-
+    def update_personality(self, other_personality: Personality, root: Trait,) -> Shadow:
         return Shadow(entity=self.entity,
-                      epoch=self.epoch,
-                      faded=self.faded,
-                      personality=self.personality.update_with(other_personality, root, depth=self.entity.depth))
+                      function_instances=self.function_instances,
+                      personality=self.personality.update_with(
+                          other_personality,
+                          root,
+                          depth=self.entity.depth))
 
-    # TODO: need to validate that personality doesn't depend on higher depth
-    # objects.
     def validate_dependencies_outlive_self(self, state: MemoryVisitorState):
         self.personality.validate_dependencies_outlive_self(state, self)
 
     def restore_to_healthy(self) -> Shadow:
         return Shadow(entity=self.entity,
-                      epoch=self.epoch,
-                      faded=self.faded,
+                      function_instances=self.function_instances,
                       personality=self.personality.restore_to_healthy())
 
     @staticmethod
     def merge_all(shadows: list[Shadow]) -> Shadow:
         return Shadow(
             entity=shadows[0].entity,
-            epoch=max([s.epoch for s in shadows]),
-            faded=any([s.faded for s in shadows]),
-            personality=Personality.merge_all([s.personality for s in shadows], shadows[0].entity.depth))
+            function_instances=None, # TODO: does this work
+            personality=Personality.merge_all([s.personality for s in shadows]))
 
     def __str__(self) -> str:
         return f"{self.entity.name} === \n{self.personality}"
 
-
+    def __hash__(self) -> int:
+        return hash(hash(self.entity) + hash(self.personality))
 
 class Personality():
     def __init__(self, memories: dict[Trait, Memory]) -> None:
@@ -116,8 +102,16 @@ class Personality():
         for name, memory in self.memories.items():
             memory.validate_dependencies_outlive_self(state, name, self_shadow)
 
+    def as_curried_params(self) -> list[Memory]:
+        """
+        Get the stored memories (in personality) as an ordered list based on the order that they were
+        curried. This relies on the precondition that curried parameters stored with the trait being
+        the order that they were added.
+        """
+        return [val for _, val in sorted(self.memories.items())]
+
     @staticmethod
-    def merge_all(personalities: list[Personality], depth: int) -> Personality:
+    def merge_all(personalities: list[Personality]) -> Personality:
         all_traits: set[Trait] = set()
         for p in personalities:
             all_traits = all_traits.union(set(p.memories.keys()))

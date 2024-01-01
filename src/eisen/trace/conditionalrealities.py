@@ -119,6 +119,7 @@ class ConditionalContext():
         functions_entangled = not all(sets == function_sets[0] for sets in function_sets if sets is not None)
 
         self.has_possible_entanglement = impressions_entangled or functions_entangled
+        # print(self.memory_name, self.has_possible_entanglement)
         return self.has_possible_entanglement
 
     def get_memories(self, are_entangled: bool) -> list[Memory]:

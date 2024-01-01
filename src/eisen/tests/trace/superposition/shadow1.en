@@ -1,0 +1,50 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn indirect(a: obj, q: mut ptr) {
+    let b = obj(2)
+    let p = ptr(b)
+
+    mut x: ptr
+
+    if (true) {
+        p.o = a
+        x = q
+    }
+    else {
+        p.o = b
+        x = p
+    }
+
+    x.o = p.o
+}
+
+
+fn main() {
+    let a = obj(1)
+    let q = ptr(a)
+    indirect(a, q)
+}
+
+/// [Test]
+/// name = "trace/superposition/shadow1"
+/// info = """\
+///     Shadow exhibits proper superposition
+/// """
+
+/// [Expects]
+/// success = true
+/// output = ""

@@ -106,7 +106,7 @@ class AttributeVisitor:
             new_memories.append(Memory(
                 rewrites=True,
                 impressions=MemorableSet.create_over([Impression(
-                    i.shadow, i.root.join(trait)) for i in m.impressions]),
+                    i.shadow, i.root.join(trait), i.entanglement) for i in m.impressions]),
                 depth=state.get_depth()))
         return new_memories
 

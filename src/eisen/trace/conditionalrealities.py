@@ -12,43 +12,54 @@ from eisen.trace.entanglement import Entanglement
 
 
 @dataclass
-class ShadowContext():
+class AbstractConditionalContext():
+    def __post_init__(self):
+        self._possible_entanglement: None = None
+
+
+@dataclass
+class ShadowContext(AbstractConditionalContext):
     entity: Entity
     shadows: list[Shadow | None]
     branch_ids: list[uuid.UUID]
-    entangled_traits: dict[Trait, ConditionalContext] = field(default_factory=dict)
+    entangled_traits: dict[Trait, ConditionalContext] | None = field(default_factory=dict)
 
-    def process_entanglement_of_trait(self, trait: Trait):
+    def _check_entanglement_of(self, trait: Trait):
         memories = [shadow.personality.get_memory(trait) if shadow else None
                     for shadow in self.shadows]
+
+        # create a conditional context for the memories for this trait accross all branches
+        # of the conditional
         context = ConditionalContext(
             memory_name=self.entity.name + "." + str(trait),
-            conditional_memories=[ConditionalMemory(memory, id) for memory, id in zip(memories, self.branch_ids)])
-        if context.check_for_entanglement():
-            self.entangled_traits[trait] = context
+            conditional_memories=[ConditionalMemory(memory, id)
+                                  for memory, id in zip(memories, self.branch_ids)])
 
-    def get_all_traits(self):
+        # we only need to record the conditional_context if there is a possible entanglement
+        if context.check_for_entanglement(): self.entangled_traits[trait] = context
+
+    def _all_traits(self):
         return set([trait for shadow in self.shadows if shadow is not None
                     for trait in shadow.personality.get_all_traits()])
 
     def check_for_entanglement(self) -> bool:
-        for trait in self.get_all_traits():
-            self.process_entanglement_of_trait(trait)
-        return len(self.entangled_traits) > 0
+        if self._possible_entanglement is not None: return self._possible_entanglement
+        for trait in self._all_traits(): self._check_entanglement_of(trait)
+        self._possible_entanglement = len(self.entangled_traits) > 0
+        return self._possible_entanglement
 
-    def _get_memory_across_realities(self, trait: Trait) -> list[Memory]:
+    def _get_fused_memory_without_entanglement(self, trait: Trait) -> list[Memory]:
         memories = [shadow.personality.get_memory(trait) for shadow in self.shadows]
-        return [m for m in memories if m is not None]
+        return Memory.merge_all([m for m in memories if m is not None], rewrites=True)
 
     def get_fused_personality(self, is_entangled: bool) -> Personality:
         trait_dict: dict[Trait, Memory] = {}
-        for trait in self.get_all_traits():
+        for trait in self._all_traits():
             if trait in self.entangled_traits:
                 conditional_context = self.entangled_traits[trait]
-                memories = conditional_context.get_memories(is_entangled)
+                memory = conditional_context.get_fused_memory(is_entangled)
             else:
-                memories = self._get_memory_across_realities(trait)
-            memory = Memory.merge_all(memories, True)
+                memory = self._get_fused_memory_without_entanglement(trait)
             trait_dict[trait] = memory
         return Personality(trait_dict)
 
@@ -91,7 +102,7 @@ class ConditionalMemory():
         return set([instance for i in self.memory.impressions for instance in i.shadow.function_instances])
 
 @dataclass
-class ConditionalContext():
+class ConditionalContext(AbstractConditionalContext):
     """
     This represents a slice accross conditonal branches of all conditional memories for a single,
     named variable. For instance, if 'x' is defined before a conditonal statement, and modified in
@@ -100,7 +111,6 @@ class ConditionalContext():
     """
     memory_name: str
     conditional_memories: list[ConditionalMemory]
-    has_possible_entanglement: bool = False
 
     def check_for_entanglement(self) -> bool:
         """
@@ -110,7 +120,10 @@ class ConditionalContext():
         Possible entanglement is defined as having different depths across different branchs of
         the conditional.
         """
-        # case for impressions
+        if self._possible_entanglement is not None: return self._possible_entanglement
+
+        # case for impressions.
+        # entanglement occurs if there is is non-homogeneity.
         depth_sets = [memory.get_dependency_depths_set() for memory in self.conditional_memories]
         impressions_entangled = not all(sets == depth_sets[0] for sets in depth_sets if sets is not None)
 
@@ -118,40 +131,49 @@ class ConditionalContext():
         function_sets = [memory.get_function_set() for memory in self.conditional_memories]
         functions_entangled = not all(sets == function_sets[0] for sets in function_sets if sets is not None)
 
-        self.has_possible_entanglement = impressions_entangled or functions_entangled
+        self._possible_entanglement = impressions_entangled or functions_entangled
         # print(self.memory_name, self.has_possible_entanglement)
-        return self.has_possible_entanglement
+        return self._possible_entanglement
 
-    def get_memories(self, are_entangled: bool) -> list[Memory]:
+    def get_fused_memory(self, is_entangled: bool) -> list[Memory]:
         """
-        Return the list of memories for all branches of this conditional context, with optional
-        entanglement if they [are_entangled]
+        Return the fused memory across all branches of this conditional.
         """
-        memories = [cm.get_memory(are_entangled) for cm in self.conditional_memories]
-        return [m for m in memories if m is not None]
+        memories = [cm.get_memory(is_entangled) for cm in self.conditional_memories]
+        return Memory.merge_all([m for m in memories if m is not None], rewrites=True)
 
 @dataclass
-class FusionContext():
+class FusionContext(AbstractConditionalContext):
     """
     Represents the entire context after a conditional, including ConditionalContexts for all
     modified memories.
     """
     conditional_contexts: list[ConditionalContext]
     shadow_contexts: list[ShadowContext]
-    is_entangled: bool | None = None
+
+    def get_contexts(self) -> list[ShadowContext | ConditionalContext]:
+        """
+        Return a list of all contexts that could exhibit entanglement.
+        """
+        return self.conditional_contexts + self.shadow_contexts
 
     def has_entanglement(self):
         """
         Per the isolation principle, a context after a conditional may be entangled if there are
         at least two conditional contexts (variables) which exhibit possible entanglement.
         """
-        if self.is_entangled is not None:
-            return self.is_entangled
-        possible_entanglements = [context.check_for_entanglement() for context in self.conditional_contexts]\
-            + [context.check_for_entanglement() for context in self.shadow_contexts]
-        self.is_entangled = possible_entanglements.count(True) > 1
-        return self.is_entangled
+        if self._possible_entanglement is not None: return self._possible_entanglement
+        possible_entanglements = [context.check_for_entanglement() for context in self.get_contexts()]
+        self._possible_entanglement = possible_entanglements.count(True) > 1
+        return self._possible_entanglement
 
+    def fuse_memory_with_entanglements(self) -> list[Memory]:
+        return [conditional_context.get_fused_memory(is_entangled=self.has_entanglement())
+                for conditional_context in self.conditional_contexts]
+
+    def fuse_personality_with_entanglements(self) -> list[Personality]:
+        return [shadow_context.get_fused_personality(is_entangled=self.has_entanglement())
+                for shadow_context in self.shadow_contexts]
 
 State = MemoryVisitorState
 class RealityFuser:
@@ -221,24 +243,7 @@ class RealityFuser:
             shadow_context = ShadowContext(prior_shadow.entity, update_set, self.reality_ids)
             fusion_context.shadow_contexts.append(shadow_context)
 
-        fusion_context.has_entanglement()
         return fusion_context
-
-    def fuse_memory_with_entanglements(self, fusion_context: FusionContext) -> list[Memory]:
-        memories = []
-        for conditional_context in fusion_context.conditional_contexts:
-            memory = RealityFuser.fuse_memories_from_different_realities(
-                memories=conditional_context.get_memories(are_entangled=fusion_context.has_entanglement()))
-            memories.append(memory)
-
-        return memories
-
-    def fuse_personality_with_entanglements(self, fusion_context: FusionContext) -> list[Personality]:
-        personalities = []
-        for shadow_context in fusion_context.shadow_contexts:
-            personality = shadow_context.get_fused_personality(fusion_context.has_entanglement())
-            personalities.append(personality)
-        return personalities
 
     @staticmethod
     def branch_has_return_statement(branch: State) -> bool:
@@ -301,26 +306,14 @@ class RealityFuser:
         return updated_shadows
 
     @staticmethod
-    def fuse_memories_from_different_realities(memories: list[Memory]) -> Memory:
-        return Memory.merge_all(
-            memories=memories,
-            rewrites=True)
-
-    @staticmethod
-    def fuse_shadows_from_different_realities(shadows: list[Shadow]) -> Shadow:
-        return Shadow.merge_all(shadows=shadows)
-
-    @staticmethod
-    def fuse_together(shadows_or_memories_from_different_realities: list[Shadow] | list[Memory]):
+    def _fuse_together(shadows_or_memories_from_different_realities: list[Shadow] | list[Memory]):
         match shadows_or_memories_from_different_realities[0]:
-            case Shadow(): return RealityFuser.fuse_shadows_from_different_realities(
-                shadows=shadows_or_memories_from_different_realities)
-
-            case Memory(): return RealityFuser.fuse_memories_from_different_realities(
-                memories =shadows_or_memories_from_different_realities)
+            case Shadow(): return Shadow.merge_all(shadows_or_memories_from_different_realities)
+            case Memory(): return Memory.merge_all(shadows_or_memories_from_different_realities,
+                                                   rewrites=True)
 
     @staticmethod
-    def collect_paralleled_shadows_or_memories_from_different_outcomes(pos: int, outcomes: list[list[Shadow | Memory]]) -> list[Shadow] | list[Memory]:
+    def _collect_paralleled_shadows_or_memories_from_different_outcomes(pos: int, outcomes: list[list[Shadow | Memory]]) -> list[Shadow] | list[Memory]:
         """
         The following transformation:
             pos:      0    1    2
@@ -340,8 +333,8 @@ class RealityFuser:
         is a list of these.
         """
         parallels = range(len(outcomes[0]))
-        return [RealityFuser.fuse_together(
-            RealityFuser.collect_paralleled_shadows_or_memories_from_different_outcomes(pos, outcomes))
+        return [RealityFuser._fuse_together(
+            RealityFuser._collect_paralleled_shadows_or_memories_from_different_outcomes(pos, outcomes))
             for pos in parallels]
 
     def fuse_realities_after_conditional(self):
@@ -353,11 +346,11 @@ class RealityFuser:
         updated_shadow_uids = self.all_updated_shadows()
         fusion_context = self.set_up_fusion_context(updated_memories_names, updated_shadow_uids)
 
-        memories = self.fuse_memory_with_entanglements(fusion_context)
+        memories = fusion_context.fuse_memory_with_entanglements()
         for name, memory in zip(updated_memories_names, memories):
             self.origin_state.add_memory(name, memory)
 
-        personalities = self.fuse_personality_with_entanglements(fusion_context)
+        personalities = fusion_context.fuse_personality_with_entanglements()
         for uid, personality in zip(updated_shadow_uids, personalities):
             self.origin_state.update_personality(uid, personality)
 

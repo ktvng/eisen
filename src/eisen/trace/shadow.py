@@ -63,6 +63,12 @@ class Personality():
     def get_memory(self, trait: Trait) -> Memory:
         return self.memories.get(trait)
 
+    def get_all_memories(self) -> list[Memory]:
+        return list(self.memories.values())
+
+    def get_all_traits(self) -> list[Trait]:
+        return list(self.memories.keys())
+
     @staticmethod
     def _merge_memory_dicts(merged_memories: dict[Trait, Memory],
                             other_personality: Personality,

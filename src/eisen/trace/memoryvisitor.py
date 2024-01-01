@@ -337,7 +337,5 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        s = state.get_shadow(state.get_entity("g"))
+        s = state.get_shadow(state.get_entity("p"))
         print(s)
-        for i in s.function_instances:
-            print(i)

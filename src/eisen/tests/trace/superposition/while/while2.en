@@ -1,0 +1,53 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn indirect(x: obj, X: mut ptr) {
+    let y = obj(0)
+    let Y = ptr(y)
+
+    var a, b, c = x, x, y
+    mut A, B, C = X, X, Y
+
+
+    while (false) {
+        A = B
+        B = C
+
+        a = b
+        b = c
+    }
+
+    A.o = b
+}
+
+fn main() {
+    let x = obj(0)
+    let X = ptr(x)
+    indirect(x, X)
+}
+
+/// [Test]
+/// name = "trace/superposition/while/while2"
+/// info = """\
+///     Crossing entanglements is bad
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = "Line 33:"

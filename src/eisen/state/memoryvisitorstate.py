@@ -138,6 +138,16 @@ class MemoryVisitorState(State_PostInstanceVisitor):
                 other_personality=Personality({ lval.trait: memory.for_entanglement(impression.entanglement) }),
                 root=impression.root)
 
+    def _init_lval_attribute(self, lval: Lval, shadow: Shadow):
+        """
+        This is the case where we are creating the attribute. We can't use _update_lval_shadow
+        because there is no associated memory.
+
+        self.y = z
+        """
+        for impression in lval.memory.impressions:
+            self.update_source_of_impression(impression, with_shadow=shadow, trait=lval.trait)
+
     def _update_lval_variable(self, lval: Lval, memory: Memory):
         """
         This is the case where we are updating a variable:
@@ -153,7 +163,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         # TODO: this is hacky to allow us to create a shadow for an lval that is
         # a let object
         match memory_or_shadow, lval.trait:
-            case Shadow(), _: self._update_lval_shadow(lval, memory_or_shadow)
+            case Shadow(), Trait(value = ""): self._update_lval_shadow(lval, memory_or_shadow)
+            case Shadow(), _: self._init_lval_attribute(lval, memory_or_shadow)
             case Memory(), Trait(value = ""): self._update_lval_variable(lval, memory_or_shadow)
             case Memory(), _: self._update_lval_attribute(lval, memory_or_shadow)
 

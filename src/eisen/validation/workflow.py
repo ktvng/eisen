@@ -76,8 +76,6 @@ class Workflow():
 
         NilCheck,
         MemoryVisitor,
-        # MemCheck,
-        # MoveVisitor
         # Printast,
 
         # note: def, create, fn, ref, ilet, :: need instances!!

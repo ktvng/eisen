@@ -131,4 +131,5 @@ class AttributeVisitor:
             lvals.append(Lval(name="",
                      memory=memory,
                      trait=trait))
+
         return lvals

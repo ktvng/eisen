@@ -231,10 +231,10 @@ class MemoryVisitor(Visitor):
         # There is one shared context for the conditional of the while loop
         # as well as the body
         cond_state = state.but_with(
-            ast=state.first_child(),
+            ast=state.first_child().first(),
             context=state.create_block_context())
 
-        encountered_memory_states: list[set[Memory]] = []
+        encountered_memory_states: set[int] = set()
         exceptions = []
 
         # Each time the while loop iterates is considered a "conditional branch" and
@@ -252,7 +252,6 @@ class MemoryVisitor(Visitor):
                 exceptions=exceptions)
 
             fn.apply(seq_state)
-
             # Preserve the state of the branch by forking its context. Add this
             # as the state in the "conditional" branch for the while loop.
             preserved_state_for_branch = seq_state.but_with(context=seq_state.get_context().fork())
@@ -261,18 +260,21 @@ class MemoryVisitor(Visitor):
             # We use the RealityFuser with the only branch being the seq_state of
             # this run of the while loop (as an optimization). This returns the final
             # state of each updated memory.
-            final_memory_states = RealityFuser(state, [seq_state]).all_updated_memories()
+            state_hash = RealityFuser(state, [seq_state]).get_hash_of_current_state()
 
             # If we've seen the final state of each Memory, then the while loop has
             # stabilized and we are done.
-            if final_memory_states in encountered_memory_states:
+            if state_hash in encountered_memory_states:
                 break
 
             # Otherwise, mark the state of each Memory as seen.
-            encountered_memory_states.append(final_memory_states)
+            encountered_memory_states.add(state_hash)
 
         fn.logger.log(f"Runs over while loop {times_run} times.")
-        RealityFuser(origin_state=state, branch_states=branch_states).fuse_realities_after_conditional()
+
+        # ignore the last branch state as this is the one where memories have equilibrated
+        # and so is a duplicate.
+        RealityFuser(origin_state=state, branch_states=branch_states[:-1]).fuse_realities_after_conditional()
 
         # Report any unique exceptions encountered through the while loop process.
         for e in set(exceptions):
@@ -337,5 +339,4 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        s = state.get_shadow(state.get_entity("p"))
-        print(s)
+        print(state.get_shadow(state.get_entity("p")))

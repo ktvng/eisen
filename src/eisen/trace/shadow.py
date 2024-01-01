@@ -134,3 +134,9 @@ class Personality():
         for key, memory in self.memories.items():
             s += f"| {key}: {memory}\n"
         return s
+
+    def __hash__(self) -> int:
+        val = ""
+        for k, v in self.memories.items():
+            val += str(hash(k)) + str(hash(v))
+        return hash(val)

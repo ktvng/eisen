@@ -293,7 +293,7 @@ class RealityFuser:
                     updated_memories.add(key)
         return updated_memories
 
-    def all_updated_shadows(self) -> set[uuid.UUID]:
+    def all_updated_shadows_ids(self) -> set[uuid.UUID]:
         """
         Returns a set of uuids for shadows which may have been updated in
         any branch of the conditional.
@@ -343,7 +343,7 @@ class RealityFuser:
         types back to a single value for the main timeline to proceed.
         """
         updated_memories_names = self.all_updated_memory_names()
-        updated_shadow_uids = self.all_updated_shadows()
+        updated_shadow_uids = self.all_updated_shadows_ids()
         fusion_context = self.set_up_fusion_context(updated_memories_names, updated_shadow_uids)
 
         memories = fusion_context.fuse_memories()
@@ -363,13 +363,20 @@ class RealityFuser:
             return True
         return False
 
-    def all_updated_memories(self) -> set[Memory]:
-        """
-        Returns a set of all memory names which may have been updated
-        in any branch of the conditional.
-        """
-        updated_memories: set[Memory] = set()
+    # TODO: hashing likely is circular
+    def compute_hash(self, objs: set[Shadow | Memory]) -> int:
+        hashstr = ""
+        for obj in objs:
+            hashstr += str(hash(obj))
+        return hash(hashstr)
+
+    def get_hash_of_current_state(self) -> int:
+        things: set[Memory | Shadow] = set()
         for name in self.all_updated_memory_names():
             for branch_state in self.branch_states:
-                updated_memories.add(branch_state.get_memory(name))
-        return updated_memories
+                things.add(branch_state.get_memory(name))
+
+        for uid in self.all_updated_shadows_ids():
+            for branch_state in self.branch_states:
+                things.add(branch_state.get_shadow(uid))
+        return self.compute_hash(things)

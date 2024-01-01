@@ -167,11 +167,11 @@ class FusionContext(AbstractConditionalContext):
         self._possible_entanglement = possible_entanglements.count(True) > 1
         return self._possible_entanglement
 
-    def fuse_memory_with_entanglements(self) -> list[Memory]:
+    def fuse_memories(self) -> list[Memory]:
         return [conditional_context.get_fused_memory(is_entangled=self.has_entanglement())
                 for conditional_context in self.conditional_contexts]
 
-    def fuse_personality_with_entanglements(self) -> list[Personality]:
+    def fuse_personalities(self) -> list[Personality]:
         return [shadow_context.get_fused_personality(is_entangled=self.has_entanglement())
                 for shadow_context in self.shadow_contexts]
 
@@ -346,11 +346,11 @@ class RealityFuser:
         updated_shadow_uids = self.all_updated_shadows()
         fusion_context = self.set_up_fusion_context(updated_memories_names, updated_shadow_uids)
 
-        memories = fusion_context.fuse_memory_with_entanglements()
+        memories = fusion_context.fuse_memories()
         for name, memory in zip(updated_memories_names, memories):
             self.origin_state.add_memory(name, memory)
 
-        personalities = fusion_context.fuse_personality_with_entanglements()
+        personalities = fusion_context.fuse_personalities()
         for uid, personality in zip(updated_shadow_uids, personalities):
             self.origin_state.update_personality(uid, personality)
 

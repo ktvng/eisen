@@ -48,6 +48,10 @@ class ShadowContext(AbstractConditionalContext):
         self._possible_entanglement = len(self.entangled_traits) > 0
         return self._possible_entanglement
 
+    def is_entangled(self) -> bool:
+        if self._possible_entanglement is None: self.check_for_entanglement()
+        return len(self.entangled_traits) > 1
+
     def _get_fused_memory_without_entanglement(self, trait: Trait) -> list[Memory]:
         memories = [shadow.personality.get_memory(trait) for shadow in self.shadows]
         return Memory.merge_all([m for m in memories if m is not None], rewrites=True)
@@ -164,7 +168,10 @@ class FusionContext(AbstractConditionalContext):
         """
         if self._possible_entanglement is not None: return self._possible_entanglement
         possible_entanglements = [context.check_for_entanglement() for context in self.get_contexts()]
-        self._possible_entanglement = possible_entanglements.count(True) > 1
+
+        # if a shadow is self-entangled, this this meets the criteria for real entanglement
+        shadow_self_entangled = [context.is_entangled() for context in self.shadow_contexts]
+        self._possible_entanglement = possible_entanglements.count(True) > 1 or shadow_self_entangled
         return self._possible_entanglement
 
     def fuse_memories(self) -> list[Memory]:

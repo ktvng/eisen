@@ -28,6 +28,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             rets: list[Entity] = None,
             args: list[Entity] = None,
             angels: list[Angel] = None,
+            function_parameters: list[Shadow] = None,
             ) -> MemoryVisitorState:
 
         return self._but_with(
@@ -40,6 +41,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
             rets=rets,
             args=args,
             angels=angels,
+            function_parameters=function_parameters,
             )
 
     @staticmethod
@@ -54,7 +56,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         """
         return MemoryVisitorState(**state._get(), depth=0,
                                   function_base_context=None,
-                                  rets=None, args=None, angels=None)
+                                  rets=None, args=None, angels=None,
+                                  function_parameters=None)
 
     def get_depth(self) -> int:
         """
@@ -69,17 +72,30 @@ class MemoryVisitorState(State_PostInstanceVisitor):
     def add_memory(self, name: str, value: Memory):
         self.get_context().add_obj("memory", name, value)
 
+    def update_memory_to_latest(self, name: str):
+        """
+        Ensure that the memory referenced by [name] refers to the lastest shadows for all of its
+        impressions.
+        """
+        memory = self.get_memory(name)
+        self.add_memory(name, memory.update_to_latest(self))
+
+
     def get_memory(self, name: str) -> Memory:
         return self.get_context().get_obj("memory", name)
 
     def get_memories(self) -> dict[str, Memory]:
         return self.get_context().containers["memory"]
 
+    def get_function_parameters(self) -> list[Shadow]:
+        return self.function_parameters
+
     def add_shadow(self, value: Shadow):
         value.validate_dependencies_outlive_self(self)
         value = value.restore_to_healthy()
         self.get_context().add_obj("shadow", value.entity.uid, value)
         return value
+
 
     def get_shadow(self, entity_or_uid: Entity | uuid.UUID) -> Shadow:
         match entity_or_uid:
@@ -122,9 +138,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
 
         for impression in lval.memory.impressions:
             shadow = self.update_source_of_impression(impression, with_shadow=shadow, trait=lval.trait)
-            memory = Memory(rewrites=True, depth=self.get_depth(), name=lval.name,
-                   impressions=MemorableSet.create_over(Impression(shadow=shadow, root=Trait())))
-            self._update_lval_variable(lval, memory)
+            self.update_memory_to_latest(lval.name)
 
     def _update_lval_attribute(self, lval: Lval, memory: Memory):
         """
@@ -190,7 +204,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         self.add_shadow(shadow)
         return shadow
 
-    def create_new_entity(self, name: str):
+    def create_new_entity(self, name: str) -> Entity:
         entity = Entity(name, self.get_depth())
         shadow = self._recognize_entity(entity)
         self.add_memory(entity.name, Memory(
@@ -200,6 +214,7 @@ class MemoryVisitorState(State_PostInstanceVisitor):
                 Impression(shadow=shadow,
                            root=Trait())),
             depth=self.get_depth()))
+        return entity
 
     def create_new_angel_memory(self, trait: Trait, entity: Entity) -> Memory:
         angel = Angel(trait=trait, entity=entity)

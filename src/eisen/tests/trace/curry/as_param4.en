@@ -1,0 +1,50 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> self: new ptr {
+        self.o = o
+    }
+}
+
+fn one(f: (obj) -> void, o: obj) {
+    let o1 = obj(1)
+    let g = f{o1}
+    apply(g)
+}
+
+fn apply(f: () -> void) {
+    f()
+}
+
+fn add(p: mut ptr, o: obj) {
+    p.o = o
+}
+
+fn main() {
+    let o = obj(0)
+    let p = ptr(o)
+    let f = add{p}
+    one(f, o)
+    print("%i", p.o.x)
+}
+
+/// [Test]
+/// name = "trace/curry/as_param4"
+/// info = """\
+///     Error if taking younger dependency
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = "Line 20:"

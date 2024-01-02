@@ -11,8 +11,10 @@ from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Angel
 from eisen.trace.memory import Memory, Impression
 from eisen.trace.shadow import Shadow
+from eisen.trace.entity import origin_entity
 from eisen.trace.delta import FunctionDelta
 from eisen.trace.entanglement import Entanglement
+from eisen.trace.functionargs import FunctionsAsArgumentsLogic
 
 State = MemoryVisitorState
 class CallHandler:
@@ -64,6 +66,12 @@ class CallHandler:
         for i in original_memory.impressions:
             # For a given impression, we get current shadow of the entity, and obtain, for this
             # shadow, the memory of the Angel's trait.
+
+            # if the shadow is of a pure function, then the entity is the origin_entity. As pure
+            # functions do not need to be modified, we can skip here.
+            # TODO: can we structure the algorithm so we don't need this?
+            if i.shadow.entity == origin_entity: continue
+
             shadow = self.state.get_shadow(i.shadow.entity)
             m = shadow.personality.get_memory(i.root.join(angel.trait))
 
@@ -128,6 +136,10 @@ class CallHandler:
         arg_shadows = [s.remap_via_index(self.index) for s in self.delta.arg_shadows]
         for memory, update_with_shadow in zip(param_memories, arg_shadows):
             for impression in memory.impressions:
+                # if the shadow is of a pure function, then the entity is the origin_entity. As pure
+                # functions do not need to be modified, we can skip here.
+                # TODO: can we structure the algorithm so we don't need this?
+                if impression.shadow.entity == origin_entity: continue
                 self.state.update_source_of_impression(impression, update_with_shadow)
 
     @staticmethod
@@ -230,55 +242,80 @@ class CallHandlerFactory:
         each parameter to the function call, ordered in the same way such that the nth element in
         this list is the nth parameters supplied to the function.
         """
+        indeterminate_function_parameters = FunctionsAsArgumentsLogic.get_memories_of_parameters_that_are_functions(node, param_memories)
         handlers = []
-        for impression, delta in CallHandlerFactory._aquire_function_deltas(node, fn):
-            curried_memories = impression.shadow.personality.as_curried_params() if impression else []
+        for impression, delta in CallHandlerFactory._aquire_function_deltas(node, fn, indeterminate_function_parameters):
             handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
-                impression=impression,
+                variable_caller=impression,
                 node=node,
                 delta=delta,
-                param_memories=curried_memories + param_memories))
-
+                param_memories=FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
+                                                            caller=impression,
+                                                            parameters=param_memories)))
         return handlers
 
     @staticmethod
     def _associate_function_instance_to_delta(
             node: adapters.Call,
             function_instance: EisenFunctionInstance,
-            fn: Visitor):
+            fn: Visitor,
+            function_parameters: list[Shadow] = None
+            ):
         """
         Obtain the function delta for a given [function_instance]
         """
         delta = fn.function_db.get_function_delta(function_instance.get_full_name())
         if delta is None:
-            fn.apply(node.state.but_with(ast=node.get_ast_defining_the_function()))
-            delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+            delta = FunctionDelta.compute_for(adapters.Def(node.state.but_with(
+                ast=function_instance.ast,
+                function_parameters=function_parameters)), fn)
+            # delta = fn.function_db.get_function_delta(function_instance.get_full_name())
         return delta
 
     @staticmethod
-    def _aquire_function_deltas(node: adapters.Call, fn: Visitor) -> list[tuple[Impression | None, FunctionDelta]]:
+    def _get_impression_delta_pairs(
+            node: adapters.Call,
+            impression: Impression | None,
+            function_instance: EisenFunctionInstance,
+            fn: Visitor,
+            function_parameters: list[Shadow]) -> tuple[Impression | None, FunctionDelta]:
+
+        return (impression, CallHandlerFactory._associate_function_instance_to_delta(
+                    node=node,
+                    function_instance=function_instance,
+                    fn=fn,
+                    function_parameters=function_parameters))
+
+    @staticmethod
+    def _aquire_function_deltas(node: adapters.Call, fn: Visitor, functions: list[Memory]) -> list[tuple[Impression | None, FunctionDelta]]:
         """
         Returns tuples of Impression? and FunctionDelta, where impression is the impression of a
         function (if it is called from a variable) and FunctionDelta is the delta which should be applied
         """
         if node.is_pure_function_call():
-            return [(None,
-                     CallHandlerFactory._associate_function_instance_to_delta(
-                        node=node, function_instance=node.get_function_instance(), fn=fn))]
+            combos = FunctionsAsArgumentsLogic.get_all_function_combinations(functions)
+            return [CallHandlerFactory._get_impression_delta_pairs(
+                impression=None,
+                node=node,
+                function_instance=node.get_function_instance(),
+                fn=fn,
+                function_parameters=combo) for combo in combos]
         else:
             # take the first as there should only be one Memory returned from a (ref ...)
             caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            tuples = []
-            for i in caller_memory.impressions:
-                for inst in i.shadow.function_instances:
-                    tuples.append((i,
-                     CallHandlerFactory._associate_function_instance_to_delta(
-                        node=node, function_instance=inst, fn=fn)))
-            return tuples
+            combos = FunctionsAsArgumentsLogic.get_all_function_combinations_for_indeterminate_caller(
+                caller=caller_memory,
+                function_parameters=functions)
+            return [CallHandlerFactory._get_impression_delta_pairs(
+                impression=impression,
+                node=node,
+                function_instance=instance,
+                fn=fn,
+                function_parameters=combo) for impression, instance, combo in combos]
 
     @staticmethod
     def _get_call_handlers_for_each_reality(
-            impression: Impression,
+            variable_caller: Impression,
             node: adapters.Call,
             delta: FunctionDelta,
             param_memories: list[Memory]) -> list[CallHandler]:
@@ -286,17 +323,21 @@ class CallHandlerFactory:
         Return a list of CallHandlers where each handler exclusively processes the call for a given
         entanglement.
         """
-        if impression and impression.entanglement:
+        # if the function is entangled, only consider that entanglement
+        if variable_caller and variable_caller.entanglement:
             return [CallHandler(
-                impression, node, delta,
-                [memory.for_entanglement(impression.entanglement) for memory in param_memories])]
+                variable_caller, node, delta,
+                [memory.for_entanglement(variable_caller.entanglement) for memory in param_memories])]
 
+        # otherwise, divide the parameters by general entanglement
         realities = CallHandlerFactory._divide_parameters_by_entanglement(param_memories)
+
         # if there are no entanglements, then simply return a call handler with the entire
         # param_memories
-        if not realities:
-            return [CallHandler(impression, node, delta, param_memories)]
-        return [CallHandler(impression, node, delta, reality) for reality in realities]
+        if not realities: return [CallHandler(variable_caller, node, delta, param_memories)]
+
+        # finally return a call handler for each entanglement
+        return [CallHandler(variable_caller, node, delta, reality) for reality in realities]
 
     @staticmethod
     def _find_next_entanglement_present(param_memories: list[Memory]) -> Entanglement:

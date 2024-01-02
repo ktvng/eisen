@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from alpaca.utils import Visitor
 from alpaca.concepts import Type
 from alpaca.clr import AST
@@ -8,19 +7,19 @@ from alpaca.clr import AST
 import eisen.adapters as adapters
 from eisen.common import no_assign_binary_ops, boolean_return_ops
 from eisen.validation.validate import Validate
-from eisen.trace.entity import Angel, Trait
+from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory, MemorableSet, Impression
 from eisen.trace.shadow import Shadow, Personality
 from eisen.trace.lvalmemoryvisitor import LValMemoryVisitor
 from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHandlerFactory
-from eisen.trace.entity import Entity
+from eisen.trace.entity import origin_entity
+from eisen.trace.functionargs import FunctionsAsArgumentsLogic
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 
-origin_entity = Entity("origin", -1)
 State = MemoryVisitorState
 class MemoryVisitor(Visitor):
     def __init__(self, debug: bool = False):
@@ -58,45 +57,29 @@ class MemoryVisitor(Visitor):
     def _mod(fn, state: State):
         adapters.Mod(state).enter_module_and_apply(fn)
 
-    @Visitor.for_ast_types("rets", "args")
+    @Visitor.for_ast_types("rets")
     def _rets(fn, state: State):
         for name in adapters.ArgsRets(state).get_names():
             state.create_new_entity(name)
 
+    @Visitor.for_ast_types("args")
+    def _args(fn, state: State):
+        passed_in_function_parameters = iter(state.get_function_parameters() or [])
+        node = adapters.ArgsRets(state)
+        for name, type_ in zip(node.get_names(), state.get_returned_type().unpack_into_parts()):
+            entity = state.create_new_entity(name)
+            if type_.is_function():
+                FunctionsAsArgumentsLogic.update_shadow_to_be_like_function_parameter(
+                    state=state,
+                    function_parameter=next(passed_in_function_parameters),
+                    representative_in_method=entity)
+
     @Visitor.for_ast_types("def", "create")
     def _def(fn, state: State):
         node = adapters.Def(state)
-        # print(node.get_function_name())
-        if fn.function_db.get_function_delta(node.get_function_instance().get_full_name()) is not None:
-            return []
-
-        fn_context = state.create_isolated_context()
-        fn_state = state.but_with(context=fn_context, function_base_context=fn_context, depth=0)
-
-        fn.apply(fn_state.but_with(ast=node.get_args_ast()))
-        fn.apply(fn_state.but_with(ast=node.get_rets_ast()))
-
-        # angels will be updated as the (seq ...) list of the function is processed.
-        angels: list[Angel] = []
-        fn_state = fn_state.but_with(
-            depth=1,
-            rets=[fn_state.get_entity(name) for name in node.get_ret_names()],
-            args=[fn_state.get_entity(name) for name in node.get_arg_names()],
-            angels=angels)
-        fn.apply(fn_state.but_with(ast=node.get_seq_ast()))
-
-        # add a new function_delta for this function
-        fn.function_db.add_function_delta(
-            name=node.get_function_instance().get_full_name(),
-            fc=FunctionDelta(
-                function_name=node.get_function_name(),
-                arg_shadows=[fn_state.get_shadow(entity) for entity in fn_state.get_arg_entities()],
-                ret_shadows=[fn_state.get_shadow(entity) for entity in fn_state.get_ret_entities()],
-                angels=angels,
-                angel_shadows={ angel.uid: fn_state.get_shadow(angel) for angel in angels },
-                ret_memories=[fn_state.get_memory(entity.name) for entity in fn_state.get_ret_entities()]))
-
-        # print("finished for ", node.get_function_name())
+        # we still need to compure the function delta if possible, so that functions that aren't
+        # called still get detected.
+        FunctionDelta.compute_for(node, fn)
         return []
 
     @Visitor.for_ast_types(*no_assign_binary_ops)
@@ -202,7 +185,6 @@ class MemoryVisitor(Visitor):
 
         param_memories = fn.apply(state.but_with_second_child())
         realities = CallHandlerFactory.get_call_handlers(node, fn, param_memories)
-
         outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
         return RealityFuser.fuse_outcomes_together(outcomes)
 
@@ -339,4 +321,3 @@ class Annotations:
         print("===================")
         print("====== DEBUG ======")
         print("===================")
-        print(state.get_shadow(state.get_entity("p")))

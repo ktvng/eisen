@@ -15,6 +15,8 @@ class Entity():
     def __str__(self) -> str:
         return f"{self.name}"
 
+origin_entity = Entity("origin", -1)
+
 class Trait():
     def __init__(self, value: str = "") -> None:
         self.value = value
@@ -43,7 +45,7 @@ class Trait():
 
 class Angel(Entity):
     def __init__(self, trait: Trait, entity: Entity) -> None:
-        super().__init__(entity.name + "." + trait.value, entity.depth)
+        super().__init__(entity.name + "." + trait.value, 0)
         self.entity = entity
         self.trait = trait
 

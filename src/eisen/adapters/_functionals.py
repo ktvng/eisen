@@ -68,6 +68,12 @@ class Def(AbstractNodeInterface):
     def get_function_type(self) -> Type:
         return self.get_function_instance().type
 
+    def has_function_as_argument(self) -> bool:
+        return any(t.is_function() for t in self.get_function_instance()
+                   .type
+                   .get_argument_type()
+                   .unpack_into_parts())
+
     @classmethod
     def _unpack_to_get_names(self, args_or_rets: AST) -> list[str]:
         if args_or_rets.has_no_children():

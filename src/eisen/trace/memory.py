@@ -33,6 +33,13 @@ class Memory():
             impressions=self.impressions.union(other_memory.impressions),
             depth=self.depth)
 
+    def update_to_latest(self, state: MemoryVisitorState) -> Memory:
+        return Memory(
+            name=self.name,
+            rewrites=self.rewrites,
+            impressions=self.impressions.update_to_latest(state),
+            depth=self.depth)
+
     def with_depth(self, depth: int) -> Memory:
         return Memory(
             rewrites=self.rewrites,
@@ -156,6 +163,9 @@ class MemorableSet():
         return MemorableSet(set([o for o in self.objs
             if not entanglement.matches(o.entanglement) or o.entanglement is None]))
 
+    def update_to_latest(self, state: MemoryVisitorState) -> MemorableSet:
+        return MemorableSet(set([o.update_to_latest(state) for o in self.objs]))
+
     def first(self) -> Impression:
         return next(iter(self.objs))
 
@@ -170,6 +180,9 @@ class MemorableSet():
 
     def __hash__(self) -> int:
         return hash(sum([hash(x) for x in self.objs]))
+
+    def get_shadows(self) -> list[Shadow]:
+        return [i.shadow for i in self.objs]
 
     @staticmethod
     def create_over(obj) -> MemorableSet:
@@ -194,13 +207,19 @@ class Impression():
             self.root,
             self.entanglement.with_sub_entanglement(entanglement.uid))
 
+    def update_to_latest(self, state: MemoryVisitorState) -> Impression:
+        return Impression(
+            shadow=state.get_shadow(self.shadow.entity),
+            root=self.root,
+            entanglement=self.entanglement)
+
     def __str__(self) -> str:
-        uid = str(self.entanglement) if self.entanglement is not None else ""
+        uid = f"<{str(self.entanglement)}>" if self.entanglement is not None else ""
         if isinstance(self.shadow.entity, Angel):
-            return str(self.shadow.entity)
+            return str(self.shadow.entity) + uid
         if self.root:
             return self.shadow.entity.name + "." + str(self.root)
-        return self.shadow.entity.name + f"({uid})"
+        return self.shadow.entity.name + uid
 
     def __eq__(self, o: Impression) -> bool:
         return (self.shadow == o.shadow

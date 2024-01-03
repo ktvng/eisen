@@ -173,6 +173,9 @@ class TypeChecker(Visitor):
             guessed_params_type=guessed_params_type,
             fn=fn)
 
+        if params_type == state.get_abort_signal():
+            return params_type
+
         fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()

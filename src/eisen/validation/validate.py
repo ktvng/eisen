@@ -188,6 +188,14 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
+    def function_exists(state: State, name: str, type: Type, instance: EisenInstance) -> ValidationResult:
+        if instance is None:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.UndefinedFunction,
+                msg=f"'{name}' is not defined for the given argument type '{type}'")
+        return ValidationResult.success()
+
+    @staticmethod
     def type_exists(state: State, name: str, type: Type) -> ValidationResult:
         if type is None:
             return failure_with_exception_added_to(state,

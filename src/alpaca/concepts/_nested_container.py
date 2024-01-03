@@ -110,4 +110,4 @@ class NestedContainer():
         while mod is not None:
             name = mod.name + "_" + name
             mod = mod.parent
-        return name
+        return name[:-1]

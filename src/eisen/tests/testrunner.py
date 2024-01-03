@@ -79,7 +79,7 @@ class Test:
     def _save_python_target(self, state: State) -> None:
         ast = ToPython().run(state)
         proto_code = python.Writer().run(ast)
-        code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+        code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\nmain___Fd_void_I_void_b()"
         pathlib.Path(self._get_build_file_name()).parent.mkdir(parents=True, exist_ok=True)
         with open(self._get_build_file_name(), 'w') as f:
             f.write(code)

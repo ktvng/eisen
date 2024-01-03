@@ -1,11 +1,10 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from alpaca.clr import AST
-from alpaca.concepts import Type, TypeFactory
+from alpaca.clr import AST, ASTToken
+from alpaca.concepts import Type
 
 from eisen.state.basestate import BaseState as State
-from eisen.validation.builtin_print import Builtins
 from eisen.common.nodedata import NodeData
 from eisen.validation.validate import Validate
 import eisen.adapters as adapters
@@ -14,55 +13,108 @@ if TYPE_CHECKING:
     from eisen.validation.typechecker import TypeChecker
 
 class CallUnwrapper():
-    @classmethod
-    def process(cls, state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
+    @staticmethod
+    def process(state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
         """decide whether or not the call needs to be unwrapped, and returns the
         true type of the parameters"""
-        match cls._chains_to_correct_function(state, guessed_params_type):
+        match CallUnwrapper._chains_to_correct_function(state, guessed_params_type):
             case None:
                 return state.get_abort_signal()
             case True:
-                state.get_ast().update(type="call")
-                return guessed_params_type
+                return CallUnwrapper._promote_to_call(state, true_params_type=guessed_params_type)
             case False:
-                # TODO: update type of params ast
-                params_ast = state.get_ast()[-1]
-                first_param_ast = state.get_ast().first().first()
-                params_ast[:] = [first_param_ast, *params_ast]
-                fn_ast = AST(
-                    type="fn",
-                    lst=[state.get_ast().first().second()],
-                    line_number=state.get_line_number(),
-                    data=NodeData())
+                return CallUnwrapper._restructure_extension_function(state, fn)
 
-                state.get_ast().update(type="call", lst=[fn_ast, params_ast])
+    @staticmethod
+    def _promote_to_call(state: State, true_params_type: Type) -> Type:
+        """
+        As we know that the guessed_params_type are the [true_params_type], we have no work
+        to do other than to promote the (raw_call ...) directly to a (call ...) AST.
+        """
+        state.get_ast().update(type="call")
+        return true_params_type
 
-                # Need to get the type of the first parameter
-                first_param_type = fn.apply(state.but_with(ast=first_param_ast))
-                if len(params_ast) == 1:
-                    true_type = first_param_type
-                else:
-                    if guessed_params_type.is_tuple():
-                        true_type = TypeFactory.produce_tuple_type(
-                            components=[first_param_type, *guessed_params_type.components])
-                    else:
-                        true_type = TypeFactory.produce_tuple_type(
-                            components=[first_param_type, guessed_params_type])
+    @staticmethod
+    def _get_function_name_element(ast: AST) -> AST:
+        """
+        Given something like this:
+            (raw_call (. (ref obj) attr) (params 1 2 3))
+                                   ^^^^
+        The function name is marked above.
+        """
+        return ast.first().second()
 
-                state.but_with_second_child().get_node_data().returned_type = true_type
-                return true_type
+    @staticmethod
+    def _get_first_parameter_element(ast: AST) -> AST:
+        """
+        Given something like this:
+            (raw_call (. (ref obj) attr) (params 1 2 3))
+                          ^^^^^^^
+        The first parameter is marked above.
+        """
+        return ast.first().first()
 
-    @classmethod
-    def _chains_to_correct_function(cls, state: State, guessed_params_type: Type) -> bool:
-        match state.get_ast().first():
-            case AST(type="::") | AST(type="."):
-                match type_ := cls._follow_chain(state, state.get_ast().first()):
-                    case None: return False
-                    case _: return type_.is_function()
+    @staticmethod
+    def _get_parameter_list(ast: AST) -> AST:
+        """
+        Given something like this:
+            (raw_call (. (ref obj) attr) (params 1 2 3))
+                                          ^^^^^^^^^^^^
+        The parameter list is marked above. It is the last element
+        """
+        return ast[-1]
+
+    @staticmethod
+    def _create_fn_ast_element(state: State) -> AST:
+        return AST(
+            type="fn",
+            lst=[CallUnwrapper._get_function_name_element(state.get_ast())],
+            line_number=state.get_line_number(),
+            data=NodeData())
+
+    @staticmethod
+    def _restructure_extension_function(state: State, fn: TypeChecker) -> Type:
+        """
+        Given something like this:
+            (raw_call (. (ref obj) attr) (params 1 2 3))
+
+        This method is called if we have identified that this is not a call of an attribute
+        function, but rather an extension function. Therefore we must restructure the AST to this:
+            (call (fn attr) (params (ref obj) 1 2 3))
+        """
+
+        parameter_list_element = CallUnwrapper._get_parameter_list(state.get_ast())
+        first_param_element = CallUnwrapper._get_first_parameter_element(state.get_ast())
+
+        # This will change the parameter list in place
+        parameter_list_element[:] = [first_param_element, *parameter_list_element]
+        fn_element = CallUnwrapper._create_fn_ast_element(state)
+
+        # Update the (raw_call ...) to a (call ...) AST with the function element we just created
+        # and the newly updated parameter list.
+        state.get_ast().update(type="call", lst=[fn_element, parameter_list_element])
+
+        # reapply the TypeChecker to get the correct type of the parameters
+        true_type = fn.apply(state.but_with(ast=parameter_list_element))
+
+        # attempt to lookup the function. If it does not exist, then report an exception.
+        node = adapters.Fn(state.but_with_first_child())
+        instance = node.resolve_function_instance(argument_type=true_type)
+        if Validate.function_exists(state, node.get_name(), true_type, instance).failed():
+            return state.get_abort_signal()
+        return true_type
+
+    @staticmethod
+    def _chains_to_correct_function(state: State, guessed_params_type: Type) -> bool:
+        match caller := state.get_ast().first():
+            case AST(type="::"):
+                return CallUnwrapper._follow_scope_to_resolution(state, scope_ast=caller)
+            case AST(type="."):
+                return CallUnwrapper._type_is_function(
+                    type_=CallUnwrapper._follow_chain_to_get_type(state, ast=caller))
             case AST(type="ref"):
                 node = adapters.Ref(state.but_with_first_child())
-                if node.is_print():
-                    return Builtins.get_type_of_print(state)
+                if node.is_print(): return True
                 return node.resolve_reference_type().is_function()
             case AST(type="fn"):
                 node = adapters.Fn(state.but_with_first_child())
@@ -70,21 +122,24 @@ class CallUnwrapper():
                 if Validate.function_exists(state, node.get_name(), guessed_params_type, instance).failed():
                     return None
                 return instance.type.is_function()
-
         return False
 
-    @classmethod
-    def _follow_chain(cls, state: State, scope_ast: AST) -> Type:
-        if scope_ast.type == "::":
-            instance = adapters.ModuleScope(state.but_with(ast=scope_ast)).get_end_instance()
-            return instance.type
+    @staticmethod
+    def _follow_scope_to_resolution(state: State, scope_ast: AST) -> bool:
+        instance = adapters.ModuleScope(state.but_with(ast=scope_ast)).get_end_instance()
+        return instance.type.is_function()
 
-        if scope_ast.type == ".":
-            obj_type: Type = cls._follow_chain(state, scope_ast.first())
-            if obj_type is None:
-                return None
-            attr = scope_ast.second().value
-            if obj_type.has_member_attribute_with_name(attr):
-                return obj_type.get_member_attribute_by_name(attr)
-            else:
-                return None
+    @staticmethod
+    def _type_is_function(type_: Type) -> bool:
+        return type_ is not None and type_.is_function()
+
+    @staticmethod
+    def _follow_chain_to_get_type(state: State, ast: AST | ASTToken) -> Type:
+        if isinstance(ast, ASTToken): return None
+        obj_type: Type = CallUnwrapper._follow_chain_to_get_type(state, ast.first())
+        if obj_type is None: return None
+
+        attr = ast.second().value
+        if obj_type.has_member_attribute_with_name(attr):
+            return obj_type.get_member_attribute_by_name(attr)
+        return None

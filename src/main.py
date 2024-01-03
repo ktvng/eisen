@@ -148,7 +148,7 @@ def run_eisen(source_code_filename: str, verbose: bool = False):
     ast = eisen.ToPython().run(state)
 
     proto_code = python.Writer().run(ast)
-    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\n_main___Fd_void_I_void_b()"
+    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain___Fd_void_I_void_b()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
 

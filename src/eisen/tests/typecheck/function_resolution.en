@@ -1,0 +1,30 @@
+struct obj {
+    x: int
+
+    create(x: int) -> self: new obj {
+        self.x = x
+    }
+}
+
+fn function(o: obj) -> r: obj{
+    r = o
+}
+
+fn main() {
+    let o = obj(0)
+    var r: obj
+    r = function(o, o)
+}
+
+/// [Test]
+/// name = "typecheck/function_resolution"
+/// info = """\
+///     Throws exception if function is called with improper arguments.
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "UndefinedFunctionException"
+/// contains = "Line 16:"

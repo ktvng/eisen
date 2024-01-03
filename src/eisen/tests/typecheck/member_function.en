@@ -1,0 +1,27 @@
+struct obj {
+    f: (int) -> void
+
+    create(f: (int) -> void) -> self: new obj {
+        self.f = f
+    }
+}
+
+fn say(x: int) {
+    print("%i", x)
+    return
+}
+
+fn main() {
+    let o = obj(say)
+    o.f(34)
+}
+
+/// [Test]
+/// name = "typercheck/member_function"
+/// info = """\
+///     Member functions resolve correctly
+/// """
+
+/// [Expects]
+/// success = true
+/// output = "34"

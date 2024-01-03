@@ -134,12 +134,15 @@ class CallUnwrapper():
         return type_ is not None and type_.is_function()
 
     @staticmethod
-    def _follow_chain_to_get_type(state: State, ast: AST | ASTToken) -> Type:
-        if isinstance(ast, ASTToken): return None
-        obj_type: Type = CallUnwrapper._follow_chain_to_get_type(state, ast.first())
-        if obj_type is None: return None
+    def _follow_chain_to_get_type(state: State, ast: AST | ASTToken) -> Type | None:
+        match ast:
+            case AST(type="ref"): return adapters.Ref(state.but_with(ast=ast)).resolve_reference_type()
+            case ASTToken(): return None
+            case _:
+                obj_type: Type = CallUnwrapper._follow_chain_to_get_type(state, ast.first())
+                if obj_type is None: return None
 
-        attr = ast.second().value
-        if obj_type.has_member_attribute_with_name(attr):
-            return obj_type.get_member_attribute_by_name(attr)
-        return None
+                attr = ast.second().value
+                if obj_type.has_member_attribute_with_name(attr):
+                    return obj_type.get_member_attribute_by_name(attr)
+                return None

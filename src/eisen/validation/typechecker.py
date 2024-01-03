@@ -179,7 +179,6 @@ class TypeChecker(Visitor):
         fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()
-
         return TypeChecker._shared_call_checks(state, params_type)
 
     @Visitor.for_ast_types("is")

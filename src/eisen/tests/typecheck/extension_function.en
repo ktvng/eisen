@@ -1,0 +1,22 @@
+fn say(o: int, x: int) {
+    return
+}
+
+
+fn main() {
+    let o = 4
+    o.say()
+}
+
+/// [Test]
+/// name = "typercheck/extension_function"
+/// info = """\
+///     Throw an exception if an extension function cannot be resolved,
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "UndefinedFunctionException"
+/// contains = "Line 8:"

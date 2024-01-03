@@ -57,6 +57,8 @@ class FunctionsAsArgumentsLogic:
                  and the function_parameters
         """
         if any(len(impression.shadow.function_instances) != 1 for impression in caller.impressions):
+            # for impression in caller.impressions:
+            #     print(impression.shadow.function_instances)
             raise Exception("A shadow should only have one function_instance.")
 
         return [(impression, impression.shadow.function_instances[0], combo)

@@ -47,6 +47,8 @@ class RefLike(AbstractNodeInterface):
             return Ref(self.state).resolve_reference_type()
         elif type == "::":
             return ModuleScope(self.state).get_end_instance().type
+        elif type == ".":
+            return Scope(self.state).get_end_type()
 
     def resolve_instance(self) -> EisenInstance:
         return LookupManager.resolve_reference(
@@ -207,3 +209,18 @@ class Scope(AbstractNodeInterface):
             primary_ast = primary_ast.first()
         full_name = Ref(self.state.but_with(ast=primary_ast)).get_name() + "." + full_name
         return full_name[:-1]
+
+    def get_end_type(self) -> Type:
+        primary_ast = self.state.get_ast()
+        attrs = []
+        while primary_ast.type != "ref":
+            attrs.append(str(primary_ast.second()))
+            primary_ast = primary_ast.first()
+
+        attrs.reverse()
+        parent_object_type = Ref(self.state.but_with(ast=primary_ast)).resolve_reference_type()
+        current_type = parent_object_type
+        for attr in attrs:
+            # TODO: check for non-existent attributes
+            current_type = current_type.get_member_attribute_by_name(attr)
+        return current_type

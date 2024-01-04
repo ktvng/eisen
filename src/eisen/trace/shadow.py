@@ -6,7 +6,7 @@ import uuid
 from eisen.common.eiseninstance import FunctionInstance
 from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory
-from eisen.trace.entity import Entity
+from eisen.trace.entity import Entity, origin_entity
 if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
     State = MemoryVisitorState
@@ -49,6 +49,13 @@ class Shadow():
             entity=shadows[0].entity,
             function_instances=[instance for shadow in shadows for instance in shadow.function_instances],
             personality=Personality.merge_all([s.personality for s in shadows]))
+
+    @staticmethod
+    def get_identity_shadow() -> Shadow:
+        return Shadow(
+            entity=origin_entity,
+            function_instances=[],
+            personality=Personality(memories={}))
 
     def __str__(self) -> str:
         return f"{self.entity.name} === \n{self.personality}"

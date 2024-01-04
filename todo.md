@@ -4,15 +4,13 @@
 
 2. Deprecate variants :(
 
-3. Fix primitive restrictions
+3. Fix all restrictions including primitive
 
 4. Fix var? p = nil (this works but should break)
 
 6. Document nil narrowing
 
 7. Fix FUNCARGS
-
-8. Fix CallUnrwapper
 
 9: Nilcheck: this should work
 struct obj {
@@ -47,3 +45,8 @@ struct ptr {
         self.o = o
     }
 }
+
+11.
+Search for this comment.
+    # TODO: need to detect recursion for functions as arguments and for structs which could
+    # have functions on them.

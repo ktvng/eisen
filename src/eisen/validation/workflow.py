@@ -15,6 +15,7 @@ from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
+from eisen.validation.recursionvisitor import RecursionVisitor
 from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.trace.memoryvisitor import MemoryVisitor
 from eisen.state.basestate import BaseState as State
@@ -70,6 +71,7 @@ class Workflow():
         TypeChecker,
 
         InstanceVisitor,
+        RecursionVisitor,
 
         # this handles restrictions based on let/var/val differences
         UsageChecker,

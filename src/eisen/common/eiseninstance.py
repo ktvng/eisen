@@ -8,6 +8,7 @@ class Instance():
     type: Type
     context: Context
     ast: AST
+
     is_ptr: bool = False
     is_constructor: bool = False
     is_function: bool = False
@@ -26,6 +27,9 @@ class Instance():
             + self.name
             + "___"
             + Instance.get_signature_string(self.type))
+
+    def __str__(self) -> str:
+        return self.get_full_name()
 
     @staticmethod
     def get_signature_string(type: Type):
@@ -48,5 +52,6 @@ class Instance():
             case _:
                 raise Exception(f"signature not implemented for type: {type}")
 
+@dataclass
 class FunctionInstance(Instance):
     pass

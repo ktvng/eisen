@@ -32,7 +32,11 @@ class FunctionDelta():
     def compute_for(node: adapters.Def, fn: Visitor) -> FunctionDelta:
         state = node.state
         if fn.function_db.get_function_delta(node.get_function_instance().get_full_name()) is not None:
-            return []
+            return None
+
+        # No memory tracing for recursion yet... but also recursion detection is not 100%
+        if state.get_instances()[0].is_recursive_function:
+            return FunctionDelta.get_identity(node)
 
         # we can't process a function that takes
         if FunctionsAsArgumentsLogic.cannot_process_method_yet(node, state): return
@@ -76,6 +80,16 @@ class FunctionDelta():
                 fc=delta)
 
         return delta
+
+    @staticmethod
+    def get_identity(node: adapters.Def):
+        return FunctionDelta(
+            function_name=node.get_function_name(),
+            arg_shadows=[Shadow.get_identity_shadow() for _ in node.get_arg_names()],
+            ret_shadows=[Shadow.get_identity_shadow() for _ in node.get_ret_names()],
+            angels=[],
+            angel_shadows={},
+            ret_memories=[Memory.get_identity_memory() for _ in node.get_ret_names()])
 
 
 class FunctionDB():

@@ -123,6 +123,10 @@ class Memory():
             impressions=impressions,
             depth=memories[0].depth)
 
+    @staticmethod
+    def get_identity_memory() -> Memory:
+        return Memory(rewrites=False, depth=0)
+
     def __str__(self) -> str:
         return " ".join([str(i) for i in self.impressions])
 

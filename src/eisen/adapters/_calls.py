@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.concepts import Type
 from alpaca.clr import AST
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 from eisen.common.restriction import GeneralRestriction
 
 from eisen.adapters._refs import RefLike
@@ -23,7 +23,7 @@ class Call(AbstractNodeInterface, _SharedMixins):
     (call (fn ...) (params ... ))
     (call (:: mod (fn name)) (params ...)))))
     """
-    def get_fn_instance(self) -> EisenFunctionInstance:
+    def get_fn_instance(self) -> FunctionInstance:
         return self.state.but_with_first_child().get_instances()[0]
 
     def get_fn_ast(self) -> AST:
@@ -66,7 +66,7 @@ class Call(AbstractNodeInterface, _SharedMixins):
     def get_ast_defining_the_function(self) -> AST:
         return self.state.but_with_first_child().get_instances()[0].ast
 
-    def get_function_instance(self) -> EisenFunctionInstance:
+    def get_function_instance(self) -> FunctionInstance:
         return self.state.but_with(ast=self.get_ast_defining_the_function()).get_instances()[0]
 
     def is_pure_function_call(self) -> bool:

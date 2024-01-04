@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from alpaca.concepts import Type, AbstractException
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.common.exceptions import Exceptions
 from eisen.common.usagestatus import UsageStatus
 from eisen.common.initialization import Initializations
@@ -180,7 +180,7 @@ class Validate:
 
 
     @staticmethod
-    def instance_exists(state: State, name: str, instance: EisenInstance | Type) -> ValidationResult:
+    def instance_exists(state: State, name: str, instance: Instance | Type) -> ValidationResult:
         if instance is None:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.UndefinedVariable,
@@ -188,7 +188,7 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def function_exists(state: State, name: str, type: Type, instance: EisenInstance) -> ValidationResult:
+    def function_exists(state: State, name: str, type: Type, instance: Instance) -> ValidationResult:
         if instance is None:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.UndefinedFunction,

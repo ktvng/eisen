@@ -5,7 +5,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type
 
 import eisen.adapters as adapters
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.trace.entity import Angel
@@ -257,7 +257,7 @@ class CallHandlerFactory:
     @staticmethod
     def _associate_function_instance_to_delta(
             node: adapters.Call,
-            function_instance: EisenFunctionInstance,
+            function_instance: FunctionInstance,
             fn: Visitor,
             function_parameters: list[Shadow] = None
             ):
@@ -276,7 +276,7 @@ class CallHandlerFactory:
     def _get_impression_delta_pairs(
             node: adapters.Call,
             impression: Impression | None,
-            function_instance: EisenFunctionInstance,
+            function_instance: FunctionInstance,
             fn: Visitor,
             function_parameters: list[Shadow]) -> tuple[Impression | None, FunctionDelta]:
 

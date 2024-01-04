@@ -4,7 +4,7 @@ from alpaca.clr import AST, ASTToken
 from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters.argsrets import ArgsRets
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 
 class CommonFunction(AbstractNodeInterface):
     ast_types = ["def", "create", ":="]
@@ -62,7 +62,7 @@ class Def(AbstractNodeInterface):
     def has_return_value(self) -> list[str]:
         return not self.get_rets_ast().has_no_children()
 
-    def get_function_instance(self) -> EisenFunctionInstance:
+    def get_function_instance(self) -> FunctionInstance:
         return self.state.get_instances()[0]
 
     def get_function_type(self) -> Type:

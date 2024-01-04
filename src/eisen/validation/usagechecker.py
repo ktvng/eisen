@@ -7,7 +7,7 @@ from alpaca.concepts import Type, Context
 
 from eisen.common import binary_ops, boolean_return_ops
 from eisen.state.usagecheckerstate import UsageCheckerState
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.common.restriction import (LiteralRestriction, NoRestriction,
                                       ImmutableRestriction)
 from eisen.common.initialization import Initializations
@@ -30,12 +30,12 @@ class UsageChecker(Visitor):
 
     @staticmethod
     def create_new_statuses_for_instances(
-            instances: list[EisenInstance],
+            instances: list[Instance],
             initialization: Initializations = Initializations.NotInitialized) -> list[UsageStatus]:
         return [UsageStatusFactory.create(i.name, i.type.restriction, initialization) for i in instances]
 
     @staticmethod
-    def create_status_from_instance(instance: EisenInstance, init_state: Initializations) -> UsageStatus:
+    def create_status_from_instance(instance: Instance, init_state: Initializations) -> UsageStatus:
         return UsageStatusFactory.create(instance.name, instance.type.restriction, init_state)
 
     @staticmethod
@@ -114,7 +114,7 @@ class UsageChecker(Visitor):
             fn.apply(state.but_with(ast=node.get_create_ast()))
 
     @Visitor.for_ast_types("variant")
-    def variant_(fn, state: State) -> list[EisenInstance]:
+    def variant_(fn, state: State) -> list[Instance]:
         fn.apply(state.but_with(ast=adapters.Variant(state).get_is_ast()))
 
     @Visitor.for_ast_types("if")

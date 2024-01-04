@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from dataclasses import dataclass, field
 import uuid
 
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory
 from eisen.trace.entity import Entity
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Shadow():
     entity: Entity
     personality: Personality = field(default_factory=lambda: Personality(memories={}))
-    function_instances: list[EisenFunctionInstance] = field(default_factory=list)
+    function_instances: list[FunctionInstance] = field(default_factory=list)
 
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Shadow:
         return Shadow(entity=self.entity,

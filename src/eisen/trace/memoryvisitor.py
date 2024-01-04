@@ -24,7 +24,7 @@ State = MemoryVisitorState
 class MemoryVisitor(Visitor):
     def __init__(self, debug: bool = False):
         self.function_db = FunctionDB()
-        super().__init__(debug)
+        super().__init__(debug=debug)
 
     def apply(self, state: State) -> list[Memory]:
         return self._route(state.get_ast(), state)
@@ -110,7 +110,6 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("fn")
     def _fn(fn, state: State):
-        # TODO: can entity not be none?
         return [Memory(
             rewrites=True,
             depth=state.get_depth(),
@@ -138,6 +137,14 @@ class MemoryVisitor(Visitor):
         node = adapters.Decl(state)
         for name in node.get_names():
             state.create_new_entity(name)
+
+    @Visitor.for_ast_types("new_vec")
+    def _new_vec(fn, state: State):
+        return [Memory(rewrites=False, depth=state.get_depth())]
+
+    @Visitor.for_ast_types("index")
+    def _index(fn, state: State):
+        return fn.apply(state.but_with_first_child())
 
     @Visitor.for_ast_types("mut", "val", "nil?")
     def _vars(fn, state: State):
@@ -177,9 +184,16 @@ class MemoryVisitor(Visitor):
 
     # TODO: should this sometimes return a list of shadows/memories?
     @Visitor.for_ast_types("call")
-    def _call(fn, state: State):
+    def _call(fn, state: State) -> list[Shadow | Memory]:
         node = adapters.Call(state)
         if node.is_print():
+            fn.apply(state.but_with_second_child())
+            return []
+
+        # TODO: how should append work
+        # TODO: need to fix is_append just in case user defines their own append method
+        # TODO: append should be memory maniuplating with mut*
+        if node.is_append():
             fn.apply(state.but_with_second_child())
             return []
 

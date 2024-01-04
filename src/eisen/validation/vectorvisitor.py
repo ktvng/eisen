@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import TypeFactory
 from eisen.common.restriction import MutableRestriction, NewLetRestriction, ImmutableRestriction
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 from eisen.state.basestate import BaseState as State
 
 import eisen.adapters as adapters
@@ -34,7 +34,7 @@ class VectorVisitor(Visitor):
             mod=None)
 
         if state.get_builtin_function("append", append_fn_type) is None:
-            instance = EisenFunctionInstance(
+            instance = FunctionInstance(
                 name="append",
                 type=append_fn_type,
                 context=state.get_global_module(),

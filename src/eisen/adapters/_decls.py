@@ -44,6 +44,7 @@ class TypeLike(AbstractNodeInterface):
             case "nilable_type": return NilableRestriction()
             case "new_type": return NewLetRestriction()
             case "move_type": return MoveRestriction()
+            case "para_type": return ImmutableRestriction()
             case _: raise Exception(f"get_restriction not implemented for {self.state.get_ast()}")
 
     def get_is_nilable(self) -> bool:

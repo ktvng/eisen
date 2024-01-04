@@ -149,7 +149,7 @@ class Test:
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
-    disabled_tests = ["objects", "vector/creation", "recursion", "vector/append2", "vector/append"]
+    disabled_tests = ["objects", "recursion"]
 
     @staticmethod
     def run_test_by_name(name: str):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.state.basestate import BaseState
 from eisen.state.functionvisitorstate import FunctionVisitorState
 from eisen.validation.typeparser import TypeParser
@@ -59,7 +59,7 @@ class FunctionVisitor(Visitor):
 
     @Visitor.for_ast_types("def")
     def def_(fn, state: FunctionVisitorState):
-        instance = EisenInstance(
+        instance = Instance(
             name=adapters.Def(state).get_function_name(),
             type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
@@ -73,7 +73,7 @@ class FunctionVisitor(Visitor):
         node.normalize(struct_name=state.get_struct_name())
 
         # the name of the constructor is the same as the struct
-        instance = EisenInstance(
+        instance = Instance(
             name=node.get_name(),
             type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),
@@ -87,7 +87,7 @@ class FunctionVisitor(Visitor):
         node = adapters.IsFn(state)
         node.normalize(variant_name=state.get_variant_name())
 
-        instance = EisenInstance(
+        instance = Instance(
             name=node.get_name(),
             type=fn.local_type_parser.apply(state),
             context=state.get_enclosing_module(),

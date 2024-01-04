@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.basestate import BaseState
 
@@ -15,7 +15,7 @@ class State_PostInstanceVisitor(State_PostTypeCheck):
     def create_from_basestate(state: BaseState):
         return State_PostInstanceVisitor(**state._get())
 
-    def get_instances(self) -> list[EisenInstance]:
+    def get_instances(self) -> list[Instance]:
         """
         Get the list of instances which would be returned by executing the current ast.
 

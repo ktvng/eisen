@@ -130,4 +130,4 @@ class TypeParser(Visitor):
         return TypeFactory.produce_parametric_type(
             name=state.first_child().value,
             parametrics=[fn.apply(state.but_with(ast=child))
-                for child in state.get_child_asts()])
+                for child in state.get_child_asts()]).with_restriction(ImmutableRestriction())

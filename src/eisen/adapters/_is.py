@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.concepts import Type
 from alpaca.concepts import TypeFactory
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 from eisen.validation.lookupmanager import LookupManager
 
 class Is(AbstractNodeInterface):
@@ -26,7 +26,7 @@ class Is(AbstractNodeInterface):
         # TODO: function types should not need modules
         return TypeFactory.produce_function_type(parent_type, self.state.get_bool_type(), mod=None)
 
-    def get_is_function_instance(self) -> EisenFunctionInstance:
+    def get_is_function_instance(self) -> FunctionInstance:
         LookupManager.resolve_function_reference_type_by_signature(
             name=self._get_name_of_is_function(),
             type=self._get_type_of_is_function(),

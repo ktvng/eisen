@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.concepts import Type, Module
 from alpaca.clr import AST, ASTToken
 from eisen.adapters.nodeinterface import AbstractNodeInterface
-from eisen.common.eiseninstance import EisenFunctionInstance, EisenInstance
+from eisen.common.eiseninstance import FunctionInstance, Instance
 from eisen.validation.lookupmanager import LookupManager
 
 class RefLike(AbstractNodeInterface):
@@ -33,7 +33,7 @@ class RefLike(AbstractNodeInterface):
             return ModuleScope(self.state).get_module()
         return self.state.get_enclosing_module()
 
-    def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
+    def resolve_function_instance(self, argument_type: Type) -> FunctionInstance:
         return LookupManager.resolve_function_reference_by_signature(
             name=self.get_name(),
             argument_type=argument_type,
@@ -50,13 +50,13 @@ class RefLike(AbstractNodeInterface):
         elif type == ".":
             return Scope(self.state).get_end_type()
 
-    def resolve_instance(self) -> EisenInstance:
+    def resolve_instance(self) -> Instance:
         return LookupManager.resolve_reference(
             name=self.get_name(),
             context=self.state.get_context(),
             mod=self.get_module())
 
-    def assign_instance(self, instance: EisenInstance):
+    def assign_instance(self, instance: Instance):
         type = self.state.get_ast().type
         if  type == "ref" or type == "::":
             self.state.assign_instances(instance)
@@ -70,7 +70,7 @@ class Ref(AbstractNodeInterface):
 
     get_name = AbstractNodeInterface.get_name_from_first_child
 
-    def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
+    def resolve_function_instance(self, argument_type: Type) -> FunctionInstance:
         return LookupManager.resolve_function_reference_by_signature(
             name=self.get_name(),
             argument_type=argument_type,
@@ -83,7 +83,7 @@ class Ref(AbstractNodeInterface):
             mod=self.state.get_enclosing_module(),
             argument_type=self.state.get_arg_type())
 
-    def resolve_instance(self) -> EisenInstance:
+    def resolve_instance(self) -> Instance:
         return LookupManager.resolve_reference(
             name=self.get_name(),
             context=self.state.get_context(),
@@ -110,7 +110,7 @@ class Fn(AbstractNodeInterface):
     """
     get_name = AbstractNodeInterface.get_name_from_first_child
 
-    def resolve_function_instance(self, argument_type: Type) -> EisenFunctionInstance:
+    def resolve_function_instance(self, argument_type: Type) -> FunctionInstance:
         if argument_type:
             return LookupManager.resolve_function_reference_by_signature(
                 name=self.get_name(),
@@ -146,7 +146,7 @@ class ModuleScope(AbstractNodeInterface):
         end = self.second_child().value
         return end, self._follow_chain(self.first_child())
 
-    def get_end_instance(self) -> EisenInstance:
+    def get_end_instance(self) -> Instance:
         end, mods = self._unpack_structure()
         current_mod = self.state.get_enclosing_module()
         for mod_name in mods:
@@ -169,7 +169,7 @@ class ModuleScope(AbstractNodeInterface):
             current_mod = current_mod.get_child_by_name(mod_name)
         return current_mod
 
-    def get_instance(self) -> EisenInstance:
+    def get_instance(self) -> Instance:
         return self.get_end_instance()
 
 class Scope(AbstractNodeInterface):

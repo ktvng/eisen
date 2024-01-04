@@ -6,7 +6,7 @@ from alpaca.config import Config
 from alpaca.clr import AST
 
 from eisen.common.restriction import PrimitiveRestriction, NoRestriction
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 
 from eisen.state._basemixins import BaseMixins
 
@@ -59,7 +59,7 @@ class BaseState(AbstractParams, BaseMixins):
             critical_exception: SharedBool = SharedBool(False),
             print_to_watcher: bool = False,
             watcher: Watcher = None,
-            builtin_functions: dict[str, EisenFunctionInstance] = None,
+            builtin_functions: dict[str, FunctionInstance] = None,
             global_module: Module = None
             ):
 

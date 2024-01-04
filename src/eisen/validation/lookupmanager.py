@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from alpaca.clr import AST
-from alpaca.concepts import Module, Context, Type, Instance
+from alpaca.concepts import Module, Context, Type
+from eisen.common.eiseninstance import Instance
 
 class LookupManager():
     """manages all lookup logic for resolving instances"""

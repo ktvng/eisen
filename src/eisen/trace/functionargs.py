@@ -1,7 +1,7 @@
 
 import itertools
 
-from eisen.common.eiseninstance import EisenFunctionInstance
+from eisen.common.eiseninstance import FunctionInstance
 from eisen.trace.memory import Memory, Impression
 from eisen.trace.shadow import Shadow, Personality
 from eisen.trace.entity import Entity, Trait
@@ -44,7 +44,7 @@ class FunctionsAsArgumentsLogic:
     @staticmethod
     def get_all_function_combinations_for_indeterminate_caller(
             caller: Memory,
-            function_parameters: list[Memory]) -> list[tuple[Impression, EisenFunctionInstance, list[Shadow]]]:
+            function_parameters: list[Memory]) -> list[tuple[Impression, FunctionInstance, list[Shadow]]]:
         """
         If the function being called is not a pure function, but a variable, then this variable may
         itself refer to multiple functions. If that variable would also take in function parameters,

@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type
 
 import eisen.adapters as adapters
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.state.instancevisitorstate import InstanceVisitorState
@@ -18,8 +18,8 @@ class InstanceVisitor(Visitor):
         self.apply(InstanceVisitorState.create_from_basestate(state))
         return State_PostInstanceVisitor.create_from_basestate(state)
 
-    def apply(self, state: State) -> list[EisenInstance]:
-        result: list[EisenInstance] = self._route(state.get_ast(), state)
+    def apply(self, state: State) -> list[Instance]:
+        result: list[Instance] = self._route(state.get_ast(), state)
         if result:
             state.get_node_data().instances = result
         return result
@@ -28,7 +28,7 @@ class InstanceVisitor(Visitor):
     def create_instance_inside_context(cls, name: str, type: Type, state: State,
             is_function: bool=False):
         """add a new instance to the current context and return it."""
-        instance = EisenInstance(
+        instance = Instance(
             name=name,
             type=type,
             context=state.get_context(),
@@ -40,40 +40,40 @@ class InstanceVisitor(Visitor):
         return instance
 
     @Visitor.for_tokens
-    def token_(fn, state: State) -> list[EisenInstance]:
+    def token_(fn, state: State) -> list[Instance]:
         return []
 
     @Visitor.for_ast_types("interface")
-    def no_action_(fn, state: State) -> list[EisenInstance]:
+    def no_action_(fn, state: State) -> list[Instance]:
         return []
 
     @Visitor.for_default
-    def continue_(fn, state: State) -> list[EisenInstance]:
+    def continue_(fn, state: State) -> list[Instance]:
         state.apply_fn_to_all_children(fn)
         return []
 
     @Visitor.for_ast_types("mod")
-    def mod_(fn, state: State) -> list[EisenInstance]:
+    def mod_(fn, state: State) -> list[Instance]:
         adapters.Mod(state).enter_module_and_apply(fn)
         return []
 
     @Visitor.for_ast_types("ref", "fn")
-    def ref_(fn, state: State) -> list[EisenInstance]:
+    def ref_(fn, state: State) -> list[Instance]:
         return [adapters.Ref(state).resolve_instance()]
 
     @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
-    def rets_(fn, state: State) -> list[EisenInstance]:
+    def rets_(fn, state: State) -> list[Instance]:
         for child in state.get_child_asts():
             fn.apply(state.but_with(ast=child, is_ptr=True))
         return []
 
     @Visitor.for_ast_types("::")
-    def scope_(fn, state: State) -> list[EisenInstance]:
+    def scope_(fn, state: State) -> list[Instance]:
         node = adapters.ModuleScope(state)
         return [node.get_end_instance()]
 
     @Visitor.for_ast_types(*adapters.Typing.ast_types)
-    def alloc_(fn, state: State) -> list[EisenInstance]:
+    def alloc_(fn, state: State) -> list[Instance]:
         node = adapters.Typing(state)
         type = state.get_returned_type()
         return [InstanceVisitor.create_instance_inside_context(
@@ -82,7 +82,7 @@ class InstanceVisitor(Visitor):
             for name in node.get_names()]
 
     @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
-    def iletivar_(fn, state: State) -> list[EisenInstance]:
+    def iletivar_(fn, state: State) -> list[Instance]:
         fn.apply(state.but_with_second_child())
         node = adapters.InferenceAssign(state)
         names = node.get_names()

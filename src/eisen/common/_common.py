@@ -3,7 +3,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from eisen.state.basestate import BaseState
-from alpaca.concepts import Type, Instance, Module
+    from eisen.common.eiseninstance import Instance
+
+from alpaca.concepts import Type, Module
 
 no_assign_binary_ops = ["+", "-", "/", "*", "and", "or"]
 logic_ops = ["and", "or"]

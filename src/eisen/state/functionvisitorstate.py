@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.concepts import Module, Context
 from alpaca.clr import AST
 
-from eisen.common.eiseninstance import EisenInstance
+from eisen.common.eiseninstance import Instance
 from eisen.state.basestate import BaseState
 
 
@@ -57,7 +57,7 @@ class FunctionVisitorState(BaseState):
         return self.struct_name
 
 
-    def add_function_instance_to_module(self, instance: EisenInstance):
+    def add_function_instance_to_module(self, instance: Instance):
         """
         A defined function must be parsed into a FunctionInstance and added to the module where it
         was defined.

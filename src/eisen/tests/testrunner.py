@@ -149,7 +149,7 @@ class Test:
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
-    disabled_tests = ["objects"]
+    disabled_tests = ["legacy/objects"]
 
     @staticmethod
     def run_test_by_name(name: str):

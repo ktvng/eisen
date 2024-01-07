@@ -114,3 +114,7 @@ class Exceptions():
     class CompilerAssertion(AbstractException):
         type = "CompilerAssertion"
         description = "failed compiler assertion annotation"
+
+    class TooManyCurriedArguments(AbstractException):
+        type = "TooManyCurriedArguments"
+        description = "cannot curry more parameters than arguments to function"

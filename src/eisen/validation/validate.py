@@ -71,6 +71,17 @@ class TypeCheck:
             return False
         return True
 
+    @staticmethod
+    def type_is_expected(state: State, expected: Type, gotten: Type) -> bool:
+        if expected.restriction.is_nilable() and gotten.is_nil():
+            return True
+
+        if expected != gotten:
+            add_exception_to(state,
+                ex=Exceptions.TypeMismatch,
+                msg=f"expected '{expected}' but got '{gotten}'")
+            return False
+        return True
 
 class ImplementationCheck:
     @staticmethod
@@ -277,6 +288,25 @@ class Validate:
                     conflict_map[pair] = embedded_type
         if conflicts:
             return ValidationResult.failure()
+        return ValidationResult.success()
+
+    @staticmethod
+    def function_has_enough_arguments_to_curry(state: State, argument_type: Type, curried_args_type: Type):
+        n_args = len(argument_type.unpack_into_parts())
+        n_curried_args = len(curried_args_type.unpack_into_parts())
+        if n_args < n_curried_args:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.TooManyCurriedArguments,
+                msg= f"Trying to curry '{n_curried_args}' arguments, but function has argument type '{argument_type}' with '{n_args}' arguments")
+
+        return ValidationResult.success()
+
+    @staticmethod
+    def curried_arguments_are_of_the_correct_type(state: State, argument_type: Type, curried_args_type: Type):
+        for expected_type, curried_type in zip(argument_type.unpack_into_parts(), curried_args_type.unpack_into_parts()):
+            if not TypeCheck.type_is_expected(state, expected_type, gotten=curried_type):
+                return ValidationResult.failure()
+
         return ValidationResult.success()
 
     @staticmethod

@@ -6,12 +6,12 @@ from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_t
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.typecheckerstate import TypeCheckerState
-from eisen.common.restriction import PrimitiveRestriction, ImmutableRestriction
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
 from eisen.validation.restructure_is_statement import RestructureIsStatement
 from eisen.validation.typeparser import TypeParser
+from eisen.validation.typefactory import TypeFactory
 
 from eisen.validation.builtin_print import Builtins
 
@@ -41,29 +41,16 @@ class TypeChecker(Visitor):
         TypeChecker.set_returned_type(state, result)
         return result
 
-    @classmethod
-    def get_curried_type(cls, state: State, fn_type: Type, n_curried_args: int) -> Type:
+    @staticmethod
+    def get_curried_type(state: State, fn_type: Type, curried_args_type: Type) -> Type:
         argument_type = fn_type.get_argument_type()
-        if not argument_type.is_tuple():
-            if n_curried_args == 1:
-                return TypeFactory.produce_function_type(
-                    arg=state.get_void_type(),
-                    ret=fn_type.get_return_type(),
-                    mod=fn_type.mod).with_restriction(ImmutableRestriction())
-            raise Exception(f"tried to curry more arguments than function allows: {n_curried_args} {fn_type}")
+        if Validate.function_has_enough_arguments_to_curry(state, argument_type, curried_args_type).failed():
+            return state.get_abort_signal()
 
-        if len(argument_type.components) - n_curried_args == 1:
-            # unpack tuple to just a single type
-            curried_fn_args = argument_type.components[-1]
-        elif len(argument_type.components) - n_curried_args == 0:
-            curried_fn_args = state.get_void_type()
-        else:
-            curried_fn_args = TypeFactory.produce_tuple_type(argument_type.components[n_curried_args:])
+        if Validate.curried_arguments_are_of_the_correct_type(state, argument_type, curried_args_type).failed():
+            return state.get_abort_signal()
 
-        return TypeFactory.produce_function_type(
-            arg=curried_fn_args,
-            ret=fn_type.get_return_type(),
-            mod=fn_type.mod).with_restriction(ImmutableRestriction())
+        return TypeFactory.produce_curried_function_type(fn_type, curried_args_type)
 
 
     @classmethod
@@ -92,9 +79,7 @@ class TypeChecker(Visitor):
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
         if state.get_ast().type in implemented_primitive_types:
-            return (TypeFactory
-                .produce_novel_type(name=state.get_ast().type)
-                .with_restriction(PrimitiveRestriction()))
+            return TypeFactory.produce_novel_type(name=state.get_ast().type)
         elif state.get_ast().type == "nil":
             return TypeFactory.produce_nil_type()
 
@@ -202,7 +187,7 @@ class TypeChecker(Visitor):
         if curried_args_type.is_tuple():
             n_curried_args = len(curried_args_type.components)
 
-        return TypeChecker.get_curried_type(state, fn_type, n_curried_args)
+        return TypeChecker.get_curried_type(state, fn_type, curried_args_type)
 
     @Visitor.for_ast_types("struct")
     def struct(fn, state: State) -> Type:

@@ -1,0 +1,50 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn test(o: obj) {
+    o.x = 4
+}
+
+fn main() {
+    let x = 5
+    x = 4
+    let o = obj(0)
+    let y = o
+    y = o
+    o.x = 4
+
+    let mut o2 = obj(1)
+    o2.x = 12
+    test(o2)
+    test(o)
+}
+
+/// [Test]
+/// name = "bindings/fixed1"
+/// info = """\
+///     _description_
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 10"
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 15"
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 18"
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 19"

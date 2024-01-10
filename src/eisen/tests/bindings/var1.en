@@ -1,0 +1,38 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn test(var o: obj) {
+    let o2 = obj(2)
+    o = o2
+}
+
+fn main() {
+    let var x = 5
+    x = 12
+
+    let o = obj(0)
+    let var p = o
+    p = o
+
+    test(o)
+
+    p.x = 12
+}
+
+/// [Test]
+/// name = "bindings/var1"
+/// info = """\
+///     _description_
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 24"

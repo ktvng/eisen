@@ -1,0 +1,43 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn test(mut var o: obj) {
+    o.x = 5
+    let mut o2 = obj(2)
+    o = o2
+}
+
+fn main() {
+    let mut o = obj(0)
+    let mut o2 = obj(0)
+    let mut var p = o
+    p.x = 12
+    p = o2
+
+    let mut var p2: obj
+    p2 = o
+    p2 = o2
+
+    test(o2)
+
+    let o3 = obj(3)
+    test(o3)
+}
+
+/// [Test]
+/// name = "bindings/mut_var1"
+/// info = """\
+///     _description_
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "IncompatibleBindingException"
+/// contains = "Line 29"

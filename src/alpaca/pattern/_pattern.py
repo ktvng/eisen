@@ -55,7 +55,7 @@ class PatternBuilder:
     def construct(pattern: list, lookups: dict[str, AST]) -> AST:
         ast_type_comp = pattern[0]
         if not isinstance(ast_type_comp, TagComponent):
-            raise Exception("expected real tag component to build list")
+            raise Exception("expected real tag component to build list, got", ast_type_comp)
 
         lst = []
         for comp in pattern[1: ]:

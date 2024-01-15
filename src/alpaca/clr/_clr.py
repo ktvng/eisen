@@ -52,6 +52,9 @@ class AST(ASTElement):
     def is_ast(self) -> bool:
         return True
 
+    def get_all_children(self) -> list[AST | ASTToken]:
+        return self._list.copy()
+
     def has_no_children(self) -> bool:
         return len(self._list) == 0
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Any
 import copy
 
@@ -32,7 +33,8 @@ class Type():
             embeds: list[Type],
             parametrics: list[Type],
             restriction: AbstractRestriction,
-            parent_type: Type):
+            parent_type: Type,
+            component_bindings: list[Any]):
 
         """a type instance should only be created via the TypeclassFactory"""
         self.classification = classification
@@ -45,6 +47,7 @@ class Type():
         self.parametrics = parametrics
         self.restriction = restriction
         self.parent_type = parent_type
+        self.component_bindings = component_bindings
 
     def delegated(self):
         raise Exception(f"Not implemented for {self}")
@@ -122,12 +125,14 @@ class Type():
     def finalize(self,
             components: list[Type],
             component_names: list[str],
+            component_bindings: list[Any],
             inherits: list[Type] = None,
             embeds: list[Type] = None):
         self.delegated()
 
 
     def get_member_attribute_by_name(self, name: str) -> Type: self.delegated()
+    def get_binding_by_name(self, name: str) -> Any: self.delegated()
     def get_return_type(self) -> Type: self.delegated()
     def get_first_parameter_type(self) -> Type: self.delegated()
     def get_argument_type(self) -> Type: self.delegated()
@@ -196,7 +201,8 @@ class FunctionType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def get_uuid_str(self) -> str:
         name_str = self.name if self.name else ""
@@ -226,7 +232,8 @@ class _CompositeType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def is_proto(self) -> bool:
         return self._is_proto
@@ -249,9 +256,24 @@ class _CompositeType(Type):
         pos = self.component_names.index(name)
         return self.components[pos]
 
+    def get_binding_by_name(self, name: str) -> Any:
+        if name not in self.component_names:
+            if self.classification == Type.classifications.struct:
+                matching_embeddings = [tc for tc in self.embeds if tc.has_member_attribute_with_name(name)]
+                if len(matching_embeddings) != 1:
+                    raise Exception(f"bad embedding structure, need to be handled elswhere got {len(matching_embeddings)} matches, need 1")
+                if matching_embeddings:
+                    return matching_embeddings[0].get_binding_by_name(name)
+
+            raise Exception(f"Type {self} does not have member attribute named '{name}'")
+
+        pos = self.component_names.index(name)
+        return self.component_bindings[pos]
+
     def finalize(self,
             components: list[Type],
             component_names: list[str],
+            component_bindings: list[Any],
             inherits: list[Type] = None,
             embeds: list[Type] = None):
 
@@ -259,6 +281,7 @@ class _CompositeType(Type):
         self._is_proto = False
         self.components = components
         self.component_names = component_names
+        self.component_bindings = component_bindings
         if inherits: self.inherits = inherits
         if embeds: self.embeds = embeds
 
@@ -274,7 +297,8 @@ class TupleType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def get_uuid_str(self) -> str:
         return self._get_uuid_based_on_components()
@@ -313,7 +337,8 @@ class VariantType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def is_variant(self) -> bool:
         return True
@@ -345,7 +370,8 @@ class NovelType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def is_novel(self) -> bool:
         return True
@@ -365,7 +391,8 @@ class NilType(Type):
             embeds=[],
             parametrics=[],
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def is_nil(self) -> bool:
         return True
@@ -385,7 +412,8 @@ class ParametricType(Type):
             embeds=[],
             parametrics=parametrics,
             restriction=None,
-            parent_type=None)
+            parent_type=None,
+            component_bindings=None)
 
     def get_uuid_str(self) -> str:
         name_str = self.name if self.name else ""

@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,16 +9,16 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
-fn indirect(a: obj, q: mut ptr) {
+fn indirect(a: obj, mut q: ptr) {
     let b = obj(2)
-    let p = ptr(b)
+    let mut p = ptr(b)
 
-    mut x: ptr
+    let mut x: ptr
 
     if (true) {
         p.o = a
@@ -35,7 +35,7 @@ fn indirect(a: obj, q: mut ptr) {
 
 fn main() {
     let a = obj(1)
-    let q = ptr(a)
+    let mut q =ptr(a)
     indirect(a, q)
 }
 

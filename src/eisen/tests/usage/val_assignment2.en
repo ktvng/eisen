@@ -1,7 +1,7 @@
 struct abc {
     a: int
 
-    create(n: int) -> self: new abc {
+    create(n: int) -> new self: abc {
         self.a = n
     }
 }
@@ -9,7 +9,7 @@ struct abc {
 struct obj {
     var z: abc
 
-    create(x: int, z: abc, z2: abc) -> self: new obj {
+    create(x: int, z: abc, z2: abc) -> new self: obj {
         self.z = z
         self.z = z2
     }
@@ -19,7 +19,7 @@ fn main() {
     let z = abc(0)
     let a = abc(1)
     let o = obj(1, z, a)
-    var v: abc
+    let var v: abc
     v = a
     o.z.a = 4
     v.a = 5
@@ -36,8 +36,8 @@ fn main() {
 /// success = false
 
 /// [[Expects.Exceptions]]
-/// type = "ImmutableValException"
+/// type = "IncompatibleBindingException"
 /// contains = ">> 24"
 /// [[Expects.Exceptions]]
-/// type = "ImmutableValException"
+/// type = "IncompatibleBindingException"
 /// contains = ">> 25"

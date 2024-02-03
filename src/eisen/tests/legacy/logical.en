@@ -1,5 +1,5 @@
 fn main() {
-    let x, y, z: bool
+    let var x, var y, var z: bool
     x = true or false
     y = x and false
     z = not y

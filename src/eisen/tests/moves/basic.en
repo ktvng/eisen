@@ -1,18 +1,18 @@
 struct obj {
-    x: int
+    var x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
 
-fn taker(o: move obj) {
+fn taker(move o: obj) {
     o.x = 4
 }
 
 fn main() {
     let o = obj(0)
-    var x = o
+    let var x = o
     taker(o)
     x.x + 1
 }

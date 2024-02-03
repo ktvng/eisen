@@ -1,12 +1,12 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
 
-fn taker(o: move obj) {
+fn taker(move o: obj) {
     return
 }
 
@@ -16,8 +16,8 @@ fn say(o: obj) {
 
 fn main() {
     let o = obj(0)
-    var v = o
-    var v2 = v
+    let var v = o
+    let var v2 = v
     taker(o)
     say(v2)
     let k = v2

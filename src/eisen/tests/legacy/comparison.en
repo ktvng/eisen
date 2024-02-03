@@ -1,5 +1,5 @@
 fn main() {
-    let x, y, z: bool
+    let var x, var y, var z: bool
 
     x = 4 == 5
     y = 4 != 5

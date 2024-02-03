@@ -1,19 +1,19 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
 
-fn taker(o: move obj) {
+fn taker(move o: obj) {
     return
 }
 
 fn main() {
     let ok = obj(1)
     let o = obj(0)
-    var v: obj
+    let var v: obj
 
     if(ok.x > 3) {
         v = o

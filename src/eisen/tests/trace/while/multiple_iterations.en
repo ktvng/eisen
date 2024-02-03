@@ -1,15 +1,15 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
 
 fn main() {
     let x, y, z = obj(2), obj(3), obj(4)
-    var a, b, c = x, y, z
-    var t = z
+    let var a, var b, var c = x, y, z
+    let var t = z
 
     while(false) {
         c = a

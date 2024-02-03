@@ -6,15 +6,15 @@ fn pickSecond(a: obj, b: obj) -> c: obj{
     c = b
 }
 
-fn test(b: obj, B: mut ptr, C: mut ptr) {
+fn test(b: obj, mut B: ptr, mut C: ptr) {
     let a = obj()
     let x = obj()
-    let A = ptr(a)
+    let mut A = ptr(a)
 
-    var p1, p2 = b, a
-    mut P = A
+    let var p1, var p2 = b, a
+    let mut var P = A
 
-    var f = pickSecond
+    let var f = pickSecond
 
     if (true) {
         P = B
@@ -26,7 +26,7 @@ fn test(b: obj, B: mut ptr, C: mut ptr) {
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -34,15 +34,15 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
 fn main() {
     let b = obj()
-    let B = ptr(b)
-    let C = ptr(b)
+    let mut B = ptr(b)
+    let mut C = ptr(b)
 
     test(b, B, C)
 }

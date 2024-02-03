@@ -1,7 +1,7 @@
 struct Integer {
-    value: int
+    var value: int
 
-    create(value: int) -> self: new Integer {
+    create(value: int) -> new self: Integer {
         self.value = value
     }
 }
@@ -16,8 +16,8 @@ fn max(x: Integer, y: Integer) -> r: Integer {
 }
 
 fn main() {
-    let a, b = Integer(15), Integer(9)
-    var x: Integer
+    let mut a, b = Integer(15), Integer(9)
+    let var x: Integer
     x = max(a, b)
     print("%i ", x.value)
     a.value = 4

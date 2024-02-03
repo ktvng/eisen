@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,24 +9,24 @@ struct obj {
 struct refs {
     var o: obj
 
-    create(o: obj) -> self: new refs {
+    create(o: obj) -> new self: refs {
         self.o = o
     }
 }
 
-fn select_o(r: mut refs, o: obj) {
+fn select_o(mut r: refs, o: obj) {
     let o3 = obj(3)
     select_o(r, o3, o)
 }
 
-fn select_o(r: mut refs, oA: obj, oB: obj) {
+fn select_o(mut r: refs, oA: obj, oB: obj) {
     r.o = oA
 }
 
 fn main() {
     let o1 = obj(1)
     let o2 = obj(2)
-    let r = refs(o1)
+    let mut r = refs(o1)
 
     if (true) {
         r.o = o2

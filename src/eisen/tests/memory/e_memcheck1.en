@@ -1,7 +1,7 @@
 struct ptr {
     var x: obj
 
-    create(x: obj) -> self: new ptr {
+    create(x: obj) -> new self: ptr {
         self.x = x
     }
 }
@@ -16,46 +16,46 @@ fn select(a: obj, b: obj) -> c: obj {
 }
 
 fn cond(a: obj) -> c: obj {
-    var x: obj
+    let var x: obj
     if (a.x == 4) {
         let y = obj(4)
         x = y
     }
 }
 
-fn one(a: obj, b: obj) -> c: obj {
+fn one(a: obj, b: obj) -> var c: obj {
     let y = obj(5)
     c = select(a, b)
     c = select(a, y)
 }
 
-fn make_ptr(a: obj) -> p: new ptr {
+fn make_ptr(a: obj) -> new p: ptr {
     let y = obj(5)
     p = ptr(y)
     let p2 = ptr(y)
 }
 
-fn make_ptr2(a: obj) -> p: new ptr {
+fn make_ptr2(a: obj) -> new p: ptr {
     p = ptr(a)
 }
 
 
 fn main() {
     let myObj = obj(0)
-    var a, b = myObj, myObj
+    let var a, b = myObj, myObj
 
     a = one(a, b)
-    let p: ptr
+    let new p: ptr
     p = make_ptr(a)
 
-    let p2: ptr
+    let new p2: ptr
     p2 = make_ptr(a)
 }
 
 struct obj {
-    x: int
+    var x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }

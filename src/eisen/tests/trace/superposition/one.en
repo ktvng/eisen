@@ -1,9 +1,9 @@
-fn test(b: obj, B: mut ptr) {
+fn test(b: obj, mut B: ptr) {
     let a = obj()
-    let A = ptr(a)
+    let mut A = ptr(a)
 
-    var p = a
-    mut P = A
+    let var p = a
+    let mut var P = A
 
     if (true) {
         p = b
@@ -17,7 +17,7 @@ fn test(b: obj, B: mut ptr) {
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -25,14 +25,14 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
 fn main() {
     let b = obj()
-    let B = ptr(b)
+    let mut B = ptr(b)
 }
 
 /// [Test]

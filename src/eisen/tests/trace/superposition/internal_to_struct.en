@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,25 +9,25 @@ struct obj {
 struct box {
     var o: obj
 
-    create(o: obj) -> self: new box {
+    create(o: obj) -> new self: box {
         self.o = o
     }
 }
 
 struct ptr {
     var o: obj
-    mut b: box
+    mut var b: box
 
-    create(o: obj, b: mut box) -> self: new ptr {
+    create(o: obj, mut b: box) -> new self: ptr {
         self.o = o
         self.b = b
     }
 }
 
-fn one(p: mut ptr, o: obj) {
+fn one(mut p: ptr, o: obj) {
     let o1 = obj(1)
-    let b1 = box(o1)
-    let p1 = ptr(o1, b1)
+    let mut b1 = box(o1)
+    let mut p1 = ptr(o1, b1)
 
     if (true) {
         p1.o = o
@@ -39,8 +39,8 @@ fn one(p: mut ptr, o: obj) {
 
 fn main() {
     let o = obj(0)
-    let b = box(o)
-    let p = ptr(o, b)
+    let mut b = box(o)
+    let mut p = ptr(o, b)
     // one(p, o)
     print("%i", p.o.x)
 }

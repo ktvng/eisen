@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,17 +9,17 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
-fn indirect(x: obj, X: mut ptr) {
-    let y = obj(0)
-    let Y = ptr(y)
+fn indirect(x: obj, mut X: ptr) {
+    let mut y = obj(0)
+    let mut Y = ptr(y)
 
-    var a, b, c = x, x, y
-    mut A, B, C = X, X, Y
+    let var a, var b, var c = x, x, y
+    let mut var A, mut var B, mut var C = X, X, Y
 
 
     while (false) {
@@ -34,8 +34,8 @@ fn indirect(x: obj, X: mut ptr) {
 }
 
 fn main() {
-    let x = obj(0)
-    let X = ptr(x)
+    let mut x = obj(0)
+    let mut X = ptr(x)
     indirect(x, X)
 }
 

@@ -1,6 +1,6 @@
 fn main() {
-    let x: int
-    let y = 4
+    let var x: int
+    let var y = 4
     x = y
     print("%i %i ", x, y)
 

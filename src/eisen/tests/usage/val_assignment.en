@@ -1,14 +1,14 @@
 struct abc {
-    a: int
+    var a: int
 
-    create(n: int) -> self: new abc {
+    create(n: int) -> new self: abc {
         self.a = n
     }
 }
 struct obj {
     var z: abc
 
-    create(z: abc) -> self: new obj {
+    create(z: abc) -> new self: obj {
         self.z = z
         print("%i ", self.z.a)
     }
@@ -16,10 +16,10 @@ struct obj {
 
 fn main() {
     let z = abc(0)
-    let a = abc(1)
+    let mut a = abc(1)
     let o = obj(z)
 
-    var v: abc
+    let var v: abc
     v = a
 
     print("%i ", v.a)

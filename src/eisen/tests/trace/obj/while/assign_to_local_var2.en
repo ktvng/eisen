@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -9,14 +9,14 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
-fn iter(p: mut ptr) -> x: obj {
+fn iter(mut p: ptr) -> x: obj {
     let n = obj()
-    let r, s, t = ptr(p.o), ptr(p.o), ptr(n)
+    let mut r, mut s, mut t = ptr(p.o), ptr(p.o), ptr(n)
 
     while(true) {
         p.o = r.o
@@ -27,8 +27,8 @@ fn iter(p: mut ptr) -> x: obj {
 
 fn main() {
     let o = obj()
-    let p = ptr(o)
-    var a = iter(p)
+    let mut p = ptr(o)
+    let var a = iter(p)
 }
 
 /// [Test]

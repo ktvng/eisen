@@ -1,8 +1,8 @@
 struct point {
-    x: int
-    y: int
+    var x: int
+    var y: int
 
-    create() -> self: new point {
+    create() -> new self: point {
         self.x = 0
         self.y = 0
     }
@@ -14,9 +14,9 @@ fn say(p: point) {
 
 struct point3d {
     embed point
-    z: int
+    var z: int
 
-    create() -> self: new point3d {
+    create() -> new self: point3d {
         self.x = 0
         self.y = 2
         self.z = 0
@@ -28,7 +28,7 @@ fn say(p: point3d) {
 }
 
 fn main() {
-    let p = point3d()
+    let mut p = point3d()
     p.say()
     p.x = 3
     p.z = 4

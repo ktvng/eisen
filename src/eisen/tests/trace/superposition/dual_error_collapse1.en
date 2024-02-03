@@ -1,24 +1,23 @@
-fn pickFirst(a: obj, b: obj, p: mut ptr) {
+fn pickFirst(a: obj, b: obj, mut p: ptr) {
     p.o = a
 }
 
-fn pickSecond(a: obj, b: obj, p: mut ptr) {
+fn pickSecond(a: obj, b: obj, mut p: ptr) {
     p.o = b
 }
 
-fn ok(a: obj, b: obj, p: mut ptr) {
+fn ok(a: obj, b: obj, mut p: ptr) {
     p.o = p.o
 }
 
-fn test(b: obj, B: mut ptr, C: mut ptr) {
+fn test(b: obj, mut B: ptr, mut C: ptr) {
     let a = obj()
     let x = obj()
-    let A = ptr(a)
+    let mut A = ptr(a)
+    let var p1, var p2 = b, b
+    let mut var P = A
 
-    var p1, p2 = b, b
-    mut P = A
-
-    var f = ok
+    let var f = ok
 
     if (true) {
         p1 = b
@@ -41,7 +40,7 @@ fn test(b: obj, B: mut ptr, C: mut ptr) {
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -49,15 +48,15 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
 fn main() {
     let b = obj()
-    let B = ptr(b)
-    let C = ptr(b)
+    let mut B = ptr(b)
+    let mut C = ptr(b)
 
     test(b, B, C)
 }

@@ -1,5 +1,5 @@
 fn main() {
-    let p = point(1, 2)
+    let mut p = point(1, 2)
     print("%i %i", p.x, p.y)
 
     p.x = 5
@@ -8,10 +8,10 @@ fn main() {
 }
 
 struct point {
-    x: int
-    y: int
+    var x: int
+    var y: int
 
-    create(x: int, y: int) -> self: new point {
+    create(x: int, y: int) -> new self: point {
         self.x = x
         self.y = y
     }

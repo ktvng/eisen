@@ -2,7 +2,7 @@ fn before() -> result: int {
     result = 4
 }
 
-fn sum(a: int, b: int) -> result: int {
+fn sum(var a: int, b: int) -> result: int {
     result = a + b
     a = 12
 }

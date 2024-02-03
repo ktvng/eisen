@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,12 +9,12 @@ struct obj {
 struct ptr {
     var x: obj
 
-    create(x: obj) -> self: new ptr {
+    create(x: obj) -> new self: ptr {
         self.x = x
     }
 }
 
-fn taker(o: move ptr) {
+fn taker(move o: ptr) {
     return
 }
 
@@ -25,7 +25,7 @@ fn say(o: obj) {
 fn main() {
     let o = obj(0)
     let p = ptr(o)
-    var v = p
+    let var v = p
     taker(p)
     say(v.x)
     let k = v

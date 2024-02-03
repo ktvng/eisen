@@ -1,7 +1,7 @@
 struct obj {
     f: (int) -> void
 
-    create(f: (int) -> void) -> self: new obj {
+    create(f: (int) -> void) -> new self: obj {
         self.f = f
     }
 }

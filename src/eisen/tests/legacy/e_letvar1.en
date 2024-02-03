@@ -2,7 +2,7 @@ struct point {
     x: int
     y: int
 
-    create() -> self: new point {
+    create() -> new self: point {
         self.x = 0
         self.y = 0
     }
@@ -11,12 +11,12 @@ struct point {
 fn main() {
     let p = point()
     p = point()
-    let p2: point
+    let new p2: point
 
-    var myP = p
+    let var myP = p
     p2 = myP
 
-    let p3: point
+    let new p3: point
     p3 = p
 }
 
@@ -28,11 +28,11 @@ fn main() {
 /// [Expects]
 /// success = false
 /// [[Expects.Exceptions]]
-/// type = "LetReassignmentException"
+/// type = "IncompatibleBindingException"
 /// contains = ">> 13"
 /// [[Expects.Exceptions]]
-/// type = "LetInitializationMismatchException"
+/// type = "IncompatibleBindingException"
 /// contains = ">> 17"
 /// [[Expects.Exceptions]]
-/// type = "LetInitializationMismatchException"
+/// type = "IncompatibleBindingException"
 /// contains = ">> 20"

@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -9,7 +9,7 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
@@ -17,15 +17,15 @@ struct ptr {
 struct indirect {
     mut p: ptr
 
-    create(p: mut ptr) -> self: new indirect {
+    create(mut p: ptr) -> new self: indirect {
         self.p = p
     }
 }
 
 fn main() {
     let b = obj()
-    let B = ptr(b)
-    let Bin = indirect(B)
+    let mut B = ptr(b)
+    let mut Bin = indirect(B)
 
     let c = obj()
     test(c, Bin)
@@ -33,12 +33,12 @@ fn main() {
     @compiler_assert(object_has_dependencies, B, "o: c")
 }
 
-fn test(b: obj, Bin: mut indirect) {
+fn test(b: obj, mut Bin: indirect) {
     let a = obj()
     test2(b, Bin)
 }
 
-fn test2(b: obj, Bin: mut indirect) {
+fn test2(b: obj, mut Bin: indirect) {
     Bin.p.o = b
 }
 

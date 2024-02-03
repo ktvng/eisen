@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create() -> self: new obj {
+    create() -> new self: obj {
         self.x = 0
     }
 }
@@ -9,16 +9,16 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
 
 fn main() {
     let o, d = obj(), obj()
-    let p = ptr(o)
+    let mut p = ptr(o)
 
-    var a, b = o, d
+    let var a, var b = o, d
 
     while(false) {
         p.o = a

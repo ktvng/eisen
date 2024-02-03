@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -9,7 +9,7 @@ struct obj {
 struct ptr {
     var o: obj
 
-    create(o: obj) -> self: new ptr {
+    create(o: obj) -> new self: ptr {
         self.o = o
     }
 }
@@ -25,13 +25,13 @@ fn apply(f: () -> void) {
     f()
 }
 
-fn add(p: mut ptr, o: obj) {
+fn add(mut p: ptr, o: obj) {
     p.o = o
 }
 
 fn main() {
     let o = obj(0)
-    let p = ptr(o)
+    let mut p = ptr(o)
     let f = add{p}
     one(f, o)
     print("%i", p.o.x)

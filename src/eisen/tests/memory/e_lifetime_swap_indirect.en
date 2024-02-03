@@ -1,7 +1,7 @@
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }
@@ -11,7 +11,7 @@ fn indirection1(o1: obj, o2: obj) -> ret: obj {
 }
 
 fn indirection2(o1: obj, o2: obj) -> ret: obj {
-    var a, b = swap(o1, o2)
+    let var a, var b = swap(o1, o2)
     a, b = swap(a, b)
     ret = a
 }
@@ -28,7 +28,7 @@ fn swap(o1: obj, o2: obj) -> a: obj, b: obj {
 
 fn main() {
     let o1 = obj(1)
-    var o = select_o(o1)
+    let var o = select_o(o1)
 }
 
 /// [Test]

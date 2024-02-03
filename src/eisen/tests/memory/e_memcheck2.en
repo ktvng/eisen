@@ -1,6 +1,6 @@
-fn swap(a: obj, b: obj) -> x: obj, y: obj {
+fn swap(a: obj, b: obj) -> var x: obj, var y: obj {
     let n = obj(4)
-    var t, t2: obj
+    let var t, var t2: obj
     t = x
     t2 = x
 
@@ -22,7 +22,7 @@ fn swap(a: obj, b: obj) -> x: obj, y: obj {
 struct obj {
     x: int
 
-    create(x: int) -> self: new obj {
+    create(x: int) -> new self: obj {
         self.x = x
     }
 }

@@ -212,7 +212,7 @@ class Validate:
     def type_exists(state: State, name: str, type: Type) -> ValidationResult:
         if type is None:
             return failure_with_exception_added_to(state,
-                ex=Exceptions.UnderfinedType,
+                ex=Exceptions.UndefinedType,
                 msg=f"'{name}' is not defined")
         return ValidationResult.success()
 

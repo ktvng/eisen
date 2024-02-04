@@ -23,7 +23,11 @@ class LValMemoryVisitor(Visitor):
                      memory=state.get_memory(adapters.Ref(state).get_name()),
                      trait=Trait())]
 
-    @Visitor.for_ast_types("lvals", "tags")
+    @Visitor.for_ast_types(*adapters.BindingAST.ast_types)
+    def _binding(fn, state: State):
+        return fn.apply(state.but_with_first_child())
+
+    @Visitor.for_ast_types("lvals", "bindings")
     def _lvals(fn, state: State):
         lvals = []
         for child in state.get_all_children():

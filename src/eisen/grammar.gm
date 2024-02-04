@@ -161,6 +161,44 @@ STRUCTURE
         | endl
         | endl ENDLS
 
+    # ====================================================
+    # Binding
+    BINDING ->
+        @action filter_build void
+        |   TAG
+        @action filter_build new
+        |   new TAG
+        @action filter_build mut
+        |   mut TAG
+        @action filter_build var
+        |   var TAG
+        @action filter_build mut_var
+        |   mut var TAG
+        |   var mut TAG
+        @action filter_build mut_new
+        |   mut new TAG
+        |   new mut TAG
+        @action filter_build move
+        |   move TAG
+
+    BINDING_AND_TYPE ->
+        @action filter_build void
+        |   TYPE
+        @action filter_build new
+        |   new TYPE
+        @action filter_build mut
+        |   mut TYPE
+        @action filter_build var
+        |   var TYPE
+        @action filter_build mut_var
+        |   mut var TYPE
+        |   var mut TYPE
+        @action filter_build mut_new
+        |   mut new TYPE
+        |   new mut TYPE
+        @action filter_build move
+        |   move TYPE
+
 
     # ====================================================
     # Typing
@@ -168,24 +206,22 @@ STRUCTURE
     TYPE ->
         @action filter_build type
         |   TAG
-        @action filter_build mut_type
-        |   mut TAG
-        @action filter_build mut*_type
-        |   mut * TAG
-        @action filter_build move_type
-        |   move TAG
         @action filter_build nilable_type
         |   TAG ?
         @action pass
         |   FN_TYPE
-        |   NEW_TYPE
         @action filter_build para_type
         |   TAG [ TYPE ]
         |   TAG [ _TYPES ]
 
-    NEW_TYPE ->
-        @action filter_build new_type
-        |   new TAG
+    BINDING_AND_TYPES ->
+        @action filter_build prod_type
+        |   _BINDING_AND_TYPES
+
+    _BINDING_AND_TYPES ->
+        @action pool
+        |   BINDING_AND_TYPE , _BINDING_AND_TYPES
+        |   BINDING_AND_TYPE , BINDING_AND_TYPE
 
     TYPES ->
         @action filter_build prod_type
@@ -202,19 +238,19 @@ STRUCTURE
 
     FN_TYPE_IN ->
         @action filter_build fn_type_in
-        |   ( TYPES )
-        |   ( TYPE )
+        |   ( BINDING_AND_TYPES )
+        |   ( BINDING_AND_TYPE )
         |   ( )
 
     FN_TYPE_OUT ->
         @action filter_build fn_type_out
-        |   -> TYPE
-        |   -> ( TYPES )
+        |   -> BINDING_AND_TYPE
+        |   -> ( BINDING_AND_TYPES )
 
     TYPING ->
         @action build_operator
-        |   TAGS : TYPE
-        |   TAG : TYPE
+        |   BINDINGS : TYPE
+        |   BINDING : TYPE
 
     TEMPORARY_FIX1 ->
         @action filter_build prod_type
@@ -321,6 +357,10 @@ STRUCTURE
         @action filter_build tags
         |   _TAGS
 
+    BINDINGS ->
+        @action filter_build bindings
+        |   _BINDINGS
+
     CURRIED_PARAMS ->
         @action filter_build curried
         |   { E0 }
@@ -358,6 +398,12 @@ STRUCTURE
         @action pool
         |   E0 , E0
         |   E0 , _E0S
+
+    # tuple of bindings
+    _BINDINGS ->
+        @action pool
+        |   BINDING , BINDING
+        |   BINDING , _BINDINGS
 
 
     # ====================================================
@@ -400,9 +446,9 @@ STRUCTURE
 
     INFERENCE ->
         @action pool
-        |   TAGS OP_ASSIGN E0S
-        |   TAGS OP_ASSIGN E0
-        |   TAG OP_ASSIGN E0
+        |   BINDINGS OP_ASSIGN E0S
+        |   BINDINGS OP_ASSIGN E0
+        |   BINDING OP_ASSIGN E0
 
 
     # ====================================================
@@ -411,22 +457,8 @@ STRUCTURE
     DECL ->
         @action convert_decl let
         |   let TYPING
-        @action convert_decl mut
-        |   mut TYPING
-        @action convert_decl nil?
-        |   var ? TYPING
-        @action convert_decl val
-        |   var TYPING
-
         @action filter_build ilet
         |   let INFERENCE
-        @action filter_build imut
-        |   mut INFERENCE
-        @action filter_build inil?
-        |   var ? INFERENCE
-        @action filter_build ival
-        |   var INFERENCE
-
 
     # ====================================================
     # ANNOTATION
@@ -548,7 +580,7 @@ STRUCTURE
 
     CREATE_TYPING ->
         @action build_operator
-        |   TAG : NEW_TYPE
+        |   BINDING : TYPE
 
 
     # ====================================================

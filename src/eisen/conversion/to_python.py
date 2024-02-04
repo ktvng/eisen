@@ -91,9 +91,9 @@ class lmda:
         struct_name_token = Pattern("('struct name xs...)").match(state.get_ast()).name
 
         create_ast = node.get_create_ast()
-        self_name_token: ASTToken = Pattern("('create _ _ ('rets (': name _)) _)") \
+        self_name_token: ASTToken = Pattern("('create _ _ ('rets (': ('new name) _)) _)") \
             .match(create_ast).name
-        attr_toks = Pattern("(': attr_name _)").map(state.get_ast(),
+        attr_toks = Pattern("(': (?? attr_name) _)").map(state.get_ast(),
             into_pattern=f"('= ('. ('ref '{self_name_token.value}) attr_name) 'None)")
 
         create_node = adapters.Create(state.but_with(ast=create_ast))
@@ -109,8 +109,8 @@ class lmda:
         if ret_ast.has_no_children():
             return []
         if ret_ast.first().type == "prod_type":
-            return [m.name for m in map(Pattern("(': name _)").match, ret_ast.first()._list) if m]
-        return [Pattern("('rets (': name _))").match(ret_ast).name]
+            return [m.name for m in map(Pattern("(': (?? name) _)").match, ret_ast.first()._list) if m]
+        return [Pattern("('rets (': (?? name) _))").match(ret_ast).name]
 
     @Visitor.for_ast_types("variant")
     def variant_(fn, state: State):
@@ -123,7 +123,7 @@ class lmda:
     @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         node = adapters.Def(state)
-        return_vars = Pattern("(': ret_name _)").map(node.get_rets_ast(),
+        return_vars = Pattern("(': (?? ret_name) _)").map(node.get_rets_ast(),
             into_pattern=f"('= ret_name 'None)")
         ret_names = ToPython.get_ret_names(node.get_rets_ast())
         arg_ast = fn.apply(state.but_with(ast=node.get_args_ast()))
@@ -148,7 +148,7 @@ class lmda:
 
     @Visitor.for_ast_types(":")
     def colon_(fn, state: State):
-        return Pattern("(': name _)").match(state.get_ast()).name
+        return Pattern("(': (?? name) _)").match(state.get_ast()).name
 
     @Visitor.for_ast_types("prod_type")
     def prod_type_(fn, state: State):
@@ -168,16 +168,20 @@ class lmda:
 
     @Visitor.for_ast_types(*adapters.Decl.ast_types)
     def decls_(fn, state: State):
-        if Pattern("(?? ('tags xs...) _)").match(state.get_ast()):
-            tags_ast = Pattern("(?? ('tags xs...) _)").match(state.get_ast())\
+        if Pattern("(?? ('bindings xs...) _)").match(state.get_ast()):
+            tags_ast = Pattern("(?? ('bindings xs...) _)").match(state.get_ast())\
                 .to("('tags xs...)")
+
+            tags_ast = Pattern("(?? name)").map(tags_ast,
+                into_pattern="('ref name)")
+            tags_ast = AST("tags", lst=tags_ast)
 
             number_of_vars = len(tags_ast)
             values = " ".join(["None"]*number_of_vars)
             values_ast = fn.create_ast(f"(tuple {values})")
             return AST("=", lst=[tags_ast, values_ast])
         else:
-            return Pattern("(?? name _)").match(state.get_ast()).to("('= ('ref name) 'None)")
+            return Pattern("(?? (?? name) _)").match(state.get_ast()).to("('= ('ref name) 'None)")
 
     @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):
@@ -232,6 +236,11 @@ class lmda:
         return AST("call", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
 
+    @Visitor.for_ast_types("bindings")
+    def bindings_(fn, state: State):
+        return AST("tags", lst=[fn.apply(state.but_with(ast=child))
+            for child in state.get_all_children()])
+
     @Visitor.for_ast_types("if", "cond", "lvals",
         "params", "tags", "tuple",
         "=", ".", "+", "-",
@@ -284,6 +293,10 @@ class lmda:
     @Visitor.for_ast_types("index")
     def index_(fn, state: State):
         return state.get_ast()
+
+    @Visitor.for_ast_types(*adapters.BindingAST.ast_types)
+    def _binding(fn, state: State):
+        return state.first_child()
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):

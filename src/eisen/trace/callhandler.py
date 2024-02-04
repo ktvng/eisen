@@ -15,6 +15,7 @@ from eisen.trace.entity import origin_entity
 from eisen.trace.delta import FunctionDelta
 from eisen.trace.entanglement import Entanglement
 from eisen.trace.functionargs import FunctionsAsArgumentsLogic
+from eisen.common.binding import Binding
 
 State = MemoryVisitorState
 class CallHandler:
@@ -143,7 +144,7 @@ class CallHandler:
                 self.state.update_source_of_impression(impression, update_with_shadow)
 
     @staticmethod
-    def should_select_shadow(type: Type) -> bool:
+    def should_select_shadow(binding: Binding) -> bool:
         """
         Return true if, based on the [type], we should return the shadow instead of a memory. This
         is the case for creating new objects (as the object is created as a real entity inside the
@@ -152,19 +153,20 @@ class CallHandler:
         In short, this should return true if we are returning a "true object" and not a pointer/
         memory of one.
         """
-        return type.restriction.is_new_let() or type.restriction.is_primitive()
+        return binding == Binding.ret_new or binding == Binding.data
+
 
     @staticmethod
     def _select_shadow_or_memory(
             i: int,
-            type: Type,
+            binding: Binding,
             shadows: list[Shadow],
             memories: list[Memory]) -> Shadow | Memory:
         """
         For the [i]th return value and its [type], return either the shadow or memory that
         corresponds to it.
         """
-        match CallHandler.should_select_shadow(type):
+        match CallHandler.should_select_shadow(binding):
             case True: return shadows[i]
             case False: return memories[i]
 
@@ -173,9 +175,9 @@ class CallHandler:
         Return an ordered list of return values of this function, where each value is either a
         Shadow or a Memory depending on the eisen type of that return value.
         """
-        return_types = self.node.get_function_return_type().unpack_into_parts()
-        return [CallHandler._select_shadow_or_memory(i, type, shadows, memories)
-            for i, type in enumerate(return_types)]
+        returned_bindings = self.node.get_return_value_bindings()
+        return [CallHandler._select_shadow_or_memory(i, binding, shadows, memories)
+            for i, binding in enumerate(returned_bindings)]
 
     def _add_entanglement(self, memory: Memory) -> Memory:
         """
@@ -207,8 +209,8 @@ class CallHandler:
         """
         Resole any parameters which may be moved into the child function call.
         """
-        for type_, memory in zip(self.node.get_function_argument_type().unpack_into_parts(), param_memories):
-            if type_.restriction.is_move():
+        for binding, memory in zip(self.node.get_argument_bindings(), param_memories):
+            if binding == Binding.move:
                 for impression in memory.impressions:
                     impression.shadow.entity.moved = True
 

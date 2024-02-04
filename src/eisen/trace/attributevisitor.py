@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import eisen.adapters as adapters
+from eisen.common.binding import Binding
 from eisen.trace.entity import Trait
 from eisen.trace.memory import Memory, Impression, MemorableSet
 from eisen.trace.lval import Lval
@@ -45,7 +46,7 @@ class AttributeVisitor:
         if existing_memory:
             return existing_memory
 
-        if state.get_returned_type().restriction.is_primitive():
+        if state.get_returned_type().is_novel():
             return None
 
         # no memory, need to add a memory of an angel
@@ -83,8 +84,15 @@ class AttributeVisitor:
         return unlocked_memories
 
     @staticmethod
-    def _has_ownership_change(state: State) -> bool:
-        return not state.get_restriction().is_let() and not state.get_restriction().is_primitive()
+    def _has_ownership_change(state: State, attr_name: str) -> bool:
+        # TODO fix this
+        returned_type = state.get_returned_type()
+        if returned_type.is_novel(): return False
+        parent_type = state.but_with_first_child().get_returned_type()
+        parent_type_composite_binding = state.get_struct_binding(parent_type)
+        attribute_binding = parent_type_composite_binding.get_binding_of_attribute(attr_name)
+        if attribute_binding == Binding.new or attribute_binding == Binding.mut_new: return False
+        return True
 
     @staticmethod
     def _dot(state: State) -> tuple[list[Memory], str, bool]:
@@ -97,7 +105,7 @@ class AttributeVisitor:
             return AttributeVisitor._resolve_memories_during_owner_switch(state, trait, parents), Trait(state.second_child().value), False
 
         trait = trait.join(Trait(state.second_child().value))
-        return parents, trait, AttributeVisitor._has_ownership_change(state)
+        return parents, trait, AttributeVisitor._has_ownership_change(state, adapters.Scope(state).get_attribute_name())
 
     @staticmethod
     def _form_new_impressions(state: State, memories: list[Memory], trait: Trait) -> list[Memory]:

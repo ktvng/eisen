@@ -8,11 +8,11 @@ class Entanglement:
     An entanglement represents an interaction between two different entities which may arise due to
     their concurrent modification inside the branch of a conditional statement. For example:
 
-        fn example(b: obj(), B: mut ptr) {
+        fn example(b: obj(), mut B: ptr) {
             let a = obj()
             let A = ptr()
-            var p: obj
-            var P: ptr
+            let var p: obj
+            let var P: ptr
 
             if (...) {
                 p = a

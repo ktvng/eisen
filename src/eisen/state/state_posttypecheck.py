@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 
-from eisen.common.restriction import GeneralRestriction
 from eisen.state.basestate import BaseState
 
 class State_PostTypeCheck(BaseState):
@@ -28,13 +27,3 @@ class State_PostTypeCheck(BaseState):
         :rtype: Type
         """
         return self.get_node_data().returned_type
-
-
-    def get_restriction(self) -> GeneralRestriction:
-        """
-        Get any restriction on the Type that results from evaluating the current State's ast.
-
-        :return: The restrictions of the returned Type.
-        :rtype: GeneralRestriction
-        """
-        return self.get_returned_type().get_restrictions()[0]

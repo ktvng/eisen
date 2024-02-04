@@ -40,21 +40,21 @@ class DeclarationVisitor(Visitor):
     @adds_type_to_module
     def struct_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_struct_type(
-            name=adapters.Struct(state).get_struct_name(),
+            name=adapters.Struct(state).get_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_ast_types("interface")
     @adds_type_to_module
     def interface_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_interface_type(
-            name=adapters.Interface(state).get_interface_name(),
+            name=adapters.Interface(state).get_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_ast_types("variant")
     @adds_type_to_module
     def variant_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_variant_type(
-            name=adapters.Variant(state).get_variant_name(),
+            name=adapters.Variant(state).get_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_default

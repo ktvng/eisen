@@ -5,9 +5,7 @@ from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, Abstra
 from alpaca.config import Config
 from alpaca.clr import AST
 
-from eisen.common.restriction import PrimitiveRestriction, NoRestriction
 from eisen.common.eiseninstance import FunctionInstance
-
 from eisen.state._basemixins import BaseMixins
 
 class SharedBool():
@@ -88,11 +86,11 @@ class BaseState(AbstractParams, BaseMixins):
     @classmethod
     def create_initial(cls, config: Config, ast: AST, txt: str, print_to_watcher: bool=False) -> BaseState:
         global_mod = Module("")
-        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_restriction(PrimitiveRestriction()))
-        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_restriction(PrimitiveRestriction()))
-        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_restriction(PrimitiveRestriction()))
-        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction()))
-        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void").with_restriction(NoRestriction()))
+        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int"))
+        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str"))
+        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt"))
+        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool"))
+        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
 
         return BaseState(
             config=config,

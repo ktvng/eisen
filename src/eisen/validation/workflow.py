@@ -8,9 +8,8 @@ from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
 from eisen.validation.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
-from eisen.validation.usagechecker import UsageChecker
 from eisen.validation.declarationvisitor import DeclarationVisitor
-from eisen.validation.finalizationvisitor import FinalizationVisitor, Finalization2
+from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
 from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
@@ -18,6 +17,8 @@ from eisen.validation.instancevisitor import InstanceVisitor
 from eisen.validation.recursionvisitor import RecursionVisitor
 from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.trace.memoryvisitor import MemoryVisitor
+from eisen.bindings.bindingparser import BindingParser
+from eisen.bindings.bindingchecker import BindingChecker
 from eisen.state.basestate import BaseState as State
 
 # Notes:
@@ -28,66 +29,80 @@ from eisen.state.basestate import BaseState as State
 # They are implemented the same.
 
 # class used to debug
-class Printast():
+class PrintAst():
     def run(self, state: State):
         print(state.get_ast())
         return state
 
 class Workflow():
     steps: list[Visitor] = [
-        # initialize the .data attribute for all asts with empty NodeData instances
+        # Initialize the .data attribute for all asts with empty NodeData instances
         Initializer,
 
-        # create the module structure of the program.
-        #   - the module of a node can be accessed by params.ast_get_mod()
+        # Create the module structure of the program.
         ModuleVisitor,
 
-        # add proto types for struct/interfaces, which are the representation
-        # of struct declaration without definition.
+        # Parse and add declarations of structs/interfaces
         DeclarationVisitor,
 
-        # finalizes the proto types (which moves from declaration to definition)
         # TODO: for now, interfaces can only be implemented from the same module
         # in which they are defined.
         #
-        # we must finalize interfaces first because structs depend on interfaces
-        # as they implement interfaces
-        FinalizationVisitor,
-        Finalization2,
+        # Finalizes the interfaces after parsing their definitions. This must occur
+        # before we finalize structs as structs depend on interfaces
+        InterfaceFinalizationVisitor,
+        # Finalizes the structs after parsing their definitions.
+        StructFinalizationVisitor,
 
-        # adds types for and constructs the functions. this also normalizes the
-        # (def ...) and (create ...) asts so they have the same child structure,
-        # which allows us to process them identically later in the
-        # TypeClassFlowWrangler.
+        # Constructs and adds types for global functions. Here (def ...) and
+        # (create ...) ASTS are also normalized to have the same structure,
+        # meaning they can be parsed with shared code.
         FunctionVisitor,
+
+        # Add builtin methods required to deal with vectors (e.g. append, etc)
         VectorVisitor,
 
-        # this changes (ref ...) to (fn ...) if they refer to global functions
+        # Convert (ref ...) to (fn ...) ASTS if they refer to global functions,
+        # allowing future visitors to distinguish between pure functions with 'fn'
+        # and references to functions/curried function with 'ref'
         FnConverter,
 
-        # evaluate the flow of types through the program.
-        #   - the type which is flowed through a node can be accessed by
-        #     params.get_returned_type()
+        # Evaluate the flow of types through the program. Afterwards, the type
+        # which flows through a node/AST can be accessed by state.get_returned_type()
         TypeChecker,
 
+        # Create instances where applicable. Instances are pieces of information
+        # packaged together (name, type, etc.) which is useful for transpilation
         InstanceVisitor,
+
+        # Check the recursion structure of methods and structs with method pointers,
+        # (incomplete). This is used to identify where special processing is
+        # necessary later on, as some visitors must handle recursive methods uniquely.
         RecursionVisitor,
 
-        # this handles restrictions based on let/var/val differences
-        UsageChecker,
+        # Parse the bindings associated with structs/functions as each of these have
+        # attributes or parameters with bindings.
+        BindingParser,
 
-        NilCheck,
+        # Check that reference bindings (var, mut, etc) are respected and consistent
+        BindingChecker,
+
+        # Verify that nil and nilable types are handled and inspected before use.
+        # Disabled pending refactor.
+        # NilCheck,
+
+        # Verify that the code is memory safe.
         MemoryVisitor,
-        # Printast,
 
-        # note: def, create, fn, ref, ilet, :: need instances!!
+        # Print the current AST
+        # PrintAst,
+
+        # note: def, create, fn, ref, ilet, ::, . need instances!!
     ]
 
     @staticmethod
     def _choose_steps(supplied_steps: list[Visitor]=None):
-        if supplied_steps:
-            return supplied_steps
-        return Workflow.steps
+        return supplied_steps if supplied_steps else Workflow.steps
 
     @staticmethod
     def _run_step_with_state(step: Visitor, state: State) -> State:

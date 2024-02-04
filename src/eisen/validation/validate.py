@@ -6,10 +6,9 @@ from typing import TYPE_CHECKING
 from alpaca.concepts import Type, AbstractException
 from eisen.common.eiseninstance import Instance
 from eisen.common.exceptions import Exceptions
-from eisen.common.usagestatus import UsageStatus
-from eisen.common.initialization import Initializations
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
+from eisen.common.binding import Binding, Condition, BindingCondition, BindingMechanics
 
 if TYPE_CHECKING:
     from eisen.trace.entity import Trait
@@ -51,18 +50,20 @@ class TypeCheck:
 
     @staticmethod
     def type_pair_is_nil_compatible(state: State, type_pair: TypePair) -> bool:
-        if not type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
-            add_exception_to(state,
-                ex=Exceptions.NilAssignment,
-                msg=f"cannot assign nil to non-nilable type '{type_pair.left}'")
-            return False
+        # TODO: restore after refactor of nil concept
+        # if not type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
+        #     add_exception_to(state,
+        #         ex=Exceptions.NilAssignment,
+        #         msg=f"cannot assign nil to non-nilable type '{type_pair.left}'")
+        #     return False
         return True
 
     @staticmethod
     def equivalent_types(state: State, type_pair: TypePair) -> bool:
+        # TODO: restore after refactor of nil concept
         # 'nil' is considered equivalent to all nilable types
-        if type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
-            return True
+        # if type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
+        #     return True
 
         if type_pair.left != type_pair.right:
             add_exception_to(state,
@@ -73,8 +74,9 @@ class TypeCheck:
 
     @staticmethod
     def type_is_expected(state: State, expected: Type, gotten: Type) -> bool:
-        if expected.restriction.is_nilable() and gotten.is_nil():
-            return True
+        # TODO: restore after refactor of nil concept
+        # if expected.restriction.is_nilable() and gotten.is_nil():
+        #     return True
 
         if expected != gotten:
             add_exception_to(state,
@@ -310,59 +312,6 @@ class Validate:
         return ValidationResult.success()
 
     @staticmethod
-    def assignment_restrictions_met(state: State, left: UsageStatus, right: UsageStatus):
-        if left.modifies_val_state():
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.ImmutableVal,
-                msg=f"cannot modify val state")
-
-        result = left.assignable_to(right)
-        if result.failed():
-            return failure_with_exception_added_to(state,
-                ex=result.ex_type,
-                msg=result.msg)
-        if right.is_under_construction():
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.IncompleteInitialization,
-                msg=f"'{right.name}' is being constructed, cannot be assigned")
-
-        return ValidationResult.success()
-
-    @staticmethod
-    def parameter_assignment_restrictions_met(state: State, argument_requires: UsageStatus, given: UsageStatus):
-        # print(state.get_ast())
-        result = argument_requires.assignable_to(given)
-        if result.failed():
-            return failure_with_exception_added_to(state,
-                ex=result.ex_type,
-                msg=result.msg)
-        return ValidationResult.success()
-
-    @staticmethod
-    def status_is_initialized(state: State, status: UsageStatus) -> ValidationResult:
-        if status.is_aborted_status():
-            return ValidationResult.failure()
-
-        if status.is_under_construction():
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.IncompleteInitialization,
-                msg=f"'{status.name}' is being constructed and cannot be used.")
-
-        if status.initialization != Initializations.Initialized:
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.UseBeforeInitialize,
-                msg=f"{status.name} is not initialized")
-        return ValidationResult.success()
-
-    @staticmethod
-    def attribute_is_initialized(state: State, attr: str, status: UsageStatus) -> ValidationResult:
-        if not status.get_initialization_of_attribute(attr) == Initializations.Initialized:
-            return failure_with_exception_added_to(state,
-                ex=Exceptions.IncompleteInitialization,
-                msg=f"'{attr}' is not initialized")
-        return ValidationResult.success()
-
-    @staticmethod
     def cannot_be_nil(state: State, nilstate: NilableStatus | list[NilableStatus]) -> ValidationResult:
         if not isinstance(nilstate, list):
             nilstate = [nilstate]
@@ -473,3 +422,68 @@ class Validate:
                     msg=f"assertion 'object_has_expected_dependencies' failed: expected '{obj_name}.{key}' to be [{', '.join(expected_names)}], but got [{', '.join(dependency_names)}]")
 
         return ValidationResult.success()
+
+
+    @staticmethod
+    def bindings_are_compatible_for_assignment(state: State, left: BindingCondition, right: BindingCondition) -> ValidationResult:
+        result = BindingMechanics.can_be_assigned(left, right)
+        if result == True:
+            return ValidationResult.success()
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.IncompatibleBinding,
+            msg=result)
+
+    @staticmethod
+    def all_are_initialized(state: State, bcs: list[BindingCondition]) -> ValidationResult:
+        are_initialized = [bc.condition == Condition.initialized for bc in bcs]
+        if all(val == True for val in are_initialized) or all(val == False for val in are_initialized):
+            return ValidationResult.success()
+
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.PartialConditionalInitialization,
+            msg=f"'{bcs[0].name}' may not be initialized in some branches")
+
+    @staticmethod
+    def binding_condition_is_initialized(state: State, binding_condition: BindingCondition) -> ValidationResult:
+        if binding_condition.condition == Condition.under_construction:
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompleteInitialization,
+                msg=f"'{binding_condition.name}' is being constructed and cannot be used.")
+
+        if binding_condition.condition == Condition.initialized or binding_condition.condition == Condition.constructed:
+            return ValidationResult.success()
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.UseBeforeInitialize,
+            msg=f"{binding_condition.name} is not initialized")
+
+    @staticmethod
+    def given_correct_function_parameter_bindings(
+            state: State,
+            function_name: str,
+            parameter_name: str,
+            expected_for_parameter: Binding,
+            received: BindingCondition):
+
+        if BindingMechanics.can_be_assigned_to_parameter(expected_for_parameter, received):
+            return ValidationResult.success()
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.IncompatibleBinding,
+            msg=BindingMechanics.why_binding_cant_be_assigned_to_parameter(
+                function_name,
+                parameter_name, expected_for_parameter, received))
+
+    @staticmethod
+    def binding_can_be_assigned_during_inference(state: State, name: str, declared: Binding, recieved: Binding) -> ValidationResult:
+        if BindingMechanics.infer_binding(declared, recieved) != Binding.error:
+            return ValidationResult.success()
+        return failure_with_exception_added_to(state,
+            ex=Exceptions.IncompatibleBinding,
+            msg=BindingMechanics.why_binding_cant_be_inferred(name, declared, recieved))
+
+    @staticmethod
+    def all_struct_members_initialized_after_constructor(state: State, struct_type: Type, binding_condition: BindingCondition):
+        for attr in struct_type.get_all_component_names():
+            if binding_condition.get_attribute_initialization(attr) == Condition.not_initialized:
+                add_exception_to(state,
+                    ex=Exceptions.IncompleteInitialization,
+                    msg=f"'{attr}' is not initialized")

@@ -7,7 +7,7 @@ from eisen.validation.typeparser import TypeParser
 from eisen.validation.validate import Validate
 
 
-class FinalizationVisitor(Visitor):
+class InterfaceFinalizationVisitor(Visitor):
     """this finalizes proto types into the fully built-out type.
     we need to separate declaration and definition because types may refer back to
     themselves, or to other types which have yet to be defined, but exist in the
@@ -64,7 +64,7 @@ class FinalizationVisitor(Visitor):
         return
 
 
-class Finalization2(Visitor):
+class StructFinalizationVisitor(Visitor):
     def run(self, state: State):
         self.apply(state)
         return state

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.concepts import Type, TypeFactory
+from alpaca.concepts import Type
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.common.restriction import (MutableRestriction,
-                                      ImmutableRestriction,
-                                      LetRestriction)
 from eisen.state.basestate import BaseState as State
+from eisen.common.typefactory import TypeFactory
 
 class TypeParser(Visitor):
     """this parses the ast into a type. certain asts define types. these are:
@@ -17,6 +15,13 @@ class TypeParser(Visitor):
     """
     def apply(self, state: State) -> Type:
         return self._route(state.get_ast(), state)
+
+    @Visitor.for_ast_types(*adapters.BindingAST.ast_types)
+    def binding_(fn, state: State) -> Type:
+        """
+        (void (fn_type ...))
+        """
+        return fn.apply(state.but_with_first_child())
 
     @Visitor.for_ast_types(*adapters.TypeLike.ast_types)
     def type_(fn, state: State) -> Type:
@@ -30,7 +35,7 @@ class TypeParser(Visitor):
         type = state.get_defined_type(name)
         if Validate.type_exists(state, name, type).failed():
             return state.get_abort_signal()
-        return type.with_restriction(node.get_restriction())
+        return type
 
     @Visitor.for_ast_types(":")
     def colon_(fn, state: State) -> Type:
@@ -39,26 +44,12 @@ class TypeParser(Visitor):
         """
         return fn.apply(state.but_with(ast=state.second_child()))
 
-    @Visitor.for_ast_types("val")
-    def val_(fn, state: State) -> Type:
-        """
-        (val name (type int))
-        """
-        return fn.apply(state.but_with(ast=state.second_child())).with_restriction(ImmutableRestriction())
-
-    @Visitor.for_ast_types("mut")
-    def var_(fn, state: State) -> Type:
-        """
-        (mut name (type int))
-        """
-        return fn.apply(state.but_with(ast=state.second_child())).with_restriction(MutableRestriction())
-
     @Visitor.for_ast_types("let")
     def let_(fn, state: State) -> Type:
         """
         (let name (type int))
         """
-        return fn.apply(state.but_with(ast=state.second_child())).with_restriction(LetRestriction())
+        return fn.apply(state.but_with(ast=state.second_child()))
 
     @Visitor.for_ast_types("prod_type", "types")
     def prod_type_(fn, state: State) -> Type:
@@ -98,7 +89,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(ast=state.first_child())),
             ret=fn.apply(state.but_with(ast=state.second_child())),
-            mod=None).with_restriction(ImmutableRestriction())
+            mod=None)
 
     @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
     def args_(fn, state: State) -> Type:
@@ -119,7 +110,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(ast=node.get_args_ast())),
             ret=fn.apply(state.but_with(ast=node.get_rets_ast())),
-            mod=None).with_restriction(ImmutableRestriction())
+            mod=None)
 
     @Visitor.for_ast_types("para_type")
     def para_type(fn, state: State) -> Type:
@@ -130,4 +121,4 @@ class TypeParser(Visitor):
         return TypeFactory.produce_parametric_type(
             name=state.first_child().value,
             parametrics=[fn.apply(state.but_with(ast=child))
-                for child in state.get_child_asts()]).with_restriction(ImmutableRestriction())
+                for child in state.get_child_asts()])

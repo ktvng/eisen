@@ -28,7 +28,7 @@ data struct Point {
     x: int
     y: int
 
-    add(self: new Point, o: Point) -> result: Point {
+    add(new self: Point, o: Point) -> result: Point {
         result = Point(self.x + o.x, self.y + o.y)
     }
 }

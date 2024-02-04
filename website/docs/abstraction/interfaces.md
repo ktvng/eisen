@@ -18,11 +18,11 @@ struct Order implements Payable {
     price: flt
     orderPlacedAt: Date
 
-    fn getPaymentAmount(self: new Order) -> dollarAmount: int {
+    fn getPaymentAmount(new self: Order) -> dollarAmount: int {
         dollarAmount = self.quantity * self.price
     }
 
-    fn getPaymentDate(self: new Order, today: Date) -> due: Date {
+    fn getPaymentDate(new self: Order, today: Date) -> due: Date {
         due = min(self.orderPlacedAt.afterDays(5), today.afterDays(3))
     }
 
@@ -73,7 +73,7 @@ struct LedgerEntry implements Hashable, Debuggable {
         return hash(hash(price) + hash(amount))
     }
 
-    fn write(self: new LedgerEntry) -> str {
+    fn write(new self: LedgerEntry) -> str {
         return "{self.amount} at ${self.price}"
     }
 

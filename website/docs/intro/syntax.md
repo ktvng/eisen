@@ -45,7 +45,7 @@ struct vector {
     direction: flt
     magnitude: flt
 
-    create() -> self: new vector {
+    create() -> new self: vector {
         self.direction = 0
         self.magnitude = 0
     }

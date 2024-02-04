@@ -118,7 +118,7 @@ class Flattener(Visitor):
 
         # get the ast of type (fn <name>)
         node = adapters.Call(params)
-        ast_defining_the_function = node.get_ast_defining_the_function()
+        ast_defining_the_function = node.get_function_definition_if_known()
 
         # the third child is (rets ...)
         ast_defining_the_function_return_type = ast_defining_the_function.third()

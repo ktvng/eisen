@@ -1,12 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-import copy
-
 from alpaca.concepts._module import Module
-
-class AbstractRestriction():
-    pass
 
 class Type():
     class classifications:
@@ -32,9 +27,7 @@ class Type():
             inherits: list[Type],
             embeds: list[Type],
             parametrics: list[Type],
-            restriction: AbstractRestriction,
-            parent_type: Type,
-            component_bindings: list[Any]):
+            parent_type: Type):
 
         """a type instance should only be created via the TypeclassFactory"""
         self.classification = classification
@@ -45,9 +38,7 @@ class Type():
         self.inherits = inherits
         self.embeds = embeds
         self.parametrics = parametrics
-        self.restriction = restriction
         self.parent_type = parent_type
-        self.component_bindings = component_bindings
 
     def delegated(self):
         raise Exception(f"Not implemented for {self}")
@@ -85,8 +76,7 @@ class Type():
         return hash(self.get_uuid_str())
 
     def __str__(self) -> str:
-        nilable = " var?" if self.restriction and self.restriction.is_nilable() else ""
-        return self.get_uuid_str() + nilable
+        return self.get_uuid_str()
 
     # Return the uuid string which can be hashed to obtain a proper uuid. All
     # types should be identified by uuid, such that muliple instances of
@@ -132,7 +122,6 @@ class Type():
 
 
     def get_member_attribute_by_name(self, name: str) -> Type: self.delegated()
-    def get_binding_by_name(self, name: str) -> Any: self.delegated()
     def get_return_type(self) -> Type: self.delegated()
     def get_first_parameter_type(self) -> Type: self.delegated()
     def get_argument_type(self) -> Type: self.delegated()
@@ -149,39 +138,10 @@ class Type():
     def is_parametric(self) -> bool: return False
     def is_interface(self) -> bool: return False
 
-    def with_restriction(self, restriction: AbstractRestriction = None):
-        # A tuple should not have restrictions, but should have restrictions passed
-        # to each component
-        if self.is_tuple() and restriction is not None and isinstance(restriction, AbstractRestriction):
-            new_type = self._copy_with_restriction(None)
-            new_type.components = [t._copy_with_restriction(restriction) for t in new_type.components]
-            return new_type
-
-        if self.is_tuple() and restriction is not None and isinstance(restriction, list):
-            new_type = self._copy_with_restriction(None)
-            new_type.components = [t._copy_with_restriction(r) for t, r in zip(new_type.components, restriction)]
-            return new_type
-
-        if restriction is not None:
-            return self._copy_with_restriction(restriction)
-        return self
-
     def unpack_into_parts(self):
         if self.classification == Type.classifications.tuple:
             return self.components
         return [self]
-
-    def get_restrictions(self) -> list[AbstractRestriction]:
-        if self.classification == Type.classifications.function:
-            return self.get_return_type().get_restrictions()
-        if self.classification == Type.classifications.tuple:
-            return [elem.restriction for elem in self.components]
-        return [self.restriction]
-
-    def _copy_with_restriction(self, restriction: AbstractRestriction):
-        _copy = copy.copy(self)
-        _copy.restriction = restriction
-        return _copy
 
     def get_all_component_names(self) -> list[str]:
         names = self.component_names
@@ -190,7 +150,7 @@ class Type():
         return names
 
 class FunctionType(Type):
-    def __init__(self, name: str, mod: Module, arg: Type, ret: Type):
+    def __init__(self, name: str, mod: Module, arg: Type, ret: Type, modifer=None):
         super().__init__(
             classification=Type.classifications.function,
             name=name,
@@ -200,9 +160,7 @@ class FunctionType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def get_uuid_str(self) -> str:
         name_str = self.name if self.name else ""
@@ -219,7 +177,7 @@ class FunctionType(Type):
         return self.components[0]
 
 class _CompositeType(Type):
-    def __init__(self, name: str, mod: Module, proto_cls: str, true_cls: str):
+    def __init__(self, name: str, mod: Module, proto_cls: str, true_cls: str, modifer=None):
         self._is_proto = True
         self._true_classification = true_cls
         super().__init__(
@@ -231,9 +189,7 @@ class _CompositeType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def is_proto(self) -> bool:
         return self._is_proto
@@ -256,24 +212,9 @@ class _CompositeType(Type):
         pos = self.component_names.index(name)
         return self.components[pos]
 
-    def get_binding_by_name(self, name: str) -> Any:
-        if name not in self.component_names:
-            if self.classification == Type.classifications.struct:
-                matching_embeddings = [tc for tc in self.embeds if tc.has_member_attribute_with_name(name)]
-                if len(matching_embeddings) != 1:
-                    raise Exception(f"bad embedding structure, need to be handled elswhere got {len(matching_embeddings)} matches, need 1")
-                if matching_embeddings:
-                    return matching_embeddings[0].get_binding_by_name(name)
-
-            raise Exception(f"Type {self} does not have member attribute named '{name}'")
-
-        pos = self.component_names.index(name)
-        return self.component_bindings[pos]
-
     def finalize(self,
             components: list[Type],
             component_names: list[str],
-            component_bindings: list[Any],
             inherits: list[Type] = None,
             embeds: list[Type] = None):
 
@@ -281,12 +222,11 @@ class _CompositeType(Type):
         self._is_proto = False
         self.components = components
         self.component_names = component_names
-        self.component_bindings = component_bindings
         if inherits: self.inherits = inherits
         if embeds: self.embeds = embeds
 
 class TupleType(Type):
-    def __init__(self, components: list[Type]):
+    def __init__(self, components: list[Type], modifer=None):
         super().__init__(
             classification=Type.classifications.tuple,
             name="",
@@ -296,9 +236,7 @@ class TupleType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def get_uuid_str(self) -> str:
         return self._get_uuid_based_on_components()
@@ -325,7 +263,7 @@ class InterfaceType(_CompositeType):
         return True
 
 class VariantType(Type):
-    def __init__(self, name: str, mod: Module):
+    def __init__(self, name: str, mod: Module, modifer=None):
         self._is_proto = True
         super().__init__(
             classification=Type.classifications.proto_variant,
@@ -336,9 +274,7 @@ class VariantType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def is_variant(self) -> bool:
         return True
@@ -359,7 +295,7 @@ class VariantType(Type):
         return self.parent_type.get_member_attribute_by_name(name)
 
 class NovelType(Type):
-    def __init__(self, name: str):
+    def __init__(self, name: str, modifer=None):
         super().__init__(
             classification=Type.classifications.novel,
             name=name,
@@ -369,9 +305,7 @@ class NovelType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def is_novel(self) -> bool:
         return True
@@ -390,9 +324,7 @@ class NilType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def is_nil(self) -> bool:
         return True
@@ -401,7 +333,7 @@ class NilType(Type):
         return "nil"
 
 class ParametricType(Type):
-    def __init__(self, name: str, parametrics: list[Type]):
+    def __init__(self, name: str, parametrics: list[Type], modifer=None):
         super().__init__(
             classification=Type.classifications.parametric,
             name=name,
@@ -411,9 +343,7 @@ class ParametricType(Type):
             inherits=[],
             embeds=[],
             parametrics=parametrics,
-            restriction=None,
-            parent_type=None,
-            component_bindings=None)
+            parent_type=None)
 
     def get_uuid_str(self) -> str:
         name_str = self.name if self.name else ""

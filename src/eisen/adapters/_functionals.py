@@ -5,6 +5,7 @@ from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters.argsrets import ArgsRets
 from eisen.common.eiseninstance import FunctionInstance
+from eisen.adapters._decls import Colon
 
 class CommonFunction(AbstractNodeInterface):
     ast_types = ["def", "create", ":="]
@@ -54,10 +55,10 @@ class Def(AbstractNodeInterface):
         return self.state.get_ast()[-1]
 
     def get_arg_names(self) -> list[str]:
-        return Def._unpack_to_get_names(self.get_args_ast())
+        return self._unpack_to_get_names(self.get_args_ast())
 
     def get_ret_names(self) -> list[str]:
-        return Def._unpack_to_get_names(self.get_rets_ast())
+        return self._unpack_to_get_names(self.get_rets_ast())
 
     def has_return_value(self) -> list[str]:
         return not self.get_rets_ast().has_no_children()
@@ -74,7 +75,6 @@ class Def(AbstractNodeInterface):
                    .get_argument_type()
                    .unpack_into_parts())
 
-    @classmethod
     def _unpack_to_get_names(self, args_or_rets: AST) -> list[str]:
         if args_or_rets.has_no_children():
             return []
@@ -84,7 +84,7 @@ class Def(AbstractNodeInterface):
         else:
             colonnodes = [first_arg]
 
-        return [node.first().value for node in colonnodes]
+        return [Colon(self.state.but_with(ast=node)).get_name() for node in colonnodes]
 
 
 class Create(AbstractNodeInterface):
@@ -124,6 +124,9 @@ class Create(AbstractNodeInterface):
 
     def get_name_of_created_entity(self) -> str:
         return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).get_names()[0]
+
+    def get_type_of_created_entity(self) -> str:
+        return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).state.get_returned_type()
 
 class IsFn(AbstractNodeInterface):
     ast_type = "is_fn"

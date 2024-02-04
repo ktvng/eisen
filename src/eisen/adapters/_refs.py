@@ -40,7 +40,7 @@ class RefLike(AbstractNodeInterface):
             mod=self.get_module())
 
     def resolve_reference_type(self, argument_type: Type=None) -> Type | None:
-        type = self.get_node_type()
+        type = self.get_ast_type()
         if type == "fn":
             return Fn(self.state).resolve_function_instance(argument_type).type
         elif type == "ref":

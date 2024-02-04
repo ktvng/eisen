@@ -6,12 +6,12 @@ struct Document {
     name: str
     data: byte[]
 
-    create(name: str, data: byte[]) -> self: new Document {
+    create(name: str, data: byte[]) -> new self: Document {
         self.name = name
         self.data = data
     }
 
-    destroy(self: new Document) {
+    destroy(new self: Document) {
         free(self.data)
     }
 }
@@ -30,14 +30,14 @@ struct Circle {
     y: int
     radius: flt
 
-    create(radius: int) -> self: new Circle {
+    create(radius: int) -> new self: Circle {
         self.x = x
         self.y = y
         self.radius = radius
     }
 }
 
-fn getArea(self: new Circle) -> area: flt {
+fn getArea(new self: Circle) -> area: flt {
     area = math::pi * self.radius ** 2
 }
 
@@ -59,7 +59,7 @@ Functions are also treated as first-class entities by Eisen, and structs may als
 struct ShortestPathSolver() {
     impl: (g: Graph, start: Node, end: Node) -> shortestPathLen: int
 
-    create(impl: (Graph, Node, Node) -> int) -> self: new ShortestPathSolver {
+    create(impl: (Graph, Node, Node) -> int) -> new self: ShortestPathSolver {
         self.impl = impl
     }
 }
@@ -68,7 +68,7 @@ fn dijkstrasAlgo() { ... }
 fn depthFirstSearch() { ... }
 
 fn run(
-    self: new ShortestPathSolver,
+    new self: ShortestPathSolver,
     g: Graph,
     start: Node,
     end: Node) -> shortestPathLen: int
@@ -95,12 +95,12 @@ struct Document {
     name: str
     data: byte[]
 
-    create(name: str, data: byte[]) -> self: new Document {
+    create(name: str, data: byte[]) -> new self: Document {
         self.name = name
         self.data = data
     }
 
-    destroy(self: new Document) {
+    destroy(new self: Document) {
         free(self.data)
     }
 }

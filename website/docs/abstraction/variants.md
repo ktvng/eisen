@@ -16,7 +16,7 @@ Variants may either add additional functionality or restrict existing functional
 
 ```eisen
 variant Path of str {
-    is(self: new str) -> bool {
+    is(new self: str) -> bool {
         if (/* check if well formed URL */) {
             return true
         }
@@ -30,11 +30,11 @@ variant Path of str {
 }
 
 // The append method may be redefined as the original is disabled
-fn append(self: new Path, relativePath: Path) -> result: Path {
+fn append(new self: Path, relativePath: Path) -> result: Path {
     result = self.as(str).append(relativePath[2: ]).as(Path)
 }
 
-fn getDirectory(self: new Path) -> directory: Path {
+fn getDirectory(new self: Path) -> directory: Path {
     if (self.isPath) {
         directory = self
     }
@@ -74,7 +74,7 @@ Note that variants do not create a new memory allocation. Using variants is equi
 When this may be difficult, it may be necessary to check the variant condition explicitly
 
 ```eisen
-fn somePathOperation(self: new Path) -> status: bool, newPath: Path {
+fn somePathOperation(new self: Path) -> status: bool, newPath: Path {
     // some complex operations yields
     let possibleNewPath = ...
     if (possibleNewPath is Path) {
@@ -89,7 +89,7 @@ fn somePathOperation(self: new Path) -> status: bool, newPath: Path {
 Or if there is no default value, a nilable return type may be specified
 
 ```eisen
-fn somePathOperation(self: new Path) -> newPath: Path? {
+fn somePathOperation(new self: Path) -> newPath: Path? {
     // some complex operations yields
     let possibleNewPath = ...
     if (possibleNewPath is Path) {

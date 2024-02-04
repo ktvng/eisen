@@ -10,14 +10,14 @@ struct HttpHelper {
     retries: int
 }
 
-fn sendGetRequest(self: new HttpHelper, body: str) -> response: HttpResponse {
+fn sendGetRequest(new self: HttpHelper, body: str) -> response: HttpResponse {
     /* send reponse with configured settings */
 }
 
 struct TokenServiceClient {
     httpHelper: HttpHelper
 
-    create(timeoutMilli: secs, retries: int) -> self: new TokenServiceClient {
+    create(timeoutMilli: secs, retries: int) -> new self: TokenServiceClient {
         self.httpHelper.timeoutMilli = timeoutMilli
         self.httpHelper.retries = retries
         self.httpHelper.endpoint = "https://token_service.com/get".ToUrl()
@@ -45,14 +45,14 @@ struct HttpHelper {
     retries: int
 }
 
-fn sendGetRequest(self: new HttpHelper, body: str) -> response: HttpResponse {
+fn sendGetRequest(new self: HttpHelper, body: str) -> response: HttpResponse {
     /* send reponse with configured settings */
 }
 
 struct TokenServiceClient {
     embed HttpHelper
 
-    create(timeoutMilli: secs, retries: int) -> self: new TokenServiceClient {
+    create(timeoutMilli: secs, retries: int) -> new self: TokenServiceClient {
         self.timeoutMilli = timeoutMilli
         self.retries = retries
         self.endpoint = "https://token.service.com/token/".ToUrl()

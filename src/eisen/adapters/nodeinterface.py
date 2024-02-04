@@ -20,7 +20,7 @@ class AbstractNodeInterface():
     def get_line_number(self) -> int:
         return self.state.get_ast().line_number
 
-    def get_node_type(self) -> str:
+    def get_ast_type(self) -> str:
         return self.state.get_ast().type
 
     def get_name_from_first_child(self) -> str:

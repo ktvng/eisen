@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters._refs import RefLike, Ref, Scope
 
@@ -35,9 +34,3 @@ class Assignment(AbstractNodeInterface):
                 for child in self.first_child()]
         if self.first_child().type == ".":
             return [Scope(self.state).get_object_name()]
-
-    def get_assigned_types(self) -> list[Type]:
-        if self.first_child().type == "lvals":
-            return [self.state.but_with(ast=child).get_returned_type()
-                for child in self.first_child()]
-        return [self.state.but_with(ast=self.first_child()).get_returned_type()]

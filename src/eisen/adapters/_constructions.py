@@ -1,10 +1,30 @@
 from __future__ import annotations
 
 from alpaca.concepts import Type
+from alpaca.utils import Visitor
 from alpaca.clr import AST, ASTToken
 from eisen.adapters.nodeinterface import AbstractNodeInterface
+from eisen.adapters._decls import Colon
 
-class Struct(AbstractNodeInterface):
+class _SharedMixins:
+    _get_name = AbstractNodeInterface.get_name_from_first_child
+    get_name = AbstractNodeInterface.get_name_from_first_child
+    get_this_type = AbstractNodeInterface.get_type_for_node_that_defines_a_type
+
+    def get_child_attribute_asts(self) -> list[AST]:
+        return [child for child in self.state.get_ast()
+                if child.type == ":" or child.type == ":="]
+
+    def get_child_attribute_names(self) -> list[str]:
+        child_asts = self.get_child_attribute_asts()
+        return [Colon(self.state.but_with(ast=ast)).get_name() for ast in child_asts]
+
+    def get_child_attribute_bindings(self) -> list[str]:
+        child_asts = self.get_child_attribute_asts()
+        return [Colon(self.state.but_with(ast=child)).get_binding() for child in child_asts]
+
+
+class Struct(AbstractNodeInterface, _SharedMixins):
     ast_type = "struct"
     examples = """
     (struct name
@@ -13,10 +33,6 @@ class Struct(AbstractNodeInterface):
         (: ...)
         (create ...))
     """
-    _get_name = AbstractNodeInterface.get_name_from_first_child
-    get_struct_name = AbstractNodeInterface.get_name_from_first_child
-    get_this_type = AbstractNodeInterface.get_type_for_node_that_defines_a_type
-
     def implements_interfaces(self) -> bool:
         return (len(self.state.get_ast()) >= 2
             and isinstance(self.second_child(), AST)
@@ -54,14 +70,6 @@ class Struct(AbstractNodeInterface):
 
         return embedded_structs
 
-    def get_child_attribute_asts(self) -> list[AST]:
-        return [child for child in self.state.get_ast()
-                if child.type == ":" or child.type == ":=" or child.type == "mut" or child.type == "let" or child.type == "val"]
-
-    def get_child_attribute_names(self) -> list[str]:
-        child_asts = self.get_child_attribute_asts()
-        return [ast.first().value for ast in child_asts]
-
     def has_create_ast(self) -> bool:
         create_asts = [child for child in self.state.get_ast() if child.type == "create"]
         return len(create_asts) == 1
@@ -69,6 +77,10 @@ class Struct(AbstractNodeInterface):
     def get_create_ast(self) -> AST:
         create_asts = [child for child in self.state.get_ast() if child.type == "create"]
         return create_asts[0]
+
+    def apply_fn_to_create_ast(self, fn: Visitor) -> None:
+        if self.has_create_ast():
+            fn.apply(self.state.but_with(ast=self.get_create_ast()))
 
 
 class Variant(AbstractNodeInterface):
@@ -97,7 +109,7 @@ class Variant(AbstractNodeInterface):
         raise Exception(f"expected an 'is_fn' ast for variant: {self.get_variant_name()}")
 
 
-class Interface(AbstractNodeInterface):
+class Interface(AbstractNodeInterface, _SharedMixins):
     ast_type = "interface"
     examples = """
     (interface name
@@ -105,13 +117,3 @@ class Interface(AbstractNodeInterface):
         (: ...)
         (: ...)
     """
-    _get_name = AbstractNodeInterface.get_name_from_first_child
-    get_interface_name = AbstractNodeInterface.get_name_from_first_child
-    get_this_type = AbstractNodeInterface.get_type_for_node_that_defines_a_type
-
-    def get_child_attribute_asts(self) -> list[AST]:
-        return [child for child in self.state.get_ast() if child.type == ":"]
-
-    def get_child_attribute_names(self) -> list[str]:
-        child_asts = self.get_child_attribute_asts()
-        return [ast.first().value for ast in child_asts]

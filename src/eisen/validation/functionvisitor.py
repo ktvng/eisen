@@ -10,12 +10,13 @@ import eisen.adapters as adapters
 State = FunctionVisitorState
 
 class FunctionVisitor(Visitor):
-    def __init__(self, debug: bool = False):
-        super().__init__(debug)
-        self.local_type_parser = TypeParser()
     """this creates the function instances from (create ...) and (def ) asts. the
     instances get added to the module so they can be used and called.
     """
+
+    def __init__(self, debug: bool = False):
+        super().__init__(debug)
+        self.local_type_parser = TypeParser()
 
     def run(self, state: BaseState):
         self.apply(FunctionVisitorState.create_from_basestate(state))
@@ -45,10 +46,7 @@ class FunctionVisitor(Visitor):
         # called via MyStruct(...), so the (create ...)  method inside the
         # (struct MyStruct ... ) ast needs context as to the struct it is inside.
         node = adapters.Struct(state)
-        if node.has_create_ast():
-            fn.apply(state.but_with(
-                ast=node.get_create_ast(),
-                struct_name=node.get_struct_name()))
+        node = adapters.Struct(state.but_with(struct_name=node.get_name())).apply_fn_to_create_ast(fn)
 
     @Visitor.for_ast_types("variant")
     def variant_(fn, state: FunctionVisitorState) -> None:

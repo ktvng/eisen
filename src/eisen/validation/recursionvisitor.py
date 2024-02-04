@@ -30,9 +30,7 @@ class RecursionVisitor(Visitor):
 
     @Visitor.for_ast_types("struct")
     def _struct(fn, state: State):
-        node = adapters.Struct(state)
-        if node.has_create_ast():
-            fn.apply(state.but_with(ast=node.get_create_ast()))
+        adapters.Struct(state).apply_fn_to_create_ast(fn)
 
     @Visitor.for_ast_types("interface")
     def _noop(fn, _: State):

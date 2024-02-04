@@ -11,7 +11,7 @@ from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
 from eisen.validation.restructure_is_statement import RestructureIsStatement
 from eisen.validation.typeparser import TypeParser
-from eisen.validation.typefactory import TypeFactory
+from eisen.common.typefactory import TypeFactory
 
 from eisen.validation.builtin_print import Builtins
 
@@ -183,17 +183,11 @@ class TypeChecker(Visitor):
     def curry_call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
         curried_args_type = fn.apply_to_second_child_of(state)
-        n_curried_args = 1
-        if curried_args_type.is_tuple():
-            n_curried_args = len(curried_args_type.components)
-
         return TypeChecker.get_curried_type(state, fn_type, curried_args_type)
 
     @Visitor.for_ast_types("struct")
     def struct(fn, state: State) -> Type:
-        node = adapters.Struct(state)
-        if node.has_create_ast():
-            fn.apply(state.but_with(ast=node.get_create_ast()))
+        adapters.Struct(state).apply_fn_to_create_ast(fn)
 
     @Visitor.for_ast_types("variant")
     def variant_(fn, state: State) -> Type:
@@ -237,14 +231,13 @@ class TypeChecker(Visitor):
         node = adapters.InferenceAssign(state)
         names = node.get_names()
         type = fn.apply_to_second_child_of(state)
-        type = type.with_restriction(node.get_restriction(hint=type))
         return TypeChecker._create_references(state, names, type)
 
     @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def decls_(fn, state: State):
         node = adapters.Typing(state)
         names = node.get_names()
-        type = fn.apply(state.but_with(ast=node.get_type_ast())).with_restriction(node.get_restriction())
+        type = fn.apply(state.but_with(ast=node.get_type_ast()))
         return TypeChecker._create_references(state, names, type)
 
     @Visitor.for_ast_types("fn_type", "para_type", *adapters.TypeLike.ast_types)

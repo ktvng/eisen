@@ -221,8 +221,7 @@ class NilCheck(Visitor):
 
     @Visitor.for_ast_types("struct")
     def struct_(fn, state: State):
-        if adapters.Struct(state).has_create_ast():
-            fn.apply(state.but_with(ast=adapters.Struct(state).get_create_ast()))
+        adapters.Struct(state).apply_fn_to_create_ast(fn)
 
     @Visitor.for_ast_types("variant")
     def variant_(fn, state: State):

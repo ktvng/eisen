@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Self
 
-from alpaca.concepts import Module, Context, TypeFactory, Type, AbstractException
+from alpaca.concepts import Module, Context, Type, AbstractException
 from alpaca.utils import Visitor
 from alpaca.config import Config
 from alpaca.clr import AST
 
 from eisen.common.eiseninstance import FunctionInstance
 from eisen.common.nodedata import NodeData
-from eisen.common.restriction import PrimitiveRestriction, NoRestriction
 from eisen.validation.lookupmanager import LookupManager
+from eisen.common.typefactory import TypeFactory
 
 class BaseMixins():
     def report_exception(self, e: AbstractException):
@@ -94,6 +94,10 @@ class BaseMixins():
         return self.ast
 
 
+    def get_ast_type(self) -> str:
+        return self.ast.type
+
+
     def get_txt(self) -> str:
         """
         Get the full text supplied to be compiled.
@@ -143,7 +147,7 @@ class BaseMixins():
         :return: The boolean type.
         :rtype: Type
         """
-        return TypeFactory.produce_novel_type("bool").with_restriction(PrimitiveRestriction())
+        return TypeFactory.produce_novel_type("bool")
 
 
     def get_void_type(self) -> Type:
@@ -153,7 +157,7 @@ class BaseMixins():
         :return: The void type.
         :rtype: Type
         """
-        return TypeFactory.produce_novel_type("void").with_restriction(NoRestriction())
+        return TypeFactory.produce_void_type()
 
     def get_abort_signal(self) -> Type:
         """
@@ -252,6 +256,17 @@ class BaseMixins():
         for child in self.ast:
             fn.apply(self.but_with(ast=child))
 
+    def apply_fn_to_all_child_asts(self, fn: Visitor):
+        """
+        Apply the given Visitor function to all children which are not ASTTokens of the ast at State.
+        Returns nothing
+
+        :param fn: The Visitor function to apply
+        :type fn: Visitor
+        """
+        for child in self.ast:
+            if isinstance(child, AST):
+                fn.apply(self.but_with(ast=child))
 
     def get_node_data(self) -> NodeData:
         """

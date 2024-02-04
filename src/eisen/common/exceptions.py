@@ -19,8 +19,8 @@ class Exceptions():
         type = "UndefinedFunction"
         description = "function is not defined"
 
-    class UnderfinedType(AbstractException):
-        type = "UndefiedType"
+    class UndefinedType(AbstractException):
+        type = "UndefinedType"
         description = "type is not defined"
 
     class RedefinedIdentifier(AbstractException):
@@ -118,3 +118,11 @@ class Exceptions():
     class TooManyCurriedArguments(AbstractException):
         type = "TooManyCurriedArguments"
         description = "cannot curry more parameters than arguments to function"
+
+    class IncompatibleBinding(AbstractException):
+        type = "IncompatibleBinding"
+        description = "declared binding is not compatible with provided binding"
+
+    class PartialConditionalInitialization(AbstractException):
+        type = "PartialConditionalInitialization"
+        description = "all branches must initialize/not-initialize references"

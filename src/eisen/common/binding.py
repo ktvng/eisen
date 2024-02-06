@@ -4,6 +4,8 @@ from typing import Any
 from enum import Enum
 from dataclasses import dataclass, field
 
+from alpaca.concepts import Type
+
 class Binding(Enum):
     ret_new = 1
     new = 2
@@ -22,15 +24,6 @@ class Binding(Enum):
     data = 11
     error = 12
 
-@dataclass
-class CompositeBinding:
-    components: dict[str, Binding] = None
-    args: list[Binding] = None
-    rets: list[Binding] = None
-
-    def get_binding_of_attribute(self, name: str) -> Binding:
-        return self.components[name]
-
 class Condition(Enum):
     not_initialized = 1
     initialized = 2
@@ -45,7 +38,36 @@ class BindingCondition:
     attribute_initializations: dict[str, Condition] = field(default_factory=dict)
     number_of_attributes: int = 0
     callback_to_mark_as_initialized: Any = None
-    associated_composite_binding: CompositeBinding = None
+
+    @staticmethod
+    def create_anonymous(binding: Binding = Binding.fixed) ->  BindingCondition:
+        return BindingCondition("", binding, Condition.initialized)
+
+    @staticmethod
+    def create_for_reference(reference_name: str, binding: Binding, condition: Condition) -> BindingCondition:
+        return BindingCondition(reference_name, binding, condition)
+
+    @staticmethod
+    def create_for_attribute(full_name: str, binding: Binding):
+        return BindingCondition(full_name, binding, Condition.initialized)
+
+    @staticmethod
+    def create_for_attribute_being_constructed(full_name: str, binding: Binding, callback_to_initialize_parent: Any):
+        return BindingCondition(full_name, binding, Condition.not_initialized,
+            callback_to_mark_as_initialized=callback_to_initialize_parent)
+
+    @staticmethod
+    def create_for_arguments_or_return_values(reference_name: str, condition: Condition, reference_type: Type) -> BindingCondition:
+        # Number of attributes only applies for BindingConditions which are under construction
+        n_attributes = (len(reference_type.get_all_component_names())
+                        if condition == Condition.under_construction
+                        else 0)
+
+        return BindingCondition(
+            name=reference_name,
+            binding=reference_type.modifier,
+            condition=condition,
+            number_of_attributes=n_attributes)
 
     def but_initialized(self) -> BindingCondition:
         if self.callback_to_mark_as_initialized is not None:
@@ -53,8 +75,7 @@ class BindingCondition:
         return BindingCondition(self.name, self.binding, Condition.initialized,
                                 attribute_initializations=self.attribute_initializations,
                                 number_of_attributes=self.number_of_attributes,
-                                callback_to_mark_as_initialized=self.callback_to_mark_as_initialized,
-                                associated_composite_binding=self.associated_composite_binding)
+                                callback_to_mark_as_initialized=self.callback_to_mark_as_initialized)
 
     def get_attribute_initialization(self, attribute_name: str) -> Condition:
         return self.attribute_initializations.get(attribute_name, Condition.not_initialized)
@@ -68,7 +89,6 @@ class BindingCondition:
         return BindingCondition(self.name, self.binding,
             condition=condition,
             attribute_initializations=attribute_initializations,
-            associated_composite_binding=self.associated_composite_binding,
             callback_to_mark_as_initialized=self.callback_to_mark_as_initialized,
             number_of_attributes=self.number_of_attributes)
 
@@ -104,8 +124,11 @@ class BindingMechanics:
             case Binding.mut_var, Binding.mut_var: return Binding.mut_var
             case Binding.mut_var, Binding.mut_new: return Binding.mut_var
 
-            case _, _: return Binding.error
+            case _, Binding.void: return declared
+            case _, _:
+                return Binding.error
 
+    @staticmethod
     def why_binding_cant_be_inferred(name: str, declared: Binding, received: Binding) -> str:
         match declared, received:
             case Binding.mut, Binding.data:
@@ -119,6 +142,50 @@ class BindingMechanics:
                 return f"cannot bind '{name}' which is mutable to something which is immutable"
             case _, Binding.ret_new:
                 return f"cannot bind '{name}', a reference, to a new object"
+
+    @staticmethod
+    def types_are_binding_compatible(left: Type, right: Type) -> bool:
+        if left.is_function():
+            # TODO: document why we do the switcheroo
+            return (BindingMechanics.types_are_binding_compatible(right.get_argument_type(), left.get_argument_type())
+                and BindingMechanics.types_are_binding_compatible(left.get_return_type(), right.get_return_type()))
+        if left.is_tuple():
+            return all(BindingMechanics.types_are_binding_compatible(l, r) for l, r, in zip(left.unpack_into_parts(), right.unpack_into_parts()))
+        return BindingMechanics._types_are_binding_compatible(left, right)
+
+    @staticmethod
+    def _types_are_binding_compatible(left: Type, right: Type) -> bool:
+        return BindingMechanics.type_bindings_are_compatible(left.modifier, right.modifier)
+
+    @staticmethod
+    def type_bindings_are_compatible(left: Binding, right: Binding) -> bool:
+        match left, right:
+            case Binding.mut, Binding.mut: return True
+            case Binding.mut, Binding.mut_new: return True
+            case Binding.mut, Binding.mut_var: return True
+            case Binding.mut, _: return False
+
+            case Binding.mut_var, Binding.mut: return True
+            case Binding.mut_var, Binding.mut_new: return True
+            case Binding.mut_var, Binding.mut_var: return True
+            case Binding.mut_var, _: return False
+
+            case Binding.var, _: return True
+            case Binding.fixed, _: return True
+
+            case Binding.move, Binding.new: return True
+            case Binding.move, Binding.mut_new: return True
+            case Binding.move, _: return False
+
+            case Binding.new, Binding.ret_new: return True
+            case Binding.new, _: return False
+
+            case Binding.data, Binding.data: return True
+            case Binding.data, _: return False
+            case _, _:
+                raise Exception(f"not handled binding {left}, {right}")
+
+
 
     @staticmethod
     def can_be_assigned_to_parameter(expected_for_parameter: Binding, received: BindingCondition):

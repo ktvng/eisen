@@ -2,9 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
-    from alpaca.concepts._instance import Instance
     from alpaca.concepts._type import Type
-    from alpaca.concepts._instancestate import InstanceState
 
 class NestedContainer():
     container_names = ["type", "instance", "instance_state", "function_instance"]
@@ -63,37 +61,25 @@ class NestedContainer():
             return container[name]
         return None
 
-    def add_instance(self, instance: Instance) -> None:
-        self.add_obj("instance", instance.name, instance)
-
-    def get_instance(self, name: str) -> Instance | None:
-        return self.get_obj("instance", name)
-
     def _get_function_instance_key(self, name: str, type: Type) -> str:
         return name + "." + type.get_uuid_str()
 
-    def add_function_instance(self, instance: Instance) -> None:
+    def add_function_instance(self, instance: Any) -> None:
         self.add_obj("function_instance",
             self._get_function_instance_key(
                 instance.name, instance.type.get_argument_type()),
             instance)
 
-    def get_function_instance(self, name: str, type: Type) -> Instance | None:
+    def get_function_instance(self, name: str, type: Type) -> Any | None:
         return self.get_obj("function_instance", self._get_function_instance_key(name, type))
 
-    def get_all_function_instances_with_name(self, name: str) -> list[Instance]:
+    def get_all_function_instances_with_name(self, name: str) -> list[Any]:
         container = self.containers["function_instance"]
         function_instances = container.values()
         local_matching_instances = [fi for fi in function_instances if fi.name == name]
         if self.parent is None:
             return local_matching_instances
         return local_matching_instances + self.parent.get_all_function_instances_with_name(name)
-
-    def add_instancestate(self, instance_state: InstanceState) -> None:
-        self.add_obj("instance_state", instance_state.name, instance_state)
-
-    def get_instancestate(self, name: str) -> InstanceState:
-        return self.get_obj("instance_state", name)
 
     def __str__(self) -> str:
         sub_module_lines = []

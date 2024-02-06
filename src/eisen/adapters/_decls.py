@@ -3,7 +3,6 @@ from __future__ import annotations
 from alpaca.clr import AST
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.binding import Binding
-from eisen.common.binding import Binding
 
 class BindingAST(AbstractNodeInterface):
     ast_types = ["var", "new", "mut", "void", "mut_new", "mut_var"]

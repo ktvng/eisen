@@ -209,7 +209,8 @@ class CallHandler:
         """
         Resole any parameters which may be moved into the child function call.
         """
-        for binding, memory in zip(self.node.get_argument_bindings(), param_memories):
+        bindings = self.node.get_argument_bindings()
+        for binding, memory in zip(bindings, param_memories):
             if binding == Binding.move:
                 for impression in memory.impressions:
                     impression.shadow.entity.moved = True

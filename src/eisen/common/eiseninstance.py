@@ -52,6 +52,4 @@ class Instance():
             case _:
                 raise Exception(f"signature not implemented for type: {type}")
 
-@dataclass
-class FunctionInstance(Instance):
-    pass
+FunctionInstance = Instance

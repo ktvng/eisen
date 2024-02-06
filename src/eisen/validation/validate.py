@@ -23,6 +23,9 @@ class ValidationResult:
     def failed(self) -> bool:
         return not self.result
 
+    def succeeded(self) -> bool:
+        return self.result
+
     @staticmethod
     def failure() -> ValidationResult:
         return ValidationResult(result=False)
@@ -218,7 +221,7 @@ class Validate:
 
     @staticmethod
     def name_is_unbound(state: State, name: str) -> ValidationResult:
-        if state.get_context().get_reference_type(name) is not None:
+        if state.get_context().get_type_of_reference(name) is not None:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.RedefinedIdentifier,
                 msg=f"'{name}' is in use")
@@ -423,67 +426,72 @@ class Validate:
 
         return ValidationResult.success()
 
-
-    @staticmethod
-    def bindings_are_compatible_for_assignment(state: State, left: BindingCondition, right: BindingCondition) -> ValidationResult:
-        result = BindingMechanics.can_be_assigned(left, right)
-        if result == True:
-            return ValidationResult.success()
-        return failure_with_exception_added_to(state,
-            ex=Exceptions.IncompatibleBinding,
-            msg=result)
-
-    @staticmethod
-    def all_are_initialized(state: State, bcs: list[BindingCondition]) -> ValidationResult:
-        are_initialized = [bc.condition == Condition.initialized for bc in bcs]
-        if all(val == True for val in are_initialized) or all(val == False for val in are_initialized):
-            return ValidationResult.success()
-
-        return failure_with_exception_added_to(state,
-            ex=Exceptions.PartialConditionalInitialization,
-            msg=f"'{bcs[0].name}' may not be initialized in some branches")
-
-    @staticmethod
-    def binding_condition_is_initialized(state: State, binding_condition: BindingCondition) -> ValidationResult:
-        if binding_condition.condition == Condition.under_construction:
+    class Bindings:
+        @staticmethod
+        def are_compatible_for_assignment(state: State, left: BindingCondition, right: BindingCondition) -> ValidationResult:
+            result = BindingMechanics.can_be_assigned(left, right)
+            if result == True:
+                return ValidationResult.success()
             return failure_with_exception_added_to(state,
-                ex=Exceptions.IncompleteInitialization,
-                msg=f"'{binding_condition.name}' is being constructed and cannot be used.")
+                ex=Exceptions.IncompatibleBinding,
+                msg=result)
 
-        if binding_condition.condition == Condition.initialized or binding_condition.condition == Condition.constructed:
-            return ValidationResult.success()
-        return failure_with_exception_added_to(state,
-            ex=Exceptions.UseBeforeInitialize,
-            msg=f"{binding_condition.name} is not initialized")
+        @staticmethod
+        def no_split_initialization_after_conditional(state: State, bcs: list[BindingCondition]) -> ValidationResult:
+            """
+            Split initialization occurs after a conditional if some branches initialize the bindings
+            but some don't. It's okay for all branches to initialize (or not to initialize) the binding.
+            """
 
-    @staticmethod
-    def given_correct_function_parameter_bindings(
-            state: State,
-            function_name: str,
-            parameter_name: str,
-            expected_for_parameter: Binding,
-            received: BindingCondition):
+            are_initialized = [bc.condition == Condition.initialized for bc in bcs]
+            if all(val == True for val in are_initialized) or all(val == False for val in are_initialized):
+                return ValidationResult.success()
 
-        if BindingMechanics.can_be_assigned_to_parameter(expected_for_parameter, received):
-            return ValidationResult.success()
-        return failure_with_exception_added_to(state,
-            ex=Exceptions.IncompatibleBinding,
-            msg=BindingMechanics.why_binding_cant_be_assigned_to_parameter(
-                function_name,
-                parameter_name, expected_for_parameter, received))
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.PartialConditionalInitialization,
+                msg=f"'{bcs[0].name}' may not be initialized in some branches")
 
-    @staticmethod
-    def binding_can_be_assigned_during_inference(state: State, name: str, declared: Binding, recieved: Binding) -> ValidationResult:
-        if BindingMechanics.infer_binding(declared, recieved) != Binding.error:
-            return ValidationResult.success()
-        return failure_with_exception_added_to(state,
-            ex=Exceptions.IncompatibleBinding,
-            msg=BindingMechanics.why_binding_cant_be_inferred(name, declared, recieved))
+        @staticmethod
+        def are_all_initialized(state: State, conditions: list[BindingCondition]) -> ValidationResult:
+            results = [Validate.Bindings.is_initialized(state, condition) for condition in conditions]
+            if all([r.succeeded() for r in results]):
+                return ValidationResult.success()
+            return ValidationResult.failure()
 
-    @staticmethod
-    def all_struct_members_initialized_after_constructor(state: State, struct_type: Type, binding_condition: BindingCondition):
-        for attr in struct_type.get_all_component_names():
-            if binding_condition.get_attribute_initialization(attr) == Condition.not_initialized:
-                add_exception_to(state,
+
+        @staticmethod
+        def is_initialized(state: State, binding_condition: BindingCondition) -> ValidationResult:
+            if binding_condition.condition == Condition.under_construction:
+                return failure_with_exception_added_to(state,
                     ex=Exceptions.IncompleteInitialization,
-                    msg=f"'{attr}' is not initialized")
+                    msg=f"'{binding_condition.name}' is being constructed and cannot be used.")
+
+            if binding_condition.condition == Condition.initialized or binding_condition.condition == Condition.constructed:
+                return ValidationResult.success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.UseBeforeInitialize,
+                msg=f"{binding_condition.name} is not initialized")
+
+        @staticmethod
+        def of_types_is_compatible(state: State, expected: Type, received: Type) -> ValidationResult:
+            if BindingMechanics.types_are_binding_compatible(expected, received):
+                return ValidationResult.success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompatibleBinding,
+                msg="Parameter incompatibility")
+
+        @staticmethod
+        def can_be_inferred(state: State, name: str, declared: Binding, received: Binding) -> ValidationResult:
+            if BindingMechanics.infer_binding(declared, received) != Binding.error:
+                return ValidationResult.success()
+            return failure_with_exception_added_to(state,
+                ex=Exceptions.IncompatibleBinding,
+                msg=BindingMechanics.why_binding_cant_be_inferred(name, declared, received))
+
+        @staticmethod
+        def all_struct_members_initialized_after_constructor(state: State, struct_type: Type, binding_condition: BindingCondition):
+            for attr in struct_type.get_all_component_names():
+                if binding_condition.get_attribute_initialization(attr) == Condition.not_initialized:
+                    add_exception_to(state,
+                        ex=Exceptions.IncompleteInitialization,
+                        msg=f"'{attr}' is not initialized")

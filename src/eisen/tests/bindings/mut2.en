@@ -13,9 +13,9 @@ fn test(mut o: obj) {
 }
 
 fn main() {
-    let mut x = 5
+    let x = 5
     let o = obj(0)
-    let mut p = o
+    let p = o
 
     let mut o2 = obj(1)
     let mut p2 = o2
@@ -36,8 +36,8 @@ fn main() {
 
 /// [[Expects.Exceptions]]
 /// type = "IncompatibleBindingException"
-/// contains = "Line 16"
+/// contains = "Line 12"
 
 /// [[Expects.Exceptions]]
 /// type = "IncompatibleBindingException"
-/// contains = "Line 18"
+/// contains = "Line 22"

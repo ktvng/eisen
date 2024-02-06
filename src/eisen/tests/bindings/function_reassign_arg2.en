@@ -1,0 +1,31 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn one(o: obj) {
+    return
+}
+
+fn two(mut o: obj){
+    o.x = 5
+}
+
+fn main() {
+    let var g = two
+    g = one
+    let o = obj(0)
+}
+
+/// [Test]
+/// name = "bindings/function_reassign"
+/// info = """\
+///     If a function reference expects a parameter that is mut, then it can also
+///     take a parameter that is fixed.
+/// """
+
+/// [Expects]
+/// success = true

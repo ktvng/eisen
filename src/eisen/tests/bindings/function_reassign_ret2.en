@@ -1,0 +1,33 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn one(a: obj, mut b: obj) -> r: obj{
+    r = a
+}
+
+fn two(a: obj, mut b: obj) -> mut r: obj{
+    r = b
+}
+
+fn main() {
+    let a = obj(0)
+    let mut b = obj(1)
+    let var g = one
+    g = two
+    g(a, b)
+}
+
+/// [Test]
+/// name = "bindings/function_reassign_ret"
+/// info = """\
+///     If a function returns a mut obj, it can be assigned to a reference
+///     to a function which expects to return a fixed obj.
+/// """
+
+/// [Expects]
+/// success = true

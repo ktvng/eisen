@@ -149,7 +149,7 @@ class Test:
         return self._evaluate_result(*Workflow.execute(state))
 
 class TestRunner():
-    vectors = ["vector/append", "vector/creation", "vector/append2", "legacy/embed", "legacy/mod", 'typecheck/member_function']
+    vectors = ["vector/append", "vector/creation", "vector/append2"]
     disabled_tests = ["legacy/objects"] + vectors
 
     @staticmethod

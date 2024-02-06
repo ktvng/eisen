@@ -1,0 +1,35 @@
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn one(o: obj) {
+    return
+}
+
+fn two(mut o: obj){
+    o.x = 5
+}
+
+fn main() {
+    let var g = one
+    g = two
+    let o = obj(0)
+}
+
+/// [Test]
+/// name = "bindings/function_reassign"
+/// info = """\
+///     If a function reference expects a parameter that is fixed, then it cannot
+///     take a parameter that is mut.
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "19"
+/// contains = "IncompatibleBindingException"

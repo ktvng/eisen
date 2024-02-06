@@ -6,6 +6,7 @@ from alpaca.config import Config
 from alpaca.clr import AST
 
 from eisen.common.eiseninstance import FunctionInstance
+from eisen.common.binding import Binding
 from eisen.state._basemixins import BaseMixins
 
 class SharedBool():
@@ -86,10 +87,10 @@ class BaseState(AbstractParams, BaseMixins):
     @classmethod
     def create_initial(cls, config: Config, ast: AST, txt: str, print_to_watcher: bool=False) -> BaseState:
         global_mod = Module("")
-        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int"))
-        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str"))
-        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt"))
-        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool"))
+        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_modifier(Binding.data))
+        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_modifier(Binding.data))
+        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_modifier(Binding.data))
+        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_modifier(Binding.data))
         global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
 
         return BaseState(

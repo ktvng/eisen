@@ -8,5 +8,3 @@ class NodeData():
         self.instances: list[Instance] = None
         self.returned_type = None
         self.enters_module: Module = None
-        self.returned_bindings = None
-        self.argument_bindings = None

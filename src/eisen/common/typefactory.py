@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from alpaca.concepts import TypeFactory as BaseTypeFactory, Type, Module
-
+from eisen.common.binding import Binding
 class TypeFactory:
     @staticmethod
     def produce_novel_type(name: str) -> Type:
-        return BaseTypeFactory.produce_novel_type(name)
+        return BaseTypeFactory.produce_novel_type(name).with_modifier(Binding.data)
 
     @staticmethod
     def produce_tuple_type(components: list[Type]) -> Type:
@@ -21,7 +21,7 @@ class TypeFactory:
                               ret: Type,
                               mod: Module,
                               name: str = "") -> Type:
-        return BaseTypeFactory.produce_function_type(arg, ret, mod, name)
+        return BaseTypeFactory.produce_function_type(arg, ret, mod, name).with_modifier(Binding.void)
 
     @staticmethod
     def produce_proto_struct_type(name: str, mod: Module) -> Type:
@@ -63,4 +63,4 @@ class TypeFactory:
         return TypeFactory.produce_function_type(
             arg=new_argument_type,
             ret=fn_type.get_return_type(),
-            mod=fn_type.mod)
+            mod=fn_type.mod).with_modifier(Binding.new)

@@ -40,15 +40,15 @@ class RefLike(AbstractNodeInterface):
             mod=self.get_module())
 
     def resolve_reference_type(self, argument_type: Type=None) -> Type | None:
-        type = self.get_ast_type()
-        if type == "fn":
-            return Fn(self.state).resolve_function_instance(argument_type).type
-        elif type == "ref":
-            return Ref(self.state).resolve_reference_type()
-        elif type == "::":
-            return ModuleScope(self.state).get_end_instance().type
-        elif type == ".":
-            return Scope(self.state).get_end_type()
+        match self.get_ast_type():
+            case "fn":
+                return Fn(self.state).resolve_function_instance(argument_type).type
+            case "ref":
+                return Ref(self.state).resolve_reference_type()
+            case "::":
+                return ModuleScope(self.state).get_end_instance().type
+            case ".":
+                return Scope(self.state).get_end_type()
 
     def resolve_instance(self) -> Instance:
         return LookupManager.resolve_reference(
@@ -152,7 +152,7 @@ class ModuleScope(AbstractNodeInterface):
         for mod_name in mods:
             current_mod = current_mod.get_child_by_name(mod_name)
 
-        instance = current_mod.get_instance(end)
+        instance = current_mod.get_obj("instance", end)
         if instance is None:
             instances = current_mod.get_all_function_instances_with_name(end)
             return instances[0]
@@ -224,3 +224,6 @@ class Scope(AbstractNodeInterface):
             # TODO: check for non-existent attributes
             current_type = current_type.get_member_attribute_by_name(attr)
         return current_type
+
+    def get_parent_type(self) -> Type:
+        return self.state.but_with_first_child().get_returned_type()

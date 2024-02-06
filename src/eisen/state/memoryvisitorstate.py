@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from alpaca.concepts import Context
 
-from eisen.state.state_postbindingcheck import State_PostBindingCheck
+from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.validation.validate import Validate
 from eisen.trace.entity import Entity, Angel, Trait
 from eisen.trace.shadow import Shadow, Personality
@@ -13,7 +13,7 @@ from alpaca.clr import AST
 from alpaca.concepts import Context, Module
 from alpaca.concepts import AbstractException
 
-class MemoryVisitorState(State_PostBindingCheck):
+class MemoryVisitorState(State_PostInstanceVisitor):
     def __init__(self, **kwargs):
         self._init(**kwargs)
 

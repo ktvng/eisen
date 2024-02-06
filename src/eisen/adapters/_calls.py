@@ -27,6 +27,7 @@ class _SharedMixins:
         There may be other cases where the function instance is known, but these would require more
         difficult logic and is not implemented
         """
+        if self.state.but_with_first_child().get_instances() is None: return None
         maybe_defining_ast = self.state.but_with_first_child().get_instances()[0].ast
         match maybe_defining_ast.type:
             case "def": return maybe_defining_ast
@@ -69,23 +70,13 @@ class Call(AbstractNodeInterface, _SharedMixins):
         return self.state.first_child()
 
     def get_return_value_bindings(self) -> list[Binding]:
-        return self.state.get_node_data().returned_bindings
+        return [t.modifier for t in self.get_function_return_type().unpack_into_parts()]
 
     def get_argument_bindings(self) -> list[Binding]:
-        return self.state.get_node_data().argument_bindings
-
-    def get_fn_ast(self) -> AST:
-        if self.state.but_with_first_child().get_ast().type != "::" and self.state.get_ast().type != "fn":
-            raise Exception(f"unexpected ast type of {self.state.get_ast().type}")
-        if self.stateast.type == "fn":
-            return self.state.get_ast()
-        return self._unravel_scoping(ast=self.state.get_ast().second())
+        return [t.modifier for t in self.get_function_argument_type().unpack_into_parts()]
 
     def get_function_name(self) -> str:
         return RefLike(self.state.but_with_first_child()).get_name()
-
-    def get_function_return_restrictions(self) -> list[GeneralRestriction]:
-        return self.get_function_return_type().get_restrictions()
 
     def is_print(self) -> bool:
         node = RefLike(self.state.but_with(ast=self.first_child()))

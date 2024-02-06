@@ -36,7 +36,7 @@ class InstanceVisitor(Visitor):
             # TODO: fix this abuse of as_ptr
             is_ptr=state.is_ptr,
             is_function=is_function)
-        state.get_context().add_instance(instance)
+        state.get_context().add_obj("instance", instance.name, instance)
         return instance
 
     @Visitor.for_tokens

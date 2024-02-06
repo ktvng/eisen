@@ -49,7 +49,7 @@ class UsageCheckerState(State_PostInstanceVisitor):
         return self.inside_constructor
 
     def add_usagestatus(self, inst: UsageStatus):
-        self.get_context().add_instancestate(inst)
+        self.get_context().add_binding_condition(inst)
 
     def get_usagestatus(self, name: str) -> UsageStatus:
         return self.get_context().get_instancestate(name)

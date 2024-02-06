@@ -89,8 +89,7 @@ class AttributeVisitor:
         returned_type = state.get_returned_type()
         if returned_type.is_novel(): return False
         parent_type = state.but_with_first_child().get_returned_type()
-        parent_type_composite_binding = state.get_struct_binding(parent_type)
-        attribute_binding = parent_type_composite_binding.get_binding_of_attribute(attr_name)
+        attribute_binding = parent_type.get_member_attribute_by_name(attr_name).modifier
         if attribute_binding == Binding.new or attribute_binding == Binding.mut_new: return False
         return True
 

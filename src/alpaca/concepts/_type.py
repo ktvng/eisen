@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from alpaca.concepts._module import Module
+from copy import copy
 
 class Type():
     class classifications:
@@ -27,6 +28,7 @@ class Type():
             inherits: list[Type],
             embeds: list[Type],
             parametrics: list[Type],
+            modifier: Any,
             parent_type: Type):
 
         """a type instance should only be created via the TypeclassFactory"""
@@ -38,6 +40,7 @@ class Type():
         self.inherits = inherits
         self.embeds = embeds
         self.parametrics = parametrics
+        self.modifier = modifier
         self.parent_type = parent_type
 
     def delegated(self):
@@ -79,7 +82,7 @@ class Type():
         return self.get_uuid_str()
 
     # Return the uuid string which can be hashed to obtain a proper uuid. All
-    # types should be identified by uuid, such that muliple instances of
+    # types should be identified by uuid, such that multiple instances of
     # the same type can be created that express equality to each other. This
     # allows us to treat types as frozen literals.
     #
@@ -139,18 +142,30 @@ class Type():
     def is_interface(self) -> bool: return False
 
     def unpack_into_parts(self):
+        # TODO, move void to type
+        if self.classification == Type.classifications.novel and self.name == "void":
+            return []
+
         if self.classification == Type.classifications.tuple:
             return self.components
         return [self]
 
     def get_all_component_names(self) -> list[str]:
-        names = self.component_names
+        """
+        Return all component names, including those of embedded structs.
+        """
+        names = self.component_names.copy()
         for t in self.embeds:
             names += t.get_all_component_names()
         return names
 
+    def with_modifier(self, modifier: Any) -> Type:
+        new_type = copy(self)
+        new_type.modifier = modifier
+        return new_type
+
 class FunctionType(Type):
-    def __init__(self, name: str, mod: Module, arg: Type, ret: Type, modifer=None):
+    def __init__(self, name: str, mod: Module, arg: Type, ret: Type, modifier: Any = None):
         super().__init__(
             classification=Type.classifications.function,
             name=name,
@@ -160,6 +175,7 @@ class FunctionType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
+            modifier=modifier,
             parent_type=None)
 
     def get_uuid_str(self) -> str:
@@ -177,7 +193,7 @@ class FunctionType(Type):
         return self.components[0]
 
 class _CompositeType(Type):
-    def __init__(self, name: str, mod: Module, proto_cls: str, true_cls: str, modifer=None):
+    def __init__(self, name: str, mod: Module, proto_cls: str, true_cls: str):
         self._is_proto = True
         self._true_classification = true_cls
         super().__init__(
@@ -189,6 +205,7 @@ class _CompositeType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
+            modifier=None,
             parent_type=None)
 
     def is_proto(self) -> bool:
@@ -226,7 +243,7 @@ class _CompositeType(Type):
         if embeds: self.embeds = embeds
 
 class TupleType(Type):
-    def __init__(self, components: list[Type], modifer=None):
+    def __init__(self, components: list[Type]):
         super().__init__(
             classification=Type.classifications.tuple,
             name="",
@@ -236,6 +253,7 @@ class TupleType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
+            modifier=None,
             parent_type=None)
 
     def get_uuid_str(self) -> str:
@@ -263,7 +281,7 @@ class InterfaceType(_CompositeType):
         return True
 
 class VariantType(Type):
-    def __init__(self, name: str, mod: Module, modifer=None):
+    def __init__(self, name: str, mod: Module):
         self._is_proto = True
         super().__init__(
             classification=Type.classifications.proto_variant,
@@ -295,7 +313,7 @@ class VariantType(Type):
         return self.parent_type.get_member_attribute_by_name(name)
 
 class NovelType(Type):
-    def __init__(self, name: str, modifer=None):
+    def __init__(self, name: str, modifier: Any=None):
         super().__init__(
             classification=Type.classifications.novel,
             name=name,
@@ -305,6 +323,7 @@ class NovelType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
+            modifier=modifier,
             parent_type=None)
 
     def is_novel(self) -> bool:
@@ -324,6 +343,7 @@ class NilType(Type):
             inherits=[],
             embeds=[],
             parametrics=[],
+            modifer=None,
             parent_type=None)
 
     def is_nil(self) -> bool:
@@ -333,7 +353,7 @@ class NilType(Type):
         return "nil"
 
 class ParametricType(Type):
-    def __init__(self, name: str, parametrics: list[Type], modifer=None):
+    def __init__(self, name: str, parametrics: list[Type], modifier: Any=None):
         super().__init__(
             classification=Type.classifications.parametric,
             name=name,
@@ -343,6 +363,7 @@ class ParametricType(Type):
             inherits=[],
             embeds=[],
             parametrics=parametrics,
+            modifier=modifier,
             parent_type=None)
 
     def get_uuid_str(self) -> str:

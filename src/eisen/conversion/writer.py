@@ -35,18 +35,6 @@ class Writer(Visitor):
             parts += fn.apply(child) + ["\n"]
         return parts + ["}\n"]
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn, ast: AST):
-        parts = ["variant ",
-            *fn.apply(ast.first()),
-            " of ",
-            *fn.apply(ast.second()),
-            " {\n"]
-
-        for child in ast[2:]:
-            parts += fn.apply(child) + ["\n"]
-        return parts + ["}\n"]
-
     @Visitor.for_ast_types("mod")
     def mod_(fn, ast: AST):
         parts = ["mod ",

@@ -52,12 +52,6 @@ class InterfaceFinalizationVisitor(Visitor):
         Validate.embeddings_dont_conflict(state, this_struct_type)
         Validate.all_implementations_are_complete(state, this_struct_type)
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn, state: State) -> None:
-        node = adapters.Variant(state)
-        this_variant_type = node.get_this_type()
-        this_variant_type.finalize(parent_type=node.get_parent_type())
-
     @Visitor.for_default
     def default_(fn, state: State) -> None:
         # nothing to do by default

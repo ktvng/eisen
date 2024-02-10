@@ -30,7 +30,6 @@ class ContextParser():
 
 class ParserSelector:
     context_type_to_parser_map = {
-        "variant": "VARIANT",
         "interface": "INTERFACE",
         "struct": "STRUCT",
         "fn": "FUNC",
@@ -83,19 +82,16 @@ class SuperParser():
         self.func_parser = ContextParser(config, "FUNC")
         self.struct_parser = ContextParser(config, "STRUCT")
         self.interface_parser = ContextParser(config, "INTERFACE")
-        self.variant_parser = ContextParser(config, "VARIANT")
         self.mod_parser = ModParser([
             self.func_parser,
             self.struct_parser,
             self.interface_parser,
-            self.variant_parser
         ])
 
         self.parsers = [
             self.func_parser,
             self.struct_parser,
             self.interface_parser,
-            self.variant_parser,
             self.mod_parser,
         ]
 

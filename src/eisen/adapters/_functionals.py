@@ -127,19 +127,3 @@ class Create(AbstractNodeInterface):
 
     def get_type_of_created_entity(self) -> str:
         return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).state.get_returned_type()
-
-class IsFn(AbstractNodeInterface):
-    ast_type = "is_fn"
-    examples = """
-    1. wild
-        (is
-            (args ...)
-            (rets ...)
-            (seq ...))
-    """
-
-    def normalize(self, variant_name: str):
-        self.state.get_ast()._list.insert(0, ASTToken(type_chain=["TAG"], value="is_" + variant_name))
-
-    def get_name(self) -> str:
-        return "is_" + self.state.get_variant_name()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.concepts._type import (Type, FunctionType, TupleType, StructType, InterfaceType,
-                                   NovelType, VariantType, NilType, ParametricType)
+                                   NovelType, NilType, ParametricType)
 from alpaca.concepts._module import Module
 
 class TypeFactory():
@@ -29,10 +29,6 @@ class TypeFactory():
     @staticmethod
     def produce_proto_interface_type(name: str, mod: Module) -> Type:
         return InterfaceType(name, mod)
-
-    @staticmethod
-    def produce_proto_variant_type(name: str, mod: Module) -> Type:
-        return VariantType(name, mod)
 
     @staticmethod
     def produce_nil_type() -> Type:

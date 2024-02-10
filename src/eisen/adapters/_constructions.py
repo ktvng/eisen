@@ -82,33 +82,6 @@ class Struct(AbstractNodeInterface, _SharedMixins):
         if self.has_create_ast():
             fn.apply(self.state.but_with(ast=self.get_create_ast()))
 
-
-class Variant(AbstractNodeInterface):
-    ast_type = "variant"
-    examples = """
-    (variant name
-        (is ...)
-        (@allow ...)
-        (@deny ...))
-    """
-    _get_name = AbstractNodeInterface.get_name_from_first_child
-    get_variant_name = AbstractNodeInterface.get_name_from_first_child
-    get_this_type = AbstractNodeInterface.get_type_for_node_that_defines_a_type
-
-    def get_token_defining_parent(self) -> ASTToken:
-        return self.state.second_child()
-
-    def get_parent_type(self) -> Type:
-        parent_type_name = self.get_token_defining_parent().value
-        return self.state.get_defined_type(parent_type_name)
-
-    def get_is_ast(self) -> AST:
-        for child in self.state.get_child_asts():
-            if child.type == "is_fn":
-                return child
-        raise Exception(f"expected an 'is_fn' ast for variant: {self.get_variant_name()}")
-
-
 class Interface(AbstractNodeInterface, _SharedMixins):
     ast_type = "interface"
     examples = """

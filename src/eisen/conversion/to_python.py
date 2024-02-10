@@ -112,14 +112,6 @@ class lmda:
             return [m.name for m in map(Pattern("(': (?? name) _)").match, ret_ast.first()._list) if m]
         return [Pattern("('rets (': (?? name) _))").match(ret_ast).name]
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn, state: State):
-        node = adapters.Variant(state)
-        is_ast = node.get_is_ast()
-        ast = Pattern("('is_fn xs...)").match(is_ast).to("'def xs...")
-        ast.data = is_ast.data
-        return fn.apply(state.but_with(ast=ast))
-
     @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         node = adapters.Def(state)

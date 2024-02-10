@@ -92,4 +92,3 @@ class LookupManager():
 
     resolve_struct_type = resolve_defined_type
     resolve_interface_type = resolve_defined_type
-    resolve_variant_type = resolve_defined_type

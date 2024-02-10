@@ -1,7 +1,5 @@
 # TODO
 
-2. Deprecate variants :(
-
 3. Better exceptions for parameter incompatibility
 
 4. Fix var? p = nil (this works but should break)

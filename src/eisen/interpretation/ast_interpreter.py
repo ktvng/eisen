@@ -97,7 +97,7 @@ class AstInterpreter(Visitor):
         Passer.handle_assignment(state.objs, left, new_obj)
         return []
 
-    @Visitor.for_ast_types("mod", "struct", "interface", "variant")
+    @Visitor.for_ast_types("mod", "struct", "interface")
     def skip_(fn, state: State):
         return []
 

@@ -45,18 +45,6 @@ class FunctionVisitorState(BaseState):
         """
         return self.struct_name
 
-
-    def get_variant_name(self) -> str:
-        """
-        Gets the name of the variant if the current State exists inside a variant definition within
-        the Eisen source code being compiled.
-
-        :return: The name of the variant.
-        :rtype: str
-        """
-        return self.struct_name
-
-
     def add_function_instance_to_module(self, instance: Instance):
         """
         A defined function must be parsed into a FunctionInstance and added to the module where it

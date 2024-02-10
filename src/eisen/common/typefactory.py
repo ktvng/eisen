@@ -32,10 +32,6 @@ class TypeFactory:
         return BaseTypeFactory.produce_proto_interface_type(name, mod)
 
     @staticmethod
-    def produce_proto_variant_type(name: str, mod: Module) -> Type:
-        return BaseTypeFactory.produce_proto_variant_type(name, mod)
-
-    @staticmethod
     def produce_nil_type() -> Type:
         return BaseTypeFactory.produce_nil_type()
 

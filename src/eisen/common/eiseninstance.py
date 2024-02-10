@@ -36,8 +36,7 @@ class Instance():
         match type:
             case (Type(classification=Type.classifications.novel)
                 | Type(classification=Type.classifications.struct)
-                | Type(classification=Type.classifications.interface)
-                | Type(classification=Type.classifications.variant)):
+                | Type(classification=Type.classifications.interface)):
                 return type.name
             case Type(classification=Type.classifications.tuple):
                 return "d_" + "_".join([Instance.get_signature_string(t)

@@ -12,10 +12,8 @@ class Type():
         function = "function"
         struct = "struct"
         interface = "interface"
-        variant = "variant"
         proto_struct = "proto_struct"
         proto_interface = "proto_interface"
-        proto_variant = "proto_variant"
         parametric = "parametric"
 
     def __init__(
@@ -107,9 +105,6 @@ class Type():
             for type in self.embeds:
                 if type.has_member_attribute_with_name(name):
                     return True
-
-        if self.classification == Type.classifications.variant:
-            return self.parent_type.has_member_attribute_with_name(name)
 
         return False
 
@@ -279,38 +274,6 @@ class InterfaceType(_CompositeType):
 
     def is_interface(self) -> bool:
         return True
-
-class VariantType(Type):
-    def __init__(self, name: str, mod: Module):
-        self._is_proto = True
-        super().__init__(
-            classification=Type.classifications.proto_variant,
-            name=name,
-            mod=mod,
-            components=[],
-            component_names=[],
-            inherits=[],
-            embeds=[],
-            parametrics=[],
-            parent_type=None)
-
-    def is_variant(self) -> bool:
-        return True
-
-    def is_proto(self) -> bool:
-        return self._is_proto
-
-    def get_uuid_str(self) -> str:
-        suffix = "<proto>" if self._is_proto else "<variant>"
-        return self._get_uuid_based_on_module_and_name() + suffix
-
-    def finalize(self, parent_type: Type):
-        self.classification = Type.classifications.variant
-        self._is_proto = False
-        self.parent_type = parent_type
-
-    def get_member_attribute_by_name(self, name: str) -> Type:
-        return self.parent_type.get_member_attribute_by_name(name)
 
 class NovelType(Type):
     def __init__(self, name: str, modifier: Any=None):

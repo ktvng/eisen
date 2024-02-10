@@ -1,0 +1,56 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> new self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn decider(x: int) {
+    let a = obj(3, 3)
+    let b = obj(4, 4)
+    var? q: obj
+    q = nil
+
+
+    if (x == 3) {
+        q = a
+    }
+    else {
+        q = b
+    }
+
+    print("%i", q.x)
+
+    q = nil
+    if (q == nil) {
+        q = b
+    }
+
+    print("%i", q.x)
+
+    if (x == 3) {
+        q = nil
+    }
+    print("%i", q.x)
+}
+
+fn main() {
+    decider(4)
+}
+
+
+/// [Test]
+/// name = "nilcheck/conditional2"
+/// info = """\
+///     Check that after certain branching, we are able to resolve variable as not nil
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "NilUsageException"
+/// contains = ">> 37"

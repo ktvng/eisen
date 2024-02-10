@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from alpaca.utils import Visitor
 from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
-from eisen.validation.typechecker import TypeChecker
+from eisen.typecheck.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
 from eisen.validation.declarationvisitor import DeclarationVisitor
 from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor

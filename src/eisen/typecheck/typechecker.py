@@ -6,10 +6,10 @@ from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_t
 from eisen.common.binding import Binding, BindingMechanics
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
-from eisen.state.typecheckerstate import TypeCheckerState
+from eisen.typecheck.typecheckerstate import TypeCheckerState
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
-from eisen.validation.callunwrapper import CallUnwrapper
+from eisen.typecheck.callunwrapper import CallUnwrapper
 from eisen.common.typefactory import TypeFactory
 
 from eisen.validation.builtin_print import Builtins

@@ -3,7 +3,7 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from eisen.state.basestate import BaseState as State
 import eisen.adapters as adapters
-from eisen.validation.typeparser import TypeParser
+from eisen.typecheck.typeparser import TypeParser
 from eisen.validation.validate import Validate
 
 

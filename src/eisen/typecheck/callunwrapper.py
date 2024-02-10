@@ -10,7 +10,7 @@ from eisen.validation.validate import Validate
 import eisen.adapters as adapters
 
 if TYPE_CHECKING:
-    from eisen.validation.typechecker import TypeChecker
+    from eisen.typecheck.typechecker import TypeChecker
 
 class CallUnwrapper():
     @staticmethod

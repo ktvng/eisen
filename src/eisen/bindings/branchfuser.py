@@ -1,18 +1,21 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from alpaca.clr import AST
-from alpaca.utils import Visitor
 from eisen.bindings.bindingcheckerstate import BindingCheckerState
 from eisen.common.binding import Condition, BindingCondition
 
 from eisen.validation.validate import Validate
+
+if TYPE_CHECKING:
+    from eisen.bindings.bindingchecker import BindingChecker
 
 State = BindingCheckerState
 class BranchFuser:
     @staticmethod
     def apply_fn_in_branch_and_return_branch_state(
             parent_state: State,
-            fn: Visitor,
+            fn: BindingChecker,
             child: AST) -> State:
 
         branch_state = parent_state.but_with(
@@ -39,7 +42,7 @@ class BranchFuser:
     @staticmethod
     def select_from_branch(root_state: State, name: str, branched_binding_conditions: list[list[BindingCondition]]) -> list[BindingCondition]:
         """
-        Return a list of BindingConditions which match name, taken across all branches.
+        Return a list of BindingConditions which match [name], taken across all branches.
         """
         bcs = []
         for binding_conditions in branched_binding_conditions:

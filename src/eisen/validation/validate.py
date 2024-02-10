@@ -8,7 +8,7 @@ from eisen.common.eiseninstance import Instance
 from eisen.common.exceptions import Exceptions
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
-from eisen.common.binding import Binding, Condition, BindingCondition, BindingMechanics
+from eisen.common.binding import Binding, Condition, BindingCondition, BindingMechanics, BindingConditionForObjectUnderConstruction
 
 if TYPE_CHECKING:
     from eisen.trace.entity import Trait
@@ -489,9 +489,9 @@ class Validate:
                 msg=BindingMechanics.why_binding_cant_be_inferred(name, declared, received))
 
         @staticmethod
-        def all_struct_members_initialized_after_constructor(state: State, struct_type: Type, binding_condition: BindingCondition):
+        def all_struct_members_initialized_after_constructor(state: State, struct_type: Type, binding_condition: BindingConditionForObjectUnderConstruction):
             for attr in struct_type.get_all_component_names():
-                if binding_condition.get_attribute_initialization(attr) == Condition.not_initialized:
+                if not binding_condition.attribute_is_initialized(attr):
                     add_exception_to(state,
                         ex=Exceptions.IncompleteInitialization,
                         msg=f"'{attr}' is not initialized")

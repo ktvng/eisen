@@ -23,7 +23,7 @@ class LookupManager():
 
     @classmethod
     def resolve_local_reference(cls, name: str, context: Context) -> Instance | None:
-        return context.get_instance(name)
+        return context.get_obj("instance", name)
 
     @classmethod
     def resolve_function_references_by_name(cls, name: str, mod: Module) -> list[Instance]:
@@ -54,7 +54,7 @@ class LookupManager():
 
     @classmethod
     def resolve_local_reference_type(cls, name: str, context: Context) -> Type | None:
-        return context.get_reference_type(name)
+        return context.get_type_of_reference(name)
 
     @classmethod
     def resolve_function_reference_types_by_name(cls, name: str, mod: Module) -> list[Type]:

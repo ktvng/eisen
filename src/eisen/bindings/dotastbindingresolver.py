@@ -4,7 +4,9 @@ from alpaca.utils import Visitor
 
 import eisen.adapters as adapters
 from eisen.bindings.bindingcheckerstate import BindingCheckerState
-from eisen.common.binding import Binding, Condition, BindingCondition
+from eisen.common.binding import (Binding, Condition, BindingCondition,
+                                  BindingConditionForAttributeUnderConstruction,
+                                  BindingConditionForObjectUnderConstruction)
 from eisen.validation.validate import Validate
 
 State = BindingCheckerState
@@ -37,14 +39,15 @@ class DotAstBindingResolver(Visitor):
         # Special case handled first, if the parent is under construction, then we are inside the
         # constructor, and initializing the child attributes.
         if parent_condition.condition == Condition.under_construction:
+            object_condition: BindingConditionForObjectUnderConstruction = parent_condition
             attr_name = adapters.Scope(state).get_attribute_name()
-            if parent_condition.get_attribute_initialization(attr_name) == Condition.initialized:
+            if object_condition.attribute_is_initialized(attr_name):
                 return true_child
 
             # If the child is not already initialized, then we create a new BindingCondition with
             # a callback to mark the parent as initialized when the child is initialized.
-            return BindingCondition.create_for_attribute_being_constructed(child_name, child_binding,
-                callback_to_initialize_parent=lambda: parent_condition.but_with_attribute_initialized(attr_name))
+            return BindingConditionForAttributeUnderConstruction.create(
+                child_name, child_binding, object_condition, attr_name)
 
         Validate.Bindings.is_initialized(state, parent_condition)
 

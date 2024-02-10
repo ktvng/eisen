@@ -3,20 +3,18 @@ from __future__ import annotations
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
+from eisen.common.binding import Binding, BindingMechanics
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.state.typecheckerstate import TypeCheckerState
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.validation.callunwrapper import CallUnwrapper
-from eisen.validation.restructure_is_statement import RestructureIsStatement
-from eisen.validation.typeparser import TypeParser
 from eisen.common.typefactory import TypeFactory
 
 from eisen.validation.builtin_print import Builtins
 
 State = TypeCheckerState
-
 class TypeChecker(Visitor):
     """this evaluates the flow of types throughout the ast, and records which
     type flows up through each ast.
@@ -24,7 +22,6 @@ class TypeChecker(Visitor):
 
     def __init__(self, debug: bool = False):
         super().__init__(debug=debug)
-        self.typeparser = TypeParser()
 
     def run(self, state: BaseState):
         self.apply(TypeCheckerState.create_from_basestate(state))
@@ -38,43 +35,16 @@ class TypeChecker(Visitor):
 
         result = self._route(state.get_ast(), state)
         if result is None: result = state.get_void_type()
-        TypeChecker.set_returned_type(state, result)
+
+        # Set the returned type of each AST node.
+        state.get_node_data().returned_type = result
         return result
-
-    @staticmethod
-    def get_curried_type(state: State, fn_type: Type, curried_args_type: Type) -> Type:
-        argument_type = fn_type.get_argument_type()
-        if Validate.function_has_enough_arguments_to_curry(state, argument_type, curried_args_type).failed():
-            return state.get_abort_signal()
-
-        if Validate.curried_arguments_are_of_the_correct_type(state, argument_type, curried_args_type).failed():
-            return state.get_abort_signal()
-
-        return TypeFactory.produce_curried_function_type(fn_type, curried_args_type)
-
-
-    @classmethod
-    def set_returned_type(cls, state: State, type: Type):
-        state.get_node_data().returned_type = type
-
-    @classmethod
-    def add_reference_type(cls, state: State, name: str, type: Type):
-        state.get_context().add_reference_type(name, type)
 
     def apply_to_first_child_of(self, state: State) -> Type:
         return self.apply(state.but_with_first_child())
 
     def apply_to_second_child_of(self, state: State) -> Type:
         return self.apply(state.but_with_second_child())
-
-    def returns_void_type(f):
-        """this signifies that the void type should be returned. abstracted so if
-        the void_type is changed, we can easily configure it here.
-        """
-        def decorator(fn, state: State):
-            f(fn, state)
-            return state.get_void_type()
-        return decorator
 
     @Visitor.for_tokens
     def token_(fn, state: State) -> Type:
@@ -166,24 +136,18 @@ class TypeChecker(Visitor):
             return Builtins.get_type_of_print(state).get_return_type()
         return TypeChecker._shared_call_checks(state, params_type)
 
-    @Visitor.for_ast_types("is")
-    def is_(fn, state: State) -> Type:
-        node = adapters.Is(state)
-        # if the check is not against nil, treat this as a call to
-        # some "is" function of a variant
-        if node.get_type_name() != "nil":
-            params_type = node.get_considered_type().parent_type
-            RestructureIsStatement.run(state)
-            fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
-            fn.apply(state.but_with_second_child())
-            return TypeChecker._shared_call_checks(state, params_type)
-        return state.get_bool_type()
-
     @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State) -> Type:
         fn_type = fn.apply_to_first_child_of(state)
         curried_args_type = fn.apply_to_second_child_of(state)
-        return TypeChecker.get_curried_type(state, fn_type, curried_args_type)
+
+        argument_type = fn_type.get_argument_type()
+        if Validate.function_has_enough_arguments_to_curry(state, argument_type, curried_args_type).failed():
+            return state.get_abort_signal()
+
+        if Validate.curried_arguments_are_of_the_correct_type(state, argument_type, curried_args_type).failed():
+            return state.get_abort_signal()
+        return TypeFactory.produce_curried_function_type(fn_type, curried_args_type)
 
     @Visitor.for_ast_types("struct")
     def struct(fn, state: State) -> Type:
@@ -212,37 +176,68 @@ class TypeChecker(Visitor):
 
     @Visitor.for_ast_types("def", "create", ":=", "is_fn")
     def fn(fn, state: State) -> Type:
-        adapters.CommonFunction(state).enter_context_and_apply(fn)
+        adapters.CommonFunction(state.but_with(in_constructor=state.get_ast_type() == "create"))\
+            .enter_context_and_apply(fn)
 
-    @classmethod
-    def _create_references(cls, state: State, names: list[str], type: Type):
-        types = type.components if type.is_tuple() else [type] * len(names)
+    @staticmethod
+    def _create_references(node: adapters.InferenceAssign | adapters.Decl, types: list[Type]):
+        """
+        This creates the references for each entity defined with the 'let' keyword, performing
+        both type checking but also binding inference.
+        """
+        state = node.state
         if any(type is state.get_abort_signal() for type in types):
             state.critical_exception.set(True)
             return
-        if Validate.all_names_are_unbound(state, names).failed():
+
+        names = node.get_names()
+        bindings = node.get_bindings()
+
+        # First validate that any inference on bindings is acceptable.
+        for name, t, b in zip(names, types, bindings):
+            Validate.Bindings.can_be_inferred(state, name, b, t.modifier)
+
+        # Infer bindings. However, if we are inside a constructor, and the reference we are creating
+        # is for the new returned object, then the binding of that object must be mut_new as it's
+        # mutable inside of the constructor.
+        types = [t.with_modifier(BindingMechanics.infer_binding(b, t.modifier)) for t, b in zip(types, bindings)]
+        types = [t.with_modifier(Binding.mut_new) if state.is_inside_create() and state.is_inside_rets() else t for t in types]
+
+        if Validate.all_names_are_unbound(state, node.get_names()).failed():
             return state.get_abort_signal()
+
         for name, t in zip(names, types):
-            TypeChecker.add_reference_type(state, name, t)
-        return type
+            state.get_context().add_type_of_reference(name, t)
+
+        # Produce a new type with the contents of [types] to ensure the bindings get updated.
+        match len(types):
+            case 0: return state.get_void_type()
+            case 1: return types[0]
+            case _: return TypeFactory.produce_tuple_type(types)
+
 
     @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def idecls_(fn, state: State):
-        node = adapters.InferenceAssign(state)
-        names = node.get_names()
-        type = fn.apply_to_second_child_of(state)
-        return TypeChecker._create_references(state, names, type)
+        return TypeChecker._create_references(
+            node=adapters.InferenceAssign(state),
+            types=fn.apply_to_second_child_of(state).unpack_into_parts())
 
     @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def decls_(fn, state: State):
         node = adapters.Typing(state)
-        names = node.get_names()
-        type = fn.apply(state.but_with(ast=node.get_type_ast()))
-        return TypeChecker._create_references(state, names, type)
+
+        # as multiple variable could all be defined of a single type, if we see that only one
+        # type is specified, we duplicate this type for each variable that gets defined.
+        right_type = fn.apply(state.but_with(ast=node.get_type_ast()))
+        n_variables = len(node.get_names())
+        types = right_type.unpack_into_parts() if right_type.is_tuple() else [right_type]*n_variables
+        return TypeChecker._create_references(
+            node=node,
+            types=types)
 
     @Visitor.for_ast_types("fn_type", "para_type", *adapters.TypeLike.ast_types)
-    def _type1(fn, state: State) -> Type:
-        return fn.typeparser.apply(state)
+    def _type(fn, state: State) -> Type:
+        return state.parse_type_represented_here()
 
     @Visitor.for_ast_types("=", "<-", *binary_ops)
     def binary_ops(fn, state: State) -> Type:
@@ -276,16 +271,17 @@ class TypeChecker(Visitor):
         if node.is_print():
             return Builtins.get_type_of_print(state)
 
-        type = node.resolve_reference_type()
-        if Validate.instance_exists(state, node.get_name(), type).failed():
+        type_ = node.resolve_reference_type()
+        if Validate.instance_exists(state, node.get_name(), type_).failed():
             return state.get_abort_signal()
-        return type
+        return type_
 
-    @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
-    def args_(fn, state: State) -> Type:
-        if not state.get_ast():
-            return state.get_void_type()
-        return fn.apply(state.but_with(ast=state.first_child()))
+    @Visitor.for_ast_types("args", "rets")
+    def argsrets_(fn, state: State) -> Type:
+        if state.get_ast().has_no_children(): return state.get_void_type()
+        return fn.apply(state.but_with(
+            ast=state.first_child(),
+            in_rets=state.get_ast_type()=="rets"))
 
     @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State) -> Type:

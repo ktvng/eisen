@@ -38,10 +38,6 @@ class FnConverter(Visitor):
     def struct_(fn, state: State):
         adapters.Struct(state).apply_fn_to_create_ast(fn)
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn, state: State):
-        fn.apply(state.but_with(ast=adapters.Variant(state).get_is_ast()))
-
     @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def decls_(fn, state: State):
         for name in adapters.Typing(state).get_names():

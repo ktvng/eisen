@@ -65,7 +65,6 @@ SYMBOLICS
     keyword var         ->  var
     keyword interface   ->  interface
     keyword implements  ->  implements
-    keyword variant     ->  variant
     keyword of          ->  of
     keyword as          ->  as
     keyword is          ->  is
@@ -601,27 +600,6 @@ STRUCTURE
 
 
     # ====================================================
-    # Variants
-
-    VARIANT ->
-        @action filter_build variant
-        |   variant TAG of TAG { VARIANT_ELEMS }
-
-    VARIANT_ELEMS ->
-        @action pool
-        |   VARIANT_ELEM ENDLS VARIANT_ELEMS
-        |   VARIANT_ELEM
-
-    VARIANT_ELEM ->
-        @action filter_build is_fn
-        |   is ARGS RETS SEQ
-        @action filter_build @
-        |   @ TAG ( TAGS )
-        |   @ TAG ( TAG )
-        |   @ TAG ( )
-
-
-    # ====================================================
     # Modules
 
     MOD ->
@@ -639,7 +617,6 @@ STRUCTURE
         |   FUNC
         |   STRUCT
         |   INTERFACE
-        |   VARIANT
         |   MOD
         |   ENDLS
 

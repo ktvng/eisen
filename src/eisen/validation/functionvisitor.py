@@ -48,13 +48,6 @@ class FunctionVisitor(Visitor):
         node = adapters.Struct(state)
         node = adapters.Struct(state.but_with(struct_name=node.get_name())).apply_fn_to_create_ast(fn)
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn, state: FunctionVisitorState) -> None:
-        node = adapters.Variant(state)
-        fn.apply(state.but_with(
-            ast=node.get_is_ast(),
-            struct_name=node.get_variant_name()))
-
     @Visitor.for_ast_types("def")
     def def_(fn, state: FunctionVisitorState):
         instance = Instance(
@@ -77,18 +70,5 @@ class FunctionVisitor(Visitor):
             context=state.get_enclosing_module(),
             ast=state.get_ast(),
             is_constructor=True)
-        state.get_node_data().instances = [instance]
-        state.add_function_instance_to_module(instance)
-
-    @Visitor.for_ast_types("is_fn")
-    def is_(fn, state: FunctionVisitorState):
-        node = adapters.IsFn(state)
-        node.normalize(variant_name=state.get_variant_name())
-
-        instance = Instance(
-            name=node.get_name(),
-            type=fn.local_type_parser.apply(state),
-            context=state.get_enclosing_module(),
-            ast=state.get_ast())
         state.get_node_data().instances = [instance]
         state.add_function_instance_to_module(instance)

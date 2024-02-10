@@ -152,10 +152,6 @@ class TypeChecker(Visitor):
     def struct(fn: TypeChecker, state: State) -> Type:
         adapters.Struct(state).apply_fn_to_create_ast(fn)
 
-    @Visitor.for_ast_types("variant")
-    def variant_(fn: TypeChecker, state: State) -> Type:
-        fn.apply(state.but_with(ast=adapters.Variant(state).get_is_ast()))
-
     @Visitor.for_ast_types("interface", "impls")
     def interface_(fn: TypeChecker, state: State) -> Type:
         # no action required

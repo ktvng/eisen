@@ -4,7 +4,7 @@ from alpaca.concepts import Module, Context, Type
 from alpaca.clr import AST
 
 from eisen.state.basestate import BaseState
-from eisen.validation.typeparser import TypeParser
+from eisen.typecheck.typeparser import TypeParser
 
 class TypeCheckerState(BaseState):
     def __init__(self, **kwargs):

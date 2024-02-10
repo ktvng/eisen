@@ -4,7 +4,7 @@ from alpaca.utils import Visitor
 from eisen.common.eiseninstance import Instance
 from eisen.state.basestate import BaseState
 from eisen.state.functionvisitorstate import FunctionVisitorState
-from eisen.validation.typeparser import TypeParser
+from eisen.typecheck.typeparser import TypeParser
 import eisen.adapters as adapters
 
 State = FunctionVisitorState

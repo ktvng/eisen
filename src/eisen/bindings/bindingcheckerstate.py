@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from alpaca.concepts import Module, Context
+from typing import Callable
+from alpaca.concepts import Module, Context, Type
 from alpaca.clr import AST
 
-from eisen.common.binding import BindingCondition, Condition, Binding
+from eisen.common.binding import BindingCondition, Binding
 from eisen.state.basestate import BaseState
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 
@@ -16,7 +17,7 @@ class BindingCheckerState(State_PostInstanceVisitor):
             context: Context = None,
             mod: Module = None,
             inside_constructor: bool = None,
-            environment_condition: Condition = None,
+            binding_condition_producer: Callable[[str, Type], BindingCondition] = None,
             ) -> BindingCheckerState:
 
         return self._but_with(
@@ -24,13 +25,13 @@ class BindingCheckerState(State_PostInstanceVisitor):
             context=context,
             mod=mod,
             inside_constructor=inside_constructor,
-            environment_condition=environment_condition)
+            binding_condition_producer=binding_condition_producer)
 
     @staticmethod
     def create_from_basestate(state: BaseState) -> BindingCheckerState:
         return BindingCheckerState(**state._get(),
                                    inside_constructor=False,
-                                   environment_condition=None,
+                                   binding_condition_producer=None,
                                    )
 
 
@@ -55,13 +56,11 @@ class BindingCheckerState(State_PostInstanceVisitor):
         return self.get_context().get_obj("binding_condition", name)
 
 
-    def get_condition_due_to_environment(self) -> Condition:
+    def get_binding_condition_producer(self) -> Callable[[str, Type], BindingCondition]:
         """
-        Returns the condition inherited from any parent ASTs of the current state. For example,
-        the (ret ...) AST of a constructor (a (create ... ) AST) necessitates the condition of any
-        binding under it to be Binding.under_construction.
+        Returns a function which produces a BindingCondition.
         """
-        return self.environment_condition
+        return self.binding_condition_producer
 
 
     def get_all_local_binding_conditions(self) -> list[BindingCondition]:

@@ -6,6 +6,7 @@ import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.state.basestate import BaseState as State
 from eisen.common.typefactory import TypeFactory
+from eisen.common.binding import Binding, BindingMechanics
 
 class TypeParser(Visitor):
     """this parses the ast into a type. certain asts define types. these are:
@@ -17,11 +18,13 @@ class TypeParser(Visitor):
         return self._route(state.get_ast(), state)
 
     @Visitor.for_ast_types(*adapters.BindingAST.ast_types)
-    def binding_(fn, state: State) -> Type:
+    def _type_binding_(fn, state: State) -> Type:
         """
+        Note: this is a special binding AST which binds a type, not a name.
         (void (fn_type ...))
         """
-        return fn.apply(state.but_with_first_child())
+        binding = BindingMechanics.infer_fixed_binding(adapters.BindingAST(state).get_binding())
+        return fn.apply(state.but_with_first_child()).with_modifier(binding)
 
     @Visitor.for_ast_types(*adapters.TypeLike.ast_types)
     def type_(fn, state: State) -> Type:
@@ -32,7 +35,7 @@ class TypeParser(Visitor):
         """
         node = adapters.TypeLike(state)
         name = node.get_name()
-        type = state.get_defined_type(name)
+        type = state.get_defined_type(name).with_modifier(Binding.void)
         if Validate.type_exists(state, name, type).failed():
             return state.get_abort_signal()
         return type
@@ -40,16 +43,10 @@ class TypeParser(Visitor):
     @Visitor.for_ast_types(":")
     def colon_(fn, state: State) -> Type:
         """
-        (: name (type int))
+        (: (binding name) (type int))
         """
-        return fn.apply(state.but_with(ast=state.second_child()))
-
-    @Visitor.for_ast_types("let")
-    def let_(fn, state: State) -> Type:
-        """
-        (let name (type int))
-        """
-        return fn.apply(state.but_with(ast=state.second_child()))
+        binding = BindingMechanics.infer_fixed_binding(adapters.BindingAST(state.but_with_first_child()).get_binding())
+        return fn.apply(state.but_with(ast=state.second_child())).with_modifier(binding)
 
     @Visitor.for_ast_types("prod_type", "types")
     def prod_type_(fn, state: State) -> Type:
@@ -91,13 +88,27 @@ class TypeParser(Visitor):
             ret=fn.apply(state.but_with(ast=state.second_child())),
             mod=None)
 
-    @Visitor.for_ast_types(*adapters.ArgsRets.ast_types)
+    @Visitor.for_ast_types("args")
     def args_(fn, state: State) -> Type:
         """
         (args (type ...))
         """
         if state.get_ast():
             return fn.apply(state.but_with(ast=state.first_child()))
+        return state.get_void_type()
+
+    @Visitor.for_ast_types("rets")
+    def rets_(fn, state: State) -> Type:
+        """
+        (rets (type ...))
+        """
+        if state.get_ast():
+            type = fn.apply(state.but_with(ast=state.first_child()))
+            if type.is_tuple():
+                components = [t.with_modifier(Binding.ret_new) if t.modifier == Binding.new else t for t in type.components]
+                return TypeFactory.produce_tuple_type(components)
+            else:
+                return type.with_modifier(Binding.ret_new) if type.modifier == Binding.new else type
         return state.get_void_type()
 
     @Visitor.for_ast_types("def", "create", ":=", "is_fn")
@@ -110,7 +121,7 @@ class TypeParser(Visitor):
         return TypeFactory.produce_function_type(
             arg=fn.apply(state.but_with(ast=node.get_args_ast())),
             ret=fn.apply(state.but_with(ast=node.get_rets_ast())),
-            mod=None)
+            mod=None).with_modifier(Binding.void)
 
     @Visitor.for_ast_types("para_type")
     def para_type(fn, state: State) -> Type:

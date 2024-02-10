@@ -17,7 +17,6 @@ from eisen.validation.instancevisitor import InstanceVisitor
 from eisen.validation.recursionvisitor import RecursionVisitor
 from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.trace.memoryvisitor import MemoryVisitor
-from eisen.bindings.bindingparser import BindingParser
 from eisen.bindings.bindingchecker import BindingChecker
 from eisen.state.basestate import BaseState as State
 
@@ -79,10 +78,6 @@ class Workflow():
         # (incomplete). This is used to identify where special processing is
         # necessary later on, as some visitors must handle recursive methods uniquely.
         RecursionVisitor,
-
-        # Parse the bindings associated with structs/functions as each of these have
-        # attributes or parameters with bindings.
-        BindingParser,
 
         # Check that reference bindings (var, mut, etc) are respected and consistent
         BindingChecker,

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class CallUnwrapper():
     @staticmethod
-    def process(state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
+    def process_and_restructure_ast(state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
         """decide whether or not the call needs to be unwrapped, and returns the
         true type of the parameters"""
         match CallUnwrapper._chains_to_correct_function(state, guessed_params_type):

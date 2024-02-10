@@ -1,16 +1,12 @@
 # TODO
 
-1. Figure out the VariantAcl and FunctionSignature objects inside the _type.py class
-
 2. Deprecate variants :(
 
-3. Fix all restrictions including primitive
+3. Better exceptions for parameter incompatibility
 
 4. Fix var? p = nil (this works but should break)
 
 6. Document nil narrowing
-
-7. Fix FUNCARGS
 
 9: Nilcheck: this should work
 struct obj {
@@ -18,7 +14,7 @@ struct obj {
     y: int
     o: obj?
 
-    create(x: int, y: int) -> self: new obj {
+    create(x: int, y: int) -> new self: obj {
         self.x = x
         self.y = y
         self.o = nil
@@ -40,7 +36,7 @@ struct ptr {
     o: obj
     var o: obj
 
-    create(o: obj) -> self: new obj {
+    create(o: obj) -> new self: obj {
         self.o = obj()
         self.o = o
     }

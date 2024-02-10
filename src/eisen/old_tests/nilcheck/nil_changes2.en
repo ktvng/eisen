@@ -1,0 +1,38 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> new self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn main() {
+    let a = obj(3, 3)
+    var? p = a
+    var? q: obj
+    q = nil
+
+    print("%i ", p.x)
+    p = q
+    print("%i ", p.y)
+    q = a
+    p = q
+    print("%i ", p.y)
+}
+
+/// [Test]
+/// name = "nilcheck/nil_changes2"
+/// info = """\
+///     Test that changing the nil state over the course of a sequence is
+///     reflected correctly, and that each place where the value is used
+///     fails
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "NilUsageException"
+/// contains = ">> 19"

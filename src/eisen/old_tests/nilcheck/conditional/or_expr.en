@@ -1,0 +1,34 @@
+struct obj {
+    x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+fn main() {
+    let a = obj(1)
+    var? p = maybe(a)
+
+    p != nil or p.use()
+}
+
+fn use(a: obj) -> x: bool {
+    print("%i", a.x)
+    x = true
+}
+
+fn maybe(a: obj?) -> r: obj? {
+    r = a
+}
+
+/// [Test]
+/// name = "nilcheck/conditional/or_expr"
+/// info = "Using a nilable type inside an 'or' throws exception."
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "NilUsageException"
+/// contains = ">> 13"

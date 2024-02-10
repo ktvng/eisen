@@ -1,0 +1,33 @@
+struct obj {
+    x: int
+    y: int
+
+    create(x: int, y: int) -> new self: obj {
+        self.x = x
+        self.y = y
+    }
+}
+
+fn main() {
+    var? x: obj
+    let o = obj(1, 2)
+    x = o
+    var y = x.as(mut obj)
+    x = nil
+    print("%i", y.x)
+    var z = x.as(mut obj)
+}
+
+/// [Test]
+/// name = "nilcheck/cast"
+/// info = """\
+///     Test that casting a nilable to non-nilable type when the nilable type could be
+///     nil results in an exception.
+/// """
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "NilCastException"
+/// contains = ">> 18"

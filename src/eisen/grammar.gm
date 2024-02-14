@@ -72,6 +72,10 @@ SYMBOLICS
     keyword new         ->  new
     keyword mut         ->  mut
     keyword move        ->  move
+    keyword trait       ->  trait
+    keyword impl        ->  impl
+    keyword Self        ->  Self
+    keyword for         ->  for
 
     symbol @            ->  @
     symbol ,            ->  ,[ \t\n]*
@@ -205,6 +209,8 @@ STRUCTURE
     TYPE ->
         @action filter_build type
         |   TAG
+        @action build type
+        |   Self
         @action filter_build nilable_type
         |   TAG ?
         @action pass
@@ -489,6 +495,8 @@ STRUCTURE
         |   { }
         |   { LINE }
         |   { LINES }
+        |   { LINE ENDLS }
+        |   { LINES ENDLS }
 
     LINES ->
         @action pool
@@ -583,6 +591,36 @@ STRUCTURE
 
 
     # ====================================================
+    # Traits
+
+    TRAIT ->
+        @action filter_build trait
+        |   trait TAG { TRAIT_ELEMS }
+
+    TRAIT_ELEMS ->
+        @action pool
+        |   TRAIT_ELEM ENDLS TRAIT_ELEMS
+        |   TRAIT_ELEM
+
+    TRAIT_ELEM ->
+        @action pool
+        |   TYPING
+
+    TRAIT_DEF ->
+        @action filter_build trait_def
+        |   impl TAG for TAG { TRAIT_DEF_ELEMS }
+
+    TRAIT_DEF_ELEMS ->
+        @action pool
+        |   TRAIT_DEF_ELEM ENDLS TRAIT_DEF_ELEMS
+        |   TRAIT_DEF_ELEM
+
+    TRAIT_DEF_ELEM ->
+        @action pool
+        |   FUNC
+
+
+    # ====================================================
     # Interfaces
 
     INTERFACE ->
@@ -619,6 +657,8 @@ STRUCTURE
         |   INTERFACE
         |   MOD
         |   ENDLS
+        |   TRAIT
+        |   TRAIT_DEF
 
 
     # ====================================================

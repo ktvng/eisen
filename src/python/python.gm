@@ -170,10 +170,6 @@ STRUCTURE
     # ====================================================
     # TUPLES
 
-    TAGS ->
-        @action filter_build tags
-        |   _TAGS
-
     PARAMS ->
         @action filter_build params
         |   ( )
@@ -322,8 +318,8 @@ STRUCTURE
         |   ( TAG )
         |   ( VARGS )
         |   ( TAG , VARGS )
-        |   ( TAGS )
-        |   ( TAGS , VARGS )
+        |   ( _TAGS )
+        |   ( _TAGS , VARGS )
 
     # ====================================================
     # Classes

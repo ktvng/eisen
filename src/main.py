@@ -20,7 +20,7 @@ class PerfCounter:
 
     @staticmethod
     def format_performance_for_print(name: str, endtime: int, starttime: int) -> str:
-        return f"{' '*(24-len(name))}{name}   {round((endtime-starttime)/1_000_000, 5)}"
+        return f"{' '*(28-len(name))}{name}   {round((endtime-starttime)/1_000_000, 5)}"
 
     def run(self, name: str, f, *args, **kwargs):
         starttime = time.perf_counter_ns()

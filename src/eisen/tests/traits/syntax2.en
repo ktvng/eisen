@@ -1,0 +1,37 @@
+trait sayer {
+    say: (Self) -> void
+}
+
+struct obj {
+    x: int
+
+    create() -> new self: obj {
+        self.x = 0
+    }
+}
+
+impl sayer for obj {
+    fn say(self: obj) {
+        print("hello %i", self.x)
+    }
+}
+
+fn again(s: sayer) {
+    s.say()
+}
+
+fn main() {
+    let o = obj()
+    let s = o.as(sayer)
+    s.say()
+    s.again()
+    again(s)
+}
+
+/// [Test]
+/// name = "traits/syntax2"
+/// info = "more syntax checks"
+
+/// [Expects]
+/// success = true
+/// output = "hello 0hello 0hello 0"

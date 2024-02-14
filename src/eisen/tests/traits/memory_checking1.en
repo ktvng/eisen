@@ -1,0 +1,62 @@
+trait setter {
+    set: (mut Self, obj) -> void
+}
+
+struct obj {
+    var x: int
+
+    create(x: int) -> new self: obj {
+        self.x = x
+    }
+}
+
+struct ptr {
+    var o: obj
+
+    create(o: obj) -> new self: ptr {
+        self.o = o
+    }
+}
+
+struct ptr2 {
+    var o: obj
+    create(o: obj) -> new self: ptr2 {
+        self.o = o
+    }
+}
+
+impl setter for ptr {
+    fn set(mut self: ptr, o: obj) {
+        self.o = o
+    }
+}
+
+impl setter for ptr2 {
+    fn set(mut self: ptr2, o: obj) {
+        return
+    }
+}
+
+fn does(mut g: setter, o: obj) {
+    let bad_o = obj(5)
+    g.set(bad_o)
+}
+
+fn main() {
+    let mut o = obj(2)
+    let mut p = ptr(o)
+    does(p.as(setter), o)
+    let mut p2 = ptr2(o)
+    does(p2.as(setter), o)
+}
+
+/// [Test]
+/// name = "traits/memory_checking1"
+/// info = "correctly identifies memory unsafety in functions on traits when used"
+
+/// [Expects]
+/// success = false
+
+/// [[Expects.Exceptions]]
+/// type = "ObjectLifetimeException"
+/// contains = ">> 42"

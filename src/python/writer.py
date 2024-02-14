@@ -42,7 +42,12 @@ class Writer(Visitor):
 
     @Visitor.for_ast_types("args")
     def args_(fn, ast: AST):
-        return ["(", *Writer.apply_fn_to_all_children(fn, ast), ")"]
+        if ast.has_no_children():
+            return ["()"]
+        p = ["("] + fn.apply(ast.first())
+        for child in ast[1:]:
+            p += [", "] + fn.apply(child)
+        return p + [")"]
 
     @Visitor.for_ast_types("tags", "tuple", "lvals")
     def tags_(fn, ast: AST):

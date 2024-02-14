@@ -1,0 +1,30 @@
+trait sayer {
+    say: (Self) -> void
+}
+
+struct obj {
+    x: int
+
+    create() -> new self: obj {
+        self.x = 0
+    }
+}
+
+impl sayer for obj {
+    fn say(self: obj) {
+        print("hello %i", self.x)
+    }
+}
+
+fn main() {
+    let o = obj()
+    o.as(sayer).say()
+}
+
+/// [Test]
+/// name = "traits/syntax"
+/// info = "basic syntax parses and executes"
+
+/// [Expects]
+/// success = true
+/// output = "hello 0"

@@ -62,10 +62,13 @@ class TestRunnerConfiguration:
     # The list of tests which should not be run
     disabled_tests = ["legacy/objects"] + vectors + deprecated
 
+    _initialized = False
     @classmethod
     def initialize(cls):
+        if cls._initialized: return
         cls.alpaca_config = alpaca.config.parser.run(filename=TestRunnerConfiguration.grammar_file_path)
         cls.parser = SuperParser(cls.alpaca_config)
+        cls._initialized = True
 
 class Test:
     def __init__(self, test_path: str) -> None:

@@ -164,6 +164,7 @@ class Test:
 class TestRunner():
     @staticmethod
     def run_test_by_name(name: str):
+        TestRunnerConfiguration.initialize()
         return Test(name).run()
 
     @staticmethod

@@ -4,10 +4,18 @@ from alpaca.utils import Visitor
 from alpaca.clr import AST, ASTToken
 from alpaca.pattern import Pattern
 import alpaca
+from eisen.common.traits import TraitsLogic
 from eisen.state.topythonstate import ToPythonState as State
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 import eisen.adapters as adapters
 
+
+
+def new_token(value: str):
+    return ASTToken(["TAG"], value=value)
+
+def no_content() -> AST:
+    return AST("no_content", lst=[])
 
 class ToPython(Visitor):
     builtins = """
@@ -38,10 +46,7 @@ class lmda:
         self.python_gm = alpaca.config.parser.run("./src/python/python.gm")
 
     def run(self, state: State_PostInstanceVisitor) -> AST:
-        # print(state.get_ast())
-        # input()
-        result = self.apply(State.create_from_basestate(state))
-        return result
+        return self.apply(State.create_from_basestate(state))
 
     def apply(self, state: State) -> AST:
         return self._route(state.get_ast(), state)
@@ -50,128 +55,195 @@ class lmda:
         return alpaca.clr.CLRParser.run(self.python_gm, txt)
 
     @Visitor.for_ast_types("annotation")
-    def annotation_(fn, state: State):
-        return AST("no_content", lst=[])
-
-    @Visitor.for_default
-    def default_(fn, state: State):
-        print(f"ToPython unimplemented for {state.get_ast()}")
-        return ASTToken(type_chain=["code"], value="***TODO***")
+    def annotation_(fn, _: State):
+        return no_content()
 
     @Visitor.for_ast_types("start")
     def start_(fn, state: State):
         lst = []
         for child in state.get_all_children():
-            if child.type == "mod":
-                lst.extend(fn.apply(state.but_with(ast=child)))
-            elif child.type != "interface":
-                lst.append(fn.apply(state.but_with(ast=child)))
+            match child.type:
+                case "mod": lst.extend(fn.apply(state.but_with(ast=child)))
+                case "trait": pass
+                case _: lst.append(fn.apply(state.but_with(ast=child)))
 
         return AST("start", lst=lst)
 
     @Visitor.for_ast_types("mod")
-    def mod_(fn, state: State):
+    def mod_(fn, state: State) -> list[AST]:
+        """
+        This is the only node which returns a list of ASTs, and must be handled differently
+        """
         node = adapters.Mod(state)
         parts = []
         for child in state.get_child_asts():
-            if child.type == "mod":
-                parts.extend(fn.apply(state.but_with(
-                    ast=child,
-                    mod=node.get_entered_module())))
-            else:
-                parts.append(fn.apply(state.but_with(
-                    ast=child,
-                    mod=node.get_entered_module())))
+            match child.type:
+                case "mod":
+                    parts.extend(fn.apply(state.but_with(
+                        ast=child,
+                        mod=node.get_entered_module())))
+                case _:
+                    parts.append(fn.apply(state.but_with(
+                        ast=child,
+                        mod=node.get_entered_module())))
         return parts
+
+    @Visitor.for_ast_types("trait_def")
+    def trait_def(fn, state: State):
+        node = adapters.TraitDef(state)
+        trait_class_name = TraitsLogic.get_python_writable_name_for_trait(
+            struct_name=node.get_struct_name(),
+            trait_name=node.get_trait_name())
+
+        # First build a new class representing the trait's implementation
+        class_pattern = """
+        ('class TRAIT_IMPLEMENTATION_CLASS_NAME
+            ('init
+                ('args 'self 'obj)
+                ('seq ('= ('. ('ref 'self) '_me) 'obj))))"""
+
+        x = Pattern(class_pattern).build({
+            "TRAIT_IMPLEMENTATION_CLASS_NAME": new_token(trait_class_name)
+        })
+
+        # Apply this visitor on the child (def ...) ASTs
+        fns = [fn.apply(state.but_with(ast=child))
+               for child in node.get_asts_of_implemented_functions()]
+
+        # Map the obtained (def ...) ASTs so that the [FIRST] argument (which is the object which
+        # implements the trait), is assigned to 'self._me' inside the trait object. When a cast
+        # occurs, the object will be wrapped with a new class of type [TRAIT_IMPLEMENTATION_CLASS_NAME]
+        # which will store a reference to the original object as 'self._me'
+        def_pattern = Pattern("('def NAME ('args FIRST XS_ARGS...) ('seq XS_SEQ...))")
+        new_fns = [
+            def_pattern.match(fn).to("""
+                ('def NAME ('args 'self XS_ARGS...)
+                    ('seq
+                        ('= ('ref FIRST) ('. ('ref 'self) '_me))
+                        XS_SEQ...
+                        ))""")
+            for fn in fns
+        ]
+
+        x._list.extend(new_fns)
+        return x
 
     @Visitor.for_ast_types("struct")
     def struct_(fn, state: State):
+        class_pattern = """
+        ('class NAME
+            ('init
+                ('args SELF_NAME ARGS...)
+                ('seq DECLS... SEQ...)))
+        """
+
         node = adapters.Struct(state)
+        create_node = adapters.CommonFunction(state.but_with(ast=node.get_create_ast()))
 
-        struct_name_token = Pattern("('struct name xs...)").match(state.get_ast()).name
+        name = Pattern("('struct name xs...)").match(state.get_ast()).name
+        self_name = Pattern("('create _ _ ('rets (': ('new name) _)) _)") \
+            .match(create_node.state.get_ast()).name
 
-        create_ast = node.get_create_ast()
-        self_name_token: ASTToken = Pattern("('create _ _ ('rets (': ('new name) _)) _)") \
-            .match(create_ast).name
-        attr_toks = Pattern("(': (?? attr_name) _)").map(state.get_ast(),
-            into_pattern=f"('= ('. ('ref '{self_name_token.value}) attr_name) 'None)")
+        args = [fn.apply(state.but_with(ast=arg)) for arg in create_node.get_args_ast()\
+            .get_all_children()]
 
-        create_node = adapters.Create(state.but_with(ast=create_ast))
-        arg_ast = fn.apply(state.but_with(ast=create_node.get_args_ast()))
-        arg_ast._list = [AST("tags", lst=[self_name_token, *arg_ast._list])]
-        seq_ast = fn.apply(state.but_with(ast=create_node.get_seq_ast()))
-        seq_ast._list = [*attr_toks, *seq_ast._list]
-        init_ast = AST("init", lst=[arg_ast, seq_ast])
-        return AST("class", lst=[struct_name_token, init_ast])
+        seq = fn.apply(state.but_with(create_node.get_seq_ast()))._list
+
+        # These are the self.attr = None lines that must be added.
+        decls = Pattern("(': (?? attr_name) _)").map(state.get_ast(),
+            into_pattern=f"('= ('. ('ref '{self_name.value}) attr_name) 'None)")
+
+        return Pattern(class_pattern).build(
+            {
+                "NAME": name,
+                "SELF_NAME": self_name,
+                "ARGS": args,
+                "SEQ": seq,
+                "DECLS": decls
+            }
+        )
 
     @staticmethod
     def get_ret_names(ret_ast: AST) -> list[ASTToken]:
         if ret_ast.has_no_children():
             return []
         if ret_ast.first().type == "prod_type":
-            return [m.name for m in map(Pattern("(': (?? name) _)").match, ret_ast.first()._list) if m]
+            return [m.name for m in map(Pattern("(': (?? name) _)").match, ret_ast.first().get_all_children()) if m]
         return [Pattern("('rets (': (?? name) _))").match(ret_ast).name]
 
     @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         node = adapters.Def(state)
-        return_vars = Pattern("(': (?? ret_name) _)").map(node.get_rets_ast(),
-            into_pattern=f"('= ret_name 'None)")
+        def_pattern = """
+        ('def NAME
+            ARGS
+            ('seq RET_VARS... SEQ_PARTS... RETURN ))
+        """
         ret_names = ToPython.get_ret_names(node.get_rets_ast())
+        return_vars = [Pattern("'= NAME 'None").build({"NAME": name}) for name in ret_names]
         arg_ast = fn.apply(state.but_with(ast=node.get_args_ast()))
-        seq_ast = fn.apply(state.but_with(
+        seq_parts = fn.apply(state.but_with(
             ast=node.get_seq_ast(),
-            ret_names=ret_names))
-        returns = AST(type="return", lst=([] if not ret_names else [AST("tags", lst=ret_names)]))
-        seq_ast._list = [*return_vars, *seq_ast._list, returns]
-        return AST("def", lst=[ASTToken(["TAG"], value=node.get_function_instance().get_full_name()), arg_ast, seq_ast])
+            ret_names=ret_names)).get_all_children()
+
+        return Pattern(def_pattern).build({
+            "NAME": new_token(node.get_function_instance().get_full_name()),
+            "ARGS": arg_ast,
+            "SEQ_PARTS": seq_parts,
+            "RET_VARS": return_vars,
+            "RETURN": AST(type="return", lst=([] if not ret_names else [AST("tags", lst=ret_names)]))
+        })
 
     @Visitor.for_ast_types("return")
     def return_(fn, state: State):
         if state.get_ret_names():
-            return AST("return", lst=[AST("tags", lst=state.get_ret_names())])
-        return AST("return", lst=[])
+            return Pattern("('return ('tags NAMES...))").build({"NAMES": state.get_ret_names()})
+        return Pattern("('return )").build()
 
     @Visitor.for_ast_types("args")
     def args_(fn, state: State):
         if state.get_ast().has_no_children():
-            return AST("args", lst=[])
-        return AST("args", lst=[fn.apply(state.but_with_first_child())])
+            return Pattern("('args )").build()
+        match ast := fn.apply(state.but_with_first_child()):
+            case ASTToken():
+                return Pattern("('args NAME)").build({"NAME": ast})
+            case AST():
+                ast.update(type="args")
+                return ast
 
     @Visitor.for_ast_types(":")
     def colon_(fn, state: State):
         return Pattern("(': (?? name) _)").match(state.get_ast()).name
 
+    @staticmethod
+    def _apply_fn_to_all_children_and_build_ast(ast_type: str, fn: Visitor, state: State) -> AST:
+        return AST(ast_type, lst=[fn.apply(state.but_with(ast=child))
+            for child in state.get_all_children()])
+
     @Visitor.for_ast_types("prod_type")
     def prod_type_(fn, state: State):
-        return AST("tags", lst=[fn.apply(state.but_with(ast=child))
-            for child in state.get_all_children()])
+        return ToPython._apply_fn_to_all_children_and_build_ast("tags", fn, state)
 
     @Visitor.for_ast_types("seq")
     def seq_(fn, state: State):
-        children = state.get_all_children()
-        return AST("seq", lst=[fn.apply(state.but_with(ast=child))
-            for child in children])
+        return ToPython._apply_fn_to_all_children_and_build_ast("seq", fn, state)
 
     @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
     def iletivar_(fn, state: State):
-        return AST("=", lst=[fn.apply(state.but_with(ast=child))
-            for child in state.get_all_children()])
+        return ToPython._apply_fn_to_all_children_and_build_ast("=", fn, state)
+
 
     @Visitor.for_ast_types(*adapters.Decl.ast_types)
     def decls_(fn, state: State):
+        # This is the case for multiple assignment
         if Pattern("(?? ('bindings xs...) _)").match(state.get_ast()):
-            tags_ast = Pattern("(?? ('bindings xs...) _)").match(state.get_ast())\
-                .to("('tags xs...)")
+            values = "'None " * len(state.first_child().get_all_children())
+            return Pattern("('= BINDINGS VALUES)").build({
+                "BINDINGS": fn.apply(state.but_with_first_child()),
+                "VALUES": Pattern(f"('tuple {values})").build()
+            })
 
-            tags_ast = Pattern("(?? name)").map(tags_ast,
-                into_pattern="('ref name)")
-            tags_ast = AST("tags", lst=tags_ast)
-
-            number_of_vars = len(tags_ast)
-            values = " ".join(["None"]*number_of_vars)
-            values_ast = fn.create_ast(f"(tuple {values})")
-            return AST("=", lst=[tags_ast, values_ast])
+        # This is the case for single assignment
         else:
             return Pattern("(?? (?? name) _)").match(state.get_ast()).to("('= ('ref name) 'None)")
 
@@ -182,48 +254,35 @@ class lmda:
     @Visitor.for_ast_types("fn")
     def fn_(fn, state: State):
         instance = state.get_instances()[0]
-        # if the function instance is a constructor we don't need
-        # to append the function signature
-        if instance.is_constructor:
-            ast = state.get_ast()
-        else:
-            ast = AST(
-                type="fn",
-                lst=[ASTToken(type_chain=["TAG"],
-                    value=instance.get_full_name())])
+        ast = Pattern(f"('fn '{instance.get_full_name()})").build()
+
         if instance.no_lambda:
             return Pattern("('fn name)").match(ast).to("('ref name)")
-        return Pattern("('fn name)").match(ast)\
-            .to("('call ('ref 'lmda) ('params name))")
-
-    @Visitor.for_ast_types("is_call")
-    def is_call(fn, state: State):
-        lst = []
-        for child in state.get_all_children():
-            lst.append(fn.apply(state.but_with(ast=child)))
-        return AST(type="call", lst=lst)
-        return Pattern("('is_call ('fn name) xs...)").match(state.get_ast())\
-            .to("('call ('ref name) xs...)")
+        return Pattern("('fn name)").match(ast).to("('call ('ref 'lmda) ('params name))")
 
     @Visitor.for_ast_types("call")
-    def all_(fn, state: State):
-        if adapters.Call(state).is_print():
+    def call_(fn, state: State):
+        node = adapters.Call(state)
+        if node.is_print():
             other_params = state.second_child()[1:]
             value: str = state.second_child().first().value
-            base = ASTToken(type_chain=["str"], value=value.replace("%i", "{}"))
-            return AST("call", lst=[
-                fn.apply(state.but_with_first_child()),
-                AST("params", lst=[
-                    AST("call", lst=[
-                        AST(".", lst=[
-                            base,
-                            AST("ref", lst=[ASTToken(type_chain=["TAG"], value="format")])
-                        ]),
-                        AST("params", lst=[fn.apply(state.but_with(ast=child)) for child in other_params])
-                    ]),
-                    AST("named", lst=[ASTToken(["TAG"], value="end"), ASTToken(["str"], value="")])
-                ])
-            ])
+            index = {
+                "BASE": ASTToken(type_chain=["str"], value=value.replace("%i", "{}")),
+                "PARAMS": [fn.apply(state.but_with(ast=child)) for child in other_params],
+                "EMPTY_STR": ASTToken(["str"], value="")
+            }
+            return Pattern(
+                """('call
+                    ('ref 'print)
+                    ('params
+                        ('call
+                            ('. BASE ('ref 'format))
+                            ('params PARAMS...))
+                        ('named 'end EMPTY_STR)))""").build(index)
+
+        if node.is_trait_function_call():
+            # Remove the first parameters which is the original object
+            state.second_child()._list = state.second_child()._list[1:]
 
         return AST("call", lst=[fn.apply(state.but_with(ast=child))
             for child in state.get_all_children()])
@@ -270,7 +329,16 @@ class lmda:
 
     @Visitor.for_ast_types("cast")
     def cast_(fn, state: State):
-        return fn.apply(state.but_with_first_child())
+        node = adapters.Cast(state)
+        if not node.get_cast_into_type().is_trait(): raise Exception("cast should only be for trait?")
+
+        name = TraitsLogic.get_python_writable_name_for_trait(
+            struct_name=node.get_original_type().name,
+            trait_name=node.get_cast_into_type().name)
+
+        return Pattern(f"('call ('ref '{name}) ('params OBJ))").build({
+            "OBJ": fn.apply(state.but_with_first_child())
+        })
 
     @Visitor.for_ast_types("curry_call")
     def curry_call_(fn, state: State):
@@ -280,6 +348,7 @@ class lmda:
 
     @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State):
+        return Pattern("('list )").build()
         return AST(type="list", lst=[])
 
     @Visitor.for_ast_types("index")
@@ -292,10 +361,8 @@ class lmda:
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):
-        if state.get_ast().value == "true":
-            return ASTToken(type_chain=["code"], value="True")
-        if state.get_ast().value == "false":
-            return ASTToken(type_chain=["code"], value="False")
-        if state.get_ast().value == "nil":
-            return ASTToken(type_chain=["code"], value="None")
-        return state.get_ast()
+        match state.get_ast().value:
+            case "true": return ASTToken(type_chain=["code"], value="True")
+            case "false": return ASTToken(type_chain=["code"], value="False")
+            case "nil": return ASTToken(type_chain=["code"], value="None")
+            case _: return state.get_ast()

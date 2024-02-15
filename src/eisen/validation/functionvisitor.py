@@ -101,10 +101,12 @@ class FunctionVisitor(Visitor):
         node = adapters.Create(state)
         node.normalize(struct_name=state.get_struct_name())
 
-        # the name of the constructor is the same as the struct
+        # the name of the constructor is the same as the struct, and constructors are unique
+        # and hence should not have type mangling
         return Instance(
             name=node.get_name(),
             type=state.get_type_parser().apply(state),
             context=state.get_enclosing_module(),
             ast=state.get_ast(),
-            is_constructor=True)
+            is_constructor=True,
+            no_mangle=True)

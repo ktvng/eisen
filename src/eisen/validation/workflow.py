@@ -49,13 +49,8 @@ class Workflow():
         # Parse and add declarations of structs/interfaces
         DeclarationVisitor,
 
-        # TODO: for now, interfaces can only be implemented from the same module
-        # in which they are defined.
-        # TODO: interfaces are deprecated
-        # Finalizes the interfaces after parsing their definitions. This must occur
-        # before we finalize structs as structs depend on interfaces
-        # InterfaceFinalizationVisitor,
-        # Finalizes the structs after parsing their definitions.
+        # TODO: need to update after reworking alpaca type abstraction
+        # Finalizes the structs and traits after parsing their definitions.
         IntermediateFormVisitor,
         FinalizationVisitor,
 

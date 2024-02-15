@@ -4,6 +4,7 @@ from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.common.binding import Binding, BindingMechanics
+from eisen.common.traits import TraitsLogic
 from eisen.state.basestate import BaseState
 from eisen.state.state_posttypecheck import State_PostTypeCheck
 from eisen.typecheck.typecheckerstate import TypeCheckerState
@@ -56,6 +57,10 @@ class TypeChecker(Visitor):
         # debug only
         raise Exception(f"unexpected token type of {state.get_ast().type}, {state.get_ast().value}")
 
+    @Visitor.for_ast_types("trait")
+    def _noop(fn: TypeChecker, _: State):
+        return
+
     @Visitor.for_ast_types("start", "return", "cond", "seq")
     def start_(fn: TypeChecker, state: State):
         state.apply_fn_to_all_children(fn)
@@ -100,13 +105,17 @@ class TypeChecker(Visitor):
     def while_(fn: TypeChecker, state: State) -> Type:
         adapters.While(state).enter_context_and_apply(fn)
 
-    @classmethod
-    def _additional_call_validations(cls, state: State, params_type: Type):
+    @staticmethod
+    def _additional_call_validations(fn: TypeChecker, state: State, params_type: Type):
         node = adapters.RefLike(state.but_with_first_child())
         fn_type = node.resolve_reference_type(params_type)
-        if Validate.instance_exists(state, node.get_name(), fn_type).failed():
-            return state.get_abort_signal()
+        call_node = adapters.Call(state)
+        if call_node.is_pure_function_call():
+            instance = node.resolve_function_instance(params_type)
+            if Validate.instance_exists(state, node.get_name(), instance).failed():
+                return state.get_abort_signal()
 
+        params_type = TraitsLogic.restructure_call_of_trait_attribute_function_if_needed(fn, state, fn_type, params_type)
         if Validate.correct_argument_types(state,
             name=node.get_name(),
             arg_type=fn_type.get_argument_type(),
@@ -133,7 +142,7 @@ class TypeChecker(Visitor):
         fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()
-        return TypeChecker._additional_call_validations(state, params_type)
+        return TypeChecker._additional_call_validations(fn, state, params_type)
 
     @Visitor.for_ast_types("curry_call")
     def curry_call_(fn: TypeChecker, state: State) -> Type:
@@ -152,10 +161,11 @@ class TypeChecker(Visitor):
     def struct(fn: TypeChecker, state: State) -> Type:
         adapters.Struct(state).apply_fn_to_create_ast(fn)
 
-    @Visitor.for_ast_types("interface", "impls")
-    def interface_(fn: TypeChecker, state: State) -> Type:
-        # no action required
-        return
+    @Visitor.for_ast_types("trait_def")
+    def trait_type(fn: TypeChecker, state: State) -> Type:
+        node = adapters.TraitDef(state)
+        for child in node.get_asts_of_implemented_functions():
+            fn.apply(state.but_with(ast=child))
 
     @Visitor.for_ast_types("cast")
     def cast(fn: TypeChecker, state: State) -> Type:
@@ -163,11 +173,17 @@ class TypeChecker(Visitor):
         left_type = fn.apply_to_first_child_of(state)
         right_type = fn.apply_to_second_child_of(state)
 
+        # TODO: validate cast is possible
+        if right_type.is_trait():
+            return right_type.with_modifier(BindingMechanics.infer_cast_binding(left_type.modifier))
+
+        raise Exception("TODO: casting without traits is not supported?")
+        # TODO: deprecate this
         if Validate.castable_types(
             state=state,
             type=left_type,
             cast_into_type=right_type).failed(): return state.get_abort_signal()
-        return right_type
+        return right_type.with_modifier(left_type)
 
     @Visitor.for_ast_types("def", "create", ":=", "is_fn")
     def fn(fn: TypeChecker, state: State) -> Type:

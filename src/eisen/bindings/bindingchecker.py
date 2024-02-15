@@ -188,9 +188,13 @@ class BindingChecker(Visitor):
         # No annotations supported
         return
 
-    @Visitor.for_ast_types("return", "interface")
+    @Visitor.for_ast_types("return", "interface", "trait")
     def _noop(fn: BindingChecker, _: State):
         return []
+
+    @Visitor.for_ast_types("trait_def")
+    def _trait_def(fn: BindingChecker, state: State):
+        adapters.TraitDef(state).apply_fn_to_all_defined_functions(fn)
 
     @Visitor.for_tokens
     def _tokens(fn: BindingChecker, _: State):

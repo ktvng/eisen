@@ -14,7 +14,7 @@ from eisen.trace.shadow import Shadow
 from eisen.trace.entity import origin_entity
 from eisen.trace.delta import FunctionDelta
 from eisen.trace.entanglement import Entanglement
-from eisen.trace.functionargs import FunctionsAsArgumentsLogic
+from eisen.trace.functionargs import FunctionsAsArgumentsLogic, Blessing
 from eisen.common.binding import Binding
 
 State = MemoryVisitorState
@@ -245,9 +245,8 @@ class CallHandlerFactory:
         each parameter to the function call, ordered in the same way such that the nth element in
         this list is the nth parameters supplied to the function.
         """
-        indeterminate_function_parameters = FunctionsAsArgumentsLogic.get_memories_of_parameters_that_are_functions(node, param_memories)
         handlers = []
-        for impression, delta in CallHandlerFactory._aquire_function_deltas(node, fn, indeterminate_function_parameters):
+        for impression, delta in CallHandlerFactory._acquire_function_deltas2(node, fn, param_memories):
             handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
                 variable_caller=impression,
                 node=node,
@@ -255,7 +254,48 @@ class CallHandlerFactory:
                 param_memories=FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
                                                             caller=impression,
                                                             parameters=param_memories)))
+
         return handlers
+
+    @staticmethod
+    def _acquire_function_deltas2(node: adapters.Call, fn: Visitor, param_memories: list[Memory]) -> list[tuple[Impression | None, FunctionDelta]]:
+        """
+        Returns tuples of Impression? and FunctionDelta, where impression is the impression of a
+        function (if it is called from a variable) and FunctionDelta is the delta which should be applied
+        """
+        x = []
+        if node.is_pure_function_call():
+            impressions = [None]
+        else:
+            # take the first as there should only be one Memory returned from a (ref ...)
+            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
+            impressions = caller_memory.impressions
+
+        for i in impressions:
+            full_param_memories = FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
+                            caller=i,
+                            parameters=param_memories)
+            if i is not None and i.shadow.function_instances:
+                actual_function_argument_type = i.shadow.function_instances[0].type.get_argument_type()
+            else:
+                actual_function_argument_type = node.get_function_argument_type()
+
+            if node.is_pure_function_call():
+                instance = node.get_function_instance()
+            else:
+                instance = FunctionsAsArgumentsLogic._get_function_instance_from_caller_impression(
+                    node.state, i, node.get_caller_type(), node.get_function_name(), node.get_function_argument_type()
+                )
+
+            blessings = Blessing.get_all_combinations_of_blessings(actual_function_argument_type, full_param_memories)
+            x.extend(CallHandlerFactory._get_impression_delta_pairs(
+                    impression=i,
+                    node=node,
+                    function_instance=instance,
+                    fn=fn,
+                    function_parameters=combo)
+                for combo in blessings)
+        return x
 
     @staticmethod
     def _associate_function_instance_to_delta(
@@ -267,12 +307,11 @@ class CallHandlerFactory:
         """
         Obtain the function delta for a given [function_instance]
         """
-        delta = fn.function_db.get_function_delta(function_instance.get_full_name())
+        delta = fn.function_db.get_function_delta(function_instance.get_uuid_name())
         if delta is None:
             delta = FunctionDelta.compute_for(adapters.Def(node.state.but_with(
                 ast=function_instance.ast,
                 function_parameters=function_parameters)), fn)
-            # delta = fn.function_db.get_function_delta(function_instance.get_full_name())
         return delta
 
     @staticmethod
@@ -288,33 +327,6 @@ class CallHandlerFactory:
                     function_instance=function_instance,
                     fn=fn,
                     function_parameters=function_parameters))
-
-    @staticmethod
-    def _aquire_function_deltas(node: adapters.Call, fn: Visitor, functions: list[Memory]) -> list[tuple[Impression | None, FunctionDelta]]:
-        """
-        Returns tuples of Impression? and FunctionDelta, where impression is the impression of a
-        function (if it is called from a variable) and FunctionDelta is the delta which should be applied
-        """
-        if node.is_pure_function_call():
-            combos = FunctionsAsArgumentsLogic.get_all_function_combinations(functions)
-            return [CallHandlerFactory._get_impression_delta_pairs(
-                impression=None,
-                node=node,
-                function_instance=node.get_function_instance(),
-                fn=fn,
-                function_parameters=combo) for combo in combos]
-        else:
-            # take the first as there should only be one Memory returned from a (ref ...)
-            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            combos = FunctionsAsArgumentsLogic.get_all_function_combinations_for_indeterminate_caller(
-                caller=caller_memory,
-                function_parameters=functions)
-            return [CallHandlerFactory._get_impression_delta_pairs(
-                impression=impression,
-                node=node,
-                function_instance=instance,
-                fn=fn,
-                function_parameters=combo) for impression, instance, combo in combos]
 
     @staticmethod
     def _get_call_handlers_for_each_reality(

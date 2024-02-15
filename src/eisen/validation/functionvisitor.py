@@ -80,7 +80,7 @@ class FunctionVisitor(Visitor):
     def def_(fn, state: FunctionVisitorState):
         node = adapters.Def(state)
         if state.this_is_trait_implementation():
-            name = TraitsLogic.get_name_for_implementation_of_trait_function(
+            name = TraitsLogic.get_name_for_instance_implementing_trait_function(
                 details=state.get_trait_impl_details(),
                 name_of_implemented_function=node.get_function_name())
             name_inside_trait = node.get_function_name()

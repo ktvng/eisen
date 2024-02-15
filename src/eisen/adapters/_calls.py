@@ -83,7 +83,7 @@ class Call(AbstractNodeInterface, _SharedMixins):
         return self.first_child().type == "fn" or self.first_child().type == "::"
 
     def is_trait_function_call(self) -> bool:
-        return TraitsLogic.are_trait_arguments(self.state, self.get_function_argument_type())
+        return TraitsLogic.are_arguments_of_a_trait_function(self.state, self.get_function_argument_type())
 
     def get_caller_type(self) -> Type:
         """

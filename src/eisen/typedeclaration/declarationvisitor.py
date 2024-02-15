@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from alpaca.concepts import Type, TypeFactory
-from eisen.state.basestate import BaseState as State
+from eisen.state.basestate import BaseState
 import eisen.adapters as adapters
 
+State = BaseState
 class DeclarationVisitor(Visitor):
     """parses (struct ...) and (interface ...) asts into a instances of the
     proto_struct/proto_interface type, respectively,  which represents the
@@ -13,20 +14,14 @@ class DeclarationVisitor(Visitor):
     see FinalizationVisitor for more details.
     """
 
-    def run(self, state: State):
+    def run(self, state: BaseState):
         self.apply(state)
         return state
 
     def apply(self, state: State) -> None:
-        return self._route(state.get_ast(), state)
-
-    def adds_type_to_module(f):
-        """adds the returned type to the list of known typesclasses in
-        the enclosing module"""
-        def decorator(fn, state: State) -> None:
-            result: Type = f(fn, state)
-            state.get_enclosing_module().add_defined_type(result.name, result)
-        return decorator
+        new_type: Type | None = self._route(state.get_ast(), state)
+        if new_type is not None:
+            state.get_enclosing_module().add_defined_type(new_type.name, new_type)
 
     @Visitor.for_ast_types("start")
     def start_(fn, state: State):
@@ -37,17 +32,15 @@ class DeclarationVisitor(Visitor):
         adapters.Mod(state).enter_module_and_apply(fn)
 
     @Visitor.for_ast_types("struct")
-    @adds_type_to_module
     def struct_(fn, state: State) -> Type:
         return TypeFactory.produce_proto_struct_type(
             name=adapters.Struct(state).get_name(),
             mod=state.get_enclosing_module())
 
-    @Visitor.for_ast_types("interface")
-    @adds_type_to_module
-    def interface_(fn, state: State) -> Type:
-        return TypeFactory.produce_proto_interface_type(
-            name=adapters.Interface(state).get_name(),
+    @Visitor.for_ast_types("trait")
+    def trait_(fn, state: State) -> Type:
+        return TypeFactory.produce_proto_trait_type(
+            name=adapters.Trait(state).get_name(),
             mod=state.get_enclosing_module())
 
     @Visitor.for_default

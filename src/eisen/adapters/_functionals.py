@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from alpaca.clr import AST, ASTToken
-from alpaca.concepts import Type
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters.argsrets import ArgsRets
 from eisen.common.eiseninstance import FunctionInstance
@@ -60,17 +59,17 @@ class Def(AbstractNodeInterface):
     def get_ret_names(self) -> list[str]:
         return self._unpack_to_get_names(self.get_rets_ast())
 
-    def has_return_value(self) -> list[str]:
-        return not self.get_rets_ast().has_no_children()
-
     def get_function_instance(self) -> FunctionInstance:
         return self.state.get_instances()[0]
 
-    def get_function_type(self) -> Type:
-        return self.get_function_instance().type
-
     def has_function_as_argument(self) -> bool:
         return any(t.is_function() for t in self.get_function_instance()
+                   .type
+                   .get_argument_type()
+                   .unpack_into_parts())
+
+    def has_trait_as_argument(self) -> bool:
+        return any(t.is_trait() for t in self.get_function_instance()
                    .type
                    .get_argument_type()
                    .unpack_into_parts())
@@ -80,11 +79,11 @@ class Def(AbstractNodeInterface):
             return []
         first_arg = args_or_rets.first()
         if first_arg.type == "prod_type":
-            colonnodes = first_arg._list
+            colon_asts = first_arg._list
         else:
-            colonnodes = [first_arg]
+            colon_asts = [first_arg]
 
-        return [Colon(self.state.but_with(ast=node)).get_name() for node in colonnodes]
+        return [Colon(self.state.but_with(ast=node)).get_name() for node in colon_asts]
 
 
 class Create(AbstractNodeInterface):
@@ -108,14 +107,11 @@ class Create(AbstractNodeInterface):
         them"""
         self.state.get_ast()._list.insert(0, ASTToken(type_chain=["TAG"], value=struct_name))
 
-    def get_args_ast(self) -> AST:
-        return self.second_child()
-
-    def get_rets_ast(self) -> AST:
+    def _get_rets_ast(self) -> AST:
+        """
+        Assumes that the (create ...) is normalized.
+        """
         return self.third_child()
-
-    def get_seq_ast(self) -> AST:
-        return self.state.get_ast()[-1]
 
     def get_name(self) -> str:
         """the name of the constructor is the same as the struct it constructs. this
@@ -123,7 +119,7 @@ class Create(AbstractNodeInterface):
         return self.state.get_struct_name()
 
     def get_name_of_created_entity(self) -> str:
-        return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).get_names()[0]
+        return ArgsRets(self.state.but_with(ast=self._get_rets_ast())).get_names()[0]
 
     def get_type_of_created_entity(self) -> str:
-        return ArgsRets(self.state.but_with(ast=self.get_rets_ast())).state.get_returned_type()
+        return ArgsRets(self.state.but_with(ast=self._get_rets_ast())).state.get_returned_type()

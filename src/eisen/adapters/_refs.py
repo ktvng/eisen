@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from alpaca.concepts import Type, Module
 from alpaca.clr import AST, ASTToken
+from eisen.common.traits import TraitImplementation
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import FunctionInstance, Instance
 from eisen.validation.lookupmanager import LookupManager
+from eisen.state.basestate import BaseState
 
 class RefLike(AbstractNodeInterface):
     ast_types = ["ref", "::", ".", "fn"]
@@ -177,6 +179,7 @@ class Scope(AbstractNodeInterface):
     examples = """
     (. (ref obj) attr)
     (. (. (ref obj) attr1) attr2)
+    (. (cast (ref obj) (type into_type)) attr)
     """
 
     def get_ast_defining_restriction(self) -> AST:
@@ -210,20 +213,36 @@ class Scope(AbstractNodeInterface):
         full_name = Ref(self.state.but_with(ast=primary_ast)).get_name() + "." + full_name
         return full_name[:-1]
 
-    def get_end_type(self) -> Type:
-        primary_ast = self.state.get_ast()
-        attrs = []
-        while primary_ast.type != "ref":
-            attrs.append(str(primary_ast.second()))
-            primary_ast = primary_ast.first()
+    @staticmethod
+    def _get_end_type(state: BaseState) -> Type:
+        match state.get_ast_type():
+            case ".":
+                return Scope._get_end_type(state.but_with_first_child())\
+                            .get_member_attribute_by_name(Scope(state).get_attribute_name())
+            case "ref": return Ref(state).resolve_reference_type()
+            # Can't use Cast() because we're pre-typechecker
+            case "cast": return state.but_with_second_child().get_node_data().returned_type
 
-        attrs.reverse()
-        parent_object_type = Ref(self.state.but_with(ast=primary_ast)).resolve_reference_type()
-        current_type = parent_object_type
-        for attr in attrs:
-            # TODO: check for non-existent attributes
-            current_type = current_type.get_member_attribute_by_name(attr)
-        return current_type
+
+    def get_end_type(self) -> Type:
+        return Scope._get_end_type(self.state)
 
     def get_parent_type(self) -> Type:
         return self.state.but_with_first_child().get_returned_type()
+
+class Cast(AbstractNodeInterface):
+    ast_type = "cast"
+    examples = """
+    (cast (ref obj) (type otherObj))
+    """
+
+    def get_cast_into_type(self) -> Type:
+        return self.state.but_with_second_child().get_returned_type()
+
+    def get_original_type(self) -> Type:
+        return self.state.but_with_first_child().get_returned_type()
+
+    def get_trait_implementation(self) -> TraitImplementation:
+        return self.state.get_enclosing_module().get_obj(
+            container_name="trait_implementations",
+            name=TraitImplementation.get_key(self.get_cast_into_type(), self.get_original_type()))

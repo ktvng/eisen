@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from alpaca.concepts import Context
+from alpaca.concepts import Context, Type
 
 from eisen.state.state_postinstancevisitor import State_PostInstanceVisitor
 from eisen.validation.validate import Validate
@@ -204,8 +204,8 @@ class MemoryVisitorState(State_PostInstanceVisitor):
         self.add_shadow(shadow)
         return shadow
 
-    def create_new_entity(self, name: str) -> Entity:
-        entity = Entity(name, self.get_depth())
+    def create_new_entity(self, name: str, type: Type) -> Entity:
+        entity = Entity(name, self.get_depth(), type)
         shadow = self._recognize_entity(entity)
         self.add_memory(entity.name, Memory(
             name=name,

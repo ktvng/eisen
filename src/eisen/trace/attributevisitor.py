@@ -1,6 +1,8 @@
 
 from __future__ import annotations
 
+from alpaca.utils import Visitor
+
 import eisen.adapters as adapters
 from eisen.common.binding import Binding
 from eisen.trace.entity import Trait
@@ -11,19 +13,27 @@ from eisen.state.memoryvisitorstate import MemoryVisitorState
 from eisen.validation.validate import Validate
 
 State = MemoryVisitorState
-class AttributeVisitor:
-    @staticmethod
-    def _ref(state: State) -> list[Memory]:
+class AttributeVisitor(Visitor):
+    def apply(self, state: State) -> list[Lval]:
+        return self._route(state.get_ast(), state)
+
+    @Visitor.for_ast_types("ref")
+    def _ref(fn: AttributeVisitor, state: State) -> list[Memory]:
         memory = state.get_memory(adapters.Ref(state).get_name())
         Validate.memory_dependencies_havent_moved_away(state, memory)
-        return [memory]
+        return [memory], Trait(), False
+
+    @Visitor.for_ast_types("cast")
+    def _cast(fn: AttributeVisitor, state: State) -> list[Memory]:
+        mems, trait, ownership_change = fn.apply(state.but_with_first_child())
+        return mems, trait, ownership_change
 
     @staticmethod
     def _perform_owner_switch(state: State, i: Impression, trait: Trait) -> Memory:
         """
         (see _resolve_memories_during_owner_switch)
         Let i be some impression inside the memory X. This is the impression of some
-        shadow of some entity. But as the given trait induced an onwership switch,
+        shadow of some entity. But as the given trait induced an ownership switch,
         if E is the entity, then E.b.c must resolve to b'.c for any b' which may
         be referenced by the memory E has at E.b
 
@@ -93,13 +103,9 @@ class AttributeVisitor:
         if attribute_binding == Binding.new or attribute_binding == Binding.mut_new: return False
         return True
 
-    @staticmethod
-    def _dot(state: State) -> tuple[list[Memory], str, bool]:
-        if state.get_ast().type == "ref":
-            return AttributeVisitor._ref(state), Trait(), False
-
-        parents, trait, ownership_change = AttributeVisitor._dot(state.but_with_first_child())
-
+    @Visitor.for_ast_types(".")
+    def _dot(fn: AttributeVisitor, state: State) -> tuple[list[Memory], str, bool]:
+        parents, trait, ownership_change = fn.apply(state.but_with_first_child())
         if ownership_change:
             return AttributeVisitor._resolve_memories_during_owner_switch(state, trait, parents), Trait(state.second_child().value), False
 
@@ -117,9 +123,9 @@ class AttributeVisitor:
                 depth=state.get_depth()))
         return new_memories
 
-    @staticmethod
-    def get_memories(state: State) -> list[Memory]:
-        memories, trait, ownership_change = AttributeVisitor._dot(state)
+    def get_memories(fn: AttributeVisitor, state: State) -> list[Memory]:
+        memories, trait, ownership_change = fn.apply(state)
+
         # need to flush here to resolve to the objects themselves
         if ownership_change:
             memories = AttributeVisitor._resolve_memories_during_owner_switch(state, trait, memories)
@@ -127,12 +133,10 @@ class AttributeVisitor:
 
         return AttributeVisitor._form_new_impressions(state, memories, trait)
 
-    @staticmethod
-    def get_lvals(state: State) -> list[Lval]:
-        memories, trait, _ = AttributeVisitor._dot(state)
+    def get_lvals(fn: AttributeVisitor, state: State) -> list[Lval]:
+        memories, trait, _ = fn.apply(state)
 
         # no need to flush here as we modify the actual object
-
         lvals = []
         for memory in memories:
             lvals.append(Lval(name="",

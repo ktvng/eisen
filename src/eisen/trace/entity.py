@@ -1,21 +1,23 @@
 from __future__ import annotations
 import uuid
 
+from alpaca.concepts import Type
 from eisen.state.basestate import BaseState
 
 State = BaseState
 
 class Entity():
-    def __init__(self, name: str, depth: int) -> None:
+    def __init__(self, name: str, depth: int, type: Type) -> None:
         self.name = name
         self.depth = depth
         self.moved = False
         self.uid = uuid.uuid4()
+        self.type = type
 
     def __str__(self) -> str:
         return f"{self.name}"
 
-origin_entity = Entity("origin", -1)
+origin_entity = Entity("origin", -1, None)
 
 class Trait():
     def __init__(self, value: str = "") -> None:
@@ -45,7 +47,7 @@ class Trait():
 
 class Angel(Entity):
     def __init__(self, trait: Trait, entity: Entity) -> None:
-        super().__init__(entity.name + "." + trait.value, 0)
+        super().__init__(entity.name + "." + trait.value, 0, entity.type)
         self.entity = entity
         self.trait = trait
 

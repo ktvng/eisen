@@ -44,4 +44,4 @@ class LValMemoryVisitor(Visitor):
     @Visitor.for_ast_types(".")
     def _dot(fn, state: State):
         # if the attribute is a.b.c, the trait will be b.c
-        return AttributeVisitor.get_lvals(state)
+        return AttributeVisitor().get_lvals(state)

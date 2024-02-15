@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from alpaca.clr import AST, ASTToken
 from alpaca.concepts import Type
 
-from eisen.state.basestate import BaseState as State
+from eisen.typecheck.typecheckerstate import TypeCheckerState as State
 from eisen.common.nodedata import NodeData
 from eisen.validation.validate import Validate
 import eisen.adapters as adapters
@@ -138,7 +138,7 @@ class CallUnwrapper():
         match ast:
             case AST(type="ref"): return adapters.Ref(state.but_with(ast=ast)).resolve_reference_type()
             case ASTToken(): return None
-            case _:
+            case AST(type="."):
                 obj_type: Type = CallUnwrapper._follow_chain_to_get_type(state, ast.first())
                 if obj_type is None: return None
 
@@ -146,3 +146,5 @@ class CallUnwrapper():
                 if obj_type.has_member_attribute_with_name(attr):
                     return obj_type.get_member_attribute_by_name(attr)
                 return None
+            case AST(type="cast"):
+                return state.but_with(ast=ast.second()).parse_type_represented_here()

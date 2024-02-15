@@ -244,6 +244,14 @@ class BindingMechanics:
             case _: return declared
 
     @staticmethod
+    def infer_cast_binding(declared: Binding) -> Binding:
+        match declared:
+            case Binding.mut_new: return Binding.mut
+            case Binding.new: return Binding.fixed
+            case Binding.mut: return Binding.mut
+            case Binding.var: return Binding.fixed
+
+    @staticmethod
     def infer_binding(declared: Binding, received: Binding) -> Binding:
         """
         Canonical semantics for inferring bindings for 'let' statements.
@@ -305,6 +313,20 @@ class BindingMechanics:
                 return f"unhandled message '{name}' {declared} {received}"
 
     @staticmethod
+    def types_are_binding_equivalent(left: Type, right: Type) -> bool:
+        """
+        Types are assumed to be type-equivalent
+        """
+        if left.is_function():
+            return (BindingMechanics.types_are_binding_equivalent(left.get_argument_type(), right.get_argument_type())
+                and BindingMechanics.types_are_binding_equivalent(left.get_return_type(), right.get_return_type()))
+        if left.is_tuple():
+            return all(BindingMechanics.types_are_binding_equivalent(l, r)
+                       for l, r in zip(left.unpack_into_parts(), right.unpack_into_parts()))
+        return left.modifier == right.modifier
+
+
+    @staticmethod
     def types_are_binding_compatible(left: Type, right: Type, is_param=False) -> bool:
         if left.is_function():
             return (BindingMechanics.types_are_binding_compatible(left.get_argument_type(), right.get_argument_type(), is_param=True)
@@ -346,6 +368,7 @@ class BindingMechanics:
 
             case Binding.data, Binding.data: return True
             case Binding.data, _: return False
+            case None, None: return True
             case _, _:
                 raise Exception(f"not handled binding {left}, {right}")
 

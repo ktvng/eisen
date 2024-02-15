@@ -91,7 +91,7 @@ class lmda:
     @Visitor.for_ast_types("trait_def")
     def trait_def(fn, state: State):
         node = adapters.TraitDef(state)
-        trait_class_name = TraitsLogic.get_python_writable_name_for_trait(
+        trait_class_name = TraitsLogic.get_python_writable_name_for_trait_class(
             struct_name=node.get_struct_name(),
             trait_name=node.get_trait_name())
 
@@ -332,7 +332,7 @@ class lmda:
         node = adapters.Cast(state)
         if not node.get_cast_into_type().is_trait(): raise Exception("cast should only be for trait?")
 
-        name = TraitsLogic.get_python_writable_name_for_trait(
+        name = TraitsLogic.get_python_writable_name_for_trait_class(
             struct_name=node.get_original_type().name,
             trait_name=node.get_cast_into_type().name)
 

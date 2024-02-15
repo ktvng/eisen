@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from alpaca.concepts import Type, AbstractException
 from eisen.common.eiseninstance import Instance
 from eisen.common.exceptions import Exceptions
+from eisen.common.traits import TraitsLogic
 from eisen.state.basestate import BaseState as State
 from eisen.validation.nilablestatus import NilableStatus
 from eisen.common.binding import Binding, Condition, BindingCondition, BindingMechanics, BindingConditionForObjectUnderConstruction
@@ -76,6 +77,19 @@ class TypeCheck:
         return True
 
     @staticmethod
+    def compatible_types(state: State, type_pair: TypePair) -> bool:
+        if type_pair.left == type_pair.right: return True
+        if len(type_pair.left.unpack_into_parts()) != len(type_pair.right.unpack_into_parts()): return False
+        for left_type, right_type in zip(type_pair.left.unpack_into_parts(), type_pair.right.unpack_into_parts()):
+            if left_type == state.get_defined_type("Self"):
+                if right_type.is_trait(): continue
+                return False
+            if left_type != right_type:
+                return False
+        return True
+
+
+    @staticmethod
     def type_is_expected(state: State, expected: Type, gotten: Type) -> bool:
         # TODO: restore after refactor of nil concept
         # if expected.restriction.is_nilable() and gotten.is_nil():
@@ -136,6 +150,45 @@ def failure_with_exception_added_to(state: State, ex: AbstractException, msg: st
 ################################################################################
 # performs the actual validations
 class Validate:
+    class Traits:
+        def implementation_is_complete(state: State, trait: Type, implementing_struct: Type, implemented_fns: list[Instance]):
+            for name, type_ in zip(trait.component_names, trait.components):
+                # The type to look for must substitute Self for the implementation_type
+                type_to_look_for = TraitsLogic.get_type_of_trait_function_where_implemented(type_, implementing_struct)
+
+                # Validate the definition can be found
+                definitions = [i for i in implemented_fns if i.name_of_trait_attribute == name and i.type == type_to_look_for]
+                if len(definitions) == 0:
+                    return failure_with_exception_added_to(state,
+                        ex=Exceptions.IncompleteTraitDefinition,
+                        msg=f"implementation of {trait} for {implementing_struct} is missing a definition of '{name}' {type_to_look_for}")
+
+                # Validate bindings are correct
+                definition = definitions[0]
+                if not BindingMechanics.types_are_binding_equivalent(type_to_look_for, definition.type):
+                    add_exception_to(state,
+                        ex=Exceptions.IncompatibleBinding,
+                        msg=f"bindings in the definition of '{name}' for '{implementing_struct}' are different that defined in the trait '{trait}'",
+                        line_number=definition.ast.line_number)
+
+            return ValidationResult.success()
+
+        def _trait_component_is_correct(state: State, component_name: str, component_type: Type):
+            if not component_type.is_function():
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.MalformedTraitDeclaration,
+                    msg=f"traits only permit function attributes but '{component_name}' is not a function")
+            if not TraitsLogic.is_well_formed_trait_function_declaration(state.get_defined_type("Self"), component_type):
+                return failure_with_exception_added_to(state,
+                    ex=Exceptions.MalformedTraitDeclaration,
+                    msg=f"'{component_name}' misuses the Self type. Self should must be used only as the first parameter")
+            return ValidationResult.success()
+
+        def correctly_declared(state: State, trait: Type):
+            for name, type_ in zip(trait.component_names, trait.components):
+                Validate.Traits._trait_component_is_correct(state, name, type_)
+            return ValidationResult.success()
+
     @staticmethod
     def can_assign(state: State, type1: Type, type2: Type) -> ValidationResult:
         if TypeCheck.encountered_prior_failure(state, type1, type2):
@@ -189,6 +242,8 @@ class Validate:
                         msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'")
                 return ValidationResult.success()
 
+            if TypeCheck.compatible_types(state, TypePair(arg_type, given_type)):
+                return ValidationResult.success()
             return failure_with_exception_added_to(state,
                 ex=Exceptions.TypeMismatch,
                 msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'")
@@ -478,7 +533,7 @@ class Validate:
                 return ValidationResult.success()
             return failure_with_exception_added_to(state,
                 ex=Exceptions.IncompatibleBinding,
-                msg="Parameter incompatibility")
+                msg=f"Parameter incompatibility expected {expected} {expected.modifier} received {received} {received.modifier}")
 
         @staticmethod
         def can_be_inferred(state: State, name: str, declared: Binding, received: Binding) -> ValidationResult:

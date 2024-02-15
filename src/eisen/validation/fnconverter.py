@@ -65,6 +65,10 @@ class FnConverter(Visitor):
 
         # TODO: raise compiler error for undefined symbol
 
+    @Visitor.for_ast_types("trait")
+    def _noop(fn, _: State):
+        return
+
     @Visitor.for_default
     def default_(fn, state: State):
         state.apply_fn_to_all_children(fn)

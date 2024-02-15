@@ -43,7 +43,7 @@ class InstanceVisitor(Visitor):
     def token_(fn, state: State) -> list[Instance]:
         return []
 
-    @Visitor.for_ast_types("interface")
+    @Visitor.for_ast_types("trait")
     def no_action_(fn, state: State) -> list[Instance]:
         return []
 

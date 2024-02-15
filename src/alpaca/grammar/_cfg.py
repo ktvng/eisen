@@ -20,7 +20,8 @@ class CFG():
             self._rules_map[symbol] = all_rules_with_symbol
 
     def get_all_rules_for_production_symbol(self, symbol: str) -> list[CFGRule]:
-        return self._rules_map.get(symbol, [])
+        # copy required so modifications don't reflect in this CFG
+        return self._rules_map.get(symbol, []).copy()
 
     def is_production_symbol(self, rule_symbol : str):
         return rule_symbol not in self.terminals

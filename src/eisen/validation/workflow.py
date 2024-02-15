@@ -8,8 +8,8 @@ from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
 from eisen.typecheck.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
-from eisen.validation.declarationvisitor import DeclarationVisitor
-from eisen.validation.finalizationvisitor import InterfaceFinalizationVisitor, StructFinalizationVisitor
+from eisen.typedeclaration.declarationvisitor import DeclarationVisitor
+from eisen.typedeclaration.finalizationvisitor import FinalizationVisitor, IntermediateFormVisitor
 from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
@@ -33,6 +33,11 @@ class PrintAst():
         print(state.get_ast())
         return state
 
+class Stop():
+    def run(self, state: State):
+        print(state.get_ast())
+        exit()
+
 class Workflow():
     steps: list[Visitor] = [
         # Initialize the .data attribute for all asts with empty NodeData instances
@@ -46,12 +51,13 @@ class Workflow():
 
         # TODO: for now, interfaces can only be implemented from the same module
         # in which they are defined.
-        #
+        # TODO: interfaces are deprecated
         # Finalizes the interfaces after parsing their definitions. This must occur
         # before we finalize structs as structs depend on interfaces
-        InterfaceFinalizationVisitor,
+        # InterfaceFinalizationVisitor,
         # Finalizes the structs after parsing their definitions.
-        StructFinalizationVisitor,
+        IntermediateFormVisitor,
+        FinalizationVisitor,
 
         # Constructs and adds types for global functions. Here (def ...) and
         # (create ...) ASTS are also normalized to have the same structure,

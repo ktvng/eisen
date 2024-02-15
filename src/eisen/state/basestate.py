@@ -92,6 +92,7 @@ class BaseState(AbstractParams, BaseMixins):
         global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_modifier(Binding.data))
         global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_modifier(Binding.data))
         global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
+        global_mod.add_defined_type("Self", TypeFactory.produce_novel_type("Self").with_modifier(Binding.void))
 
         return BaseState(
             config=config,

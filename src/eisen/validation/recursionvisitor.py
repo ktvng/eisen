@@ -32,7 +32,11 @@ class RecursionVisitor(Visitor):
     def _struct(fn, state: State):
         adapters.Struct(state).apply_fn_to_create_ast(fn)
 
-    @Visitor.for_ast_types("interface")
+    @Visitor.for_ast_types("trait_def")
+    def _trait_def(fn, state: State):
+        adapters.TraitDef(state).apply_fn_to_all_defined_functions(fn)
+
+    @Visitor.for_ast_types("interface", "trait")
     def _noop(fn, _: State):
         return
 

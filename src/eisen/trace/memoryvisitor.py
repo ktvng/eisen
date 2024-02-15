@@ -15,7 +15,6 @@ from eisen.trace.attributevisitor import AttributeVisitor
 from eisen.trace.conditionalrealities import RealityFuser
 from eisen.trace.callhandler import CallHandlerFactory
 from eisen.trace.entity import origin_entity
-from eisen.trace.functionargs import FunctionsAsArgumentsLogic
 
 from eisen.trace.delta import FunctionDB, FunctionDelta
 from eisen.state.memoryvisitorstate import MemoryVisitorState
@@ -33,7 +32,7 @@ class MemoryVisitor(Visitor):
         self.apply(MemoryVisitorState.create_from_basestate(state))
         return state
 
-    @Visitor.for_ast_types("interface", "return")
+    @Visitor.for_ast_types("interface", "return", "trait")
     def _noop(fn, state: State):
         return
 
@@ -48,6 +47,10 @@ class MemoryVisitor(Visitor):
     def _struct(fn, state: State):
         adapters.Struct(state).apply_fn_to_create_ast(fn)
 
+    @Visitor.for_ast_types("trait_def")
+    def _trait(fn, state: State):
+        adapters.TraitDef(state).apply_fn_to_all_defined_functions(fn)
+
     @Visitor.for_ast_types("start", "prod_type", "seq")
     def _start(fn, state: State):
         state.apply_fn_to_all_children(fn)
@@ -58,27 +61,25 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("rets")
     def _rets(fn, state: State):
-        for name in adapters.ArgsRets(state).get_names():
-            state.create_new_entity(name)
+        for name, type_ in zip(adapters.ArgsRets(state).get_names(), state.get_returned_type().unpack_into_parts()):
+            state.create_new_entity(name, type_)
 
     @Visitor.for_ast_types("args")
     def _args(fn, state: State):
-        passed_in_function_parameters = iter(state.get_function_parameters() or [])
         node = adapters.ArgsRets(state)
-        for name, type_ in zip(node.get_names(), state.get_returned_type().unpack_into_parts()):
-            entity = state.create_new_entity(name)
-            if type_.is_function():
-                FunctionsAsArgumentsLogic.update_shadow_to_be_like_function_parameter(
-                    state=state,
-                    function_parameter=next(passed_in_function_parameters),
-                    representative_in_method=entity)
+        blessings = [None] * len(node.get_names()) if state.get_function_parameters() is None else state.get_function_parameters()
+        for name, type_, blessing in zip(node.get_names(), state.get_returned_type().unpack_into_parts(), blessings):
+            entity = state.create_new_entity(name, type_)
+            if blessing:
+                blessing.bless_representative_in_method(state, state.get_shadow(entity))
+
 
     @Visitor.for_ast_types("def", "create")
     def _def(fn, state: State):
         node = adapters.Def(state)
         # we still need to compure the function delta if possible, so that functions that aren't
         # called still get detected.
-        FunctionDelta.compute_for(node, fn)
+        FunctionDelta.compute_for(node, fn) # ignore the result intentionally
         return []
 
     @Visitor.for_ast_types(*no_assign_binary_ops)
@@ -125,7 +126,7 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types(".")
     def _dot(fn, state: State):
-        return AttributeVisitor.get_memories(state)
+        return AttributeVisitor().get_memories(state)
 
     @Visitor.for_ast_types("cast")
     def _cast(fn, state: State):
@@ -133,9 +134,8 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("let")
     def _let(fn, state: State):
-        node = adapters.Decl(state)
-        for name in node.get_names():
-            state.create_new_entity(name)
+        for instance in state.get_instances():
+            state.create_new_entity(instance.name, instance.type)
 
     @Visitor.for_ast_types("new_vec")
     def _new_vec(fn, state: State):
@@ -156,9 +156,8 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("ilet")
     def _ilet(fn, state: State):
-        node = adapters.InferenceAssign(state)
-        for name in node.get_names():
-            state.create_new_entity(name)
+        for instance in state.get_instances():
+            state.create_new_entity(instance.name, instance.type)
         state.update_lvals(
             lvals=LValMemoryVisitor().apply(state.but_with_first_child()),
             rvals=fn.apply(state.but_with_second_child()))

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 import uuid
 from dataclasses import dataclass
 
@@ -7,9 +8,12 @@ import eisen.adapters as  adapters
 from eisen.trace.shadow import Shadow
 from eisen.trace.entity import Angel
 from eisen.trace.memory import Memory
-from eisen.trace.functionargs import FunctionsAsArgumentsLogic
+from eisen.trace.functionargs import FunctionsAsArgumentsLogic, Blessing
 
 from eisen.state.memoryvisitorstate import MemoryVisitorState
+
+if TYPE_CHECKING:
+    from eisen.trace.memoryvisitor import MemoryVisitor
 
 State = MemoryVisitorState
 
@@ -29,9 +33,9 @@ class FunctionDelta():
     ret_memories: list[Memory]
 
     @staticmethod
-    def compute_for(node: adapters.Def, fn: Visitor) -> FunctionDelta:
-        state = node.state
-        if fn.function_db.get_function_delta(node.get_function_instance().get_full_name()) is not None:
+    def compute_for(node: adapters.Def, fn: MemoryVisitor) -> FunctionDelta:
+        state: MemoryVisitorState = node.state
+        if fn.function_db.get_function_delta(node.get_function_instance().get_uuid_name()) is not None:
             return None
 
         # No memory tracing for recursion yet... but also recursion detection is not 100%
@@ -39,7 +43,9 @@ class FunctionDelta():
             return FunctionDelta.get_identity(node)
 
         # we can't process a function that takes
-        if FunctionsAsArgumentsLogic.cannot_process_method_yet(node, state): return
+        # if FunctionsAsArgumentsLogic.cannot_process_method_yet(node, state): return
+        if Blessing.are_blessings_required(node.get_function_instance().type) and state.get_function_parameters() is None:
+            return
 
         # print("starting def of", node.get_function_name())
 
@@ -73,10 +79,10 @@ class FunctionDelta():
                     ret_memories=[fn_state.get_memory(entity.name) for entity in fn_state.get_ret_entities()])
 
         # if the node has a function as an argument, we can't add this to the database yet.
-        if not node.has_function_as_argument():
+        if not node.has_function_as_argument() and not node.has_trait_as_argument():
             # add a new function_delta for this function
             fn.function_db.add_function_delta(
-                name=node.get_function_instance().get_full_name(),
+                name=node.get_function_instance().get_uuid_name(),
                 fc=delta)
 
         return delta

@@ -23,8 +23,10 @@ class Match:
 
 class Pattern:
     def __init__(self, pattern: str) -> None:
-        self.str = pattern
-        self.parts = self._parse_pattern(pattern)
+        # allow the pattern string to be multi-line by replacing newlines with spaces
+        # which should be an ignored character
+        self.str = pattern.replace("\n", " ")
+        self.parts = self._parse_pattern(self.str)
         self.lst = ListRepresentation.construct(self.parts)
 
     def _parse_pattern(self, pattern: str) -> list:

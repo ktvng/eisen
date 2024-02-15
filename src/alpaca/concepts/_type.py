@@ -12,8 +12,10 @@ class Type():
         function = "function"
         struct = "struct"
         interface = "interface"
+        trait = "trait"
         proto_struct = "proto_struct"
         proto_interface = "proto_interface"
+        proto_trait = "proto_trait"
         parametric = "parametric"
 
     def __init__(
@@ -22,6 +24,7 @@ class Type():
             name: str,
             mod: Module,
             components: list[Type],
+            component_uids: list[str],
             component_names: list[str],
             inherits: list[Type],
             embeds: list[Type],
@@ -35,6 +38,7 @@ class Type():
         self.mod = mod
         self.components = components
         self.component_names = component_names
+        self.component_uids = component_uids
         self.inherits = inherits
         self.embeds = embeds
         self.parametrics = parametrics
@@ -63,12 +67,6 @@ class Type():
         name_str = self.name if self.name else ""
         member_strs = [member.get_uuid_str() for member in self.components]
         return self._get_module_prefix_for_uuid() + f"{name_str}({', '.join(member_strs)})"
-
-    def _equiv(self, u : list, v : list) -> bool:
-        return (u is not None
-            and v is not None
-            and len(u) == len(v)
-            and all([x == y for x, y in zip(u, v)]))
 
     def __eq__(self, o: Any) -> bool:
         return hash(self) == hash(o)
@@ -120,12 +118,14 @@ class Type():
 
 
     def get_member_attribute_by_name(self, name: str) -> Type: self.delegated()
+    def get_member_attribute_uid_by_name(self, name: str) -> str: self.delegated()
     def get_return_type(self) -> Type: self.delegated()
     def get_first_parameter_type(self) -> Type: self.delegated()
     def get_argument_type(self) -> Type: self.delegated()
 
     def is_function(self) -> bool: return False
     def is_struct(self) -> bool: return False
+    def is_trait(self) -> bool: return False
     def is_novel(self) -> bool: return False
     def is_tuple(self) -> bool: return False
     def is_nil(self) -> bool: return False
@@ -166,6 +166,7 @@ class FunctionType(Type):
             name=name,
             mod=mod,
             components=[arg, ret],
+            component_uids=[arg.get_uuid_str(), ret.get_uuid_str()],
             component_names=["arg", "ret"],
             inherits=[],
             embeds=[],
@@ -196,6 +197,7 @@ class _CompositeType(Type):
             name=name,
             mod=mod,
             components=[],
+            component_uids=[],
             component_names=[],
             inherits=[],
             embeds=[],
@@ -207,8 +209,9 @@ class _CompositeType(Type):
         return self._is_proto
 
     def get_uuid_str(self) -> str:
+        # TODO: are we making proto equal to structs?
         suffix = "<proto>" if self._is_proto else f"<{self.classification}>"
-        return self._get_uuid_based_on_module_and_name() + suffix
+        return self._get_uuid_based_on_module_and_name() #+ suffix
 
     def get_member_attribute_by_name(self, name: str) -> Type:
         if name not in self.component_names:
@@ -224,6 +227,20 @@ class _CompositeType(Type):
         pos = self.component_names.index(name)
         return self.components[pos]
 
+    def get_member_attribute_uid_by_name(self, name: str) -> str:
+        if name not in self.component_names:
+            if self.classification == Type.classifications.struct:
+                matching_embeddings = [tc for tc in self.embeds if tc.has_member_attribute_with_name(name)]
+                if len(matching_embeddings) != 1:
+                    raise Exception(f"bad embedding structure, need to be handled elswhere got {len(matching_embeddings)} matches, need 1")
+                if matching_embeddings:
+                    return matching_embeddings[0].get_member_attribute_uid_by_name(name)
+
+            raise Exception(f"Type {self} does not have member attribute named '{name}'")
+
+        pos = self.component_names.index(name)
+        return self.component_uids[pos]
+
     def finalize(self,
             components: list[Type],
             component_names: list[str],
@@ -234,6 +251,7 @@ class _CompositeType(Type):
         self._is_proto = False
         self.components = components
         self.component_names = component_names
+        self.component_uids = [t.get_uuid_str() for t in components]
         if inherits: self.inherits = inherits
         if embeds: self.embeds = embeds
 
@@ -244,6 +262,7 @@ class TupleType(Type):
             name="",
             mod=None,
             components=components,
+            component_uids=[t.get_uuid_str() for t in components],
             component_names=[],
             inherits=[],
             embeds=[],
@@ -275,6 +294,13 @@ class InterfaceType(_CompositeType):
     def is_interface(self) -> bool:
         return True
 
+class TraitType(_CompositeType):
+    def __init__(self, name: str, mod: Module):
+        super().__init__(name, mod, Type.classifications.proto_trait, Type.classifications.trait)
+
+    def is_trait(self) -> bool:
+        return True
+
 class NovelType(Type):
     def __init__(self, name: str, modifier: Any=None):
         super().__init__(
@@ -282,6 +308,7 @@ class NovelType(Type):
             name=name,
             mod=None,
             components=[],
+            component_uids=[],
             component_names=[],
             inherits=[],
             embeds=[],
@@ -302,6 +329,7 @@ class NilType(Type):
             name="nil",
             mod=None,
             components=[],
+            component_uids=[],
             component_names=[],
             inherits=[],
             embeds=[],
@@ -322,6 +350,7 @@ class ParametricType(Type):
             name=name,
             mod=None,
             components=[],
+            component_uids=[],
             component_names=[],
             inherits=[],
             embeds=[],

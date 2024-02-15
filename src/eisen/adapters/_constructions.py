@@ -104,12 +104,12 @@ class TraitDef(AbstractNodeInterface):
     def get_struct_name(self) -> str:
         return self.second_child().value
 
-    def get_asts_defining_function_implementations(self) -> list[AST]:
+    def get_asts_of_implemented_functions(self) -> list[AST]:
         return self.state.get_child_asts()
 
     def get_trait_prefix(self) -> str:
         return self.get_trait_name() + "_for_" + self.get_struct_name()
 
     def apply_fn_to_all_defined_functions(self, fn: Visitor):
-        for child in self.get_asts_defining_function_implementations():
+        for child in self.get_asts_of_implemented_functions():
             fn.apply(self.state.but_with(ast=child))

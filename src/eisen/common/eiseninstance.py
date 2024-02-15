@@ -9,6 +9,8 @@ class Instance():
     context: Context
     ast: AST
 
+    name_of_trait_attribute: str = ""
+
     is_ptr: bool = False
     is_constructor: bool = False
     is_function: bool = False
@@ -17,14 +19,24 @@ class Instance():
     no_lambda: bool = False
 
     def __hash__(self) -> int:
-        return hash(self.get_full_name())
+        return hash(self.get_uuid_name())
+
+    def get_uuid_name(self):
+        """
+        Guaranteed to be uniquely identifying
+        """
+        return self.context.get_full_name() + self.name + "___" + Instance.get_signature_string(self.type)
 
     def get_full_name(self):
+        """
+        Used by the transpilation unit
+        """
+        base_name = self.name if self.name_of_trait_attribute == "" else self.name_of_trait_attribute
         if self.no_mangle:
-            return self.name
+            return base_name
 
         return (self.context.get_full_name()
-            + self.name
+            + base_name
             + "___"
             + Instance.get_signature_string(self.type))
 
@@ -36,7 +48,8 @@ class Instance():
         match type:
             case (Type(classification=Type.classifications.novel)
                 | Type(classification=Type.classifications.struct)
-                | Type(classification=Type.classifications.interface)):
+                | Type(classification=Type.classifications.interface)
+                | Type(classification=Type.classifications.trait)):
                 return type.name
             case Type(classification=Type.classifications.tuple):
                 return "d_" + "_".join([Instance.get_signature_string(t)

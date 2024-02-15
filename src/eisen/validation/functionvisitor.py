@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from alpaca.utils import Visitor
 from eisen.common.eiseninstance import Instance
+from eisen.common.traits import TraitImplementation, TraitsLogic, TraitImplDetailsForFunctionVisitor
 from eisen.state.basestate import BaseState
 from eisen.state.functionvisitorstate import FunctionVisitorState
-from eisen.typecheck.typeparser import TypeParser
 import eisen.adapters as adapters
+
+from eisen.validation.validate import Validate
 
 State = FunctionVisitorState
 
@@ -16,14 +18,19 @@ class FunctionVisitor(Visitor):
 
     def __init__(self, debug: bool = False):
         super().__init__(debug)
-        self.local_type_parser = TypeParser()
 
     def run(self, state: BaseState):
-        self.apply(FunctionVisitorState.create_from_basestate(state))
+        new_state = FunctionVisitorState.create_from_basestate(state)
+        self.apply(new_state)
         return state
 
-    def apply(self, state: State):
-        return self._route(state.get_ast(), state)
+    def apply(self, state: State) -> Instance | None:
+        instance = self._route(state.get_ast(), state)
+        if instance is not None:
+            # record the returned instances in the node_data and module
+            state.add_function_instance_to_module(instance)
+            state.get_node_data().instances = [instance]
+        return instance
 
     @Visitor.for_ast_types("start")
     def start_(fn, state: FunctionVisitorState):
@@ -48,15 +55,46 @@ class FunctionVisitor(Visitor):
         node = adapters.Struct(state)
         node = adapters.Struct(state.but_with(struct_name=node.get_name())).apply_fn_to_create_ast(fn)
 
+    @Visitor.for_ast_types("trait_def")
+    def trait_def_(fn, state: FunctionVisitorState) -> None:
+        node = adapters.TraitDef(state)
+        trait_impl_details = TraitImplDetailsForFunctionVisitor(
+            trait_name=node.get_trait_name(),
+            implementing_struct_name=node.get_struct_name())
+
+        # obtain the function instances of all child function definitions inside this (trait_def ...)
+        instances = [fn.apply(state.but_with(ast=child, trait_impl_details=trait_impl_details))
+                     for child in node.get_asts_of_implemented_functions()]
+
+        trait = state.get_defined_type(node.get_trait_name())
+        struct = state.get_defined_type(node.get_struct_name())
+        state.add_trait_implementation(
+            TraitImplementation(trait=trait, struct=struct, implementations=instances))
+
+        Validate.Traits.implementation_is_complete(state,
+            trait=trait,
+            implementing_struct=struct,
+            implemented_fns=instances)
+
     @Visitor.for_ast_types("def")
     def def_(fn, state: FunctionVisitorState):
-        instance = Instance(
-            name=adapters.Def(state).get_function_name(),
-            type=fn.local_type_parser.apply(state),
+        node = adapters.Def(state)
+        if state.this_is_trait_implementation():
+            name = TraitsLogic.get_name_for_implementation_of_trait_function(
+                details=state.get_trait_impl_details(),
+                name_of_implemented_function=node.get_function_name())
+            name_inside_trait = node.get_function_name()
+        else:
+            name = name = node.get_function_name()
+            name_inside_trait = ""
+
+        return Instance(
+            name=name,
+            type=state.get_type_parser().apply(state),
             context=state.get_enclosing_module(),
-            ast=state.get_ast())
-        state.get_node_data().instances = [instance]
-        state.add_function_instance_to_module(instance)
+            ast=state.get_ast(),
+            name_of_trait_attribute=name_inside_trait,
+            no_mangle=True if state.this_is_trait_implementation() else False)
 
     @Visitor.for_ast_types("create")
     def create_(fn, state: FunctionVisitorState):
@@ -64,11 +102,9 @@ class FunctionVisitor(Visitor):
         node.normalize(struct_name=state.get_struct_name())
 
         # the name of the constructor is the same as the struct
-        instance = Instance(
+        return Instance(
             name=node.get_name(),
-            type=fn.local_type_parser.apply(state),
+            type=state.get_type_parser().apply(state),
             context=state.get_enclosing_module(),
             ast=state.get_ast(),
             is_constructor=True)
-        state.get_node_data().instances = [instance]
-        state.add_function_instance_to_module(instance)

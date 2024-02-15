@@ -5,6 +5,7 @@ from eisen.common.binding import Binding
 class TypeFactory:
     @staticmethod
     def produce_novel_type(name: str) -> Type:
+        if name == "void": return BaseTypeFactory.produce_novel_type("void")
         return BaseTypeFactory.produce_novel_type(name).with_modifier(Binding.data)
 
     @staticmethod

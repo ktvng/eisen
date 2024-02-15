@@ -18,7 +18,7 @@ class Match:
         return self.captures.get(__name, None)
 
     def to(self, pattern: str) -> AST:
-        return Pattern(pattern)._build(self.captures)
+        return Pattern(pattern).build(self.captures)
 
 
 class Pattern:
@@ -49,12 +49,13 @@ class Pattern:
     def find_first(self, ast: AST) -> AST:
         return self.find_all(ast._list)[0]
 
-    def _build(self, lookups: dict[str, AST]) -> AST:
+    def build(self, lookups: dict[str, AST] = None) -> AST:
         return PatternBuilder.construct(self.lst, lookups)
 
 class PatternBuilder:
     @staticmethod
-    def construct(pattern: list, lookups: dict[str, AST]) -> AST:
+    def construct(pattern: list, lookups: dict[str, AST] = None) -> AST:
+        if lookups is None: lookups = {}
         ast_type_comp = pattern[0]
         if not isinstance(ast_type_comp, TagComponent):
             raise Exception("expected real tag component to build list, got", ast_type_comp)
@@ -76,13 +77,10 @@ class PatternMatcher:
     @staticmethod
     def match_pattern_head(pattern: list, ast: AST) -> Match:
         ast_type_comp = pattern[0]
-        ast_type = None
-        if isinstance(ast_type_comp, TagComponent):
-            ast_type = ast_type_comp.get_value()
-        elif isinstance(ast_type_comp, AnyTagComponent):
-            ast_type = None
-        else:
-            raise Exception("expected match head to start with list type")
+        match ast_type_comp:
+            case TagComponent(): ast_type = ast_type_comp.get_value()
+            case AnyTagComponent(): ast_type = None
+            case _: raise Exception("expected match head to start with list type")
 
         if not (ast_type is None or ast.type == ast_type):
             return Match(False)
@@ -90,22 +88,23 @@ class PatternMatcher:
         ast_parts = list(ast._list)
         match = Match(True, {})
         for comp in pattern[1: ]:
-            if isinstance(comp, TagComponent):
-                if not (ast_parts[0].is_token() and ast_parts[0].value == comp.get_value()):
-                    return Match(False)
-                ast_parts = ast_parts[1: ]
-            if isinstance(comp, VarComponent):
-                match.captures[comp.get_value()] = ast_parts[0]
-                ast_parts = ast_parts[1: ]
-            if isinstance(comp, list):
-                child_match = PatternMatcher.match_pattern_head(comp, ast_parts[0])
-                if not child_match:
-                    return Match(False)
-                ast_parts = ast_parts[1 :]
-                match.captures.update(child_match.captures)
-            if isinstance(comp, LstComponent):
-                match.captures[comp.get_value()] = ast_parts
-                return match
+            match comp:
+                case TagComponent():
+                    if not (ast_parts[0].is_token() and ast_parts[0].value == comp.get_value()):
+                        return Match(False)
+                    ast_parts = ast_parts[1: ]
+                case VarComponent():
+                    match.captures[comp.get_value()] = ast_parts[0]
+                    ast_parts = ast_parts[1: ]
+                case list():
+                    child_match = PatternMatcher.match_pattern_head(comp, ast_parts[0])
+                    if not child_match:
+                        return Match(False)
+                    ast_parts = ast_parts[1 :]
+                    match.captures.update(child_match.captures)
+                case LstComponent():
+                    match.captures[comp.get_value()] = ast_parts
+                    return match
         return match
 
 class ListComponent:

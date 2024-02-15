@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alpaca.concepts import Type
 from alpaca.utils import Visitor
-from alpaca.clr import AST, ASTToken
+from alpaca.clr import AST
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.adapters._decls import Colon
 
@@ -82,11 +82,34 @@ class Struct(AbstractNodeInterface, _SharedMixins):
         if self.has_create_ast():
             fn.apply(self.state.but_with(ast=self.get_create_ast()))
 
-class Interface(AbstractNodeInterface, _SharedMixins):
-    ast_type = "interface"
+class Trait(AbstractNodeInterface, _SharedMixins):
+    ast_type = "trait"
     examples = """
-    (interface name
-        (impls ...)
+    (trait name
         (: ...)
-        (: ...)
+        (: ...))
     """
+
+class TraitDef(AbstractNodeInterface):
+    ast_type = "trait_def"
+    examples = """
+    (trait_def name for obj_name
+        (def ...)
+        (def ...))
+    """
+
+    def get_trait_name(self) -> str:
+        return self.first_child().value
+
+    def get_struct_name(self) -> str:
+        return self.second_child().value
+
+    def get_asts_defining_function_implementations(self) -> list[AST]:
+        return self.state.get_child_asts()
+
+    def get_trait_prefix(self) -> str:
+        return self.get_trait_name() + "_for_" + self.get_struct_name()
+
+    def apply_fn_to_all_defined_functions(self, fn: Visitor):
+        for child in self.get_asts_defining_function_implementations():
+            fn.apply(self.state.but_with(ast=child))

@@ -4,12 +4,11 @@ from alpaca.concepts import Type
 from alpaca.clr import AST
 from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.eiseninstance import FunctionInstance
-from eisen.common.restriction import GeneralRestriction
+from eisen.common.traits import TraitsLogic
 from eisen.common.binding import Binding
 
 from eisen.adapters._refs import RefLike
 from eisen.adapters._functionals import Def
-from eisen.state.state_posttypecheck import State_PostTypeCheck
 
 class _SharedMixins:
     def get_function_return_type(self) -> Type:
@@ -60,14 +59,6 @@ class Call(AbstractNodeInterface, _SharedMixins):
     (call (fn ...) (params ... ))
     (call (:: mod (fn name)) (params ...)))))
     """
-    def get_fn_instance(self) -> FunctionInstance:
-        return self.state.but_with_first_child().get_instances()[0]
-
-    def get_called_function_ast(self) -> AST:
-        """
-        Returns the child AST which corresponds to the function being called.
-        """
-        return self.state.first_child()
 
     def get_return_value_bindings(self) -> list[Binding]:
         return [t.modifier for t in self.get_function_return_type().unpack_into_parts()]
@@ -85,22 +76,20 @@ class Call(AbstractNodeInterface, _SharedMixins):
     def is_append(self) -> bool:
         return RefLike(self.state.but_with(ast=self.first_child())).is_append()
 
-    def get_param_types(self) -> list[Type]:
-        if not isinstance(self.state, State_PostTypeCheck):
-            raise Exception("get_param_types can only be used after typechecker is run")
-        return [self.state.but_with(ast=param).get_returned_type() for param in self.get_params_ast()]
-
-    def has_function_as_argument(self) -> bool:
-        return any(t.is_function() for t in self.get_param_types())
-
-    def get_return_names(self) -> list[str]:
-        return Def(self.state.but_with(ast=self.get_function_definition_if_known())).get_ret_names()
-
     def get_function_instance(self) -> FunctionInstance:
         return self.state.but_with(ast=self.get_function_definition_if_known()).get_instances()[0]
 
     def is_pure_function_call(self) -> bool:
         return self.first_child().type == "fn" or self.first_child().type == "::"
+
+    def is_trait_function_call(self) -> bool:
+        return TraitsLogic.are_trait_arguments(self.state, self.get_function_argument_type())
+
+    def get_caller_type(self) -> Type:
+        """
+        For cases with (call (. (ref caller) attr_func) ...), return the type of the caller
+        """
+        return self.state.but_with(ast=self.state.get_ast().first().first()).get_returned_type()
 
 class RawCall(AbstractNodeInterface):
     ast_type = "raw_call"
@@ -110,12 +99,6 @@ class RawCall(AbstractNodeInterface):
 
     (raw_call (ref name) (params ...))
     """
-
-    def get_ref_ast(self) -> AST:
-        return self.first_child()
-
-    def get_params_ast(self) -> AST:
-        return self.third_child()
 
 class CurriedCall(AbstractNodeInterface, _SharedMixins):
     ast_type = "curry_call"

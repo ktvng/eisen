@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from dataclasses import dataclass, field
 import uuid
 
 from eisen.common.eiseninstance import FunctionInstance
@@ -11,11 +10,13 @@ if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
     State = MemoryVisitorState
 
-@dataclass(kw_only=True)
+# @dataclass(kw_only=True)
 class Shadow():
-    entity: Entity
-    personality: Personality = field(default_factory=lambda: Personality(memories={}))
-    function_instances: list[FunctionInstance] = field(default_factory=list)
+    __slots__ = ('entity', 'personality', 'function_instances')
+    def __init__(self, entity: Entity, personality: Personality=None, function_instances: list[FunctionInstance] = None) -> None:
+        self.entity = entity
+        self.personality = personality if personality is not None else Personality(memories={})
+        self.function_instances = function_instances if function_instances is not None else list()
 
     def remap_via_index(self, index: dict[uuid.UUID, Memory]) -> Shadow:
         return Shadow(entity=self.entity,

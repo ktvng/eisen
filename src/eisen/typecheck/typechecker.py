@@ -231,7 +231,7 @@ class TypeChecker(Visitor):
     def idecls_(fn: TypeChecker, state: State):
         return TypeChecker._create_references(
             node=adapters.InferenceAssign(state),
-            types=fn.apply_to_second_child_of(state).unpack_into_parts())
+            types=fn.apply_to_second_child_of(state).unpack())
 
     @Visitor.for_ast_types(*adapters.Typing.ast_types)
     def decls_(fn: TypeChecker, state: State):
@@ -241,7 +241,7 @@ class TypeChecker(Visitor):
         # type is specified, we duplicate this type for each variable that gets defined.
         right_type = fn.apply(state.but_with(ast=node.get_type_ast()))
         n_variables = len(node.get_names())
-        types = right_type.unpack_into_parts() if right_type.is_tuple() else [right_type]*n_variables
+        types = right_type.unpack() if right_type.is_tuple() else [right_type]*n_variables
         return TypeChecker._create_references(
             node=node,
             types=types)

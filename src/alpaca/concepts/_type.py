@@ -136,7 +136,7 @@ class Type():
     def is_parametric(self) -> bool: return False
     def is_interface(self) -> bool: return False
 
-    def unpack_into_parts(self):
+    def unpack(self):
         # TODO, move void to type
         if self.classification == Type.classifications.novel and self.name == "void":
             return []

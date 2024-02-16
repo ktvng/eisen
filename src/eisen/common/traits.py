@@ -144,7 +144,7 @@ class TraitsLogic:
         Returns the number of occurrences of [type_to_count] [in_type]
         """
         count = 0
-        for t in in_type.unpack_into_parts():
+        for t in in_type.unpack():
             match t.classification:
                 case Type.classifications.tuple:
                     count += TraitsLogic._count_occurrences_of(type_to_count, t)

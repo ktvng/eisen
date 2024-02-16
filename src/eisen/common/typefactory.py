@@ -46,8 +46,8 @@ class TypeFactory:
         Assumes all validations are complete. Obtain the new function type after
         currying the [curried_args_type]
         """
-        n_curried_args = len(curried_args_type.unpack_into_parts())
-        remaining_args = fn_type.get_argument_type().unpack_into_parts()[n_curried_args: ]
+        n_curried_args = len(curried_args_type.unpack())
+        remaining_args = fn_type.get_argument_type().unpack()[n_curried_args: ]
 
         match len(remaining_args):
             case 0:

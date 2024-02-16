@@ -106,7 +106,7 @@ class Blessing:
         True if the function of [function_type] requires blessings to be processed
         """
         return not all(Blessing.get_required_blessing_type(t) == Blessing.Type.NoBlessing
-            for t in function_type.get_argument_type().unpack_into_parts())
+            for t in function_type.get_argument_type().unpack())
 
     @staticmethod
     def get_required_blessing_type(type_: Type) -> Blessing.Type:
@@ -147,7 +147,7 @@ class Blessing:
         actual objects, hence all possible combinations of blessings.
         """
         blessings_for_parameter = [Blessing.get_blessings_for_parameter(param_type, memory)
-                                   for param_type, memory in zip(function_argument_type.unpack_into_parts(), function_params)]
+                                   for param_type, memory in zip(function_argument_type.unpack(), function_params)]
 
         # Each parameter has a set of associated blessings. Return all possible configurations of
         # blessings taking one from each parameter.

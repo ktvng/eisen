@@ -61,14 +61,14 @@ class MemoryVisitor(Visitor):
 
     @Visitor.for_ast_types("rets")
     def _rets(fn, state: State):
-        for name, type_ in zip(adapters.ArgsRets(state).get_names(), state.get_returned_type().unpack_into_parts()):
+        for name, type_ in zip(adapters.ArgsRets(state).get_names(), state.get_returned_type().unpack()):
             state.create_new_entity(name, type_)
 
     @Visitor.for_ast_types("args")
     def _args(fn, state: State):
         node = adapters.ArgsRets(state)
         blessings = [None] * len(node.get_names()) if state.get_function_parameters() is None else state.get_function_parameters()
-        for name, type_, blessing in zip(node.get_names(), state.get_returned_type().unpack_into_parts(), blessings):
+        for name, type_, blessing in zip(node.get_names(), state.get_returned_type().unpack(), blessings):
             entity = state.create_new_entity(name, type_)
             if blessing:
                 blessing.bless_representative_in_method(state, state.get_shadow(entity))

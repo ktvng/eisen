@@ -63,8 +63,6 @@ SYMBOLICS
     keyword create      ->  create
     keyword destroy     ->  destroy
     keyword var         ->  var
-    keyword interface   ->  interface
-    keyword implements  ->  implements
     keyword of          ->  of
     keyword as          ->  as
     keyword is          ->  is
@@ -257,14 +255,14 @@ STRUCTURE
         |   BINDINGS : TYPE
         |   BINDING : TYPE
 
-    TEMPORARY_FIX1 ->
-        @action filter_build prod_type
-        |   TYPINGS
-
     TYPINGS ->
+        @action filter_build prod_type
+        |   _TYPINGS
+
+    _TYPINGS ->
         @action pool
         |   TYPING , TYPING
-        |   TYPING , TYPINGS
+        |   TYPING , _TYPINGS
 
 
     # ====================================================
@@ -541,12 +539,12 @@ STRUCTURE
         @action filter_build args
         |   ( )
         |   ( TYPING )
-        |   ( TEMPORARY_FIX1 )
+        |   ( TYPINGS )
 
     RETS ->
         @action filter_build rets
         |   -> TYPING
-        |   -> TEMPORARY_FIX1
+        |   -> TYPINGS
 
 
     # ====================================================
@@ -554,14 +552,9 @@ STRUCTURE
 
     STRUCT ->
         @action filter_build struct
-        |   struct TAG IMPLS { STRUCT_ELEMS }
         |   struct TAG { STRUCT_ELEMS }
         |   struct TAG { }
 
-    IMPLS ->
-        @action filter_build impls
-        |   implements TAG
-        |   implements TAGS
 
     STRUCT_ELEMS ->
         @action pool
@@ -621,23 +614,6 @@ STRUCTURE
 
 
     # ====================================================
-    # Interfaces
-
-    INTERFACE ->
-        @action filter_build interface
-        |   interface TAG { INTERFACE_ELEMS }
-
-    INTERFACE_ELEMS ->
-        @action pool
-        |   INTERFACE_ELEM ENDLS INTERFACE_ELEMS
-        |   INTERFACE_ELEM
-
-    INTERFACE_ELEM ->
-        @action pool
-        |   TYPING
-
-
-    # ====================================================
     # Modules
 
     MOD ->
@@ -654,7 +630,6 @@ STRUCTURE
         @action pass
         |   FUNC
         |   STRUCT
-        |   INTERFACE
         |   MOD
         |   ENDLS
         |   TRAIT

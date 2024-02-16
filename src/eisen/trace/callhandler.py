@@ -1,8 +1,10 @@
 from __future__ import annotations
+import dataclasses
+from dataclasses import dataclass
+from typing import Callable
 import uuid
 
 from alpaca.utils import Visitor
-from alpaca.concepts import Type
 
 import eisen.adapters as adapters
 from eisen.common.eiseninstance import FunctionInstance
@@ -19,27 +21,18 @@ from eisen.common.binding import Binding
 
 State = MemoryVisitorState
 class CallHandler:
-    def __init__(self,
-                 impression: Impression,
-                 node: adapters.Call,
-                 delta: FunctionDelta,
-                 param_memories: list[Memory]) -> None:
+    def __init__(self, s: Situation) -> None:
         """
         Create a new CallHandler
 
-        :param impression: The impression of with entanglement/function information.
-        :param node: The AST node of the function
-        :param delta: The delta caused by the function
-        :param param_memories: An list of memories, corresponding to, and in the same order, as the
-        parameters passed into the eisen function call.
         """
         # print("call handling for", delta.function_name)
-        self.impression = impression
-        self.node = node
-        self.state: MemoryVisitorState = node.state
-        self.delta = delta
+        self.impression = s.caller_impression
+        self.node = s.call_node
+        self.state: MemoryVisitorState = self.node.state
+        self.delta = s.delta
         self.index: dict[uuid.UUID, Memory] = {}
-        self.param_memories: list[Memory] = param_memories
+        self.param_memories = s.call_parameters
 
     def resolve_angel_into_memories(self, angel: Angel) -> list[Memory]:
         """
@@ -228,10 +221,65 @@ class CallHandler:
         self.resolve_entity_moves(self.param_memories)
         return self.resolve_updated_returns()
 
+@dataclass
+class Situation:
+    """
+    A representation of the situation surrounding a function call (call ...), with awareness
+    of blessings, entanglements, and currying.
+
+    This is necessary because a simple looking call of a function could actual result in multiple
+    situations with different tracing and different memory safety. The easiest example is the
+    function
+        f: (g: (mut obj) -> void, mut o: obj) -> void
+    which takes another function 'g' and some object 'o'. The memory safety of 'f' depends in large
+    part on the exact identity of 'g'.
+
+    Another common example is passing a trait into a function, where the identity of the struct
+    which implements the trait determines the memory safety.
+
+    Therefore a simple call may actually spawn many different situations, and each situations needs
+    to be handled differently.
+    """
+
+    # The wrapper of the (call ...) AST which encodes all the relevant information
+    call_node: adapters.Call = None
+
+    # The impression of the caller
+    caller_impression: Impression | None = None
+
+    # The parameters supplied to the call
+    call_parameters: list[Memory] | None = None
+
+    # The entanglement (if any) that this call is for
+    entanglement: Entanglement | None = None
+
+    # The blessings to provide to the arguments of the function when traced
+    blessings: list[Blessing] | None = None
+
+    # The function instance that will be called actually
+    function_instance: FunctionInstance = None
+
+    # The delta corresponding to the function instance.
+    delta: FunctionDelta = None
+
+class SituationAssessor:
+    """
+    This is a helper class that adds syntactic sugar when running through a list of situations,
+    similar to the chain of responsibility pattern.
+    """
+    def __init__(self, situation: Situation) -> None:
+        self.situations: list[Situation] = [situation]
+
+    def then_perform(self, assessment_fn: Callable[[list[Situation]], list[Situation]], *args) -> SituationAssessor:
+        self.situations = assessment_fn(self.situations, *args) if args else assessment_fn(self.situations)
+        return self
+
+    def then_return_situations(self) -> list[Situation]:
+        return self.situations
+
 class CallHandlerFactory:
     """
-    Create the list of CallHandlers required to process a function call, being aware of separate
-    realities due to entanglements.
+    Create a list of CallHandlers to process a function call, with awareness of each situation
     """
 
     @staticmethod
@@ -239,120 +287,149 @@ class CallHandlerFactory:
             node: adapters.Call,
             fn: Visitor,
             param_memories: list[Memory]) -> list[CallHandler]:
-        """
-        Return a list of CallHandlers to process a function call, where each CallHandler processes
-        the inputs for a single entanglement. [param_memories] should be the memories possible for
-        each parameter to the function call, ordered in the same way such that the nth element in
-        this list is the nth parameters supplied to the function.
-        """
-        handlers = []
-        for impression, delta in CallHandlerFactory._acquire_function_deltas2(node, fn, param_memories):
-            handlers.extend(CallHandlerFactory._get_call_handlers_for_each_reality(
-                variable_caller=impression,
-                node=node,
-                delta=delta,
-                param_memories=FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
-                                                            caller=impression,
-                                                            parameters=param_memories)))
 
-        return handlers
+        # The order of assessments matter here.
+        situations = (
+            SituationAssessor(Situation(call_node=node))
+                .then_perform(CallHandlingLogic.assess_caller, fn)
+                .then_perform(CallHandlingLogic.assess_call_parameters, param_memories)
+                .then_perform(CallHandlingLogic.assess_function_instance)
+                .then_perform(CallHandlingLogic.assess_entanglements)
+                .then_perform(CallHandlingLogic.assess_blessings)
+                .then_perform(CallHandlingLogic.assess_deltas, fn)
+                .then_return_situations())
 
+        return [CallHandler(s) for s in situations]
+
+class CallHandlingLogic:
     @staticmethod
-    def _acquire_function_deltas2(node: adapters.Call, fn: Visitor, param_memories: list[Memory]) -> list[tuple[Impression | None, FunctionDelta]]:
+    def assess_caller(current_situations: list[Situation], fn: Visitor) -> list[Situation]:
         """
-        Returns tuples of Impression? and FunctionDelta, where impression is the impression of a
-        function (if it is called from a variable) and FunctionDelta is the delta which should be applied
-        """
-        x = []
-        if node.is_pure_function_call():
-            impressions = [None]
-        else:
-            # take the first as there should only be one Memory returned from a (ref ...)
-            caller_memory: Memory = fn.apply(node.state.but_with_first_child())[0]
-            impressions = caller_memory.impressions
+        Enrich the current situations with awareness of the caller.
 
-        for i in impressions:
-            full_param_memories = FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
-                            caller=i,
-                            parameters=param_memories)
-            if i is not None and i.shadow.function_instances:
-                actual_function_argument_type = i.shadow.function_instances[0].type.get_argument_type()
+        There is no caller for pure function calls. If a function is called from an object attribute
+        or from a variable, then there is a caller. After this assessment is run, the caller is known,
+        and may intentionally be None.
+        """
+        new_situations = []
+        for situation in current_situations:
+            if situation.call_node.is_pure_function_call():
+                # Caller impression is still None
+                new_situations.append(situation)
             else:
-                actual_function_argument_type = node.get_function_argument_type()
+                # take the first as there should only be one Memory returned from a (ref ...)
+                caller: Memory = fn.apply(situation.call_node.state.but_with_first_child())[0]
+                for impression in caller.impressions:
+                    new_situations.append(dataclasses.replace(situation,
+                        caller_impression=impression))
+        return new_situations
 
-            if node.is_pure_function_call():
-                instance = node.get_function_instance()
+    @staticmethod
+    def assess_call_parameters(current_situations: list[Situation], explicit_call_parameters: list[Memory]) -> list[Situation]:
+        """
+        Enrich the current situations with awareness of the call parameters.
+
+        This takes into account the call parameters passed in explicitly, as well as any curried call
+        parameters stored on an object. After this assessment is run the parameters which will be passed
+        in are known, and must exist.
+        """
+        for situation in current_situations:
+            if situation.caller_impression is not None:
+                situation.call_parameters = FunctionsAsArgumentsLogic.get_full_parameter_memories_including_currying(
+                    situation.caller_impression,
+                    explicit_call_parameters)
             else:
-                instance = FunctionsAsArgumentsLogic._get_function_instance_from_caller_impression(
-                    node.state, i, node.get_caller_type(), node.get_function_name(), node.get_function_argument_type()
-                )
-
-            blessings = Blessing.get_all_combinations_of_blessings(actual_function_argument_type, full_param_memories)
-            x.extend(CallHandlerFactory._get_impression_delta_pairs(
-                    impression=i,
-                    node=node,
-                    function_instance=instance,
-                    fn=fn,
-                    function_parameters=combo)
-                for combo in blessings)
-        return x
+                situation.call_parameters = explicit_call_parameters
+        return current_situations
 
     @staticmethod
-    def _associate_function_instance_to_delta(
-            node: adapters.Call,
-            function_instance: FunctionInstance,
-            fn: Visitor,
-            function_parameters: list[Shadow] = None
-            ):
+    def assess_function_instance(current_situations: list[Situation]) -> list[Situation]:
         """
-        Obtain the function delta for a given [function_instance]
+        Enrich the current situation with awareness of the function instance which contains the code
+        that will be invoked.
+
+        This takes into account curried functions, function variables, and traits, all of which may
+        dynamically have different implementations. After this assessment is run, the exact function
+        that is invoked is known, and must exist.
         """
-        delta = fn.function_db.get_function_delta(function_instance.get_uuid_name())
-        if delta is None:
-            delta = FunctionDelta.compute_for(adapters.Def(node.state.but_with(
-                ast=function_instance.ast,
-                function_parameters=function_parameters)), fn)
-        return delta
+        for situation in current_situations:
+            if not situation.call_node.is_pure_function_call():
+                situation.function_instance = FunctionsAsArgumentsLogic\
+                    .get_function_instance_from_caller_impression(
+                        situation.call_node.state,
+                        situation.caller_impression,
+                        situation.call_node)
+            else:
+                situation.function_instance = situation.call_node.get_function_instance()
+        return current_situations
 
     @staticmethod
-    def _get_impression_delta_pairs(
-            node: adapters.Call,
-            impression: Impression | None,
-            function_instance: FunctionInstance,
-            fn: Visitor,
-            function_parameters: list[Shadow]) -> tuple[Impression | None, FunctionDelta]:
+    def assess_blessings(current_situations: list[Situation]) -> list[Situation]:
+        """
+        Enrich the current situation with awareness of the blessings that must be provided to the
+        representatives of each parameter from inside the function call.
 
-        return (impression, CallHandlerFactory._associate_function_instance_to_delta(
-                    node=node,
-                    function_instance=function_instance,
-                    fn=fn,
-                    function_parameters=function_parameters))
+        This takes into account the fact that there may be multiple blessings for a given parameter,
+        and expands to all possible allocations of blessings. After this assessment is run, the
+        blessings to bestow are known, and must exist.
+        """
+        new_situations: list[Situation] = []
+        for situation in current_situations:
+            function_argument_type = situation.function_instance.type.get_argument_type()
+            blessing_allocations = Blessing.get_all_combinations_of_blessings(function_argument_type, situation.call_parameters)
+            for allocation in blessing_allocations:
+                new_situations.append(dataclasses.replace(situation, blessings=allocation))
+        return new_situations
 
     @staticmethod
-    def _get_call_handlers_for_each_reality(
-            variable_caller: Impression,
-            node: adapters.Call,
-            delta: FunctionDelta,
-            param_memories: list[Memory]) -> list[CallHandler]:
+    def assess_deltas(current_situations: list[Situation], fn: Visitor) -> list[Situation]:
         """
-        Return a list of CallHandlers where each handler exclusively processes the call for a given
-        entanglement.
+        Enrich the current situation with the function delta that must be used for trace computation
+
+        This takes into account all preceding enrichments, and must be run at the end or close to
+        the list of assessments. After this assessment is run, the exact function delta which ought
+        be applied to add/remove memory dependencies is known.
         """
-        # if the function is entangled, only consider that entanglement
-        if variable_caller and variable_caller.entanglement:
-            return [CallHandler(
-                variable_caller, node, delta,
-                [memory.for_entanglement(variable_caller.entanglement) for memory in param_memories])]
+        for situation in current_situations:
+            delta = fn.function_db.get_function_delta(situation.function_instance.get_uuid_name())
+            if delta is None:
+                delta = FunctionDelta.compute_for(adapters.Def(situation.call_node.state.but_with(
+                    ast=situation.function_instance.ast,
+                    function_parameters=situation.blessings)), fn)
+            situation.delta = delta
+        return current_situations
 
-        # otherwise, divide the parameters by general entanglement
-        realities = CallHandlerFactory._divide_parameters_by_entanglement(param_memories)
+    @staticmethod
+    def assess_entanglements(current_situations: list[Situation]) -> list[Situation]:
+        """
+        Enrich the current situation with awareness of the entanglements between the function (if it's
+        called from a dynamic caller) as well as entanglements between parameters.
 
-        # if there are no entanglements, then simply return a call handler with the entire
-        # param_memories
-        if not realities: return [CallHandler(variable_caller, node, delta, param_memories)]
+        This takes into account all entanglement information. After this is run, each situation is
+        filtered to specifically deal with a single entanglement. If there is no entanglement, the
+        situation is unchanged.
+        """
+        new_situations = []
+        for situation in current_situations:
+            # If the function is entangled, only consider that entanglement
+            if situation.caller_impression and situation.caller_impression.entanglement:
+                e = situation.caller_impression.entanglement
+                new_situations.append(dataclasses.replace(situation,
+                    entanglement=e,
+                    call_parameters=[memory.for_entanglement(e) for memory in situation.call_parameters]))
+            # otherwise, divide the parameters by general entanglement
+            else:
+                realities = CallHandlingLogic._divide_parameters_by_entanglement(situation.call_parameters)
 
-        # finally return a call handler for each entanglement
-        return [CallHandler(variable_caller, node, delta, reality) for reality in realities]
+                # If no entanglements, return the situation as is
+                if not realities: new_situations.append(situation)
+
+                # otherwise, return a new situation for each entanglement
+                for reality in realities:
+                    new_situations.append(dataclasses.replace(situation,
+                        entanglement=reality[0].impressions.first().entanglement,
+                        call_parameters=reality))
+        return new_situations
 
     @staticmethod
     def _find_next_entanglement_present(param_memories: list[Memory]) -> Entanglement:
@@ -374,7 +451,7 @@ class CallHandlerFactory:
         order, but ensuring that each list only contains a single entanglement.
         """
         realities: list[list[Memory]] = []
-        while entanglement := CallHandlerFactory._find_next_entanglement_present(param_memories):
+        while entanglement := CallHandlingLogic._find_next_entanglement_present(param_memories):
             entangled_memories = [memory.for_entanglement(entanglement) for memory in param_memories]
             realities.append(entangled_memories)
             param_memories = [memory.not_for_entanglement(entanglement) for memory in param_memories]

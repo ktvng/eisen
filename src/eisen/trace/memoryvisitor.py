@@ -195,9 +195,9 @@ class MemoryVisitor(Visitor):
             fn.apply(state.but_with_second_child())
             return []
 
-        param_memories = fn.apply(state.but_with_second_child())
-        realities = CallHandlerFactory.get_call_handlers(node, fn, param_memories)
-        outcomes: list[list[Shadow | Memory]] = [reality.resolve_outcome() for reality in realities]
+        parameter_memories = fn.apply(state.but_with_second_child())
+        call_handlers = CallHandlerFactory.get_call_handlers(node, fn, parameter_memories)
+        outcomes: list[list[Shadow | Memory]] = [handler.resolve_outcome() for handler in call_handlers]
         return RealityFuser.fuse_outcomes_together(outcomes)
 
     @Visitor.for_ast_types("curry_call")

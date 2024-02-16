@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from eisen.state.memoryvisitorstate import MemoryVisitorState
 
 class Memory():
+    __slots__ = ('name', 'depth', 'rewrites', 'impressions')
+
     def __init__(self, rewrites: bool, depth: int, name: str = "",
                  impressions: MemorableSet = None):
         self.name = name

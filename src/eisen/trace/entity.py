@@ -7,6 +7,7 @@ from eisen.state.basestate import BaseState
 State = BaseState
 
 class Entity():
+    __slots__ = ('name', 'depth', 'moved', 'uid', 'type')
     def __init__(self, name: str, depth: int, type: Type) -> None:
         self.name = name
         self.depth = depth
@@ -20,6 +21,8 @@ class Entity():
 origin_entity = Entity("origin", -1, None)
 
 class Trait():
+    __slots__ = ('value')
+
     def __init__(self, value: str = "") -> None:
         self.value = value
 
@@ -46,6 +49,8 @@ class Trait():
         return self.value < other.value
 
 class Angel(Entity):
+    __slots__ = ('trait', 'entity')
+
     def __init__(self, trait: Trait, entity: Entity) -> None:
         super().__init__(entity.name + "." + trait.value, 0, entity.type)
         self.entity = entity

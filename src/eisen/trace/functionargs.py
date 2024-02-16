@@ -4,11 +4,10 @@ from enum import Enum
 
 from alpaca.concepts import Type
 
-from eisen.common.eiseninstance import FunctionInstance
 from eisen.common.traits import TraitImplementation, TraitsLogic
 from eisen.trace.memory import Memory, Impression
 from eisen.trace.shadow import Shadow, Personality
-from eisen.trace.entity import Entity, Trait
+from eisen.trace.entity import Trait
 import eisen.adapters as adapters
 from eisen.state.memoryvisitorstate import MemoryVisitorState
 
@@ -70,7 +69,6 @@ class Blessing:
         """
         Bestow the [representative] (parameter name) inside the method with the provided
         [blessing] depending on its Blessing.Type
-
 
         """
         match self.type:
@@ -163,42 +161,29 @@ class FunctionsAsArgumentsLogic:
     """
 
     @staticmethod
-    def get_memories_of_parameters_that_are_functions(node: adapters.Call, params: list[Memory]) -> list[Memory]:
-        """
-        Return an ordered list of Memories for each argument of a method that is a function
-        """
-        component_wise_argument_types = node.get_function_argument_type().unpack_into_parts()
-        return [param for type_, param in zip(component_wise_argument_types, params)
-                if type_.is_function() or type_.is_trait()]
+    def get_function_instance_from_caller_impression(
+            state: State,
+            impression: Impression,
+            call_node: adapters.Call):
 
-    @staticmethod
-    def get_all_function_combinations(function_parameters: list[Memory]) -> list[list[Shadow]]:
-        """
-        For the provided ordered list of function memories, each memory may refer to more than one
-        actual function (i.e. if that memory were assigned over a conditional block). But in order
-        to correctly run the memory tracer, we need a definite function. Therefore, this method returns
-        all possible combinations of individual functions.
-
-        For N parameters that are functions, given that each memory as M possible functions, there
-        will be M^N combinations.
-        """
-        if not function_parameters: return [None]
-        return list(itertools.product(*[memory.impressions.get_shadows()
-                                        for memory in function_parameters]))
-
-    @staticmethod
-    def _get_function_instance_from_caller_impression(state: State,
-                                           impression: Impression,
-                                           caller_type: Type,
-                                           called_function_name: str,
-                                           called_function_argument_type: Type):
+        caller_type = call_node.get_caller_type()
         if caller_type is not None and caller_type.is_trait():
+            called_function_name = call_node.get_function_name()
+            argument_type = call_node.get_function_argument_type()
+
             # if it's a trait, we return the trait implementation
             implementation_type = impression.shadow.entity.type
-            impl: TraitImplementation = state.get_enclosing_module().get_obj("trait_implementations", TraitImplementation.get_key(caller_type, impression.shadow.entity.type))
-            # print("impl:", caller_type, impression.shadow.entity.type)
-            type_to_look_for = TraitsLogic._replace_Self_type_with_implementation_type(called_function_argument_type, implementation_type)
-            found_instances = [i for i in impl.implementations if i.name_of_trait_attribute == called_function_name and i.type.get_argument_type() == type_to_look_for]
+            impl: TraitImplementation = state.get_enclosing_module().get_obj(
+                "trait_implementations",
+                TraitImplementation.get_key(caller_type, impression.shadow.entity.type))
+
+            type_to_look_for = TraitsLogic._replace_Self_type_with_implementation_type(
+                argument_type, implementation_type)
+
+            found_instances = [i for i in impl.implementations
+                               if i.name_of_trait_attribute == called_function_name
+                               and i.type.get_argument_type() == type_to_look_for]
+
             if len(found_instances) != 1:
                 raise Exception(f"Found instances should be one {found_instances}")
             found_instance = found_instances[0]
@@ -224,46 +209,3 @@ class FunctionsAsArgumentsLogic:
         """
         curried_params = caller.shadow.personality.as_curried_params() if caller else []
         return curried_params + parameters
-
-    @staticmethod
-    def cannot_process_method_yet(node: adapters.Def, state: MemoryVisitorState) -> bool:
-        """
-        We cannot process a method definition if that methods takes in functional parameters,
-        but we haven't reached a point in the code where the method is called with the definite
-        function instance. This is because we don't know what that function could to.
-        """
-        case1 = node.has_function_as_argument() and state.get_function_parameters() is None
-        case2 = node.has_trait_as_argument() and state.get_function_parameters() is None
-        return case1 or case2
-
-    @staticmethod
-    def update_shadow_to_be_like_function_parameter(
-            state: MemoryVisitorState,
-            function_parameter: Shadow,
-            representative_in_method: Entity):
-        """
-        For a function parameter, there will be some [representative_in_method] which is an entity
-        that is in the argument of the function. This representative needs to be updated to be akin
-        to the [function_parameter], such that is has the same curried arguments and the same
-        function instances.
-
-        Because the curried parameters do not exist inside the method, they must be guarded by
-        angels.
-        """
-        if representative_in_method.type.is_trait():
-            representative_in_method.type = function_parameter.entity.type
-            return
-
-        shadow = state.get_shadow(representative_in_method)
-        shadow.function_instances.extend(function_parameter.function_instances)
-        curried_args = function_parameter.personality.size()
-
-        # for each curried argument, use an angel to guard the memory of that curried arg, as it
-        # isn't available in this scope.
-        traits = [Trait(str(i)) for i in range(curried_args)]
-        personality = Personality({ trait: state.create_new_angel_memory(
-                                                trait=trait,
-                                                entity=representative_in_method)
-                                    for trait in traits })
-        state.update_personality(representative_in_method, personality)
-        state.update_memory_to_latest(representative_in_method.name)

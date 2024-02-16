@@ -75,4 +75,4 @@ class BindingCheckerState(State_PostInstanceVisitor):
         """
         Get the component-wise bindings of each type returned from this AST.
         """
-        return [t.modifier for t in self.get_returned_type().unpack_into_parts()]
+        return [t.modifier for t in self.get_returned_type().unpack()]

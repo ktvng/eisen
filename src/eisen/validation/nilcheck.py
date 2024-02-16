@@ -177,14 +177,14 @@ class NilCheck(Visitor):
     @Visitor.for_ast_types("call", "is_call", "curry_call")
     def call_(fn, state: State):
         params_states = fn.apply(state.but_with(ast=adapters.Call(state).get_params_ast()))
-        arg_types = adapters.Call(state).get_function_argument_type().unpack_into_parts()
+        arg_types = adapters.Call(state).get_function_argument_type().unpack()
 
         for param_state, _type in zip(params_states, arg_types):
             if not _type.restriction.is_nilable():
                 Validate.cannot_be_nil(state, param_state)
 
         return [NilableStatus.for_type(type)
-            for type in state.get_returned_type().unpack_into_parts()]
+            for type in state.get_returned_type().unpack()]
 
     @Visitor.for_ast_types("ref")
     def ref_(fn, state: State):

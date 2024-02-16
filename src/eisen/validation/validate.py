@@ -79,8 +79,8 @@ class TypeCheck:
     @staticmethod
     def compatible_types(state: State, type_pair: TypePair) -> bool:
         if type_pair.left == type_pair.right: return True
-        if len(type_pair.left.unpack_into_parts()) != len(type_pair.right.unpack_into_parts()): return False
-        for left_type, right_type in zip(type_pair.left.unpack_into_parts(), type_pair.right.unpack_into_parts()):
+        if len(type_pair.left.unpack()) != len(type_pair.right.unpack()): return False
+        for left_type, right_type in zip(type_pair.left.unpack(), type_pair.right.unpack()):
             if left_type == state.get_defined_type("Self"):
                 if right_type.is_trait(): continue
                 return False
@@ -352,8 +352,8 @@ class Validate:
 
     @staticmethod
     def function_has_enough_arguments_to_curry(state: State, argument_type: Type, curried_args_type: Type):
-        n_args = len(argument_type.unpack_into_parts())
-        n_curried_args = len(curried_args_type.unpack_into_parts())
+        n_args = len(argument_type.unpack())
+        n_curried_args = len(curried_args_type.unpack())
         if n_args < n_curried_args:
             return failure_with_exception_added_to(state,
                 ex=Exceptions.TooManyCurriedArguments,
@@ -363,7 +363,7 @@ class Validate:
 
     @staticmethod
     def curried_arguments_are_of_the_correct_type(state: State, argument_type: Type, curried_args_type: Type):
-        for expected_type, curried_type in zip(argument_type.unpack_into_parts(), curried_args_type.unpack_into_parts()):
+        for expected_type, curried_type in zip(argument_type.unpack(), curried_args_type.unpack()):
             if not TypeCheck.type_is_expected(state, expected_type, gotten=curried_type):
                 return ValidationResult.failure()
 

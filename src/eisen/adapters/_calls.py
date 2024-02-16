@@ -61,10 +61,10 @@ class Call(AbstractNodeInterface, _SharedMixins):
     """
 
     def get_return_value_bindings(self) -> list[Binding]:
-        return [t.modifier for t in self.get_function_return_type().unpack_into_parts()]
+        return [t.modifier for t in self.get_function_return_type().unpack()]
 
     def get_argument_bindings(self) -> list[Binding]:
-        return [t.modifier for t in self.get_function_argument_type().unpack_into_parts()]
+        return [t.modifier for t in self.get_function_argument_type().unpack()]
 
     def get_function_name(self) -> str:
         return RefLike(self.state.but_with_first_child()).get_name()

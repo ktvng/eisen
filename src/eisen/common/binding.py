@@ -322,7 +322,7 @@ class BindingMechanics:
                 and BindingMechanics.types_are_binding_equivalent(left.get_return_type(), right.get_return_type()))
         if left.is_tuple():
             return all(BindingMechanics.types_are_binding_equivalent(l, r)
-                       for l, r in zip(left.unpack_into_parts(), right.unpack_into_parts()))
+                       for l, r in zip(left.unpack(), right.unpack()))
         return left.modifier == right.modifier
 
 
@@ -332,7 +332,7 @@ class BindingMechanics:
             return (BindingMechanics.types_are_binding_compatible(left.get_argument_type(), right.get_argument_type(), is_param=True)
                 and BindingMechanics.types_are_binding_compatible(left.get_return_type(), right.get_return_type(), is_param))
         if left.is_tuple():
-            return all(BindingMechanics.types_are_binding_compatible(l, r, is_param) for l, r, in zip(left.unpack_into_parts(), right.unpack_into_parts()))
+            return all(BindingMechanics.types_are_binding_compatible(l, r, is_param) for l, r, in zip(left.unpack(), right.unpack()))
         return BindingMechanics._types_are_binding_compatible(left, right, is_param)
 
     @staticmethod

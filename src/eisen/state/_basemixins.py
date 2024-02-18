@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Self
 
-from alpaca.concepts import Module, Context, Type, AbstractException
+from alpaca.concepts import Module, Context, Type, AbstractException, Corpus, TypeFactory2
 from alpaca.utils import Visitor
 from alpaca.config import Config
 from alpaca.clr import AST
@@ -293,7 +293,6 @@ class BaseMixins():
         """
         return LookupManager.resolve_defined_type(name, self.get_enclosing_module())
 
-
     def create_block_context(self) -> Context:
         """
         Create a new Context for a block of code, and initialize the parent context structure
@@ -347,3 +346,9 @@ class BaseMixins():
 
     def get_all_builtins(self) -> list[FunctionInstance]:
         return list(self.builtin_functions.values())
+
+    def get_corpus(self) -> Corpus:
+        return self.corpus
+
+    def get_type_factory(self) -> TypeFactory2:
+        return self.type_factory

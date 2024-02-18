@@ -5,7 +5,7 @@ from eisen.adapters.nodeinterface import AbstractNodeInterface
 from eisen.common.binding import Binding
 
 class BindingAST(AbstractNodeInterface):
-    ast_types = ["var", "new", "mut", "void", "mut_new", "mut_var"]
+    ast_types = ["var", "new", "mut", "void", "mut_new", "mut_var", "move"]
     examples = """
     (var x)
     (new self)

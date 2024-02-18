@@ -12,6 +12,7 @@ import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.typecheck.callunwrapper import CallUnwrapper
 from eisen.common.typefactory import TypeFactory
+from eisen.typecheck.typeparser import TypeParser2
 
 from eisen.validation.builtin_print import Builtins
 
@@ -248,6 +249,8 @@ class TypeChecker(Visitor):
 
     @Visitor.for_ast_types("fn_type", "para_type", *adapters.TypeLike.ast_types)
     def _type(fn: TypeChecker, state: State) -> Type:
+        # TODO: TYPEPARSER
+        print(TypeParser2().run(state))
         return state.parse_type_represented_here()
 
     @Visitor.for_ast_types("=", "<-", *binary_ops)

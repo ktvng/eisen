@@ -20,3 +20,11 @@ class Module(NestedContainer):
 
     def add_defined_type(self, name: str, type: Type):
         self.add_obj("defined_type", name, type)
+
+    def get_namespace_str(self) -> str:
+        name = ""
+        mod = self
+        while mod is not None:
+            name = mod.name + "::" + name
+            mod = mod.parent
+        return name[:-2]

@@ -9,7 +9,9 @@ from eisen.adapters._decls import Colon
 class _SharedMixins:
     _get_name = AbstractNodeInterface.get_name_from_first_child
     get_name = AbstractNodeInterface.get_name_from_first_child
-    get_this_type = AbstractNodeInterface.get_type_for_node_that_defines_a_type
+
+    def get_this_type(self) -> Type:
+        return self.state.get_defined_type(self._get_name())
 
     def get_child_attribute_asts(self) -> list[AST]:
         return [child for child in self.state.get_ast()

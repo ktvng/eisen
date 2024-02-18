@@ -81,6 +81,15 @@ class Binding(Enum):
     # The error binding is returned if binding inference fails.
     error = 12
 
+    def __str__(self) -> str:
+        match self:
+            case Binding.fixed: return ""
+            case Binding.void: return ""
+            case Binding.ret_new: return "new"
+            case Binding.mut_var: return "mut var"
+            case Binding.mut_new: return "mut new"
+            case _: return self.name
+
 class Condition(Enum):
     not_initialized = 1
     initialized = 2

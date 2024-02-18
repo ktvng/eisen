@@ -88,6 +88,8 @@ class FunctionVisitor(Visitor):
             name = name = node.get_function_name()
             name_inside_trait = ""
 
+        # TODO: TYPERPARSER
+        print(state.get_type_parser2().run(state))
         return Instance(
             name=name,
             type=state.get_type_parser().apply(state),
@@ -103,6 +105,8 @@ class FunctionVisitor(Visitor):
 
         # the name of the constructor is the same as the struct, and constructors are unique
         # and hence should not have type mangling
+        # TODO: TYPERPARSER
+        print(state.get_type_parser2().run(state))
         return Instance(
             name=node.get_name(),
             type=state.get_type_parser().apply(state),

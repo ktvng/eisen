@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from typing import Self
-from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, AbstractException
+from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, AbstractException, Corpus, TypeFactory2
 from alpaca.config import Config
 from alpaca.clr import AST
 
+from eisen.common.typefactory import NewTypeFactory
 from eisen.common.eiseninstance import FunctionInstance
 from eisen.common.binding import Binding
 from eisen.state._basemixins import BaseMixins
@@ -59,7 +60,9 @@ class BaseState(AbstractParams, BaseMixins):
             print_to_watcher: bool = False,
             watcher: Watcher = None,
             builtin_functions: dict[str, FunctionInstance] = None,
-            global_module: Module = None
+            global_module: Module = None,
+            corpus: Corpus = None,
+            type_factory: TypeFactory2 = None
             ):
 
         if watcher is None:
@@ -69,7 +72,7 @@ class BaseState(AbstractParams, BaseMixins):
             mod=mod, exceptions=exceptions, critical_exception=critical_exception,
             print_to_watcher=print_to_watcher,
             watcher=watcher, builtin_functions=builtin_functions,
-            global_module=global_module)
+            global_module=global_module, corpus=corpus, type_factory=type_factory)
 
     def but_with(self,
             ast: AST = None,
@@ -94,6 +97,15 @@ class BaseState(AbstractParams, BaseMixins):
         global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
         global_mod.add_defined_type("Self", TypeFactory.produce_novel_type("Self").with_modifier(Binding.void))
 
+        corpus = Corpus()
+        factory = NewTypeFactory.get(corpus)
+        factory.declare_novel_type("int", namespace="")
+        factory.declare_novel_type("str", namespace="")
+        factory.declare_novel_type("flt", namespace="")
+        factory.declare_novel_type("bool", namespace="")
+        factory.declare_void_type()
+        factory.declare_novel_type("Self", namespace="")
+
         return BaseState(
             config=config,
             ast=ast,
@@ -102,4 +114,6 @@ class BaseState(AbstractParams, BaseMixins):
             mod=global_mod,
             exceptions=[],
             print_to_watcher=print_to_watcher,
-            global_module=global_mod)
+            global_module=global_mod,
+            corpus=corpus,
+            type_factory=factory)

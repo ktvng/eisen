@@ -7,7 +7,7 @@ from alpaca.clr import AST
 from eisen.common.eiseninstance import Instance
 from eisen.common.traits import TraitImplementation, TraitImplDetailsForFunctionVisitor
 from eisen.state.basestate import BaseState
-from eisen.typecheck.typeparser import TypeParser
+from eisen.typecheck.typeparser import TypeParser, TypeParser2
 
 class FunctionVisitorState(BaseState):
     """
@@ -38,6 +38,7 @@ class FunctionVisitorState(BaseState):
     def create_from_basestate(state: BaseState):
         return FunctionVisitorState(**state._get(),
                                     type_parser=TypeParser(),
+                                    type_parser2=TypeParser2(),
                                     struct_name="",
                                     trait_impl_details=None)
 
@@ -70,6 +71,9 @@ class FunctionVisitorState(BaseState):
 
     def get_type_parser(self) -> TypeParser:
         return self.type_parser
+
+    def get_type_parser2(self) -> TypeParser2:
+        return self.type_parser2
 
     def add_trait_implementation(self, impl: TraitImplementation):
         self.get_enclosing_module().add_obj("trait_implementations", impl.get_key_for_this(), impl)

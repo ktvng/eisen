@@ -56,7 +56,7 @@ class TestRunnerConfiguration:
     # The shared SuperParser instance
     parser: SuperParser = None
 
-    deprecated = ["legacy/interface1"]
+    deprecated = ["legacy/interface1", "legacy/embed"]
     vectors = ["vector/append", "vector/creation", "vector/append2"]
 
     # The list of tests which should not be run
@@ -99,7 +99,7 @@ class Test:
     def _save_python_target(self, state: State) -> None:
         ast = ToPython().run(state)
         proto_code = python.Writer().run(ast)
-        code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\nmain___Fd_void_I_void_b()"
+        code = ToPython.builtins + python.PostProcessor.run(proto_code) + ToPython.lmda + "\nmain___d_void_I__voidb()"
         pathlib.Path(self._get_build_file_name()).parent.mkdir(parents=True, exist_ok=True)
         with open(self._get_build_file_name(), 'w') as f:
             f.write(code)

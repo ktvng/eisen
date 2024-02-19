@@ -25,7 +25,7 @@ class Instance():
         """
         Guaranteed to be uniquely identifying
         """
-        return self.context.get_full_name() + self.name + "___" + Instance.get_signature_string(self.type)
+        return self.context.get_full_name() + self.name + "___" + self.type.get_uuid_str()
 
     def get_full_name(self):
         """
@@ -45,6 +45,11 @@ class Instance():
 
     @staticmethod
     def get_signature_string(type: Type):
+        base_str = type.get_uuid_str()
+        return (base_str.replace("(", "d")
+                .replace(")", "b")
+                .replace(", ", "_").replace("->", "I").replace("::", "_")
+                .replace(" ", "_"))
         match type:
             case (Type(classification=Type.classifications.novel)
                 | Type(classification=Type.classifications.struct)

@@ -9,8 +9,8 @@ from alpaca.clr import AST
 
 from eisen.common.eiseninstance import FunctionInstance
 from eisen.common.nodedata import NodeData
+from eisen.common.binding import Binding
 from eisen.validation.lookupmanager import LookupManager
-from eisen.common.typefactory import TypeFactory
 
 class BaseMixins():
     def report_exception(self, e: AbstractException):
@@ -147,7 +147,10 @@ class BaseMixins():
         :return: The boolean type.
         :rtype: Type
         """
-        return TypeFactory.produce_novel_type("bool")
+        return self.get_type_factory().produce_type(
+                self.get_corpus().get_type(name="bool",
+                                           environmental_namespace=None,
+                                           specified_namespace=""))
 
 
     def get_void_type(self) -> Type:
@@ -157,7 +160,21 @@ class BaseMixins():
         :return: The void type.
         :rtype: Type
         """
-        return TypeFactory.produce_void_type()
+        return self.get_type_factory().produce_void_type(modifier=Binding.void,
+                                                         nilable=False)
+
+    def get_self_type(self) -> Type:
+        """
+        Get the type used to represent void values.
+
+        :return: The void type.
+        :rtype: Type
+        """
+        return self.get_type_factory().produce_type(
+                self.get_corpus().get_type(name="Self",
+                                           environmental_namespace=None,
+                                           specified_namespace=""))
+
 
     def get_abort_signal(self) -> Type:
         """
@@ -169,7 +186,7 @@ class BaseMixins():
         :return: The abort type.
         :rtype: Type
         """
-        return TypeFactory.produce_novel_type("_abort_")
+        return self.get_corpus().get_type("_abort_", None, "_abort_")
 
 
     def first_child(self) -> AST:

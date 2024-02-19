@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from alpaca.clr import AST, ASTToken
+from alpaca.clr import AST
 from alpaca.concepts import Type
 
 from eisen.typecheck.typecheckerstate import TypeCheckerState as State
@@ -17,7 +17,7 @@ class CallUnwrapper():
     def process_and_restructure_ast(state: State, guessed_params_type: Type, fn: TypeChecker) -> Type:
         """decide whether or not the call needs to be unwrapped, and returns the
         true type of the parameters"""
-        match CallUnwrapper._chains_to_correct_function(state, guessed_params_type):
+        match CallUnwrapper._chains_to_correct_function(fn, state, guessed_params_type):
             case None:
                 return state.get_abort_signal()
             case True:
@@ -105,13 +105,12 @@ class CallUnwrapper():
         return true_type
 
     @staticmethod
-    def _chains_to_correct_function(state: State, guessed_params_type: Type) -> bool:
+    def _chains_to_correct_function(fn: TypeChecker, state: State, guessed_params_type: Type) -> bool:
         match caller := state.get_ast().first():
             case AST(type="::"):
                 return CallUnwrapper._follow_scope_to_resolution(state, scope_ast=caller)
             case AST(type="."):
-                return CallUnwrapper._type_is_function(
-                    type_=CallUnwrapper._follow_chain_to_get_type(state, ast=caller))
+                return fn.apply(state.but_with(ast=caller, exceptions=[])).is_function()
             case AST(type="ref"):
                 node = adapters.Ref(state.but_with_first_child())
                 if node.is_print(): return True
@@ -128,23 +127,3 @@ class CallUnwrapper():
     def _follow_scope_to_resolution(state: State, scope_ast: AST) -> bool:
         instance = adapters.ModuleScope(state.but_with(ast=scope_ast)).get_end_instance()
         return instance.type.is_function()
-
-    @staticmethod
-    def _type_is_function(type_: Type) -> bool:
-        return type_ is not None and type_.is_function()
-
-    @staticmethod
-    def _follow_chain_to_get_type(state: State, ast: AST | ASTToken) -> Type | None:
-        match ast:
-            case AST(type="ref"): return adapters.Ref(state.but_with(ast=ast)).resolve_reference_type()
-            case ASTToken(): return None
-            case AST(type="."):
-                obj_type: Type = CallUnwrapper._follow_chain_to_get_type(state, ast.first())
-                if obj_type is None: return None
-
-                attr = ast.second().value
-                if obj_type.has_member_attribute_with_name(attr):
-                    return obj_type.get_member_attribute_by_name(attr)
-                return None
-            case AST(type="cast"):
-                return state.but_with(ast=ast.second()).parse_type_represented_here()

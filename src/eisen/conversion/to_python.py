@@ -117,9 +117,9 @@ class lmda:
         def_pattern = Pattern("('def NAME ('args FIRST XS_ARGS...) ('seq XS_SEQ...))")
         new_fns = [
             def_pattern.match(fn).to("""
-                ('def NAME ('args 'self XS_ARGS...)
+                ('def NAME ('args '__self XS_ARGS...)
                     ('seq
-                        ('= ('ref FIRST) ('. ('ref 'self) '_me))
+                        ('= ('ref FIRST) ('. ('ref '__self) '_me))
                         XS_SEQ...
                         ))""")
             for fn in fns

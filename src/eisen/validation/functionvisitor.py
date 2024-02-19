@@ -66,8 +66,11 @@ class FunctionVisitor(Visitor):
         instances = [fn.apply(state.but_with(ast=child, trait_impl_details=trait_impl_details))
                      for child in node.get_asts_of_implemented_functions()]
 
-        trait = state.get_defined_type(node.get_trait_name())
-        struct = state.get_defined_type(node.get_struct_name())
+        trait = state.get_corpus().get_type(node.get_trait_name(), environmental_namespace=None,
+                                            specified_namespace=state.get_enclosing_module().get_namespace_str())
+        struct = state.get_corpus().get_type(node.get_struct_name(), environmental_namespace=None,
+                                             specified_namespace=state.get_enclosing_module().get_namespace_str())
+
         state.add_trait_implementation(
             TraitImplementation(trait=trait, struct=struct, implementations=instances))
 
@@ -87,12 +90,9 @@ class FunctionVisitor(Visitor):
         else:
             name = name = node.get_function_name()
             name_inside_trait = ""
-
-        # TODO: TYPERPARSER
-        print(state.get_type_parser2().run(state))
         return Instance(
             name=name,
-            type=state.get_type_parser().apply(state),
+            type=state.get_type_parser().run(state),
             context=state.get_enclosing_module(),
             ast=state.get_ast(),
             name_of_trait_attribute=name_inside_trait,
@@ -105,11 +105,9 @@ class FunctionVisitor(Visitor):
 
         # the name of the constructor is the same as the struct, and constructors are unique
         # and hence should not have type mangling
-        # TODO: TYPERPARSER
-        print(state.get_type_parser2().run(state))
         return Instance(
             name=node.get_name(),
-            type=state.get_type_parser().apply(state),
+            type=state.get_type_parser().run(state),
             context=state.get_enclosing_module(),
             ast=state.get_ast(),
             is_constructor=True,

@@ -90,6 +90,9 @@ class Binding(Enum):
             case Binding.mut_new: return "mut new"
             case _: return self.name
 
+    def full(self) -> str:
+        return self.name
+
 class Condition(Enum):
     not_initialized = 1
     initialized = 2
@@ -378,8 +381,9 @@ class BindingMechanics:
             case Binding.data, Binding.data: return True
             case Binding.data, _: return False
             case None, None: return True
+            case Binding.void, Binding.void: return True
             case _, _:
-                raise Exception(f"not handled binding {left}, {right}")
+                raise Exception(f"not handled binding {left.full()}, {right.full()}")
 
 
 

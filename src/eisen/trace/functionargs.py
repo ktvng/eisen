@@ -2,7 +2,7 @@ from __future__ import annotations
 import itertools
 from enum import Enum
 
-from alpaca.concepts import Type
+from alpaca.concepts import Type, Type
 
 from eisen.common.traits import TraitImplementation, TraitsLogic
 from eisen.trace.memory import Memory, Impression
@@ -182,7 +182,7 @@ class FunctionsAsArgumentsLogic:
 
             found_instances = [i for i in impl.implementations
                                if i.name_of_trait_attribute == called_function_name
-                               and i.type.get_argument_type() == type_to_look_for]
+                               and i.type.get_argument_type().equals(type_to_look_for, Type.structural_equivalency)]
 
             if len(found_instances) != 1:
                 raise Exception(f"Found instances should be one {found_instances}")

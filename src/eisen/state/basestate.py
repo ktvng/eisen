@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Self
-from alpaca.concepts import Module, Context, TypeFactory, AbstractParams, AbstractException, Corpus, TypeFactory2
+from alpaca.concepts import Module, Context, AbstractParams, AbstractException, Corpus, TypeFactory2
 from alpaca.config import Config
 from alpaca.clr import AST
 
@@ -90,12 +90,6 @@ class BaseState(AbstractParams, BaseMixins):
     @classmethod
     def create_initial(cls, config: Config, ast: AST, txt: str, print_to_watcher: bool=False) -> BaseState:
         global_mod = Module("")
-        global_mod.add_defined_type("int", TypeFactory.produce_novel_type("int").with_modifier(Binding.data))
-        global_mod.add_defined_type("str", TypeFactory.produce_novel_type("str").with_modifier(Binding.data))
-        global_mod.add_defined_type("flt", TypeFactory.produce_novel_type("flt").with_modifier(Binding.data))
-        global_mod.add_defined_type("bool", TypeFactory.produce_novel_type("bool").with_modifier(Binding.data))
-        global_mod.add_defined_type("void", TypeFactory.produce_novel_type("void"))
-        global_mod.add_defined_type("Self", TypeFactory.produce_novel_type("Self").with_modifier(Binding.void))
 
         corpus = Corpus()
         factory = NewTypeFactory.get(corpus)
@@ -103,8 +97,9 @@ class BaseState(AbstractParams, BaseMixins):
         factory.declare_novel_type("str", namespace="")
         factory.declare_novel_type("flt", namespace="")
         factory.declare_novel_type("bool", namespace="")
-        factory.declare_void_type()
+        factory.declare_void_type(modifier=Binding.void)
         factory.declare_novel_type("Self", namespace="")
+        factory.declare_novel_type("_abort_", namespace="_abort_")
 
         return BaseState(
             config=config,

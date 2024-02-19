@@ -1,0 +1,43 @@
+struct obj {
+    var x: int
+
+    create() -> new self: obj {
+        self.x = 0
+    }
+}
+
+trait inc {
+    add: (mut Self) -> mut inc
+    reduce: (mut Self, int) -> mut inc
+}
+
+impl inc for obj {
+    fn add(mut s: obj) -> mut ret: inc {
+        s.x += 1
+        ret = s.as(inc)
+    }
+
+    fn reduce(mut self: obj, i: int) -> mut ret: inc {
+        self.x -= i
+        ret = self.as(inc)
+    }
+}
+
+fn main() {
+    let mut o = obj()
+    let mut i = o.as(inc)
+    let mut j = i.add().add().add().add()
+
+    print("%i", o.x)
+
+    j.reduce(1).reduce(4)
+    print("%i", o.x)
+}
+
+/// [Test]
+/// name = "traits/recursive"
+/// info = "allows traits to return themselves"
+
+/// [Expects]
+/// success = true
+/// output = "4-1"

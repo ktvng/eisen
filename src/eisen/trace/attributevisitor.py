@@ -28,6 +28,10 @@ class AttributeVisitor(Visitor):
         mems, trait, ownership_change = fn.apply(state.but_with_first_child())
         return mems, trait, ownership_change
 
+    @Visitor.for_ast_types("call")
+    def _call(fn: AttributeVisitor, state: State) -> list[Memory]:
+        return fn.apply(state.but_with_first_child())
+
     @staticmethod
     def _perform_owner_switch(state: State, i: Impression, trait: Trait) -> Memory:
         """

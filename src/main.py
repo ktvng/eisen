@@ -20,7 +20,7 @@ class PerfCounter:
 
     @staticmethod
     def format_performance_for_print(name: str, endtime: int, starttime: int) -> str:
-        return f"{' '*(28-len(name))}{name}   {round((endtime-starttime)/1_000_000, 5)}"
+        return f"{' '*(23-len(name))}{name}   {round((endtime-starttime)/1_000_000, 5)}"
 
     def run(self, name: str, f, *args, **kwargs):
         starttime = time.perf_counter_ns()
@@ -148,7 +148,7 @@ def run_eisen(source_code_filename: str, verbose: bool = False):
     ast = eisen.ToPython().run(state)
 
     proto_code = python.Writer().run(ast)
-    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain___Fd_void_I_void_b()"
+    code = eisen.ToPython.builtins + python.PostProcessor.run(proto_code) + eisen.ToPython.lmda + "\nmain___d_void_I__voidb()"
     with open("./build/test.py", 'w') as f:
         f.write(code)
 

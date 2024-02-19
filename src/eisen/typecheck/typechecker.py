@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.concepts import Type, TypeFactory
+from alpaca.concepts import Type, Type
 from eisen.common import binary_ops, boolean_return_ops, implemented_primitive_types
 from eisen.common.binding import Binding, BindingMechanics
 from eisen.common.traits import TraitsLogic
@@ -11,8 +11,6 @@ from eisen.typecheck.typecheckerstate import TypeCheckerState
 import eisen.adapters as adapters
 from eisen.validation.validate import Validate
 from eisen.typecheck.callunwrapper import CallUnwrapper
-from eisen.common.typefactory import TypeFactory
-from eisen.typecheck.typeparser import TypeParser2
 
 from eisen.validation.builtin_print import Builtins
 
@@ -51,9 +49,12 @@ class TypeChecker(Visitor):
     @Visitor.for_tokens
     def token_(fn: TypeChecker, state: State) -> Type:
         if state.get_ast().type in implemented_primitive_types:
-            return TypeFactory.produce_novel_type(name=state.get_ast().type)
+            return state.get_type_factory().produce_type(
+                state.get_corpus().get_type(name=state.get_ast().type,
+                                            environmental_namespace=None,
+                                            specified_namespace=""))
         elif state.get_ast().type == "nil":
-            return TypeFactory.produce_nil_type()
+            raise Exception("NOT DONE")
 
         # debug only
         raise Exception(f"unexpected token type of {state.get_ast().type}, {state.get_ast().value}")
@@ -95,7 +96,7 @@ class TypeChecker(Visitor):
             case 0: return state.get_void_type()
             # unpack the value (don't pass a tuple)
             case 1: return fn.apply_to_first_child_of(state)
-            case _: return TypeFactory.produce_tuple_type(
+            case _: return state.get_type_factory().produce_tuple_type(
                 components=[fn.apply(state.but_with(ast=child)) for child in state.get_ast()])
 
     @Visitor.for_ast_types("if")
@@ -130,20 +131,46 @@ class TypeChecker(Visitor):
 
         # this will actually change the ast inplace, converting (raw_call ...)
         # into (call (ref ...) (params ...))
-        if guessed_params_type == state.get_abort_signal():
+        if guessed_params_type.equals(state.get_abort_signal(), Type.structural_equivalency):
             return state.get_abort_signal()
         params_type = CallUnwrapper.process_and_restructure_ast(
             state=state,
             guessed_params_type=guessed_params_type,
             fn=fn)
 
-        if params_type == state.get_abort_signal():
+        if params_type.equals(state.get_abort_signal(), Type.structural_equivalency):
             return params_type
 
         fn.apply(state.but_with(ast=state.first_child(), arg_type=params_type))
         if adapters.Call(state).is_print():
             return Builtins.get_type_of_print(state).get_return_type()
         return TypeChecker._additional_call_validations(fn, state, params_type)
+
+    @Visitor.for_ast_types("call")
+    def _call(fn: TypeChecker, state: State) -> Type:
+        return state.but_with_first_child().get_node_data().returned_type.get_return_type()
+
+    @staticmethod
+    def produce_curried_function_type(state: State, fn_type: Type, curried_args_type: Type) -> Type:
+        """
+        Assumes all validations are complete. Obtain the new function type after
+        currying the [curried_args_type]
+        """
+        n_curried_args = len(curried_args_type.unpack())
+        remaining_args = fn_type.get_argument_type().unpack()[n_curried_args: ]
+
+        match len(remaining_args):
+            case 0:
+                new_argument_type = state.get_void_type()
+            case 1:
+                new_argument_type = remaining_args[0]
+            case _:
+                new_argument_type = state.get_type_factory().produce_tuple_type(components=remaining_args)
+
+        return state.get_type_factory().produce_function_type(
+            args=new_argument_type,
+            rets=fn_type.get_return_type(),
+            modifier=Binding.new)
 
     @Visitor.for_ast_types("curry_call")
     def curry_call_(fn: TypeChecker, state: State) -> Type:
@@ -156,7 +183,7 @@ class TypeChecker(Visitor):
 
         if Validate.curried_arguments_are_of_the_correct_type(state, argument_type, curried_args_type).failed():
             return state.get_abort_signal()
-        return TypeFactory.produce_curried_function_type(fn_type, curried_args_type)
+        return TypeChecker.produce_curried_function_type(state, fn_type, curried_args_type)
 
     @Visitor.for_ast_types("struct")
     def struct(fn: TypeChecker, state: State) -> Type:
@@ -178,6 +205,7 @@ class TypeChecker(Visitor):
         if right_type.is_trait():
             return right_type.with_modifier(BindingMechanics.infer_cast_binding(left_type.modifier))
 
+        print(right_type, right_type.is_trait())
         raise Exception("TODO: casting without traits is not supported?")
         # TODO: deprecate this
         if Validate.castable_types(
@@ -225,7 +253,7 @@ class TypeChecker(Visitor):
         match len(types):
             case 0: return state.get_void_type()
             case 1: return types[0]
-            case _: return TypeFactory.produce_tuple_type(types)
+            case _: return state.get_type_factory().produce_tuple_type(types)
 
 
     @Visitor.for_ast_types(*adapters.InferenceAssign.ast_types)
@@ -249,8 +277,6 @@ class TypeChecker(Visitor):
 
     @Visitor.for_ast_types("fn_type", "para_type", *adapters.TypeLike.ast_types)
     def _type(fn: TypeChecker, state: State) -> Type:
-        # TODO: TYPEPARSER
-        print(TypeParser2().run(state))
         return state.parse_type_represented_here()
 
     @Visitor.for_ast_types("=", "<-", *binary_ops)

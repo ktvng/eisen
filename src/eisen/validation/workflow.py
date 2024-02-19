@@ -8,8 +8,8 @@ from eisen.common.exceptionshandler import ExceptionsHandler
 from eisen.validation.modulevisitor import ModuleVisitor
 from eisen.typecheck.typechecker import TypeChecker
 from eisen.validation.functionvisitor import FunctionVisitor
-from eisen.typedeclaration.declarationvisitor import DeclarationVisitor, DeclarationVisitor2
-from eisen.typedeclaration.finalizationvisitor import FinalizationVisitor, IntermediateFormVisitor, DefinitionVisitor
+from eisen.typedeclaration.declarationvisitor import DeclarationVisitor
+from eisen.typedeclaration.finalizationvisitor import DefinitionVisitor
 from eisen.validation.fnconverter import FnConverter
 from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
@@ -48,15 +48,7 @@ class Workflow():
 
         # Parse and add declarations of structs/interfaces
         DeclarationVisitor,
-
-        # These are new type
-        DeclarationVisitor2,
         DefinitionVisitor,
-
-        # TODO: need to update after reworking alpaca type abstraction
-        # Finalizes the structs and traits after parsing their definitions.
-        IntermediateFormVisitor,
-        FinalizationVisitor,
 
         # Constructs and adds types for global functions. Here (def ...) and
         # (create ...) ASTS are also normalized to have the same structure,

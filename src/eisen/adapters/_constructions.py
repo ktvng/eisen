@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alpaca.concepts import Type
+from alpaca.concepts import Type, Corpus
 from alpaca.utils import Visitor
 from alpaca.clr import AST
 from eisen.adapters.nodeinterface import AbstractNodeInterface
@@ -11,7 +11,10 @@ class _SharedMixins:
     get_name = AbstractNodeInterface.get_name_from_first_child
 
     def get_this_type(self) -> Type:
-        return self.state.get_defined_type(self._get_name())
+        corpus: Corpus = self.state.get_corpus()
+        return corpus.get_type(name=self.get_name(),
+                               environmental_namespace=None,
+                               specified_namespace=self.state.get_enclosing_module().get_namespace_str())
 
     def get_child_attribute_asts(self) -> list[AST]:
         return [child for child in self.state.get_ast()
@@ -43,34 +46,8 @@ class Struct(AbstractNodeInterface, _SharedMixins):
     def get_impls_ast(self) -> AST:
         return self.second_child()
 
-    def get_implemented_interfaces(self) -> list[Type]:
-        interfaces = []
-        if self.implements_interfaces():
-            for child in self.get_impls_ast():
-                interfaces.append(self.state.get_defined_type(child.value))
-                # TODO: currently we only allow the interface to be looked up in the same
-                # module as the struct. In general, we need to allow interfaces from arbitrary
-                # modules.
-        return interfaces
-
     def _get_embed_asts(self) -> list[AST]:
         return [child for child in self.state.get_ast() if child.type == "embed"]
-
-    def _parse_embed_ast_for_types(self, embed_ast: AST) -> list[Type]:
-        # TODO: currently we only allow the interface to be looked up in the same
-        # module as the struct. In general, we need to allow interfaces from arbitrary
-        # modules.
-        if isinstance(embed_ast.first(), AST):
-            return [self.state.get_defined_type(child.value) for child in embed_ast.first()]
-        return [self.state.get_defined_type(embed_ast.first().value)]
-
-    def get_embedded_structs(self) -> list[Type]:
-        embedded_structs: list[Type] = []
-        embed_asts = self._get_embed_asts()
-        for ast in embed_asts:
-            embedded_structs.extend(self._parse_embed_ast_for_types(ast))
-
-        return embedded_structs
 
     def has_create_ast(self) -> bool:
         create_asts = [child for child in self.state.get_ast() if child.type == "create"]

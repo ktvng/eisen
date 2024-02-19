@@ -5,6 +5,7 @@ from typing import Callable
 import uuid
 
 from alpaca.utils import Visitor
+from alpaca.concepts import Type
 
 import eisen.adapters as adapters
 from eisen.common.eiseninstance import FunctionInstance
@@ -185,7 +186,7 @@ class CallHandler:
         """
         Resolve the correct return values for this function.
         """
-        if self.node.get_function_return_type() == self.state.get_void_type():
+        if self.node.get_function_return_type().equals(self.state.get_void_type(), Type.structural_equivalency):
             return []
 
         # TODO: should shadows also get entanglements? Probably not as conditional initialization

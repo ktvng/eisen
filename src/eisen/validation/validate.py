@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from alpaca.concepts import Type, AbstractException
+from alpaca.concepts import Type, AbstractException, Type
 from eisen.common.eiseninstance import Instance
 from eisen.common.exceptions import Exceptions
 from eisen.common.traits import TraitsLogic
@@ -44,7 +44,7 @@ class TypePair:
 class TypeCheck:
     @staticmethod
     def encountered_prior_failure(state: State, *args: list[Type]) -> bool:
-        return state.get_abort_signal() in args
+        return any(arg.equals(state.get_abort_signal(), Type.structural_equivalency) for arg in args)
 
     @staticmethod
     def flatten_to_type_pairs(left: Type, right: Type) -> list[TypePair]:
@@ -68,8 +68,7 @@ class TypeCheck:
         # 'nil' is considered equivalent to all nilable types
         # if type_pair.left.restriction.is_nilable() and type_pair.right.is_nil():
         #     return True
-
-        if type_pair.left != type_pair.right:
+        if not type_pair.left.equals(type_pair.right, Type.structural_equivalency):
             add_exception_to(state,
                 ex=Exceptions.TypeMismatch,
                 msg=f"'{type_pair.left}' != '{type_pair.right}'")
@@ -78,13 +77,13 @@ class TypeCheck:
 
     @staticmethod
     def compatible_types(state: State, type_pair: TypePair) -> bool:
-        if type_pair.left == type_pair.right: return True
+        if type_pair.left.equals(type_pair.right, Type.structural_equivalency): return True
         if len(type_pair.left.unpack()) != len(type_pair.right.unpack()): return False
         for left_type, right_type in zip(type_pair.left.unpack(), type_pair.right.unpack()):
-            if left_type == state.get_defined_type("Self"):
+            if left_type.equals(state.get_self_type(), Type.structural_equivalency):
                 if right_type.is_trait(): continue
                 return False
-            if left_type != right_type:
+            if not left_type.equals(right_type, Type.structural_equivalency):
                 return False
         return True
 
@@ -95,7 +94,7 @@ class TypeCheck:
         # if expected.restriction.is_nilable() and gotten.is_nil():
         #     return True
 
-        if expected != gotten:
+        if not expected.equals(gotten, Type.structural_equivalency):
             add_exception_to(state,
                 ex=Exceptions.TypeMismatch,
                 msg=f"expected '{expected}' but got '{gotten}'")
@@ -157,7 +156,9 @@ class Validate:
                 type_to_look_for = TraitsLogic.get_type_of_trait_function_where_implemented(type_, implementing_struct)
 
                 # Validate the definition can be found
-                definitions = [i for i in implemented_fns if i.name_of_trait_attribute == name and i.type == type_to_look_for]
+                definitions = [i for i in implemented_fns
+                               if i.name_of_trait_attribute == name
+                               and i.type.equals(type_to_look_for, Type.structural_equivalency)]
                 if len(definitions) == 0:
                     return failure_with_exception_added_to(state,
                         ex=Exceptions.IncompleteTraitDefinition,
@@ -232,16 +233,7 @@ class Validate:
         if TypeCheck.encountered_prior_failure(state, arg_type, given_type):
             return ValidationResult.failure()
 
-        if arg_type != given_type:
-            # if the given_type is a struct, we have another change to succeed if
-            # the struct embeds the expected fn_type
-            if given_type.classification == Type.classifications.struct:
-                if arg_type not in given_type.embeds:
-                    return failure_with_exception_added_to(state,
-                        ex=Exceptions.TypeMismatch,
-                        msg=f"function '{name}' takes '{arg_type}' but was given '{given_type}'")
-                return ValidationResult.success()
-
+        if not arg_type.equals(given_type, Type.structural_equivalency):
             if TypeCheck.compatible_types(state, TypePair(arg_type, given_type)):
                 return ValidationResult.success()
             return failure_with_exception_added_to(state,
@@ -533,7 +525,7 @@ class Validate:
                 return ValidationResult.success()
             return failure_with_exception_added_to(state,
                 ex=Exceptions.IncompatibleBinding,
-                msg=f"Parameter incompatibility expected {expected} {expected.modifier} received {received} {received.modifier}")
+                msg=f"Parameter incompatibility expected {expected} received {received}")
 
         @staticmethod
         def can_be_inferred(state: State, name: str, declared: Binding, received: Binding) -> ValidationResult:

@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 
-from typing import Any, Type as TypingType, ClassVar
+from typing import Any, Type as TypingType, ClassVar, Self, Callable
 
 class Corpus:
     """
@@ -10,12 +10,12 @@ class Corpus:
     """
 
     def __init__(self) -> None:
-        self.types: dict[str, Type2] = {}
+        self.types: dict[str, Type] = {}
 
     def get_type(self,
                  name: str,
                  environmental_namespace: str | None,
-                 specified_namespace: str | None) -> Type2 | None:
+                 specified_namespace: str | None) -> Type | None:
 
         namespaces = Namespaces.get_namespaces_to_lookup_in_order(
             environmental_namespace, specified_namespace)
@@ -88,12 +88,12 @@ class Namespaces:
 class TypeFactory2:
     def __init__(self,
                  corpus: Corpus,
-                 classes: dict[str, Type2]) -> None:
+                 classes: dict[str, Type]) -> None:
 
         self.classes = classes
         self.corpus = corpus
 
-    def produce_type(self, type_: Type2, **options) -> Type2:
+    def produce_type(self, type_: Type, **options) -> Type:
         match type_:
             case VoidType():
                 return type_
@@ -110,30 +110,30 @@ class TypeFactory2:
         type_manifest: TypingType[TypeManifest] = self.classes["manifest"]
         return type_manifest(corpus=self.corpus, name=type_.name, namespace=type_.namespace, **options)
 
-    def add_declared_to_known_corpus(self, type_: Type2):
+    def add_declared_to_known_corpus(self, type_: Type):
         self.corpus.add_type(type_)
 
     def declare_novel_type(self, name: str, namespace: str):
         novel_type: TypingType[NovelType] = self.classes["novel"]
         self.add_declared_to_known_corpus(novel_type(name=name, namespace=namespace))
 
-    def declare_void_type(self):
+    def declare_void_type(self, **options):
         void_type: TypingType[VoidType] = self.classes["void"]
-        self.add_declared_to_known_corpus(void_type())
+        self.add_declared_to_known_corpus(void_type(**options))
 
-    def produce_void_type(self, **options) -> Type2:
+    def produce_void_type(self, **options) -> Type:
         void_type: TypingType[VoidType] = self.classes["void"]
         return void_type(**options)
 
-    def declare_nil_type(self):
+    def declare_nil_type(self, **options):
         nil_type: TypingType[NilType] = self.classes["nil"]
-        self.add_declared_to_known_corpus(nil_type())
+        self.add_declared_to_known_corpus(nil_type(**options))
 
-    def produce_nil_type(self, **options) -> Type2:
+    def produce_nil_type(self, **options) -> Type:
         nil_type: TypingType[NilType] = self.classes["nil"]
         return nil_type(**options)
 
-    def produce_function_type(self, args: Type2, rets: Type2, **options) -> TypeManifest:
+    def produce_function_type(self, args: Type, rets: Type, **options) -> TypeManifest:
         function_type: TypingType[FunctionType] = self.classes["function"]
         return function_type(
             argument=args,
@@ -152,7 +152,7 @@ class TypeFactory2:
             struct_name: str,
             namespace: str,
             attribute_names: list[str],
-            attribute_types: list[Type2]):
+            attribute_types: list[Type]):
 
         struct_type: TypingType[StructType] = self.classes["struct"]
         new_type = struct_type(
@@ -160,14 +160,13 @@ class TypeFactory2:
             namespace=namespace,
             component_names=attribute_names,
             components=attribute_types)
-        print(new_type)
         self.add_declared_to_known_corpus(new_type)
 
     def define_trait_type(self,
             trait_name: str,
             namespace: str,
             attribute_names: list[str],
-            attribute_types: list[Type2]):
+            attribute_types: list[Type]):
 
         trait_type: TypingType[TraitType] = self.classes["trait"]
         self.add_declared_to_known_corpus(trait_type(
@@ -177,7 +176,7 @@ class TypeFactory2:
             components=attribute_types))
 
 @dataclass(frozen=True, kw_only=True)
-class Type2:
+class Type:
     modifier: Any = None
     nilable: bool = None
 
@@ -186,15 +185,15 @@ class Type2:
 
     def get_uuid_str(self) -> str: self.delegated()
 
-    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]: self.delegated()
-    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]: self.delegated()
-    def has_member_attribute_with_name(self, name: str) -> bool: self.delegated()
-    def get_member_attribute_by_name(self, name: str) -> Type2: self.delegated()
+    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type]]: self.delegated()
+    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type]]: self.delegated()
+    def has_member_attribute_with_name(self, name: str) -> bool: return False
+    def get_member_attribute_by_name(self, name: str) -> Type: self.delegated()
     def get_all_component_names(self) -> list[str]: self.delegated()
 
-    def get_return_type(self) -> Type2: self.delegated()
-    def get_first_parameter_type(self) -> Type2: self.delegated()
-    def get_argument_type(self) -> Type2: self.delegated()
+    def get_return_type(self) -> Type: self.delegated()
+    def get_first_parameter_type(self) -> Type: self.delegated()
+    def get_argument_type(self) -> Type: self.delegated()
 
     def is_function(self) -> bool: return False
     def is_struct(self) -> bool: return False
@@ -207,16 +206,28 @@ class Type2:
     def is_vec(self) -> bool: return False
     def is_parametric(self) -> bool: return False
 
-    def unpack(self) -> list[Type2]: self.delegated()
+    def unpack(self) -> list[Type]: self.delegated()
 
     def _get_modifier_str(self) -> str:
         modifier = str(self.modifier) if self.modifier is not None else ""
         if modifier: modifier += " "
         return modifier
 
+    def with_modifier(self, modifier: Any) -> Self:
+        return dataclasses.replace(self, modifier=modifier)
+
+    def equals(self, other: Type, equivalency_relation: Callable[[Type, Type], bool]) -> bool:
+        self.delegated()
+
+    @staticmethod
+    def structural_equivalency(a: Type, b: Type) -> bool:
+        return True
+
+    def __eq__(self, o: Any) -> bool:
+        raise Exception("bads")
 
 @dataclass(frozen=True, kw_only=True)
-class ConstructedType(Type2):
+class ConstructedType(Type):
     """
     A constructed type is one which is built using well-defined composition procedures from other
     realized types or constructed types.
@@ -227,22 +238,22 @@ class FunctionType(ConstructedType):
     """
     A function type contains two child type manifests: an argument type and a return type
     """
-    argument: Type2
-    returnValue: Type2
+    argument: Type
+    returnValue: Type
 
     def is_function(self) -> bool:
         return True
 
-    def get_return_type(self) -> Type2:
+    def get_return_type(self) -> Type:
         return self.returnValue
 
-    def get_first_parameter_type(self) -> Type2:
+    def get_first_parameter_type(self) -> Type:
         return self.get_argument_type().unpack()[0]
 
-    def get_argument_type(self) -> Type2:
+    def get_argument_type(self) -> Type:
         return self.argument
 
-    def unpack(self) -> list[Type2]:
+    def unpack(self) -> list[Type]:
         return [self]
 
     def __str__(self) -> str:
@@ -250,28 +261,45 @@ class FunctionType(ConstructedType):
         if args[0] != "(": args = f"({args})"
         return self._get_modifier_str() + f"{args} -> {str(self.returnValue)}"
 
+    def get_uuid_str(self) -> str:
+        return f"({self.argument.get_uuid_str()} -> {self.returnValue.get_uuid_str()})"
+
+    def equals(self, other: FunctionType, equivalency_relation: Callable[[Type, Type], bool]) -> bool:
+        return (other.is_function()
+            and equivalency_relation(self, other)
+            and self.get_argument_type().equals(other.get_argument_type(), equivalency_relation)
+            and self.get_return_type().equals(other.get_return_type(), equivalency_relation))
+
 @dataclass(frozen=True, kw_only=True)
 class TupleType(ConstructedType):
     """
     Similar to a struct type, but not realized (no-name), a tuple type also does not associate
     names with child attributes.
     """
-    components: list[Type2]
+    components: list[Type]
 
     def is_tuple(self) -> bool:
         return True
 
-    def unpack(self) -> list[Type2]:
+    def unpack(self) -> list[Type]:
         match len(self.components):
             case 0: return [VoidType()]
-            case _: return [tm.get_type() for tm in self.components]
+            case _: return self.components
 
     def __str__(self) -> str:
         return f"({', '.join([str(c) for c in self.components])})"
 
+    def get_uuid_str(self) -> str:
+        return f"({', '.join([c.get_uuid_str() for c in self.components])})"
+
+    def equals(self, other: TupleType, equivalency_relation: Callable[[Type, Type], bool]) -> bool:
+        return (other.is_tuple()
+            and len(self.components) == len(other.components)
+            and equivalency_relation(self, other)
+            and all(a.equals(b, equivalency_relation) for a, b, in zip(self.components, other.components)))
 
 @dataclass(frozen=True, kw_only=True)
-class RealizedType(Type2):
+class RealizedType(Type):
     """
     A realized type is one which is one with a unique name. For instance, structs, primitives,
     and traits are all examples of realized types as a unique name is associated to each.
@@ -285,11 +313,19 @@ class RealizedType(Type2):
         """
         Return a globally unique identifier for this type
         """
-        return self._get_modifier_str() + self.namespace + "::" + self.name
+        return self.namespace + "::" + self.name
 
     @staticmethod
     def get_uuid_str_for(name: str, namespace: str) -> str:
         return namespace + "::" + name
+
+    def equals(self, other: RealizedType, equivalency_relation: Callable[[Type, Type], bool]) -> bool:
+        return (self.name == other.name
+            and self.namespace == other.namespace
+            and equivalency_relation(self, other))
+
+    def unpack(self) -> list[Type]:
+        return [self]
 
 @dataclass(frozen=True, kw_only=True)
 class TypeDeclaration(RealizedType):
@@ -340,23 +376,23 @@ class NilType(RealizedType):
 class _StructLikeType(RealizedType):
     classification: str
     component_names: list[str]
-    components: list[Type2]
+    components: list[Type]
 
-    def unpack(self) -> list[Type2]:
+    def unpack(self) -> list[Type]:
         match len(self.components):
             case 0: return [VoidType()]
             case _: return [tm.get_type() for tm in self.components]
 
-    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]:
+    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         return [(n, t)for n, t in zip(self.component_names, self.components)]
 
-    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]:
+    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         return [(n, t)for n, t in zip(self.component_names, self.components)]
 
     def has_member_attribute_with_name(self, name: str) -> bool:
         return any(n == name for n in self.component_names)
 
-    def get_member_attribute_by_name(self, name: str) -> Type2:
+    def get_member_attribute_by_name(self, name: str) -> Type:
         for n, t in zip(self.component_names, self.components):
             if n == name:
                 return t
@@ -366,6 +402,7 @@ class _StructLikeType(RealizedType):
         return self.component_names
 
     def __str__(self) -> str:
+        return self.get_uuid_str() + f"[{self.classification}]"
         s = self.classification + " " + self.get_uuid_str() + "{\n"
         for n, t in zip(self.component_names, self.components):
             s += "  " + n + ": " + str(t) + "\n"
@@ -396,7 +433,7 @@ class StructType(_StructLikeType):
 
 
 @dataclass(frozen=True, kw_only=True)
-class TypeManifest(Type2):
+class TypeManifest(Type):
     """
     A type manifest refers to another type. It may add additional information such as bindings,
     const-ness, modifiers, or nullability.
@@ -405,7 +442,7 @@ class TypeManifest(Type2):
     name: str
     namespace: str
 
-    def get_type(self) -> Type2:
+    def get_type(self) -> Type:
         """
         Return the type referenced by this manifest.
         """
@@ -413,18 +450,19 @@ class TypeManifest(Type2):
                                     environmental_namespace=None,
                                     specified_namespace=self.namespace)
 
-    def get_uuid_str(self) -> str: RealizedType.get_uuid_str_for(self.name, self.namespace)
+    def get_uuid_str(self) -> str:
+        return RealizedType.get_uuid_str_for(self.name, self.namespace)
 
-    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]:
+    def get_direct_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         return self.get_type().get_direct_attribute_name_type_pairs()
 
-    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type2]]:
+    def get_all_attribute_name_type_pairs(self) -> list[tuple[str, Type]]:
         return self.get_type().get_all_attribute_name_type_pairs()
 
     def has_member_attribute_with_name(self, name: str) -> bool:
         return self.get_type().has_member_attribute_with_name(name)
 
-    def get_member_attribute_by_name(self, name: str) -> Type2:
+    def get_member_attribute_by_name(self, name: str) -> Type:
         return self.get_type().get_member_attribute_by_name(name)
 
     def get_all_component_names(self) -> list[str]:
@@ -432,13 +470,13 @@ class TypeManifest(Type2):
 
     def _not_supported(self): raise Exception("This function is not supported for TypeManifests")
 
-    def get_return_type(self) -> Type2: self._not_supported()
-    def get_first_parameter_type(self) -> Type2: self._not_supported()
-    def get_argument_type(self) -> Type2: self._not_supported()
+    def get_return_type(self) -> Type: self._not_supported()
+    def get_first_parameter_type(self) -> Type: self._not_supported()
+    def get_argument_type(self) -> Type: self._not_supported()
 
     def is_function(self) -> bool: return False
-    def is_struct(self) -> bool: self.get_type().is_struct()
-    def is_trait(self) -> bool: self.get_type().is_trait()
+    def is_struct(self) -> bool: return self.get_type().is_struct()
+    def is_trait(self) -> bool: return self.get_type().is_trait()
     def is_novel(self) -> bool: return False
     def is_tuple(self) -> bool: return False
     def is_void(self) -> bool: return False
@@ -446,8 +484,16 @@ class TypeManifest(Type2):
     def is_vec(self) -> bool: return False
     def is_parametric(self) -> bool: return False
 
-    def unpack(self) -> list[Type2]:
-        return self.get_type().unpack()
+    def unpack(self) -> list[Type]:
+        return [self]
 
     def __str__(self) -> str:
-        return self._get_modifier_str() + RealizedType.get_uuid_str_for(self.name, self.namespace)
+        return self._get_modifier_str() + self.get_type().get_uuid_str()
+
+    def equals(self, other: Type, equivalency_relation: Callable[[Type, Type], bool]) -> bool:
+        return (self.name == other.name
+            and self.namespace == other.namespace
+            and equivalency_relation(self, other))
+
+    def __eq__(self, o: Any) -> bool:
+        raise Exception("bads")

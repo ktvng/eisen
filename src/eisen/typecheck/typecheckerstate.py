@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from alpaca.concepts import Module, Context, Type
+from alpaca.concepts import Module, Context, Type, AbstractException
 from alpaca.clr import AST
 
 from eisen.state.basestate import BaseState
-from eisen.typecheck.typeparser import TypeParser, TypeParser2
+from eisen.typecheck.typeparser import TypeParser
 
 class TypeCheckerState(BaseState):
     def __init__(self, **kwargs):
@@ -17,6 +17,7 @@ class TypeCheckerState(BaseState):
             arg_type: Type = None,
             in_constructor: bool = None,
             in_rets: bool = None,
+            exceptions: list[AbstractException] = None,
             ) -> BaseState:
 
         return self._but_with(
@@ -25,13 +26,14 @@ class TypeCheckerState(BaseState):
             mod=mod,
             arg_type=arg_type,
             in_constructor=in_constructor,
-            in_rets=in_rets
+            in_rets=in_rets,
+            exceptions=exceptions,
             )
 
     @classmethod
     def create_from_basestate(cls, state: BaseState):
         return TypeCheckerState(**state._get(), arg_type=None, in_constructor=False, in_rets=False,
-                                typeparser=TypeParser(), typeparser2=TypeParser2())
+                                typeparser=TypeParser())
 
     def get_arg_type(self) -> Type | None:
         return self.arg_type
@@ -43,5 +45,4 @@ class TypeCheckerState(BaseState):
         return self.in_rets
 
     def parse_type_represented_here(self) -> Type:
-        # return self.typeparser2.run(self)
-        return self.typeparser.apply(self)
+        return self.typeparser.run(self)

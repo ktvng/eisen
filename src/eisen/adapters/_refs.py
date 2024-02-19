@@ -180,6 +180,7 @@ class Scope(AbstractNodeInterface):
     (. (ref obj) attr)
     (. (. (ref obj) attr1) attr2)
     (. (cast (ref obj) (type into_type)) attr)
+    (. (call (fn f) (params ...)) attr)
     """
 
     def get_ast_defining_restriction(self) -> AST:
@@ -222,6 +223,7 @@ class Scope(AbstractNodeInterface):
             case "ref": return Ref(state).resolve_reference_type()
             # Can't use Cast() because we're pre-typechecker
             case "cast": return state.but_with_second_child().get_node_data().returned_type
+            case "call": return state.but_with_first_child().get_node_data().returned_type.get_return_type()
 
 
     def get_end_type(self) -> Type:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from alpaca.utils import Visitor
-from alpaca.concepts import TypeFactory
 from eisen.common.restriction import MutableRestriction, NewLetRestriction, ImmutableRestriction
 from eisen.common.eiseninstance import Instance
 from eisen.state.basestate import BaseState as State
@@ -18,6 +17,7 @@ class VectorVisitor(Visitor):
 
     @Visitor.for_ast_types("new_vec")
     def new_vec_(fn, state: State) -> None:
+        # TODO: broken with new types
         vec_type = adapters.NewVec(state).get_type()
         element_type = vec_type.get_first_parameter_type()
         if not element_type.restriction.is_primitive():

@@ -1,13 +1,13 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import dataclasses
 from dataclasses import dataclass
 
 from alpaca.pattern import Pattern
 from alpaca.clr import AST
-from alpaca.concepts import Type
+from alpaca.concepts import Type, Type, TupleType, TypeFactory2
 
 from eisen.state.basestate import BaseState as State
-from eisen.common.typefactory import TypeFactory
 from eisen.common.eiseninstance import Instance
 
 if TYPE_CHECKING:
@@ -97,10 +97,10 @@ class TraitsLogic:
         first type is 'Self'
         """
         match arg_type := function_argument_type:
-            case Type(classification=Type.classifications.tuple, components=[first, *_]):
-                return first == state.get_defined_type("Self")
+            case TupleType(components=[first, *_]):
+                return first.equals(state.get_self_type(), Type.structural_equivalency)
             case Type():
-                return arg_type == state.get_defined_type("Self")
+                return arg_type.equals(state.get_self_type(), Type.structural_equivalency)
             case _:
                 return False
 
@@ -119,12 +119,11 @@ class TraitsLogic:
         For a trait function declared with type [trait_function_declaration], this method returns
         the type of that function where it is implemented by [implementation_type]
         """
-        return TypeFactory.produce_function_type(
-            mod=None,
-            arg=TraitsLogic._replace_Self_type_with_implementation_type(
+        return dataclasses.replace(
+            trait_function_declaration,
+            argument=TraitsLogic._replace_Self_type_with_implementation_type(
                 trait_function_declaration_type=trait_function_declaration.get_argument_type(),
-                implementation_type=implementation_type),
-            ret=trait_function_declaration.get_return_type())
+                implementation_type=implementation_type))
 
     @staticmethod
     def _Self_type_is_first_parameter(Self_type: Type, parameter_type: Type) -> bool:
@@ -184,9 +183,9 @@ class TraitsLogic:
         parameter (which must be 'Self') with the implementation type of the trait, [with_type]
         """
         match trait_function_declaration_type:
-            case Type(classification=Type.classifications.tuple, components=[first, *others]):
-                return TypeFactory.produce_tuple_type(
-                    [implementation_type.with_modifier(first.modifier), *others])
+            case TupleType(components=[first, *others]):
+                return dataclasses.replace(trait_function_declaration_type,
+                    components=[implementation_type.with_modifier(first.modifier), *others])
             case Type():
                 return implementation_type.with_modifier(trait_function_declaration_type.modifier)
 

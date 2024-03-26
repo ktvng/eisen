@@ -50,7 +50,10 @@ export default defineConfig({
     ],
   },
   markdown: {
-    theme: 'vitesse-dark',
+    theme: {
+      light: 'vitesse-light',
+      dark: 'vitesse-dark',
+    },
     shikiSetup: (shiki) => {
       shiki.loadLanguage({
         "version": "0.0.1",

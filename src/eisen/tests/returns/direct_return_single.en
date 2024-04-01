@@ -1,0 +1,16 @@
+fn one() -> a: int {
+  return 1
+}
+
+fn main() {
+  let x = one()
+  print("x=%i", x)
+}
+
+/// [Test]
+/// name = "returns/direct_return_single"
+/// info = "direct return of a single value"
+
+/// [Expects]
+/// success = true
+/// output = "x=1"

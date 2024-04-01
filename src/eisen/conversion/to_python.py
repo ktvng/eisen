@@ -196,9 +196,22 @@ class lmda:
 
     @Visitor.for_ast_types("return")
     def return_(fn, state: State):
-        if state.get_ret_names():
-            return Pattern("('return ('tags NAMES...))").build({"NAMES": state.get_ret_names()})
-        return Pattern("('return )").build()
+        ret_names = state.get_ret_names() or []
+        if state.get_ast().has_no_children():
+            if ret_names:
+                return Pattern("('return ('tags NAMES...))").build({"NAMES": ret_names})
+            return Pattern("('return )").build()
+        match ast := Pattern("('return x)").match(state.get_ast()).x:
+            case ASTToken():
+                ret_values = [ast]
+            case AST():
+                ret_values = ast.get_all_children()
+        ret_assigns = [Pattern("'= NAME VALUE").build({"NAME": name, "VALUE": value})
+            for name, value in zip(ret_names, ret_values)]
+        return Pattern("('subseq ASSIGNS... ('return ('tags NAMES...)))").build({
+            "NAMES": ret_names,
+            "ASSIGNS": ret_assigns
+        })
 
     @Visitor.for_ast_types("args")
     def args_(fn, state: State):

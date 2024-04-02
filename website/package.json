@@ -12,11 +12,12 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "vitepress": "1.0.1"
+    "vitepress": "1.0.0-rc.10"
   },
   "pnpm": {
     "patchedDependencies": {
-      "vitepress@1.0.1": "patches/vitepress@1.0.1.patch"
+      "shiki@0.14.4": "patches/shiki@0.14.4.patch",
+      "vitepress@1.0.0-rc.10": "patches/vitepress@1.0.0-rc.10.patch"
     },
     "peerDependencyRules": {
       "ignoreMissing": [

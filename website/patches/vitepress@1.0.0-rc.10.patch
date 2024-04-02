@@ -1,5 +1,5 @@
 diff --git a/dist/client/theme-default/components/VPContent.vue b/dist/client/theme-default/components/VPContent.vue
-index 3b2dbdf6e0fff8ec2cd36ca80c713b9bfe738733..66c835064907dd372a8afcfd249a916f003f7b43 100644
+index a1479dc693a8261b30b88663ba1de523cceaf877..8df5231fd320e5248db441319a0b8890a4b5f01e 100644
 --- a/dist/client/theme-default/components/VPContent.vue
 +++ b/dist/client/theme-default/components/VPContent.vue
 @@ -16,7 +16,6 @@ const { hasSidebar } = useSidebar()
@@ -10,7 +10,7 @@ index 3b2dbdf6e0fff8ec2cd36ca80c713b9bfe738733..66c835064907dd372a8afcfd249a916f
      }"
    >
      <slot name="not-found" v-if="page.isNotFound"><NotFound /></slot>
-@@ -69,15 +68,16 @@ const { hasSidebar } = useSidebar()
+@@ -66,15 +65,16 @@ const { hasSidebar } = useSidebar()
    width: 100%;
  }
  
@@ -33,10 +33,10 @@ index 3b2dbdf6e0fff8ec2cd36ca80c713b9bfe738733..66c835064907dd372a8afcfd249a916f
    .VPContent {
      padding-top: var(--vp-nav-height);
 diff --git a/dist/client/theme-default/components/VPFooter.vue b/dist/client/theme-default/components/VPFooter.vue
-index 3a21ff2b7f62a21a271cbdab6dd8da945b8d8321..e830ede950bd72aad5ffc815f7fc7015d2fb9cb9 100644
+index d1dd939cf68a66d5952ace121160f477da5ff16a..03222da1698180ca37a8721e86ddd9d16d5f0541 100644
 --- a/dist/client/theme-default/components/VPFooter.vue
 +++ b/dist/client/theme-default/components/VPFooter.vue
-@@ -40,6 +40,7 @@ const { hasSidebar } = useSidebar()
+@@ -30,6 +30,7 @@ const { hasSidebar } = useSidebar()
  
  @media (min-width: 768px) {
    .VPFooter {
@@ -45,10 +45,10 @@ index 3a21ff2b7f62a21a271cbdab6dd8da945b8d8321..e830ede950bd72aad5ffc815f7fc7015
    }
  }
 diff --git a/dist/client/theme-default/components/VPLocalNav.vue b/dist/client/theme-default/components/VPLocalNav.vue
-index 15791dd5af695fac8134f4b31d6f560c3247ee77..83ce4af3f8f84b6ed9c801aaa6b1fb3d19caa96d 100644
+index 35379095a2f6493b2604aafc9dfbf0be62e3a8ef..40f91a6e5f3878d74dbee91d705f378317056515 100644
 --- a/dist/client/theme-default/components/VPLocalNav.vue
 +++ b/dist/client/theme-default/components/VPLocalNav.vue
-@@ -143,6 +143,10 @@ const classes = computed(() => {
+@@ -119,6 +119,10 @@ const classes = computed(() => {
  }
  
  @media (min-width: 768px) {
@@ -60,10 +60,10 @@ index 15791dd5af695fac8134f4b31d6f560c3247ee77..83ce4af3f8f84b6ed9c801aaa6b1fb3d
      padding: 0 32px;
    }
 diff --git a/dist/client/theme-default/components/VPNav.vue b/dist/client/theme-default/components/VPNav.vue
-index 577c8eceaded06dfe2e3a99f171b81a92a21615b..5c74e11cc706c671c50ca8e7fd42499309320374 100644
+index b654a043fd0902099c47dba49856d5d8e0d3962d..19c2e93f8488a1d3f5f511996ce511bf5c630161 100644
 --- a/dist/client/theme-default/components/VPNav.vue
 +++ b/dist/client/theme-default/components/VPNav.vue
-@@ -49,6 +49,12 @@ watchEffect(() => {
+@@ -36,6 +36,12 @@ provide('close-screen', closeScreen)
    transition: background-color 0.5s;
  }
  
@@ -77,10 +77,10 @@ index 577c8eceaded06dfe2e3a99f171b81a92a21615b..5c74e11cc706c671c50ca8e7fd424993
    .VPNav {
      position: fixed;
 diff --git a/dist/client/theme-default/components/VPSidebar.vue b/dist/client/theme-default/components/VPSidebar.vue
-index d6c7321930d9fcc1ab3bcbbffbd0a70f7eda3052..c53323364b9a4f984bec9a7a8df78769ecda3b00 100644
+index b5d4cadffeffde0897fce34c9897189b504eec5e..93e66d35b75d93645131393cc78a9edadc31db17 100644
 --- a/dist/client/theme-default/components/VPSidebar.vue
 +++ b/dist/client/theme-default/components/VPSidebar.vue
-@@ -100,8 +100,8 @@ watch(
+@@ -102,8 +102,8 @@ watch(
  
  @media (min-width: 1440px) {
    .VPSidebar {
@@ -92,10 +92,10 @@ index d6c7321930d9fcc1ab3bcbbffbd0a70f7eda3052..c53323364b9a4f984bec9a7a8df78769
  }
  
 diff --git a/dist/client/theme-default/styles/base.css b/dist/client/theme-default/styles/base.css
-index da61b764f4f471a8ed09594bcabedc86f7218922..0d5308d45ef3b99bd1bf8a6ec9dc4321df41d981 100644
+index 7505df4af61a5e86c9994b9be081a0fb18f3e6de..2fe66d4bb4416bad03be3bf943cbe59e6ffc0296 100644
 --- a/dist/client/theme-default/styles/base.css
 +++ b/dist/client/theme-default/styles/base.css
-@@ -43,6 +43,7 @@ body {
+@@ -44,6 +44,7 @@ body {
    text-rendering: optimizeLegibility;
    -webkit-font-smoothing: antialiased;
    -moz-osx-font-smoothing: grayscale;

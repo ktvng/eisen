@@ -82,13 +82,6 @@ class Writer(Visitor):
         p.append("}\n")
         return p
 
-    @Visitor.for_ast_types("subseq")
-    def subseq_(fn, ast: AST):
-        p = []
-        for child in ast:
-            p += fn.apply(child) + ["\n"]
-        return p
-
     @Visitor.for_ast_types("if")
     def if_(fn, ast: AST):
         p = ["if ", *fn.apply(ast.first())]

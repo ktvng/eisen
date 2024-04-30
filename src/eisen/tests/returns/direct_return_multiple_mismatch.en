@@ -1,0 +1,28 @@
+fn numbers() -> a: int, b: int {
+  if (true) {
+    return 1
+  } else {
+    return 1, 2, 3
+  }
+}
+
+fn main() {
+  let x, y = numbers()
+  print("hello")
+}
+
+/// [Test]
+/// name = "returns/direct_return_multiple_mismatch"
+/// info = "direct return of wrong number of values"
+
+/// [Expects]
+/// success = false
+
+
+/// [[Expects.Exceptions]]
+/// type = "ReturnValueCountMismatch"
+/// contains = ">> 3"
+
+/// [[Expects.Exceptions]]
+/// type = "ReturnValueCountMismatch"
+/// contains = ">> 5"

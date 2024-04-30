@@ -15,6 +15,7 @@ from eisen.validation.initalizer import Initializer
 from eisen.validation.nilcheck import NilCheck
 from eisen.validation.instancevisitor import InstanceVisitor
 from eisen.validation.recursionvisitor import RecursionVisitor
+from eisen.validation.returnconverter import ReturnConverter
 from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.trace.memoryvisitor import MemoryVisitor
 from eisen.bindings.bindingchecker import BindingChecker
@@ -40,6 +41,9 @@ class Stop():
 
 class Workflow():
     steps: list[Visitor] = [
+        # Convert direct return macro
+        ReturnConverter,
+
         # Initialize the .data attribute for all asts with empty NodeData instances
         Initializer,
 

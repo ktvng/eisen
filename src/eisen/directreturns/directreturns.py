@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from eisen.common.nodedata import NodeData
 from eisen.common.exceptions import Exceptions
-from eisen.state.basestate import BaseState as State
+from eisen.state.basestate import BaseState
+from eisen.directreturns.directreturnsstate import DirectReturnsState as State
 from alpaca.clr import AST, ASTToken
 from alpaca.utils import Visitor
 
-class ReturnConverter(Visitor):
-    def run(self, state: State):
-        self.apply(state)
+class DirectReturns(Visitor):
+    def run(self, state: BaseState):
+        self.apply(State.create_from_basestate(state))
         return state
 
     def apply(self, state: State):
@@ -26,9 +26,6 @@ class ReturnConverter(Visitor):
     @Visitor.for_ast_types("def")
     def def_(fn, state: State):
         # Get function's return tokens, if any
-        #
-        # TODO: validate return types?
-        # Q: do we need to handle `fn TAG ARGS SEQ` (no `RETS`) from the grammar?
         rets = state.get_ast().third()
         if not len(rets):
             rets = []
@@ -38,11 +35,8 @@ class ReturnConverter(Visitor):
             rets = rets.get_all_children()
         rets = [ret.first().first() for ret in rets]
 
-        context = state.create_isolated_context()
-        context.add_entity("rets", rets)
-
         for child in state.get_all_children():
-            fn.apply(state.but_with(ast=child, context=context))
+            fn.apply(state.but_with(ast=child, rets=rets))
 
     @Visitor.for_ast_types("seq")
     def seq_(fn, state: State):
@@ -61,8 +55,7 @@ class ReturnConverter(Visitor):
         #   }
         #
         # so that the interpreter can run it without needing to know about direct returns.
-        context = state.get_context()
-        rets = context.get_entity("rets") if context else []
+        rets = state.get_rets()
         children = state.get_all_children()
         i = 0
         while i < len(children):

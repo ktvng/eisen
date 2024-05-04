@@ -19,6 +19,7 @@ from eisen.validation.vectorvisitor import VectorVisitor
 from eisen.trace.memoryvisitor import MemoryVisitor
 from eisen.bindings.bindingchecker import BindingChecker
 from eisen.state.basestate import BaseState as State
+from eisen.directreturns.directreturns import DirectReturns
 
 # Notes:
 # A module is a collection of structs/functions
@@ -40,6 +41,9 @@ class Stop():
 
 class Workflow():
     steps: list[Visitor] = [
+        # Convert direct return macro
+        DirectReturns,
+
         # Initialize the .data attribute for all asts with empty NodeData instances
         Initializer,
 

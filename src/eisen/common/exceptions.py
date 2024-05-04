@@ -102,3 +102,7 @@ class Exceptions():
     class PartialConditionalInitialization(AbstractException):
         type = "PartialConditionalInitialization"
         description = "all branches must initialize/not-initialize references"
+
+    class ReturnValueCountMismatch(AbstractException):
+        type = "ReturnValueCountMismatch"
+        description = "wrong number of return values provided by direct return"

@@ -1,0 +1,16 @@
+fn swap(x: int, y: int) -> a: int, b: int {
+  return y, x
+}
+
+fn main() {
+  let x, y = swap(1, 2)
+  print("x=%i y=%i", x, y)
+}
+
+/// [Test]
+/// name = "returns/direct_return_multiple"
+/// info = "direct return of multiple values"
+
+/// [Expects]
+/// success = true
+/// output = "x=2 y=1"

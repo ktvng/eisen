@@ -483,6 +483,8 @@ STRUCTURE
         |   ANNOTATION
         @action filter_build return
         |   return
+        |   return E0
+        |   return E0S
 
     # ====================================================
     # Block

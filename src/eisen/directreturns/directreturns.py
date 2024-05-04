@@ -6,6 +6,22 @@ from eisen.directreturns.directreturnsstate import DirectReturnsState as State
 from alpaca.clr import AST, ASTToken
 from alpaca.utils import Visitor
 
+# Converts a direct return like this:
+#
+#   def foo() -> a: int, b: int {
+#     return 1, 2
+#   }
+#
+# into this:
+#
+#   def foo() -> a: int, b: int {
+#     a = 1
+#     b = 2
+#     return
+#   }
+#
+# so that the interpreter can run it without needing to know about direct returns.
+
 class DirectReturns(Visitor):
     def run(self, state: BaseState):
         self.apply(State.create_from_basestate(state))
@@ -18,6 +34,8 @@ class DirectReturns(Visitor):
     def default_(fn, state: State):
         for child in state.get_all_children():
             fn.apply(state.but_with(ast=child))
+
+        return state.get_ast()
 
     @Visitor.for_tokens
     def tokens_(fn, state: State):
@@ -40,40 +58,37 @@ class DirectReturns(Visitor):
 
     @Visitor.for_ast_types("seq")
     def seq_(fn, state: State):
-        # Convert a direct return like this:
-        #
-        #   def foo() -> a: int, b: int {
-        #     return 1, 2
-        #   }
-        #
-        # into this:
-        #
-        #   def foo() -> a: int, b: int {
-        #     a = 1
-        #     b = 2
-        #     return
-        #   }
-        #
-        # so that the interpreter can run it without needing to know about direct returns.
-        rets = state.get_rets()
+        new_children = []
         children = state.get_all_children()
-        i = 0
-        while i < len(children):
-            child = children[i]
-            if child.type == "return" and (ret_values := child.items()):
-                if ret_values[0].type == 'tuple':
-                    ret_values = ret_values[0].items()
-
-                if len(rets) == len(ret_values):
-                    for j, val in enumerate(ret_values):
-                        children.insert(i, AST(type="=", lst=[AST(type="ref", lst=[rets[j]]), val]))
-                        i += 1
-                else:
-                    state.report_exception(Exceptions.ReturnValueCountMismatch(
-                        msg=f"got {len(ret_values)} return value(s), expected {len(rets)}",
-                        line_number=child.line_number
-                    ))
-            i += 1
 
         for child in children:
-           fn.apply(state.but_with(ast=child))
+            new_child = fn.apply(state.but_with(ast=child))
+
+            # Allow the return visitor to convert one child into multiple children in the sequence
+            if isinstance(new_child, list):
+                new_children += new_child
+            else:
+                new_children.append(new_child)
+
+        children.clear()
+        children += new_children
+
+    @Visitor.for_ast_types("return")
+    def return_(fn, state: State):
+        rets = state.get_rets()
+        ret_values = state.get_ast().items()
+
+        if not ret_values:
+            return state.get_ast()
+
+        if ret_values[0].type == 'tuple':
+            ret_values = ret_values[0].items()
+
+        if len(rets) != len(ret_values):
+            state.report_exception(Exceptions.ReturnValueCountMismatch(
+                msg=f"got {len(ret_values)} return value(s), expected {len(rets)}",
+                line_number=state.get_line_number()
+            ))
+
+        return [AST(type="=", lst=[AST(type="ref", lst=[ret]), val])
+            for ret, val in zip(rets, ret_values)]

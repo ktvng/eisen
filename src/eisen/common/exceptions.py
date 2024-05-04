@@ -105,4 +105,4 @@ class Exceptions():
 
     class ReturnValueCountMismatch(AbstractException):
         type = "ReturnValueCountMismatch"
-        description = "wrong number of return values provied by direct return"
+        description = "wrong number of return values provided by direct return"

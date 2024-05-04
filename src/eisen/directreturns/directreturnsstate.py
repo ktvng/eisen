@@ -14,8 +14,11 @@ class DirectReturnsState(BaseState):
             ast: AST = None,
             context: Context = None,
             mod: Module = None,
-            rets: [ASTToken] = []
+            rets: list[ASTToken] = None
             ) -> BaseState:
+
+        if rets is None:
+            rets = self.rets
 
         return self._but_with(
             ast=ast,
@@ -28,5 +31,5 @@ class DirectReturnsState(BaseState):
     def create_from_basestate(cls, state: BaseState):
         return DirectReturnsState(**state._get(), rets=[])
 
-    def get_rets(self) -> [ASTToken]:
+    def get_rets(self) -> list[ASTToken]:
         return self.rets
